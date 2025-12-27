@@ -55,16 +55,20 @@ function Router() {
   );
 }
 
+import { ThemeProvider } from "next-themes";
+
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <AuthProvider>
-          <Router />
-          <Toaster />
-        </AuthProvider>
-      </I18nProvider>
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="light">
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider>
+          <AuthProvider>
+            <Router />
+            <Toaster />
+          </AuthProvider>
+        </I18nProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

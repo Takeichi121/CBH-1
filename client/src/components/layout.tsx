@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu } from "lucide-react";
-import { SiBurgerking } from "react-icons/si";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 export function Layout({ children }: { children: ReactNode }) {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
+  const { theme, setTheme } = useTheme();
 
   if (!user) {
     return <div className="min-h-screen bg-background">{children}</div>;
@@ -33,11 +34,15 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Desktop Header */}
-      <header className="hidden md:flex h-16 items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
+      <header className="hidden md:flex h-16 items-center justify-between px-6 bg-background/80 dark:bg-background/90 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
             <div className="h-11 w-11 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-              <img src="/images/bk-logo-new.png" alt="BK Logo" className="w-full h-full object-contain" />
+              <div className="bk-logo-custom scale-75">
+                <div className="bk-logo-bun"></div>
+                <div className="bk-logo-text leading-none">BURGER<br/>KING</div>
+                <div className="bk-logo-bun-bottom"></div>
+              </div>
             </div>
             <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Grand Diamond</h1>
           </Link>
@@ -63,7 +68,18 @@ export function Layout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="rounded-full"
+          >
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Loader2, Globe } from "lucide-react";
+import { SiBurgerking } from "react-icons/si";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -45,8 +46,8 @@ export default function AuthPage() {
       
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="mx-auto h-24 w-24 mb-6 transition-all duration-300 hover:scale-105 rounded-3xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-2xl shadow-primary/30">
-            <span className="text-white font-display font-bold text-4xl">BK</span>
+          <div className="mx-auto h-24 w-24 mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center">
+            <SiBurgerking className="w-full h-full text-[#ED1C24] drop-shadow-xl" />
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">
             {t("appName")}

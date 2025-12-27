@@ -142,7 +142,7 @@
 .bk-logo-bun-top {
   width: 90%;
   height: 25%;
-  background: #F58220;
+  background: #8B4513; /* SaddleBrown */
   border-radius: 100px 100px 10px 10px;
 }
 
@@ -155,7 +155,7 @@
 }
 
 .bk-logo-text-official {
-  color: #ED1C24;
+  color: #5D4037; /* Dark Brown */
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
   text-transform: uppercase;
@@ -167,7 +167,7 @@
 .bk-logo-bun-bottom {
   width: 90%;
   height: 20%;
-  background: #F58220;
+  background: #8B4513; /* SaddleBrown */
   border-radius: 10px 10px 100px 100px;
 }
 

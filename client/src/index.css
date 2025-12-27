@@ -41,33 +41,33 @@
 }
 
 .dark {
-  --background: 223 100% 5%;   /* Deep Burger King Blue Dark */
+  --background: 223 100% 7%;   /* Slightly lighter deep blue for better depth */
   --foreground: 210 40% 98%;
 
-  --card: 223 100% 7%;
+  --card: 223 60% 12%;        /* More contrast for cards */
   --card-foreground: 210 40% 98%;
 
-  --popover: 223 100% 7%;
+  --popover: 223 60% 12%;
   --popover-foreground: 210 40% 98%;
 
-  --primary: 0 78.5% 52%;      /* BK Red remains primary */
+  --primary: 0 78.5% 60%;      /* Slightly brighter red for dark mode */
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 217.2 32.6% 17.5%;
+  --secondary: 223 40% 18%;
   --secondary-foreground: 210 40% 98%;
 
-  --muted: 223 50% 15%;
-  --muted-foreground: 215 20.2% 65.1%;
+  --muted: 223 40% 18%;
+  --muted-foreground: 215 20.2% 75%;
 
-  --accent: 48 91% 52%;        /* Yellow as accent in dark mode */
+  --accent: 48 91% 52%;        /* Keep BK Yellow as accent */
   --accent-foreground: 223 100% 10%;
 
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 223 50% 20%;
-  --input: 223 50% 20%;
-  --ring: 0 78.5% 52%;
+  --border: 223 40% 22%;
+  --input: 223 40% 22%;
+  --ring: 0 78.5% 60%;
 }
 
 @layer base {

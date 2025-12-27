@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMyWeek, useBookShift, useCancelShift } from "@/hooks/use-shifts";
+import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export default function WorkPage() {
   const dateParam = format(currentDate, "yyyy-MM-dd");
   
   const { data, isLoading, error } = useMyWeek(dateParam);
+  const { data: settings } = useSettings();
   const { mutate: cancelShift } = useCancelShift();
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
@@ -40,9 +42,9 @@ export default function WorkPage() {
   if (isLoading) return <WorkPageSkeleton />;
   if (error) return <div className="p-8 text-center text-red-500">Error loading schedule: {error.message}</div>;
 
-  const weekStartStr = data?.weekStart;
-  const weekEndStr = data?.weekRange?.end || ""; // Adjust based on actual API response structure
-  const displayRange = weekStartStr ? `${format(new Date(weekStartStr), "MMM d")} - ${format(new Date(weekEndStr || addDays(new Date(weekStartStr), 6)), "MMM d, yyyy")}` : "";
+  const weekStartStr = data?.weekRange?.start;
+  const weekEndStr = data?.weekRange?.end;
+  const displayRange = weekStartStr ? `${format(new Date(weekStartStr), "MMM d")} - ${format(new Date(weekEndStr), "MMM d, yyyy")}` : "";
 
   return (
     <div className="space-y-6">
@@ -63,7 +65,7 @@ export default function WorkPage() {
             <ChevronRight className="w-4 h-4" />
           </Button>
           
-          <BookShiftDialog groups={data?.groups} />
+          <BookShiftDialog groups={settings?.groups} />
         </div>
       </div>
 

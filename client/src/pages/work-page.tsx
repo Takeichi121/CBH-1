@@ -227,7 +227,11 @@ function BookShiftDialog({ children, groups, day, disabled }: { children: React.
           {form.watch("shiftGroup") && (
             <div className="space-y-2">
               <Label>Time Period</Label>
-              <Select onValueChange={(val) => form.setValue("startTime", val)} defaultValue={form.getValues("startTime")}>
+              <Select 
+                onValueChange={(val) => form.setValue("startTime", val)} 
+                defaultValue={form.getValues("startTime")}
+                disabled={true}
+              >
                 <SelectTrigger className="rounded-xl">
                   <SelectValue placeholder="Select time period" />
                 </SelectTrigger>
@@ -237,6 +241,7 @@ function BookShiftDialog({ children, groups, day, disabled }: { children: React.
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground">Fixed by Manager</p>
             </div>
           )}
 

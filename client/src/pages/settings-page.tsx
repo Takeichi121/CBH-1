@@ -58,7 +58,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        toast({ title: "Success", description: "Profile updated successfully" });
+        toast({ title: "Success", description: t("profileUpdated") });
         // Optional: refresh page or user state
       } else {
         toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update profile" });
@@ -86,8 +86,8 @@ export default function SettingsPage() {
             <User className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>Update your personal details</CardDescription>
+            <CardTitle>{t("profileInformation")}</CardTitle>
+            <CardDescription>{t("updateDetails")}</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -113,7 +113,7 @@ export default function SettingsPage() {
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={isProfileUpdating} className="rounded-xl">
                 {isProfileUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Update Profile
+                {t("updateProfile")}
               </Button>
             </div>
           </form>
@@ -127,14 +127,14 @@ export default function SettingsPage() {
             <Globe className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <CardTitle>Preferences</CardTitle>
-            <CardDescription>Language and appearance settings</CardDescription>
+            <CardTitle>{t("preferences")}</CardTitle>
+            <CardDescription>{t("appearance")}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-base">Language</Label>
+              <Label className="text-base">{t("language")}</Label>
               <p className="text-sm text-muted-foreground">Select your preferred language</p>
             </div>
             <Select value={language} onValueChange={(v: any) => setLanguage(v)}>
@@ -150,7 +150,7 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between border-t pt-6">
             <div className="space-y-0.5">
-              <Label className="text-base">Theme</Label>
+              <Label className="text-base">{t("theme")}</Label>
               <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
             </div>
             <div className="flex bg-muted p-1 rounded-xl">
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                 className="rounded-lg h-8"
               >
                 <Sun className="w-4 h-4 mr-2" />
-                Light
+                {t("light")}
               </Button>
               <Button 
                 variant={theme === "dark" ? "default" : "ghost"} 
@@ -170,7 +170,7 @@ export default function SettingsPage() {
                 className="rounded-lg h-8"
               >
                 <Moon className="w-4 h-4 mr-2" />
-                Dark
+                {t("dark")}
               </Button>
             </div>
           </div>

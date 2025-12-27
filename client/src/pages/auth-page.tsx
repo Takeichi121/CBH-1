@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { useLocation } from "wouter";
@@ -24,6 +24,7 @@ export default function AuthPage() {
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [developerRole, setDeveloperRole] = useState<"staff" | "manager" | null>(null);
   const { theme, setTheme } = useTheme();
+  const loginAttemptedRef = useRef(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -34,12 +35,12 @@ export default function AuthPage() {
 
   // Auto-login for developer mode
   useEffect(() => {
-    if (developerRole === "staff") {
-      loginMutation.mutate({ username: "staff", password: "1234" });
-    } else if (developerRole === "manager") {
-      loginMutation.mutate({ username: "manager", password: "1234" });
+    if (developerRole && !loginAttemptedRef.current && !loginMutation.isPending) {
+      loginAttemptedRef.current = true;
+      const username = developerRole === "staff" ? "staff" : "manager";
+      loginMutation.mutate({ username, password: "1234" });
     }
-  }, [developerRole, loginMutation]);
+  }, [developerRole]);
 
   if (isLoading) return null;
   if (user) return null;
@@ -88,6 +89,7 @@ export default function AuthPage() {
                 onClick={() => {
                   setIsDeveloperMode(false);
                   setDeveloperRole(null);
+                  loginAttemptedRef.current = false;
                 }}
                 data-testid="button-exit-dev-mode"
               >

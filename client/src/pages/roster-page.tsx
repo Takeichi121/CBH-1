@@ -13,6 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Phone, Mail, Briefcase as PositionIcon, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function RosterPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -95,12 +98,14 @@ export default function RosterPage() {
                 sortedUsers.map((u: any) => (
                   <TableRow key={u.username} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span className="text-foreground font-semibold">
-                          {u.nickName ? `${u.nickName} (${u.username})` : u.fullName || u.username}
-                        </span>
-                        <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
-                      </div>
+                      <UserProfileDialog username={u.username}>
+                        <div className="flex flex-col cursor-pointer hover:text-primary transition-colors">
+                          <span className="font-semibold underline decoration-dotted underline-offset-4">
+                            {u.nickName ? `${u.nickName} (${u.username})` : u.fullName || u.username}
+                          </span>
+                          <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
+                        </div>
+                      </UserProfileDialog>
                     </TableCell>
                     {days.map((day: string) => {
                       const shift = u.shifts[day];
@@ -291,6 +296,86 @@ function ManageShiftDialog({
             </Button>
           </div>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UserProfileDialog({ children, username }: { children: React.ReactNode; username: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/getUserProfile", username],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/getUserProfile", { 
+        token: localStorage.getItem("token") || "", 
+        username 
+      });
+      return res.json();
+    }
+  });
+
+  const profile = data?.user;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <User className="w-5 h-5 text-primary" />
+            Staff Profile
+          </DialogTitle>
+        </DialogHeader>
+        
+        {isLoading ? (
+          <div className="space-y-4 py-4">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ) : profile ? (
+          <div className="space-y-6 py-4">
+            <div className="space-y-1">
+              <h4 className="text-lg font-bold text-foreground">
+                {profile.nickName ? `${profile.nickName} (${username})` : username}
+              </h4>
+              <p className="text-sm text-muted-foreground">{profile.fullName}</p>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <PositionIcon className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Position</p>
+                  <p className="text-sm font-medium">{profile.position || "Staff"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Phone className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="text-sm font-medium">{profile.phone || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Mail className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-sm font-medium break-all">{profile.email || "-"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="py-4 text-center text-muted-foreground">Profile not found</p>
+        )}
       </DialogContent>
     </Dialog>
   );

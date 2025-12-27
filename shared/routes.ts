@@ -165,5 +165,23 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    getUserProfile: {
+      method: "POST",
+      path: "/api/getUserProfile",
+      input: z.object({ token: z.string(), username: z.string() }),
+      responses: {
+        200: z.object({ 
+          ok: z.boolean(), 
+          message: z.string().optional(),
+          user: z.object({
+            fullName: z.string().nullable(),
+            nickName: z.string().nullable(),
+            phone: z.string().nullable(),
+            email: z.string().nullable(),
+            position: z.string().nullable(),
+          }).optional()
+        }),
+      },
+    },
   },
 };

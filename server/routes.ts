@@ -329,5 +329,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // User: Get Profile
+  app.post(api.shifts.getUserProfile.path, async (req, res) => {
+    const { token, username } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    
+    const u = await storage.getUser(username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    res.json({ 
+      ok: true, 
+      user: {
+        fullName: u.fullName,
+        nickName: u.nickName,
+        phone: u.phone,
+        email: u.email,
+        position: u.position
+      }
+    });
+  });
+
   return httpServer;
 }

@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Globe } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,32 +16,50 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 export default function AuthPage() {
   const { user, isLoading } = useAuth();
+  const { t, language, setLanguage } = useI18n();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
 
+  useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/work");
+    }
+  }, [user, isLoading, setLocation]);
+
   if (isLoading) return null;
-  if (user) {
-    setLocation("/work");
-    return null;
-  }
+  if (user) return null;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setLanguage(language === "en" ? "th" : "en")}
+          className="gap-2"
+        >
+          <Globe className="w-4 h-4" />
+          {language === "en" ? "ไทย" : "EN"}
+        </Button>
+      </div>
+      
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-xl shadow-primary/25 mb-6 rotate-3">
-            <span className="text-white font-display font-bold text-3xl">BK</span>
+          <div className="mx-auto h-20 w-20 mb-6 drop-shadow-lg">
+            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">
-            Grand Diamond
+            {t("appName")}
           </h1>
-          <p className="text-muted-foreground">Schedule management system</p>
+          <p className="text-sm text-muted-foreground">{t("branchName")}</p>
+          <p className="text-xs text-muted-foreground">{t("creator")}</p>
+          <p className="text-muted-foreground text-sm mt-2">{t("appSubtitle")}</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsTrigger value="login">{t("login")}</TabsTrigger>
+            <TabsTrigger value="register">{t("register")}</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login">
@@ -58,6 +77,7 @@ export default function AuthPage() {
 
 function LoginForm() {
   const { loginMutation } = useAuth();
+  const { t } = useI18n();
   
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
@@ -71,8 +91,8 @@ function LoginForm() {
   return (
     <Card className="glass-card border-none shadow-2xl">
       <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
-        <CardDescription>Enter your credentials to access your account</CardDescription>
+        <CardTitle>{t("welcomeBack")}</CardTitle>
+        <CardDescription>{t("enterCredentials")}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -82,7 +102,7 @@ function LoginForm() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>{t("username")}</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter username..." {...field} className="h-11" />
                   </FormControl>
@@ -95,7 +115,7 @@ function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t("password")}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} className="h-11" />
                   </FormControl>
@@ -109,7 +129,7 @@ function LoginForm() {
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Sign In
+              {t("signIn")}
             </Button>
           </form>
         </Form>
@@ -120,6 +140,7 @@ function LoginForm() {
 
 function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   const { registerStaffMutation, registerManagerMutation } = useAuth();
+  const { t } = useI18n();
   const [role, setRole] = useState<"staff" | "manager">("staff");
 
   // Schema depends on role
@@ -150,8 +171,8 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <Card className="glass-card border-none shadow-2xl">
       <CardHeader>
-        <CardTitle>Create Account</CardTitle>
-        <CardDescription>Join the team today</CardDescription>
+        <CardTitle>{t("createAccount")}</CardTitle>
+        <CardDescription>{t("joinTeam")}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-6">
@@ -161,7 +182,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
             onClick={() => setRole("staff")}
             className="flex-1"
           >
-            Staff
+            {t("staff")}
           </Button>
           <Button 
             type="button" 
@@ -169,7 +190,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
             onClick={() => setRole("manager")}
             className="flex-1"
           >
-            Manager
+            {t("manager")}
           </Button>
         </div>
 
@@ -180,7 +201,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>{t("fullName")}</FormLabel>
                   <FormControl><Input {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -192,7 +213,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 name="nickName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nickname</FormLabel>
+                    <FormLabel>{t("nickname")}</FormLabel>
                     <FormControl><Input {...field} className="h-10" /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -203,7 +224,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>{t("phone")}</FormLabel>
                     <FormControl><Input {...field} className="h-10" /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,7 +236,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t("email")}</FormLabel>
                   <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -226,7 +247,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t("password")}</FormLabel>
                   <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -239,8 +260,8 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 name="verifyCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Verification Code</FormLabel>
-                    <FormControl><Input type="password" placeholder="Ask Admin..." {...field} className="h-10 border-primary/30" /></FormControl>
+                    <FormLabel>{t("verificationCode")}</FormLabel>
+                    <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -253,7 +274,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               disabled={isPending}
             >
               {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Register {role === "manager" ? "Manager" : "Staff"}
+              {t("registerButton")} {role === "manager" ? t("manager") : t("staff")}
             </Button>
           </form>
         </Form>

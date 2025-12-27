@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, Mail, Briefcase as PositionIcon, User } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 
 export default function RosterPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,10 +26,6 @@ export default function RosterPage() {
   const { data: settings } = useSettings();
   const { user } = useAuth();
   const isManager = user?.role === "manager" || user?.role === "admin";
-  const { mutate: updateUserStatus } = useQuery({
-    queryKey: ["/api/updateUserStatus"],
-    enabled: false
-  });
   const queryClient = useQueryClient();
 
   const handleUpdateUserStatus = (username: string, active: number) => {

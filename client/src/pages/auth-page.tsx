@@ -46,8 +46,10 @@ export default function AuthPage() {
       
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="mx-auto h-24 w-24 mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative bg-[#F5EB16] rounded-full border-4 border-[#0033A0] p-1 shadow-xl">
-            <SiBurgerking className="w-full h-full text-[#ED1C24]" />
+          <div className="mx-auto h-24 w-24 mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative group">
+            <div className="absolute inset-0 bg-[#F5EB16] rounded-full scale-95 shadow-inner"></div>
+            <div className="absolute inset-0 rounded-full border-[3px] border-[#0033A0] scale-100 shadow-lg"></div>
+            <SiBurgerking className="w-full h-full text-[#ED1C24] z-10 p-2 drop-shadow-md" />
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">
             {t("appName")}

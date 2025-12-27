@@ -36,8 +36,10 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="hidden md:flex h-16 items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 bg-[#F5EB16] rounded-full border-2 border-[#0033A0] p-0.5 shadow-sm">
-              <SiBurgerking className="w-full h-full text-[#ED1C24]" />
+            <div className="h-10 w-10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 relative">
+              <div className="absolute inset-0 bg-[#F5EB16] rounded-full scale-90"></div>
+              <div className="absolute inset-0 rounded-full border-[1.5px] border-[#0033A0] scale-100 shadow-sm"></div>
+              <SiBurgerking className="w-full h-full text-[#ED1C24] z-10 p-0.5" />
             </div>
             <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Grand Diamond</h1>
           </Link>

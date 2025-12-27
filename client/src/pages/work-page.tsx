@@ -17,11 +17,26 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+// SHIFT_TIME_OPTIONS matches the user request for predefined ranges
+const SHIFT_TIME_OPTIONS = [
+  "07:00 - 16:00",
+  "08:00 - 17:00",
+  "09:00 - 18:00",
+  "10:00 - 19:00",
+  "11:00 - 20:00",
+  "12:00 - 21:00",
+  "13:00 - 22:00",
+  "14:00 - 23:00",
+  "15:00 - 00:00",
+  "16:00 - 01:00",
+  "22:00 - 07:00",
+];
+
 // Schema for booking form
 const bookSchema = z.object({
   date: z.string().min(1, "Date is required"),
   shiftGroup: z.string().min(1, "Shift group is required"),
-  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
+  startTime: z.string().min(1, "Time range is required"),
   note: z.string().optional(),
 });
 
@@ -173,15 +188,19 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Start Time</Label>
-            <div className="flex gap-2">
-              <Input type="time" {...form.register("startTime")} className="rounded-xl" />
-              {selectedGroup && (
-                <div className="text-xs text-muted-foreground flex items-center whitespace-nowrap">
-                  Window: {selectedGroup.windowStart} - {selectedGroup.windowEnd}
-                </div>
-              )}
-            </div>
+            <Label>Working Hours (Start - End)</Label>
+            <Select onValueChange={(val) => form.setValue("startTime", val)}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                {SHIFT_TIME_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {form.formState.errors.startTime && <p className="text-xs text-red-500">{form.formState.errors.startTime.message}</p>}
           </div>
 

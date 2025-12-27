@@ -194,7 +194,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     await storage.upsertShift({
       date, username: u.username, fullName: u.fullName, role: u.role,
-      shiftGroup, startTime, endTime: "", note: note || "", // endTime not used in logic but required by schema? logic.js uses upsertShift with empty endTime
+      shiftGroup, startTime, endTime: "", note: note || "", 
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
     });
     await storage.log("book_shift", u.username, `${date} ${shiftGroup}`);

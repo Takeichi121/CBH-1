@@ -17,7 +17,7 @@ import { api } from "@shared/routes";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 export default function AuthPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, loginMutation } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
@@ -27,15 +27,26 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      setLocation("/work");
+      const targetPath = user.role === "manager" ? "/roster" : "/work";
+      setLocation(targetPath);
     }
   }, [user, isLoading, setLocation]);
+
+  // Auto-login for developer mode
+  useEffect(() => {
+    if (developerRole === "staff") {
+      loginMutation.mutate({ username: "staff", password: "1234" });
+    } else if (developerRole === "manager") {
+      loginMutation.mutate({ username: "manager", password: "1234" });
+    }
+  }, [developerRole, loginMutation]);
 
   if (isLoading) return null;
   if (user) return null;
 
   const creatorName = "Chanon Jaimool";
   const creatorShort = "Chan. J.";
+  const creatorDisplay = `${creatorShort} (${creatorName})`;
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row items-center justify-center p-4 md:p-8 relative bg-background overflow-x-hidden">
@@ -84,59 +95,40 @@ export default function AuthPage() {
               </Button>
             </div>
 
-            {!developerRole ? (
-              <Card className="glass-card border-none shadow-2xl">
-                <CardHeader>
-                  <CardTitle>{t("welcomeBack")}</CardTitle>
-                  <CardDescription>Select developer mode</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
-                    onClick={() => setDeveloperRole("staff")}
-                    data-testid="button-dev-mode-staff"
-                  >
-                    Staff Developer Mode
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-11 text-base font-semibold"
-                    onClick={() => setDeveloperRole("manager")}
-                    data-testid="button-dev-mode-manager"
-                  >
-                    Manager Developer Mode
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <Card className="glass-card border-none shadow-2xl">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{t("welcomeBack")}</CardTitle>
-                        <CardDescription>{t("enterCredentials")}</CardDescription>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeveloperRole(null)}
-                        data-testid="button-back-to-role-select"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <DeveloperLoginForm role={developerRole} />
-                  </CardContent>
-                </Card>
-              </>
-            )}
+            <Card className="glass-card border-none shadow-2xl">
+              <CardHeader>
+                <CardTitle>{t("welcomeBack")}</CardTitle>
+                <CardDescription>Select developer mode</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  type="button"
+                  variant="default"
+                  className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+                  onClick={() => setDeveloperRole("staff")}
+                  disabled={loginMutation.isPending}
+                  data-testid="button-dev-mode-staff"
+                >
+                  {loginMutation.isPending && developerRole === "staff" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Staff Developer Mode
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 text-base font-semibold"
+                  onClick={() => setDeveloperRole("manager")}
+                  disabled={loginMutation.isPending}
+                  data-testid="button-dev-mode-manager"
+                >
+                  {loginMutation.isPending && developerRole === "manager" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Manager Developer Mode
+                </Button>
+              </CardContent>
+            </Card>
           </>
         ) : (
           <>
@@ -159,7 +151,7 @@ export default function AuthPage() {
                     className="text-primary hover:underline cursor-pointer transition-colors font-medium"
                     data-testid="button-open-dev-mode"
                   >
-                    {creatorName}
+                    {creatorDisplay}
                   </button>
                 </p>
                 <p className="text-muted-foreground text-sm">{t("appSubtitle")}</p>
@@ -190,7 +182,7 @@ export default function AuthPage() {
                   className="text-primary hover:underline cursor-pointer transition-colors font-medium"
                   data-testid="button-open-dev-mode-mobile"
                 >
-                  {creatorName}
+                  {creatorDisplay}
                 </button>
               </p>
               <p className="text-muted-foreground text-[11px]">{t("appSubtitle")}</p>
@@ -199,66 +191,6 @@ export default function AuthPage() {
         )}
       </div>
     </div>
-  );
-}
-
-function DeveloperLoginForm({ role }: { role: "staff" | "manager" }) {
-  const { loginMutation } = useAuth();
-  const { t } = useI18n();
-  
-  const form = useForm({
-    resolver: zodResolver(api.auth.login.input),
-    defaultValues: { username: "", password: "" },
-  });
-
-  function onSubmit(data: z.infer<typeof api.auth.login.input>) {
-    loginMutation.mutate(data);
-  }
-
-  function quickLogin(username: string, password: string) {
-    loginMutation.mutate({ username, password });
-  }
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("username")}</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter username..." {...field} className="h-11" data-testid="input-username" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("password")}</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button 
-          type="submit" 
-          className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
-          disabled={loginMutation.isPending}
-          data-testid="button-login-submit"
-        >
-          {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-          {t("signIn")}
-        </Button>
-      </form>
-    </Form>
   );
 }
 

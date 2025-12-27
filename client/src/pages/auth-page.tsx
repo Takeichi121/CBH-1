@@ -33,13 +33,13 @@ export default function AuthPage() {
   if (user) return null;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 relative">
-      <div className="absolute top-4 right-4 flex items-center gap-2">
+    <div className="min-h-screen w-full flex flex-col md:flex-row items-center justify-center p-4 md:p-8 relative bg-background overflow-x-hidden">
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
         <Button
           variant="outline"
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="rounded-full w-10 h-10 border-primary/20 hover:bg-primary/5 transition-all duration-300 relative overflow-hidden"
+          className="rounded-full w-10 h-10 border-primary/20 hover:bg-primary/5 transition-all duration-300 relative overflow-hidden bg-background/50 backdrop-blur-sm"
           data-testid="button-theme-toggle-auth"
         >
           <div className="relative w-full h-full flex items-center justify-center">
@@ -52,42 +52,50 @@ export default function AuthPage() {
           variant="outline" 
           size="sm"
           onClick={() => setLanguage(language === "en" ? "th" : "en")}
-          className="gap-2 h-10 px-4 rounded-full"
+          className="gap-2 h-10 px-4 rounded-full bg-background/50 backdrop-blur-sm"
         >
           <Globe className="w-4 h-4" />
-          {language === "en" ? "ไทย" : "EN"}
+          <span className="hidden sm:inline">{language === "en" ? "ไทย" : "EN"}</span>
+          <span className="sm:hidden">{language === "en" ? "TH" : "EN"}</span>
         </Button>
       </div>
       
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <div className="flex justify-center items-center gap-4 mb-6">
-            <div className="h-24 w-24 transition-all duration-300 hover:scale-105 flex items-center justify-center">
-              <SiBurgerking className="w-full h-full text-[#ED1C24] drop-shadow-xl" />
-            </div>
+      <div className="w-full max-w-md space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="text-center space-y-2 md:space-y-4">
+          <div className="mx-auto h-20 w-20 md:h-32 md:w-32 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
+            <SiBurgerking className="w-full h-full text-[#ED1C24] drop-shadow-xl" />
           </div>
-          <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">
-            {t("appName")}
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("branchName")}</p>
-          <p className="text-xs text-muted-foreground">{t("creator")}</p>
-          <p className="text-muted-foreground text-sm mt-2">{t("appSubtitle")}</p>
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">
+              {t("appName")}
+            </h1>
+            <p className="text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
+          </div>
+          <div className="hidden md:block space-y-1 pt-2">
+            <p className="text-xs text-muted-foreground">{t("creator")}</p>
+            <p className="text-muted-foreground text-sm">{t("appSubtitle")}</p>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="login">{t("login")}</TabsTrigger>
-            <TabsTrigger value="register">{t("register")}</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-muted/30 p-1 rounded-xl">
+            <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("login")}</TabsTrigger>
+            <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("register")}</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="login">
+          <TabsContent value="login" className="animate-in fade-in slide-in-from-right-4 duration-300">
             <LoginForm />
           </TabsContent>
           
-          <TabsContent value="register">
+          <TabsContent value="register" className="animate-in fade-in slide-in-from-left-4 duration-300">
             <RegisterForm onSuccess={() => setActiveTab("login")} />
           </TabsContent>
         </Tabs>
+
+        <div className="md:hidden text-center pt-4 space-y-1">
+          <p className="text-[10px] text-muted-foreground">{t("creator")}</p>
+          <p className="text-muted-foreground text-[11px]">{t("appSubtitle")}</p>
+        </div>
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Desktop Header */}
-      <header className="hidden md:flex h-16 items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
+      <header className="hidden md:flex h-16 items-center justify-between px-6 bg-background/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
             <div className="h-10 w-10 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
@@ -115,28 +115,35 @@ export function Layout({ children }: { children: ReactNode }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t safe-area-pb z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-        <div className="flex justify-around items-center h-16">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t safe-area-pb z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
+        <div className="flex justify-around items-center h-16 px-2">
           {navItems.map((item) => {
             const isActive = location === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
-                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
+                  isActive ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <div className={`p-1.5 rounded-xl ${isActive ? 'bg-primary/10' : ''}`}>
+                <div className={`p-2 rounded-xl transition-colors ${isActive ? 'bg-primary/10' : ''}`}>
                   <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
                 </div>
-                <span className="text-[10px] font-medium mt-1">{item.label}</span>
+                <span className={`text-[10px] font-bold mt-1 transition-opacity ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
-          <div className="flex flex-col items-center justify-center w-full h-full text-muted-foreground cursor-pointer" onClick={() => logoutMutation.mutate()}>
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-1">Logout</span>
+          <div 
+            className="flex flex-col items-center justify-center w-full h-full text-muted-foreground active:scale-95 transition-transform" 
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            <div className="p-2 rounded-xl">
+              {theme === "dark" ? <Sun className="w-5 h-5 text-[#F5EB16]" /> : <Moon className="w-5 h-5 text-[#0033A0]" />}
+            </div>
+            <span className="text-[10px] font-bold mt-1 opacity-70">Theme</span>
           </div>
         </div>
       </nav>

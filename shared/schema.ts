@@ -20,6 +20,7 @@ export const shifts = pgTable("shifts", {
   date: text("date").notNull(), // YYYY-MM-DD
   username: text("username").notNull(),
   fullName: text("full_name"),
+  nickName: text("nick_name"),
   role: text("role"),
   shiftGroup: text("shift_group").notNull(),
   startTime: text("start_time").notNull(), // HH:MM

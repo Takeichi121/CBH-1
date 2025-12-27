@@ -57,7 +57,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     await storage.createSession({ token, username: u.username, expiresAt });
 
     await storage.log("login_ok", u.username, "role=" + u.role);
-    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName } });
+    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName } });
   });
 
   // Auth: Validate
@@ -75,7 +75,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u || !u.active) return res.json({ ok: false });
 
-    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName } });
+    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName } });
   });
 
   // Auth: Logout
@@ -204,6 +204,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     await storage.upsertShift({
       date, username: u.username, fullName: u.fullName, role: u.role,
+      nickName: u.nickName,
       shiftGroup, startTime, endTime: "", note: note || "", 
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
     });
@@ -251,6 +252,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     await storage.upsertShift({
       date, username: targetUser.username, fullName: targetUser.fullName, role: targetUser.role,
+      nickName: targetUser.nickName,
       shiftGroup, startTime, endTime: "", note: note || "",
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
     });

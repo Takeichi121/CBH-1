@@ -21,6 +21,7 @@ import { z } from "zod";
 const bookSchema = z.object({
   date: z.string().min(1, "Date is required"),
   shiftGroup: z.string().min(1, "Shift group is required"),
+  startTime: z.string().min(1, "Time period is required"),
   note: z.string().optional(),
 });
 
@@ -116,6 +117,7 @@ function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
     defaultValues: {
       date: days?.[0] || "",
       shiftGroup: "",
+      startTime: "",
       note: "",
     },
   });
@@ -124,7 +126,7 @@ function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
   if (user?.role !== "staff") return null;
 
   const onSubmit = (data: BookFormValues) => {
-    bookShift({ ...data, startTime: "" }, {
+    bookShift(data, {
       onSuccess: () => {
         setOpen(false);
         form.reset();
@@ -164,7 +166,13 @@ function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
 
           <div className="space-y-2">
             <Label>Shift Group</Label>
-            <Select onValueChange={(val) => form.setValue("shiftGroup", val)}>
+            <Select onValueChange={(val) => {
+              form.setValue("shiftGroup", val);
+              const grp = groups?.find(g => g.key === val);
+              if (grp?.times?.[0]) {
+                form.setValue("startTime", grp.times[0]);
+              }
+            }}>
               <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
@@ -178,6 +186,22 @@ function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
             </Select>
             {form.formState.errors.shiftGroup && <p className="text-xs text-red-500">{form.formState.errors.shiftGroup.message}</p>}
           </div>
+
+          {form.watch("shiftGroup") && (
+            <div className="space-y-2">
+              <Label>Time Period</Label>
+              <Select onValueChange={(val) => form.setValue("startTime", val)}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select time period" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups?.find(g => g.key === form.watch("shiftGroup"))?.times?.map((t: string) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Note (Optional)</Label>

@@ -39,6 +39,7 @@ export default function RosterPage() {
       userShifts[shift.username] = {
         username: shift.username,
         fullName: shift.fullName,
+        nickName: shift.nickName,
         role: shift.role,
         shifts: {}
       };
@@ -95,7 +96,9 @@ export default function RosterPage() {
                   <TableRow key={u.username} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
-                        <span className="text-foreground font-semibold">{u.fullName || u.username}</span>
+                        <span className="text-foreground font-semibold">
+                          {u.nickName ? `${u.nickName} (${u.username})` : u.fullName || u.username}
+                        </span>
                         <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
                       </div>
                     </TableCell>
@@ -185,7 +188,7 @@ function ManageShiftDialog({
   
   const [formData, setFormData] = useState({
     shiftGroup: existingShift?.shiftGroup || groups?.[0]?.key || "open",
-    startTime: existingShift?.startTime || "09:00",
+    startTime: existingShift?.startTime || groups?.[0]?.times?.[0] || "07:00 - 16:00",
     note: existingShift?.note || "",
   });
 
@@ -210,6 +213,8 @@ function ManageShiftDialog({
     }
   };
 
+  const currentGroup = groups?.find(g => g.key === formData.shiftGroup);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -228,7 +233,14 @@ function ManageShiftDialog({
             <Label>Shift Group</Label>
             <Select 
               value={formData.shiftGroup} 
-              onValueChange={(v) => setFormData({...formData, shiftGroup: v})}
+              onValueChange={(v) => {
+                const grp = groups?.find(g => g.key === v);
+                setFormData({
+                  ...formData, 
+                  shiftGroup: v, 
+                  startTime: grp?.times?.[0] || ""
+                });
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -242,12 +254,20 @@ function ManageShiftDialog({
           </div>
           
           <div className="space-y-2">
-            <Label>Start Time</Label>
-            <Input 
-              type="time" 
-              value={formData.startTime}
-              onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-            />
+            <Label>Time Period</Label>
+            <Select 
+              value={formData.startTime} 
+              onValueChange={(v) => setFormData({...formData, startTime: v})}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentGroup?.times?.map((t: string) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

@@ -69,8 +69,36 @@ export function getWeekRangeTuesday(anyDate?: string) {
 
 export const DEFAULT_CAPACITY = { open: 4, lunch: 4, dinner: 4, late: 4 };
 export const SHIFT_GROUPS = [
-  { key: "open", label: "Open", windowStart: "00:00", windowEnd: "11:00", main: "07:00" },
-  { key: "lunch", label: "Lunch", windowStart: "12:00", windowEnd: "14:00", main: "13:00" },
-  { key: "dinner", label: "Dinner", windowStart: "15:00", windowEnd: "18:00", main: "15:00" },
-  { key: "late", label: "Late Night", windowStart: "20:00", windowEnd: "23:00", main: "22:00" },
+  { 
+    key: "open", 
+    label: "Open", 
+    windowStart: "00:00", 
+    windowEnd: "11:00", 
+    main: "07:00",
+    times: ["07:00 - 16:00", "08:00 - 17:00", "09:00 - 18:00"]
+  },
+  { 
+    key: "lunch", 
+    label: "Lunch", 
+    windowStart: "12:00", 
+    windowEnd: "14:00", 
+    main: "13:00",
+    times: ["10:00 - 19:00", "11:00 - 20:00", "12:00 - 21:00"]
+  },
+  { 
+    key: "dinner", 
+    label: "Dinner", 
+    windowStart: "15:00", 
+    windowEnd: "18:00", 
+    main: "15:00",
+    times: ["13:00 - 22:00", "14:00 - 23:00", "15:00 - 00:00"]
+  },
+  { 
+    key: "late", 
+    label: "Late Night", 
+    windowStart: "20:00", 
+    windowEnd: "23:00", 
+    main: "22:00",
+    times: ["17:00 - 02:00", "18:00 - 03:00", "20:00 - 05:00"]
+  },
 ];

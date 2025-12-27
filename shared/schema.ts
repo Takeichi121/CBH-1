@@ -59,6 +59,9 @@ export const insertConfigSchema = createInsertSchema(config);
 export const insertLogSchema = createInsertSchema(systemlog);
 export const insertSessionSchema = createInsertSchema(sessions);
 
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertShift = z.infer<typeof insertShiftSchema>;
+
 export type User = typeof users.$inferSelect;
 export type Shift = typeof shifts.$inferSelect;
 export type Config = typeof config.$inferSelect;

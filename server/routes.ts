@@ -271,5 +271,61 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Shifts: Swap
+  app.post(api.shifts.swap.path, async (req, res) => {
+    const { token, date, targetUsername } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    // 1. Get current user's shift on this date
+    const myShift = await storage.getShift(u.username, date);
+    if (!myShift) return res.json({ ok: false, message: "You have no shift on this date" });
+
+    // 2. Get target user's shift on this date
+    const targetUser = await storage.getUser(targetUsername);
+    if (!targetUser) return res.json({ ok: false, message: "Target user not found" });
+    const targetShift = await storage.getShift(targetUser.username, date);
+    if (!targetShift) return res.json({ ok: false, message: "Target user has no shift on this date" });
+
+    // 3. Swap them
+    // We need to swap shiftGroup, startTime, endTime, note
+    const myOldGroup = myShift.shiftGroup;
+    const myOldStart = myShift.startTime;
+    const myOldEnd = myShift.endTime;
+    const myOldNote = myShift.note || "";
+
+    const targetOldGroup = targetShift.shiftGroup;
+    const targetOldStart = targetShift.startTime;
+    const targetOldEnd = targetShift.endTime;
+    const targetOldNote = targetShift.note || "";
+
+    // Update target user with my old details
+    await storage.upsertShift({
+      ...targetShift,
+      shiftGroup: myOldGroup,
+      startTime: myOldStart,
+      endTime: myOldEnd,
+      note: myOldNote,
+      updatedAt: new Date().toISOString(),
+      updatedBy: u.username
+    });
+
+    // Update me with target's old details
+    await storage.upsertShift({
+      ...myShift,
+      shiftGroup: targetOldGroup,
+      startTime: targetOldStart,
+      endTime: targetOldEnd,
+      note: targetOldNote,
+      updatedAt: new Date().toISOString(),
+      updatedBy: u.username
+    });
+
+    await storage.log("swap_shift", u.username, `swapped with ${targetUsername} on ${date}`);
+    res.json({ ok: true });
+  });
+
   return httpServer;
 }

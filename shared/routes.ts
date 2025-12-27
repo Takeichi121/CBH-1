@@ -153,5 +153,17 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    swap: {
+      method: "POST",
+      path: "/api/swapShift",
+      input: z.object({
+        token: z.string(),
+        date: z.string(),
+        targetUsername: z.string(),
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
   },
 };

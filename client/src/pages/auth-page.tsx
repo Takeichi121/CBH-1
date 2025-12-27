@@ -104,6 +104,7 @@ export default function AuthPage() {
 function LoginForm() {
   const { loginMutation } = useAuth();
   const { t } = useI18n();
+  const [showDeveloperMode, setShowDeveloperMode] = useState(false);
   
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
@@ -114,53 +115,108 @@ function LoginForm() {
     loginMutation.mutate(data);
   }
 
+  function quickLogin(username: string, password: string) {
+    form.setValue("username", username);
+    form.setValue("password", password);
+    loginMutation.mutate({ username, password });
+  }
+
   return (
-    <Card className="glass-card border-none shadow-2xl">
-      <CardHeader>
-        <CardTitle>{t("welcomeBack")}</CardTitle>
-        <CardDescription>{t("enterCredentials")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("username")}</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter username..." {...field} className="h-11" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("password")}</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} className="h-11" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button 
-              type="submit" 
-              className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
-              disabled={loginMutation.isPending}
-            >
-              {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {t("signIn")}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <>
+      <Card className="glass-card border-none shadow-2xl">
+        <CardHeader>
+          <CardTitle>{t("welcomeBack")}</CardTitle>
+          <CardDescription>{t("enterCredentials")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("username")}</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter username..." {...field} className="h-11" data-testid="input-username" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("password")}</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button 
+                type="submit" 
+                className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+                disabled={loginMutation.isPending}
+                data-testid="button-login-submit"
+              >
+                {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {t("signIn")}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      <div className="mt-4 pt-4 border-t border-muted/50">
+        <button
+          type="button"
+          onClick={() => setShowDeveloperMode(!showDeveloperMode)}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-2 text-center rounded-md hover:bg-muted/30"
+          data-testid="button-toggle-dev-mode"
+        >
+          {showDeveloperMode ? "Hide" : "Show"} Developer Mode
+        </button>
+
+        {showDeveloperMode && (
+          <div className="mt-3 p-3 bg-muted/20 rounded-lg border border-muted/50 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <p className="text-xs text-muted-foreground font-medium">Quick Login for Testing:</p>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full h-9 text-xs justify-start gap-2"
+                onClick={() => quickLogin("admin", "1234")}
+                disabled={loginMutation.isPending}
+                data-testid="button-quick-login-admin"
+              >
+                <span className="font-mono">admin</span>
+                <span className="text-muted-foreground">/ 1234</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full h-9 text-xs justify-start gap-2"
+                onClick={() => quickLogin("manager", "1234")}
+                disabled={loginMutation.isPending}
+                data-testid="button-quick-login-manager"
+              >
+                <span className="font-mono">manager</span>
+                <span className="text-muted-foreground">/ 1234</span>
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground/70 pt-2">
+              Development credentials only. Change passwords in production.
+            </p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

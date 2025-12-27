@@ -156,15 +156,19 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Shift Group</Label>
-            <Select onValueChange={(val) => form.setValue("shiftGroup", val)}>
+            <Label>Shift Group (Time Slot)</Label>
+            <Select onValueChange={(val) => {
+              form.setValue("shiftGroup", val);
+              const grp = groups?.find(g => g.key === val);
+              if (grp) form.setValue("startTime", grp.windowStart);
+            }}>
               <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Select group" />
+                <SelectValue placeholder="Select shift group" />
               </SelectTrigger>
               <SelectContent>
                 {groups?.map((g: any) => (
                   <SelectItem key={g.key} value={g.key}>
-                    {g.label} ({g.windowStart} - {g.windowEnd})
+                    {g.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,15 +177,8 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Start Time</Label>
-            <div className="flex gap-2">
-              <Input type="time" {...form.register("startTime")} className="rounded-xl" />
-              {selectedGroup && (
-                <div className="text-xs text-muted-foreground flex items-center whitespace-nowrap">
-                  Window: {selectedGroup.windowStart} - {selectedGroup.windowEnd}
-                </div>
-              )}
-            </div>
+            <Label>Selected Start Time</Label>
+            <Input type="text" {...form.register("startTime")} className="rounded-xl bg-muted" readOnly />
             {form.formState.errors.startTime && <p className="text-xs text-red-500">{form.formState.errors.startTime.message}</p>}
           </div>
 

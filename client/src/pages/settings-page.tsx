@@ -1,11 +1,10 @@
 import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
@@ -15,11 +14,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const { data: settingsData, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings, isPending: settingsUpdating } = useUpdateSettings();
 
@@ -108,188 +106,190 @@ export default function SettingsPage() {
   const isManager = user?.role === "manager" || user?.role === "admin";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-12">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
       <div>
         <h2 className="text-3xl font-display font-bold text-foreground">{t("settings")}</h2>
         <p className="text-muted-foreground">Manage your profile and application preferences</p>
       </div>
 
-      {/* Profile Section */}
-      <Card className="glass-card border-none shadow-xl">
-        <CardHeader className="flex flex-row items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <CardTitle>{t("profileInformation")}</CardTitle>
-            <CardDescription>{t("updateDetails")}</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t("fullName")}</Label>
-                <Input {...profileForm.register("fullName")} className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("nickname")}</Label>
-                <Input {...profileForm.register("nickName")} className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("phone")}</Label>
-                <Input {...profileForm.register("phone")} className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("email")}</Label>
-                <Input {...profileForm.register("email")} type="email" className="rounded-xl" />
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={isProfileUpdating} className="rounded-xl">
-                {isProfileUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("updateProfile")}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Security Section */}
-      <Card className="glass-card border-none shadow-xl">
-        <CardHeader className="flex flex-row items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Lock className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <CardTitle>{t("security")}</CardTitle>
-            <CardDescription>{t("passwordManagement")}</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t("currentPassword")}</Label>
-              <Input {...passwordForm.register("currentPassword")} type="password" title="current-password" name="currentPassword" id="currentPassword" className="rounded-xl" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t("newPassword")}</Label>
-                <Input {...passwordForm.register("newPassword")} type="password" title="new-password" name="newPassword" id="newPassword" className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("confirmNewPassword")}</Label>
-                <Input {...passwordForm.register("confirmPassword")} type="password" title="confirm-password" name="confirmPassword" id="confirmPassword" className="rounded-xl" />
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={isPasswordUpdating} className="rounded-xl" variant="outline">
-                {isPasswordUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("changePassword")}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Appearance & Language Section */}
-      <Card className="glass-card border-none shadow-xl">
-        <CardHeader className="flex flex-row items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <CardTitle>{t("preferences")}</CardTitle>
-            <CardDescription>{t("appearance")}</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">{t("language")}</Label>
-              <p className="text-sm text-muted-foreground">Select your preferred language</p>
-            </div>
-            <Select value={language} onValueChange={(v: any) => setLanguage(v)}>
-              <SelectTrigger className="w-[140px] rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="th">ไทย</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between border-t pt-6">
-            <div className="space-y-0.5">
-              <Label className="text-base">{t("theme")}</Label>
-              <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
-            </div>
-            <div className="flex bg-muted p-1 rounded-xl">
-              <Button 
-                variant={theme === "light" ? "default" : "ghost"} 
-                size="sm" 
-                onClick={() => setTheme("light")}
-                className="rounded-lg h-8"
-              >
-                <Sun className="w-4 h-4 mr-2" />
-                {t("light")}
-              </Button>
-              <Button 
-                variant={theme === "dark" ? "default" : "ghost"} 
-                size="sm" 
-                onClick={() => setTheme("dark")}
-                className="rounded-lg h-8"
-              >
-                <Moon className="w-4 h-4 mr-2" />
-                {t("dark")}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Capacity Section (Managers only) */}
-      {isManager && (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* Profile Section */}
         <Card className="glass-card border-none shadow-xl">
           <CardHeader className="flex flex-row items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Save className="w-5 h-5 text-primary" />
+              <User className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle>Shift Capacity</CardTitle>
-              <CardDescription>System-wide maximum staff per shift group</CardDescription>
+              <CardTitle>{t("profileInformation")}</CardTitle>
+              <CardDescription>{t("updateDetails")}</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            {settingsLoading ? (
-              <div className="flex justify-center py-8"><Loader2 className="animate-spin w-6 h-6 text-primary" /></div>
-            ) : (
-              <form onSubmit={capacityForm.handleSubmit(onCapacitySubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {settingsData?.groups?.map((group: any) => (
-                    <div key={group.key} className="space-y-2">
-                      <Label className="text-sm font-semibold">{group.label}</Label>
-                      <Input 
-                        type="number" 
-                        min="0"
-                        {...capacityForm.register(group.key)} 
-                        className="h-10 text-center rounded-xl"
-                      />
-                    </div>
-                  ))}
+            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("fullName")}</Label>
+                  <Input {...profileForm.register("fullName")} className="rounded-xl" />
                 </div>
-                <div className="flex justify-end pt-2">
-                  <Button type="submit" disabled={settingsUpdating} className="rounded-xl">
-                    {settingsUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Capacities
-                  </Button>
+                <div className="space-y-2">
+                  <Label>{t("nickname")}</Label>
+                  <Input {...profileForm.register("nickName")} className="rounded-xl" />
                 </div>
-              </form>
-            )}
+                <div className="space-y-2">
+                  <Label>{t("phone")}</Label>
+                  <Input {...profileForm.register("phone")} className="rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("email")}</Label>
+                  <Input {...profileForm.register("email")} type="email" className="rounded-xl" />
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button type="submit" disabled={isProfileUpdating} className="rounded-xl">
+                  {isProfileUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {t("updateProfile")}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
-      )}
+
+        {/* Security Section */}
+        <Card className="glass-card border-none shadow-xl">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>{t("security")}</CardTitle>
+              <CardDescription>{t("passwordManagement")}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("currentPassword")}</Label>
+                <Input {...passwordForm.register("currentPassword")} type="password" title="current-password" name="currentPassword" id="currentPassword" className="rounded-xl" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("newPassword")}</Label>
+                  <Input {...passwordForm.register("newPassword")} type="password" title="new-password" name="newPassword" id="newPassword" className="rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("confirmNewPassword")}</Label>
+                  <Input {...passwordForm.register("confirmPassword")} type="password" title="confirm-password" name="confirmPassword" id="confirmPassword" className="rounded-xl" />
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button type="submit" disabled={isPasswordUpdating} className="rounded-xl" variant="outline">
+                  {isPasswordUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {t("changePassword")}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Appearance & Language Section */}
+        <Card className="glass-card border-none shadow-xl">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Globe className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>{t("preferences")}</CardTitle>
+              <CardDescription>{t("appearance")}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">{t("language")}</Label>
+                <p className="text-sm text-muted-foreground">Select your preferred language</p>
+              </div>
+              <Select value={language} onValueChange={(v: any) => setLanguage(v)}>
+                <SelectTrigger className="w-[140px] rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="th">ไทย</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">{t("theme")}</Label>
+                <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
+              </div>
+              <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl">
+                <Button
+                  variant={theme === "light" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setTheme("light")}
+                  className="rounded-lg px-3"
+                >
+                  <Sun className="w-4 h-4 mr-2" />
+                  {t("light")}
+                </Button>
+                <Button
+                  variant={theme === "dark" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setTheme("dark")}
+                  className="rounded-lg px-3"
+                >
+                  <Moon className="w-4 h-4 mr-2" />
+                  {t("dark")}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manager Settings (Conditional) */}
+        {isManager && (
+          <Card className="glass-card border-none shadow-xl">
+            <CardHeader className="flex flex-row items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Manager Settings</CardTitle>
+                <CardDescription>Configure shift capacity limits</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {settingsLoading ? (
+                <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
+              ) : (
+                <form onSubmit={capacityForm.handleSubmit(onCapacitySubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {["open", "lunch", "dinner", "late"].map((key) => (
+                      <div key={key} className="space-y-2">
+                        <Label className="capitalize">{t(key as any) || key}</Label>
+                        <Input
+                          type="number"
+                          {...capacityForm.register(key)}
+                          className="rounded-xl"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <Button type="submit" disabled={settingsUpdating} className="rounded-xl">
+                      {settingsUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Capacity
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

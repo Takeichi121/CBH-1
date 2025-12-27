@@ -64,7 +64,7 @@ export default function WorkPage() {
             <ChevronRight className="w-4 h-4" />
           </Button>
           
-          <BookShiftDialog groups={settings?.groups} />
+          <BookShiftDialog groups={settings?.groups} days={data?.weekRange?.days} />
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function WorkPage() {
   );
 }
 
-function BookShiftDialog({ groups }: { groups: any[] }) {
+function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
   const [open, setOpen] = useState(false);
   const { mutate: bookShift, isPending } = useBookShift();
   const { user } = useAuth();
@@ -114,7 +114,7 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
   const form = useForm<BookFormValues>({
     resolver: zodResolver(bookSchema),
     defaultValues: {
-      date: "",
+      date: days?.[0] || "",
       shiftGroup: "",
       note: "",
     },
@@ -147,7 +147,18 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input type="date" {...form.register("date")} className="rounded-xl" />
+            <Select onValueChange={(val) => form.setValue("date", val)} defaultValue={form.getValues("date")}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Select date" />
+              </SelectTrigger>
+              <SelectContent>
+                {days?.map((day: string) => (
+                  <SelectItem key={day} value={day}>
+                    {format(new Date(day + "T00:00:00"), "EEE, MMM d")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {form.formState.errors.date && <p className="text-xs text-red-500">{form.formState.errors.date.message}</p>}
           </div>
 

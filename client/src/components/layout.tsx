@@ -35,9 +35,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const isManager = user.role === "manager" || user.role === "admin";
 
   const navItems = [
-    { href: "/work", label: "My Work", icon: Briefcase },
-    { href: "/roster", label: "Roster", icon: Calendar },
-    ...(isManager ? [{ href: "/settings", label: "Settings", icon: Settings }] : []),
+    { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
+    { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
+    ...(isManager ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
   ];
 
   return (

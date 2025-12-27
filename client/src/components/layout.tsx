@@ -40,7 +40,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems = [
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
-    ...(isManager ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
+    { href: "/settings", label: t("settings") || "Settings", icon: Settings },
   ];
 
   return (

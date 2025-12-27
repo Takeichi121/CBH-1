@@ -38,10 +38,16 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
             <div className="h-11 w-11 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-              <div className="bk-logo-custom scale-75">
-                <div className="bk-logo-bun"></div>
-                <div className="bk-logo-text leading-none">BURGER<br/>KING</div>
-                <div className="bk-logo-bun-bottom"></div>
+              <div className="bk-logo-container scale-75 shadow-sm">
+                <div className="bk-logo-blue-crescent"></div>
+                <div className="bk-logo-inner">
+                  <div className="bk-logo-bun-top"></div>
+                  <div className="bk-logo-text-wrap">
+                    <div className="bk-logo-text-official text-[0.6rem]">BURGER</div>
+                    <div className="bk-logo-text-official text-[0.6rem]">KING</div>
+                  </div>
+                  <div className="bk-logo-bun-bottom"></div>
+                </div>
               </div>
             </div>
             <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Grand Diamond</h1>

@@ -46,11 +46,17 @@ export default function AuthPage() {
       
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="mx-auto h-32 w-32 mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center">
-            <div className="bk-logo-custom scale-100 shadow-2xl">
-              <div className="bk-logo-bun"></div>
-              <div className="bk-logo-text">BURGER<br/>KING</div>
-              <div className="bk-logo-bun-bottom"></div>
+          <div className="mx-auto h-32 w-32 mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
+            <div className="bk-logo-container shadow-xl">
+              <div className="bk-logo-blue-crescent"></div>
+              <div className="bk-logo-inner">
+                <div className="bk-logo-bun-top"></div>
+                <div className="bk-logo-text-wrap">
+                  <div className="bk-logo-text-official">BURGER</div>
+                  <div className="bk-logo-text-official">KING</div>
+                </div>
+                <div className="bk-logo-bun-bottom"></div>
+              </div>
             </div>
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">

@@ -106,46 +106,69 @@
   }
 }
 
-/* Custom BK Logo CSS */
-.bk-logo-custom {
+/* Custom BK Logo CSS - 1999 Design Style */
+.bk-logo-container {
   position: relative;
   width: 100%;
   height: 100%;
-  background: #F5EB16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
   border-radius: 50%;
-  border: 4px solid #0033A0;
+  padding: 4px;
+}
+
+.bk-logo-blue-crescent {
+  position: absolute;
+  inset: 0;
+  border: 4px solid transparent;
+  border-left-color: #0033A0;
+  border-radius: 50%;
+  transform: rotate(-45deg);
+}
+
+.bk-logo-inner {
+  position: relative;
+  width: 85%;
+  height: 85%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  padding: 4px;
+  gap: 2px;
 }
 
-.bk-logo-bun {
-  width: 80%;
+.bk-logo-bun-top {
+  width: 90%;
   height: 25%;
   background: #F58220;
-  border-radius: 50% 50% 10% 10%;
+  border-radius: 100px 100px 10px 10px;
 }
 
-.bk-logo-text {
+.bk-logo-text-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-10deg);
+}
+
+.bk-logo-text-official {
   color: #ED1C24;
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
   text-transform: uppercase;
-  line-height: 0.9;
+  line-height: 0.8;
   text-align: center;
-  font-size: 1.2rem;
-  margin: 2px 0;
-  transform: skewX(-5deg);
+  font-size: 1.1rem;
 }
 
 .bk-logo-bun-bottom {
-  width: 80%;
+  width: 90%;
   height: 20%;
   background: #F58220;
-  border-radius: 10% 10% 50% 50%;
+  border-radius: 10px 10px 100px 100px;
 }
 
 /* Custom Scrollbar */

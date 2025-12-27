@@ -33,25 +33,28 @@ function ProtectedRoute({ component: Component, path }: { component: React.Compo
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={AuthPage} />
-        
-        <Route path="/work">
-          <ProtectedRoute component={WorkPage} path="/work" />
-        </Route>
-        
-        <Route path="/roster">
-          <ProtectedRoute component={RosterPage} path="/roster" />
-        </Route>
-        
-        <Route path="/settings">
-          <ProtectedRoute component={SettingsPage} path="/settings" />
-        </Route>
-        
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <>
+      <Layout>
+        <Switch>
+          <Route path="/" component={AuthPage} />
+          
+          <Route path="/work">
+            <ProtectedRoute component={WorkPage} path="/work" />
+          </Route>
+          
+          <Route path="/roster">
+            <ProtectedRoute component={RosterPage} path="/roster" />
+          </Route>
+          
+          <Route path="/settings">
+            <ProtectedRoute component={SettingsPage} path="/settings" />
+          </Route>
+          
+          <Route component={NotFound} />
+        </Switch>
+      </Layout>
+      <Toaster />
+    </>
   );
 }
 

@@ -57,10 +57,10 @@ export default function WorkPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full">
+          <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full" data-testid="button-prev-week">
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full">
+          <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full" data-testid="button-next-week">
             <ChevronRight className="w-4 h-4" />
           </Button>
           
@@ -135,7 +135,7 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 transition-opacity">
+        <Button className="rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 transition-opacity" data-testid="button-book-shift">
           <Plus className="w-4 h-4 mr-2" />
           Book Shift
         </Button>
@@ -173,7 +173,7 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
             <Textarea {...form.register("note")} className="rounded-xl resize-none" placeholder="Any special requests?" />
           </div>
 
-          <Button type="submit" className="w-full rounded-xl" disabled={isPending}>
+          <Button type="submit" className="w-full rounded-xl" disabled={isPending} data-testid="button-confirm-booking">
             {isPending ? "Booking..." : "Confirm Booking"}
           </Button>
         </form>

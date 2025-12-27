@@ -77,7 +77,7 @@ export default function SettingsPage() {
             </div>
             
             <div className="flex justify-end pt-4">
-              <Button type="submit" size="lg" className="rounded-xl shadow-lg shadow-primary/20" disabled={isPending}>
+              <Button type="submit" size="lg" className="rounded-xl shadow-lg shadow-primary/20" disabled={isPending} data-testid="button-save-settings">
                 {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
                 Save Changes
               </Button>

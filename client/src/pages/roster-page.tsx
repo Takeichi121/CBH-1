@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRoster, useSetShiftForUser, useDeleteShiftForUser } from "@/hooks/use-shifts";
+import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addWeeks, subWeeks, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export default function RosterPage() {
   const dateParam = format(currentDate, "yyyy-MM-dd");
   
   const { data, isLoading, error } = useRoster(dateParam);
+  const { data: settings } = useSettings();
   const { user } = useAuth();
   const isManager = user?.role === "manager" || user?.role === "admin";
 
@@ -58,10 +60,10 @@ export default function RosterPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full">
+          <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full" data-testid="button-prev-week">
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full">
+          <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full" data-testid="button-next-week">
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
@@ -102,10 +104,10 @@ export default function RosterPage() {
                       return (
                         <TableCell key={day} className="p-2">
                           {shift ? (
-                            <ShiftCell shift={shift} isManager={isManager} />
+                            <ShiftCell shift={shift} isManager={isManager} groups={settings?.groups} />
                           ) : (
                             isManager ? (
-                              <ManageShiftDialog username={u.username} date={day} mode="create">
+                              <ManageShiftDialog username={u.username} date={day} mode="create" groups={settings?.groups}>
                                 <div className="h-16 w-full rounded-lg border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100 group">
                                   <UserPlus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
                                 </div>
@@ -134,7 +136,7 @@ export default function RosterPage() {
   );
 }
 
-function ShiftCell({ shift, isManager }: { shift: any; isManager: boolean }) {
+function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolean; groups?: any[] }) {
   const groupColors: Record<string, string> = {
     open: "bg-blue-100 text-blue-700 border-blue-200",
     lunch: "bg-orange-100 text-orange-700 border-orange-200",
@@ -153,7 +155,7 @@ function ShiftCell({ shift, isManager }: { shift: any; isManager: boolean }) {
 
   if (isManager) {
     return (
-      <ManageShiftDialog username={shift.username} date={shift.date} existingShift={shift} mode="edit">
+      <ManageShiftDialog username={shift.username} date={shift.date} existingShift={shift} mode="edit" groups={groups}>
         {content}
       </ManageShiftDialog>
     );
@@ -167,29 +169,22 @@ function ManageShiftDialog({
   username, 
   date, 
   existingShift, 
-  mode 
+  mode,
+  groups
 }: { 
   children: React.ReactNode; 
   username: string; 
   date: string; 
   existingShift?: any; 
   mode: "create" | "edit";
+  groups?: any[];
 }) {
   const [open, setOpen] = useState(false);
   const { mutate: setShift } = useSetShiftForUser();
   const { mutate: deleteShift } = useDeleteShiftForUser();
   
-  // Hardcoded groups since we don't have them in this scope easily, 
-  // normally would pass from parent or context
-  const shiftGroups = [
-    { key: "open", label: "Open" },
-    { key: "lunch", label: "Lunch" },
-    { key: "dinner", label: "Dinner" },
-    { key: "late", label: "Late" },
-  ];
-
   const [formData, setFormData] = useState({
-    shiftGroup: existingShift?.shiftGroup || "open",
+    shiftGroup: existingShift?.shiftGroup || groups?.[0]?.key || "open",
     startTime: existingShift?.startTime || "09:00",
     note: existingShift?.note || "",
   });
@@ -239,7 +234,7 @@ function ManageShiftDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {shiftGroups.map(g => (
+                {groups?.map(g => (
                   <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -266,12 +261,12 @@ function ManageShiftDialog({
 
           <div className="flex gap-2 pt-2">
             {mode === "edit" && (
-              <Button type="button" variant="destructive" onClick={handleDelete} className="flex-1">
+              <Button type="button" variant="destructive" onClick={handleDelete} className="flex-1" data-testid="button-delete-shift">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Remove
               </Button>
             )}
-            <Button type="submit" className="flex-1">
+            <Button type="submit" className="flex-1" data-testid="button-save-shift">
               Save Shift
             </Button>
           </div>

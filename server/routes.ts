@@ -281,6 +281,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // User: Set Active Status (Manager)
+  app.post("/api/updateUserStatus", async (req, res) => {
+    const { token, username, active } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false });
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+
+    await storage.updateUserStatus(username, active);
+    await storage.log("update_user_status", u.username, `set ${username} active=${active}`);
+    res.json({ ok: true });
+  });
+
   // Shifts: Set For User (Manager)
   app.post(api.shifts.setForUser.path, async (req, res) => {
     const { token, username, date, shiftGroup, startTime, note } = req.body;

@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Mail, Briefcase as PositionIcon, User } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function RosterPage() {
@@ -25,6 +25,21 @@ export default function RosterPage() {
   const { data: settings } = useSettings();
   const { user } = useAuth();
   const isManager = user?.role === "manager" || user?.role === "admin";
+  const { mutate: updateUserStatus } = useQuery({
+    queryKey: ["/api/updateUserStatus"],
+    enabled: false
+  });
+  const queryClient = useQueryClient();
+
+  const handleUpdateUserStatus = (username: string, active: number) => {
+    if (confirm(active === 0 ? "Hide/Disable this staff member?" : "Show/Enable this staff member?")) {
+      const token = localStorage.getItem("bk_token") || "";
+      apiRequest("POST", "/api/updateUserStatus", { token, username, active })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+        });
+    }
+  };
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
@@ -64,7 +79,10 @@ export default function RosterPage() {
   });
 
   const sortedUsers = Object.values(userShifts)
-    .filter((u: any) => u.role !== "admin" && u.role !== "manager")
+    .filter((u: any) => {
+      if (u.role === "admin" || u.role === "manager") return false;
+      return u.active === 1;
+    })
     .sort((a: any, b: any) => a.username.localeCompare(b.username));
 
   return (
@@ -121,6 +139,20 @@ export default function RosterPage() {
                           <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
                         </div>
                       </UserProfileDialog>
+                      {isManager && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 text-[10px] text-destructive hover:text-destructive mt-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateUserStatus(u.username, 0);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Hide Staff
+                        </Button>
+                      )}
                     </TableCell>
                     {days.map((day: string) => {
                       const shift = u.shifts[day];

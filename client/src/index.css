@@ -9,29 +9,29 @@
   --primary: 0 78.5% 52%;      /* Burger King Red #ED1C24 */
   --primary-foreground: 0 0% 100%;
   
-  --background: 40 30% 94%;   /* เข้มขึ้นและนุ่มนวลขึ้น ลดความสว่างของสีขาว */
-  --foreground: 222 47% 11%;
+  --background: 30 20% 90%;   /* สีพื้นหลังโทนน้ำตาลอ่อน (Light Brown/Coffee) */
+  --foreground: 20 50% 15%;
   
-  --card: 40 25% 96%;        /* การ์ดสีอ่อนกว่าพื้นหลังเล็กน้อยเพื่อให้มีมิติ */
-  --card-foreground: 222 47% 11%;
+  --card: 30 20% 94%;        /* สีการ์ดโทนน้ำตาลนวล */
+  --card-foreground: 20 50% 15%;
   
-  --popover: 40 25% 96%;
-  --popover-foreground: 222 47% 11%;
+  --popover: 30 20% 94%;
+  --popover-foreground: 20 50% 15%;
   
-  --secondary: 40 50% 88%;     /* ปรับสีรองให้เข้ากับโทนพื้นหลังใหม่ */
-  --secondary-foreground: 223 100% 25%;
+  --secondary: 25 30% 80%;     /* สีรองโทนน้ำตาลนุ่มๆ */
+  --secondary-foreground: 20 60% 20%;
   
-  --muted: 40 20% 90%;
-  --muted-foreground: 222 15% 40%;
+  --muted: 30 15% 85%;
+  --muted-foreground: 25 20% 40%;
   
-  --accent: 223 80% 45%;      
+  --accent: 25 50% 45%;      /* สีเน้นโทนน้ำตาลเข้ม/สนิม */
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 40 20% 85%;
-  --input: 40 20% 85%;
+  --border: 30 15% 80%;
+  --input: 30 15% 80%;
   --ring: 223 100% 31%;        /* Burger King Blue */
   
   --radius: 0.75rem;

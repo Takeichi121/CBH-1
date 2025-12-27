@@ -40,7 +40,7 @@ export default function AuthPage() {
       const username = developerRole === "staff" ? "staff" : "manager";
       loginMutation.mutate({ username, password: "1234" });
     }
-  }, [developerRole]);
+  }, [developerRole, loginMutation]);
 
   if (isLoading) return null;
   if (user) return null;

@@ -63,7 +63,9 @@ export default function RosterPage() {
     userShifts[shift.username].shifts[shift.date] = shift;
   });
 
-  const sortedUsers = Object.values(userShifts).sort((a: any, b: any) => a.username.localeCompare(b.username));
+  const sortedUsers = Object.values(userShifts)
+    .filter((u: any) => u.role !== "admin" && u.role !== "manager")
+    .sort((a: any, b: any) => a.username.localeCompare(b.username));
 
   return (
     <div className="space-y-6">

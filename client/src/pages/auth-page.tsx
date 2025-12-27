@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Loader2, Globe, Sun, Moon, ChevronLeft } from "lucide-react";
-import { SiBurgerking } from "react-icons/si";
-import { useTheme } from "next-themes";
+import {Loader2, Globe, Sun, Moon, ChevronLeft} from "lucide-react";
+import logoImg from "@assets/Burger_King_2020.svg_1766870334760.png";
+import {useTheme} from "next-themes";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -135,8 +135,8 @@ export default function AuthPage() {
         ) : (
           <>
             <div className="text-center space-y-2 md:space-y-4">
-              <div className="mx-auto h-20 w-20 md:h-32 md:w-32 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
-                <SiBurgerking className="w-full h-full text-[#ED1C24] drop-shadow-xl" />
+              <div className="mx-auto h-24 w-24 md:h-40 md:w-40 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
+                <img src={logoImg} alt="Burger King Logo" className="w-full h-full object-contain drop-shadow-xl" />
               </div>
               <div className="space-y-1">
                 <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">

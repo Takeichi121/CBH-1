@@ -9,7 +9,7 @@
   --primary: 0 78.5% 52%;      /* Burger King Red #ED1C24 */
   --primary-foreground: 0 0% 100%;
   
-  --background: 48 100% 95%;   /* Very light yellow/cream tint */
+  --background: 48 40% 98%;   /* Warmer, softer off-white/cream for eye comfort */
   --foreground: 222 47% 11%;
   
   --card: 0 0% 100%;
@@ -18,20 +18,20 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   
-  --secondary: 48 91% 52%;     /* Burger King Yellow #F5EB16 */
-  --secondary-foreground: 223 100% 31%; /* Burger King Blue #0033A0 */
+  --secondary: 48 80% 92%;     /* Softer, muted version of BK Yellow */
+  --secondary-foreground: 223 100% 25%; /* Slightly darker blue for contrast */
   
-  --muted: 48 50% 90%;
-  --muted-foreground: 222 20% 40%;
+  --muted: 48 30% 94%;
+  --muted-foreground: 222 15% 35%;
   
-  --accent: 223 100% 31%;      /* Burger King Blue #0033A0 */
+  --accent: 223 80% 45%;      /* Slightly softer blue for accent */
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 48 50% 85%;
-  --input: 48 50% 85%;
+  --border: 48 20% 90%;
+  --input: 48 20% 90%;
   --ring: 223 100% 31%;        /* Burger King Blue */
   
   --radius: 0.75rem;

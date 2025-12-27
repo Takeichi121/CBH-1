@@ -1,18 +1,19 @@
 import { useState } from "react";
-import { useMyWeek, useBookShift, useCancelShift } from "@/hooks/use-shifts";
+import { useMyWeek, useBookShift, useCancelShift, useRoster } from "@/hooks/use-shifts";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
-import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
+import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShiftCard } from "@/components/shift-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,24 +34,32 @@ export default function WorkPage() {
   const dateParam = format(currentDate, "yyyy-MM-dd");
   
   const { data, isLoading, error } = useMyWeek(dateParam);
+  const { data: rosterData, isLoading: isLoadingRoster } = useRoster(dateParam);
   const { data: settings } = useSettings();
   const { mutate: cancelShift } = useCancelShift();
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-  if (isLoading) return <WorkPageSkeleton />;
+  if (isLoading || isLoadingRoster) return <WorkPageSkeleton />;
   if (error) return <div className="p-8 text-center text-red-500">Error loading schedule: {error.message}</div>;
 
   const weekStartStr = data?.weekRange?.start;
   const weekEndStr = data?.weekRange?.end;
+  const days = data?.weekRange?.days || [];
   const displayRange = weekStartStr ? `${format(new Date(weekStartStr), "MMM d")} - ${format(new Date(weekEndStr), "MMM d, yyyy")}` : "";
+
+  // My shifts for the week mapped by date
+  const myShiftsByDate: Record<string, any> = {};
+  data?.items?.forEach((s: any) => {
+    myShiftsByDate[s.date] = s;
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-display font-bold text-foreground">My Schedule</h2>
+          <h2 className="text-3xl font-display font-bold text-foreground">Book Shift</h2>
           <p className="text-muted-foreground flex items-center gap-2 mt-1">
             <CalendarIcon className="w-4 h-4" />
             {displayRange}
@@ -64,8 +73,6 @@ export default function WorkPage() {
           <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full" data-testid="button-next-week">
             <ChevronRight className="w-4 h-4" />
           </Button>
-          
-          <BookShiftDialog groups={settings?.groups} days={data?.weekRange?.days} />
         </div>
       </div>
 
@@ -79,51 +86,98 @@ export default function WorkPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {data?.items && data.items.length > 0 ? (
-          data.items.map((shift: any) => (
-            <ShiftCard
-              key={shift.id}
-              date={shift.date}
-              startTime={shift.startTime}
-              endTime={shift.endTime}
-              shiftGroup={shift.shiftGroup}
-              note={shift.note}
-              onCancel={!data.closed ? () => {
-                if(confirm("คุณแน่ใจหรือไม่ว่าต้องการเพิกถอนตารางงานนี้? (Are you sure you want to cancel this shift?)")) {
-                  cancelShift(shift.date);
-                }
-              } : undefined}
-            />
-          ))
-        ) : (
-          <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-3xl bg-white/50">
-            <CalendarIcon className="w-12 h-12 mb-4 opacity-20" />
-            <p>No shifts booked for this week.</p>
-          </div>
-        )}
-      </div>
+      <Card className="glass-card overflow-hidden border-none shadow-xl">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-[150px] font-bold">Staff Member</TableHead>
+                {days.map((day: string) => (
+                  <TableHead key={day} className="text-center min-w-[120px]">
+                    <div className="flex flex-col items-center py-2">
+                      <span className="text-xs uppercase text-muted-foreground font-semibold">
+                        {format(parseISO(day), "EEE")}
+                      </span>
+                      <span className="text-lg font-bold text-foreground">
+                        {format(parseISO(day), "d")}
+                      </span>
+                    </div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-medium">
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-primary">Your Shifts</span>
+                    <span className="text-xs text-muted-foreground">Select to book/cancel</span>
+                  </div>
+                </TableCell>
+                {days.map((day: string) => {
+                  const shift = myShiftsByDate[day];
+                  return (
+                    <TableCell key={day} className="p-2">
+                      {shift ? (
+                        <div 
+                          className={`h-20 w-full rounded-xl p-2 border shadow-sm flex flex-col justify-center items-center gap-1 cursor-pointer hover:brightness-95 transition-all
+                            ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                              shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                              shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                              'bg-slate-100 text-slate-700 border-slate-200'}`}
+                          onClick={() => {
+                            if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
+                              cancelShift(day);
+                            }
+                          }}
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
+                          <span className="text-xs font-semibold">{shift.startTime}</span>
+                        </div>
+                      ) : (
+                        <BookShiftDialog 
+                          groups={settings?.groups} 
+                          day={day} 
+                          disabled={data.closed}
+                        >
+                          <div className={`h-20 w-full rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
+                          </div>
+                        </BookShiftDialog>
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+              {/* Optional: Show other staff members summary if needed, but the primary request is the booking table */}
+              <TableRow>
+                <TableCell colSpan={8} className="h-8 bg-muted/20 text-center text-[10px] text-muted-foreground uppercase tracking-widest">
+                  End of Weekly View
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 }
 
-function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
+function BookShiftDialog({ children, groups, day, disabled }: { children: React.ReactNode; groups: any[]; day: string; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const { mutate: bookShift, isPending } = useBookShift();
-  const { user } = useAuth();
   
   const form = useForm<BookFormValues>({
     resolver: zodResolver(bookSchema),
     defaultValues: {
-      date: days?.[0] || "",
+      date: day,
       shiftGroup: "",
       startTime: "",
       note: "",
     },
   });
 
-  // Only staff can book
-  if (user?.role !== "staff") return null;
+  if (disabled) return <div className="opacity-50 cursor-not-allowed">{children}</div>;
 
   const onSubmit = (data: BookFormValues) => {
     bookShift(data, {
@@ -137,33 +191,16 @@ function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 transition-opacity" data-testid="button-book-shift">
-          <Plus className="w-4 h-4 mr-2" />
-          Book Shift
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Book a Shift</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary" />
+            Book Shift for {format(parseISO(day), "EEE, MMM d")}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Select onValueChange={(val) => form.setValue("date", val)} defaultValue={form.getValues("date")}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Select date" />
-              </SelectTrigger>
-              <SelectContent>
-                {days?.map((day: string) => (
-                  <SelectItem key={day} value={day}>
-                    {format(new Date(day + "T00:00:00"), "EEE, MMM d")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.formState.errors.date && <p className="text-xs text-red-500">{form.formState.errors.date.message}</p>}
-          </div>
-
           <div className="space-y-2">
             <Label>Shift Group</Label>
             <Select onValueChange={(val) => {
@@ -190,7 +227,7 @@ function BookShiftDialog({ groups, days }: { groups: any[]; days: string[] }) {
           {form.watch("shiftGroup") && (
             <div className="space-y-2">
               <Label>Time Period</Label>
-              <Select onValueChange={(val) => form.setValue("startTime", val)}>
+              <Select onValueChange={(val) => form.setValue("startTime", val)} defaultValue={form.getValues("startTime")}>
                 <SelectTrigger className="rounded-xl">
                   <SelectValue placeholder="Select time period" />
                 </SelectTrigger>
@@ -224,9 +261,7 @@ function WorkPageSkeleton() {
         <Skeleton className="h-10 w-48 rounded-xl" />
         <Skeleton className="h-10 w-32 rounded-full" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
-      </div>
+      <Skeleton className="h-64 w-full rounded-2xl" />
     </div>
   );
 }

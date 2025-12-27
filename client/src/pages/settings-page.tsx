@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { Switch } from "@/components/ui/switch";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { useTheme } from "next-themes";
@@ -43,15 +44,23 @@ export default function SettingsPage() {
   const capacityForm = useForm();
 
   useEffect(() => {
-    if (settingsData?.capacity) {
-      capacityForm.reset(settingsData.capacity);
+    if (settingsData) {
+      const resetValues: any = { ...settingsData.capacity };
+      if (settingsData.lockTimePeriod !== undefined) {
+        resetValues.lockTimePeriod = settingsData.lockTimePeriod;
+      }
+      capacityForm.reset(resetValues);
     }
   }, [settingsData, capacityForm]);
 
   const onCapacitySubmit = (values: any) => {
-    const payload: Record<string, number> = {};
+    const payload: any = { capacity: {} };
     Object.keys(values).forEach(key => {
-      payload[key] = Number(values[key]);
+      if (key === "lockTimePeriod") {
+        payload.lockTimePeriod = values[key];
+      } else {
+        payload.capacity[key] = Number(values[key]);
+      }
     });
     updateSettings(payload);
   };
@@ -277,6 +286,21 @@ export default function SettingsPage() {
                       </div>
                     ))}
                   </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        {capacityForm.watch("lockTimePeriod") ? <Lock className="w-3 h-3 text-primary" /> : <Unlock className="w-3 h-3 text-muted-foreground" />}
+                        Lock Time Period
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">When enabled, staff cannot change their start time</p>
+                    </div>
+                    <Switch
+                      checked={capacityForm.watch("lockTimePeriod")}
+                      onCheckedChange={(checked) => capacityForm.setValue("lockTimePeriod", checked)}
+                    />
+                  </div>
+
                   <div className="flex justify-end pt-2">
                     <Button type="submit" disabled={settingsUpdating} className="rounded-xl">
                       {settingsUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

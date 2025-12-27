@@ -137,20 +137,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const capacity: Record<string, number> = {};
     for (const k of Object.keys(DEFAULT_CAPACITY)) capacity[k] = Number(cfg["cap_" + k] || DEFAULT_CAPACITY[k as keyof typeof DEFAULT_CAPACITY]);
 
-    res.json({ ok: true, capacity, groups: SHIFT_GROUPS });
+    const lockTimePeriod = cfg.lock_time_period === "true";
+
+    res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod });
   });
 
   app.post(api.settings.update.path, async (req, res) => {
-    const { token, capacity } = req.body;
+    const { token, capacity, lockTimePeriod } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
     if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false });
 
-    for (const k of Object.keys(capacity)) {
-      if (k in DEFAULT_CAPACITY) await storage.setConfig("cap_" + k, String(capacity[k]));
+    if (capacity) {
+      for (const k of Object.keys(capacity)) {
+        if (k in DEFAULT_CAPACITY) await storage.setConfig("cap_" + k, String(capacity[k]));
+      }
     }
-    await storage.log("update_settings", u.username, JSON.stringify(capacity));
+    
+    if (lockTimePeriod !== undefined) {
+      await storage.setConfig("lock_time_period", String(lockTimePeriod));
+    }
+
+    await storage.log("update_settings", u.username, JSON.stringify({ capacity, lockTimePeriod }));
     res.json({ ok: true });
   });
 

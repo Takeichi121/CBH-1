@@ -230,7 +230,7 @@ function BookShiftDialog({ children, groups, day, disabled }: { children: React.
               <Select 
                 onValueChange={(val) => form.setValue("startTime", val)} 
                 defaultValue={form.getValues("startTime")}
-                disabled={true}
+                disabled={settings?.lockTimePeriod}
               >
                 <SelectTrigger className="rounded-xl">
                   <SelectValue placeholder="Select time period" />
@@ -241,7 +241,7 @@ function BookShiftDialog({ children, groups, day, disabled }: { children: React.
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground">Fixed by Manager</p>
+              {settings?.lockTimePeriod && <p className="text-[10px] text-muted-foreground">Fixed by Manager</p>}
             </div>
           )}
 

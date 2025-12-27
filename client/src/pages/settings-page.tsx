@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
@@ -30,6 +30,15 @@ export default function SettingsPage() {
       nickName: user?.nickName || "",
       phone: user?.phone || "",
       email: user?.email || "",
+    }
+  });
+
+  const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
+  const passwordForm = useForm({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     }
   });
 
@@ -59,7 +68,6 @@ export default function SettingsPage() {
       const data = await res.json();
       if (data.ok) {
         toast({ title: "Success", description: t("profileUpdated") });
-        // Optional: refresh page or user state
       } else {
         toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update profile" });
       }
@@ -67,6 +75,33 @@ export default function SettingsPage() {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
       setIsProfileUpdating(false);
+    }
+  };
+
+  const onPasswordSubmit = async (values: any) => {
+    if (values.newPassword !== values.confirmPassword) {
+      toast({ variant: "destructive", title: "Error", description: t("passwordsDoNotMatch") });
+      return;
+    }
+
+    setIsPasswordUpdating(true);
+    try {
+      const res = await apiRequest("POST", "/api/changePassword", {
+        token: localStorage.getItem("bk_token"),
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "Success", description: t("passwordChanged") });
+        passwordForm.reset();
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message || "Failed to change password" });
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsPasswordUpdating(false);
     }
   };
 
@@ -114,6 +149,43 @@ export default function SettingsPage() {
               <Button type="submit" disabled={isProfileUpdating} className="rounded-xl">
                 {isProfileUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {t("updateProfile")}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Security Section */}
+      <Card className="glass-card border-none shadow-xl">
+        <CardHeader className="flex flex-row items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle>{t("security")}</CardTitle>
+            <CardDescription>{t("passwordManagement")}</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t("currentPassword")}</Label>
+              <Input {...passwordForm.register("currentPassword")} type="password" title="current-password" name="currentPassword" id="currentPassword" className="rounded-xl" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("newPassword")}</Label>
+                <Input {...passwordForm.register("newPassword")} type="password" title="new-password" name="newPassword" id="newPassword" className="rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("confirmNewPassword")}</Label>
+                <Input {...passwordForm.register("confirmPassword")} type="password" title="confirm-password" name="confirmPassword" id="confirmPassword" className="rounded-xl" />
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isPasswordUpdating} className="rounded-xl" variant="outline">
+                {isPasswordUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t("changePassword")}
               </Button>
             </div>
           </form>

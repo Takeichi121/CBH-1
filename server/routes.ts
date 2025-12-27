@@ -260,6 +260,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, user: updated });
   });
 
+  // User: Change Password
+  app.post("/api/changePassword", async (req, res) => {
+    const { token, currentPassword, newPassword } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    if (hashPass(currentPassword) !== u.passhash) {
+      return res.json({ ok: false, message: "Current password incorrect" });
+    }
+
+    await db.update(users)
+      .set({ passhash: hashPass(newPassword) })
+      .where(eq(users.username, u.username));
+
+    await storage.log("change_password", u.username, "password updated");
+    res.json({ ok: true });
+  });
+
   // Shifts: Set For User (Manager)
   app.post(api.shifts.setForUser.path, async (req, res) => {
     const { token, username, date, shiftGroup, startTime, note } = req.body;

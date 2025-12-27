@@ -45,7 +45,7 @@ export default function AuthPage() {
       
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="mx-auto h-24 w-24 mb-6 drop-shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="mx-auto h-24 w-24 mb-6 transition-all duration-300 hover:scale-105 logo-glow">
             <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain filter brightness-110 contrast-110" />
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">

@@ -124,7 +124,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "session หมดอายุ" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "สิทธิ์ไม่พอ" });
+    if (!u) return res.json({ ok: false, message: "สิทธิ์ไม่พอ" });
 
     const cfg = await storage.getConfig();
     const capacity: Record<string, number> = {};

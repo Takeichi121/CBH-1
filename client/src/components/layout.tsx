@@ -22,8 +22,11 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
+import { useI18n } from "@/hooks/use-i18n";
+
 export function Layout({ children }: { children: ReactNode }) {
   const { user, logoutMutation } = useAuth();
+  const { t } = useI18n();
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

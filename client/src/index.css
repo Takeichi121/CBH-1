@@ -64,6 +64,10 @@
   .glass-card {
     @apply bg-white/90 backdrop-blur-sm border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300;
   }
+
+  .logo-glow {
+    filter: drop-shadow(0 0 15px hsla(151, 84%, 34%, 0.3));
+  }
 }
 
 /* Custom Scrollbar */

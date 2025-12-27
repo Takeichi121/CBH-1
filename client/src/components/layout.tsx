@@ -32,12 +32,14 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Desktop Header */}
-      <header className="hidden md:flex h-16 items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
+      <header className="hidden md:flex h-16 items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
-            <span className="text-white font-display font-bold text-xl">BK</span>
-          </div>
-          <h1 className="text-xl font-bold font-display text-foreground hidden lg:block">Grand Diamond</h1>
+          <Link href="/work" className="flex items-center gap-3 group">
+            <div className="h-10 w-10 p-1.5 rounded-xl bg-white shadow-sm border border-primary/10 flex items-center justify-center transition-all duration-300 group-hover:shadow-md group-hover:scale-105">
+              <img src="/images/logo.png" alt="BK Logo" className="w-full h-full object-contain" />
+            </div>
+            <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Grand Diamond</h1>
+          </Link>
         </div>
 
         <nav className="flex items-center gap-6">

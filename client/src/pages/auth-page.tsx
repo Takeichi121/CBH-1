@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Loader2, Globe } from "lucide-react";
+import { Loader2, Globe, Sun, Moon } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
+import { useTheme } from "next-themes";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,6 +21,7 @@ export default function AuthPage() {
   const { t, language, setLanguage } = useI18n();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -32,12 +34,25 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 relative">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="rounded-full w-10 h-10 border-primary/20 hover:bg-primary/5 transition-all duration-300 relative overflow-hidden"
+          data-testid="button-theme-toggle-auth"
+        >
+          <div className="relative w-full h-full flex items-center justify-center">
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all duration-500 dark:-rotate-90 dark:scale-0 text-[#F5EB16]" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-500 dark:rotate-0 dark:scale-100 text-[#0033A0]" />
+          </div>
+          <span className="sr-only">Toggle theme</span>
+        </Button>
         <Button 
           variant="outline" 
           size="sm"
           onClick={() => setLanguage(language === "en" ? "th" : "en")}
-          className="gap-2"
+          className="gap-2 h-10 px-4 rounded-full"
         >
           <Globe className="w-4 h-4" />
           {language === "en" ? "ไทย" : "EN"}

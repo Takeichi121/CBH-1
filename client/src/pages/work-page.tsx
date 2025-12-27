@@ -17,20 +17,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-// SHIFT_TIME_OPTIONS matches the user request for predefined ranges
-const SHIFT_TIME_OPTIONS = [
-  "07:00 - 16:00",
-  "08:00 - 17:00",
-  "09:00 - 18:00",
-  "10:00 - 19:00",
-  "11:00 - 20:00",
-  "12:00 - 21:00",
-  "13:00 - 22:00",
-  "14:00 - 23:00",
-  "15:00 - 00:00",
-  "16:00 - 01:00",
-  "22:00 - 07:00",
-];
+// Group-specific time options based on user request
+const GROUP_TIME_OPTIONS: Record<string, string[]> = {
+  open: ["07:00 - 16:00", "08:00 - 17:00", "09:00 - 18:00", "10:00 - 19:00", "11:00 - 20:00"],
+  lunch: ["12:00 - 14:00", "13:00 - 22:00", "14:00 - 23:00"],
+  dinner: ["15:00 - 00:00", "16:00 - 01:00"],
+  late: ["22:00 - 07:00"],
+};
 
 // Schema for booking form
 const bookSchema = z.object({
@@ -150,6 +143,7 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
   };
 
   const selectedGroup = groups?.find(g => g.key === form.watch("shiftGroup"));
+  const timeOptions = form.watch("shiftGroup") ? GROUP_TIME_OPTIONS[form.watch("shiftGroup")] || [] : [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -172,7 +166,10 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
 
           <div className="space-y-2">
             <Label>Shift Group</Label>
-            <Select onValueChange={(val) => form.setValue("shiftGroup", val)}>
+            <Select onValueChange={(val) => {
+              form.setValue("shiftGroup", val);
+              form.setValue("startTime", ""); // Reset time when group changes
+            }}>
               <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
@@ -189,12 +186,12 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
 
           <div className="space-y-2">
             <Label>Working Hours (Start - End)</Label>
-            <Select onValueChange={(val) => form.setValue("startTime", val)}>
+            <Select onValueChange={(val) => form.setValue("startTime", val)} value={form.watch("startTime")}>
               <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Select time range" />
+                <SelectValue placeholder={form.watch("shiftGroup") ? "Select time range" : "Please select group first"} />
               </SelectTrigger>
               <SelectContent>
-                {SHIFT_TIME_OPTIONS.map((option) => (
+                {timeOptions.map((option) => (
                   <SelectItem key={option} value={option}>
                     {option}
                   </SelectItem>

@@ -159,7 +159,7 @@ export default function AuthPage() {
                     className="text-primary hover:underline cursor-pointer transition-colors font-medium"
                     data-testid="button-open-dev-mode"
                   >
-                    {creatorShort}
+                    {creatorName}
                   </button>
                 </p>
                 <p className="text-muted-foreground text-sm">{t("appSubtitle")}</p>
@@ -190,7 +190,7 @@ export default function AuthPage() {
                   className="text-primary hover:underline cursor-pointer transition-colors font-medium"
                   data-testid="button-open-dev-mode-mobile"
                 >
-                  {creatorShort}
+                  {creatorName}
                 </button>
               </p>
               <p className="text-muted-foreground text-[11px]">{t("appSubtitle")}</p>

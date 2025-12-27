@@ -54,9 +54,10 @@ export function ShiftCard({
         {onCancel && (
           <button 
             onClick={onCancel}
-            className="text-xs font-medium text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-xs font-medium text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors border border-destructive/20"
+            data-testid={`button-cancel-shift-${date}`}
           >
-            Cancel
+            Cancel Shift
           </button>
         )}
       </div>

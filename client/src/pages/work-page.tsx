@@ -90,7 +90,7 @@ export default function WorkPage() {
               shiftGroup={shift.shiftGroup}
               note={shift.note}
               onCancel={!data.closed ? () => {
-                if(confirm("Are you sure you want to cancel this shift?")) {
+                if(confirm("คุณแน่ใจหรือไม่ว่าต้องการเพิกถอนตารางงานนี้? (Are you sure you want to cancel this shift?)")) {
                   cancelShift(shift.date);
                 }
               } : undefined}

@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 export default function AuthPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState("login");
 
   if (isLoading) return null;
   if (user) {
@@ -36,7 +37,7 @@ export default function AuthPage() {
           <p className="text-muted-foreground">Schedule management system</p>
         </div>
 
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
@@ -47,7 +48,7 @@ export default function AuthPage() {
           </TabsContent>
           
           <TabsContent value="register">
-            <RegisterForm />
+            <RegisterForm onSuccess={() => setActiveTab("login")} />
           </TabsContent>
         </Tabs>
       </div>
@@ -117,7 +118,7 @@ function LoginForm() {
   );
 }
 
-function RegisterForm() {
+function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   const { registerStaffMutation, registerManagerMutation } = useAuth();
   const [role, setRole] = useState<"staff" | "manager">("staff");
 
@@ -138,9 +139,9 @@ function RegisterForm() {
 
   function onSubmit(data: any) {
     if (role === "staff") {
-      registerStaffMutation.mutate(data);
+      registerStaffMutation.mutate(data, { onSuccess: () => onSuccess?.() });
     } else {
-      registerManagerMutation.mutate(data);
+      registerManagerMutation.mutate(data, { onSuccess: () => onSuccess?.() });
     }
   }
 

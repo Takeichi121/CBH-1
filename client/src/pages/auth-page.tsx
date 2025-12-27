@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Loader2, Globe, Sun, Moon } from "lucide-react";
+import { Loader2, Globe, Sun, Moon, ChevronLeft } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import { useForm } from "react-hook-form";
@@ -21,6 +21,8 @@ export default function AuthPage() {
   const { t, language, setLanguage } = useI18n();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
+  const [isDeveloperMode, setIsDeveloperMode] = useState(false);
+  const [developerRole, setDeveloperRole] = useState<"staff" | "manager" | null>(null);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -31,6 +33,9 @@ export default function AuthPage() {
 
   if (isLoading) return null;
   if (user) return null;
+
+  const creatorName = "Chanon Jaimool";
+  const creatorShort = "Chan. J.";
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row items-center justify-center p-4 md:p-8 relative bg-background overflow-x-hidden">
@@ -61,50 +66,145 @@ export default function AuthPage() {
       </div>
       
       <div className="w-full max-w-md space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="text-center space-y-2 md:space-y-4">
-          <div className="mx-auto h-20 w-20 md:h-32 md:w-32 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
-            <SiBurgerking className="w-full h-full text-[#ED1C24] drop-shadow-xl" />
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">
-              {t("appName")}
-            </h1>
-            <p className="text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
-          </div>
-          <div className="hidden md:block space-y-1 pt-2">
-            <p className="text-xs text-muted-foreground">{t("creator")}</p>
-            <p className="text-muted-foreground text-sm">{t("appSubtitle")}</p>
-          </div>
-        </div>
+        {isDeveloperMode ? (
+          <>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Developer Mode</h1>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setIsDeveloperMode(false);
+                  setDeveloperRole(null);
+                }}
+                data-testid="button-exit-dev-mode"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+            </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-muted/30 p-1 rounded-xl">
-            <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("login")}</TabsTrigger>
-            <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("register")}</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="login" className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <LoginForm />
-          </TabsContent>
-          
-          <TabsContent value="register" className="animate-in fade-in slide-in-from-left-4 duration-300">
-            <RegisterForm onSuccess={() => setActiveTab("login")} />
-          </TabsContent>
-        </Tabs>
+            {!developerRole ? (
+              <Card className="glass-card border-none shadow-2xl">
+                <CardHeader>
+                  <CardTitle>{t("welcomeBack")}</CardTitle>
+                  <CardDescription>Select developer mode</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+                    onClick={() => setDeveloperRole("staff")}
+                    data-testid="button-dev-mode-staff"
+                  >
+                    Staff Developer Mode
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 text-base font-semibold"
+                    onClick={() => setDeveloperRole("manager")}
+                    data-testid="button-dev-mode-manager"
+                  >
+                    Manager Developer Mode
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <Card className="glass-card border-none shadow-2xl">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>{t("welcomeBack")}</CardTitle>
+                        <CardDescription>{t("enterCredentials")}</CardDescription>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeveloperRole(null)}
+                        data-testid="button-back-to-role-select"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <DeveloperLoginForm role={developerRole} />
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="text-center space-y-2 md:space-y-4">
+              <div className="mx-auto h-20 w-20 md:h-32 md:w-32 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
+                <SiBurgerking className="w-full h-full text-[#ED1C24] drop-shadow-xl" />
+              </div>
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">
+                  {t("appName")}
+                </h1>
+                <p className="text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
+              </div>
+              <div className="hidden md:block space-y-1 pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Created by{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsDeveloperMode(true)}
+                    className="text-primary hover:underline cursor-pointer transition-colors font-medium"
+                    data-testid="button-open-dev-mode"
+                  >
+                    {creatorShort}
+                  </button>
+                </p>
+                <p className="text-muted-foreground text-sm">{t("appSubtitle")}</p>
+              </div>
+            </div>
 
-        <div className="md:hidden text-center pt-4 space-y-1">
-          <p className="text-[10px] text-muted-foreground">{t("creator")}</p>
-          <p className="text-muted-foreground text-[11px]">{t("appSubtitle")}</p>
-        </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-muted/30 p-1 rounded-xl">
+                <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("login")}</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("register")}</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login" className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <LoginForm />
+              </TabsContent>
+              
+              <TabsContent value="register" className="animate-in fade-in slide-in-from-left-4 duration-300">
+                <RegisterForm onSuccess={() => setActiveTab("login")} />
+              </TabsContent>
+            </Tabs>
+
+            <div className="md:hidden text-center pt-4 space-y-1">
+              <p className="text-[10px] text-muted-foreground">
+                Created by{" "}
+                <button
+                  type="button"
+                  onClick={() => setIsDeveloperMode(true)}
+                  className="text-primary hover:underline cursor-pointer transition-colors font-medium"
+                  data-testid="button-open-dev-mode-mobile"
+                >
+                  {creatorShort}
+                </button>
+              </p>
+              <p className="text-muted-foreground text-[11px]">{t("appSubtitle")}</p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function LoginForm() {
+function DeveloperLoginForm({ role }: { role: "staff" | "manager" }) {
   const { loginMutation } = useAuth();
   const { t } = useI18n();
-  const [showDeveloperMode, setShowDeveloperMode] = useState(false);
   
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
@@ -116,107 +216,113 @@ function LoginForm() {
   }
 
   function quickLogin(username: string, password: string) {
-    form.setValue("username", username);
-    form.setValue("password", password);
     loginMutation.mutate({ username, password });
   }
 
   return (
-    <>
-      <Card className="glass-card border-none shadow-2xl">
-        <CardHeader>
-          <CardTitle>{t("welcomeBack")}</CardTitle>
-          <CardDescription>{t("enterCredentials")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("username")}</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter username..." {...field} className="h-11" data-testid="input-username" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("password")}</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button 
-                type="submit" 
-                className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
-                disabled={loginMutation.isPending}
-                data-testid="button-login-submit"
-              >
-                {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {t("signIn")}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      <div className="mt-4 pt-4 border-t border-muted/50">
-        <button
-          type="button"
-          onClick={() => setShowDeveloperMode(!showDeveloperMode)}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-2 text-center rounded-md hover:bg-muted/30"
-          data-testid="button-toggle-dev-mode"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("username")}</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter username..." {...field} className="h-11" data-testid="input-username" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("password")}</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button 
+          type="submit" 
+          className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+          disabled={loginMutation.isPending}
+          data-testid="button-login-submit"
         >
-          {showDeveloperMode ? "Hide" : "Show"} Developer Mode
-        </button>
+          {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          {t("signIn")}
+        </Button>
+      </form>
+    </Form>
+  );
+}
 
-        {showDeveloperMode && (
-          <div className="mt-3 p-3 bg-muted/20 rounded-lg border border-muted/50 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-            <p className="text-xs text-muted-foreground font-medium">Quick Login for Testing:</p>
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full h-9 text-xs justify-start gap-2"
-                onClick={() => quickLogin("admin", "1234")}
-                disabled={loginMutation.isPending}
-                data-testid="button-quick-login-admin"
-              >
-                <span className="font-mono">admin</span>
-                <span className="text-muted-foreground">/ 1234</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full h-9 text-xs justify-start gap-2"
-                onClick={() => quickLogin("manager", "1234")}
-                disabled={loginMutation.isPending}
-                data-testid="button-quick-login-manager"
-              >
-                <span className="font-mono">manager</span>
-                <span className="text-muted-foreground">/ 1234</span>
-              </Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground/70 pt-2">
-              Development credentials only. Change passwords in production.
-            </p>
-          </div>
-        )}
-      </div>
-    </>
+function LoginForm() {
+  const { loginMutation } = useAuth();
+  const { t } = useI18n();
+  
+  const form = useForm({
+    resolver: zodResolver(api.auth.login.input),
+    defaultValues: { username: "", password: "" },
+  });
+
+  function onSubmit(data: z.infer<typeof api.auth.login.input>) {
+    loginMutation.mutate(data);
+  }
+
+  return (
+    <Card className="glass-card border-none shadow-2xl">
+      <CardHeader>
+        <CardTitle>{t("welcomeBack")}</CardTitle>
+        <CardDescription>{t("enterCredentials")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("username")}</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter username..." {...field} className="h-11" data-testid="input-username" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("password")}</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button 
+              type="submit" 
+              className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+              disabled={loginMutation.isPending}
+              data-testid="button-login-submit"
+            >
+              {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {t("signIn")}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
 

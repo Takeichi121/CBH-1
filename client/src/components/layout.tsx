@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun } from "lucide-react";
+import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -37,9 +38,6 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="hidden md:flex h-16 items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25 transition-all duration-300 group-hover:scale-105 group-hover:shadow-primary/40">
-              <span className="text-white font-display font-bold text-xl">BK</span>
-            </div>
             <div className="h-10 w-10 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
               <SiBurgerking className="w-full h-full text-[#ED1C24]" />
             </div>

@@ -9,30 +9,30 @@
   --primary: 0 78.5% 52%;      /* Burger King Red #ED1C24 */
   --primary-foreground: 0 0% 100%;
   
-  --background: 40 35% 96%;   /* Authentic Light Cream (Flame-Grilled aesthetic) */
-  --foreground: 222 47% 11%;
+  --background: 30 20% 90%;   /* สีพื้นหลังโทนน้ำตาลอ่อน (Light Brown/Coffee) */
+  --foreground: 20 50% 15%;
   
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card: 30 20% 94%;        /* สีการ์ดโทนน้ำตาลนวล */
+  --card-foreground: 20 50% 15%;
   
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover: 30 20% 94%;
+  --popover-foreground: 20 50% 15%;
   
-  --secondary: 30 90% 90%;     /* Light Orange/Bun tone */
-  --secondary-foreground: 22 80% 30%;
+  --secondary: 25 30% 80%;     /* สีรองโทนน้ำตาลนุ่มๆ */
+  --secondary-foreground: 20 60% 20%;
   
-  --muted: 30 20% 92%;
-  --muted-foreground: 222 15% 45%;
+  --muted: 30 15% 85%;
+  --muted-foreground: 25 20% 40%;
   
-  --accent: 0 78.5% 52%;      /* Burger King Red as accent */
+  --accent: 25 50% 45%;      /* สีเน้นโทนน้ำตาลเข้ม/สนิม */
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 30 30% 88%;
-  --input: 30 30% 88%;
-  --ring: 0 78.5% 52%;        /* BK Red ring */
+  --border: 30 15% 80%;
+  --input: 30 15% 80%;
+  --ring: 223 100% 31%;        /* Burger King Blue */
   
   --radius: 0.75rem;
   

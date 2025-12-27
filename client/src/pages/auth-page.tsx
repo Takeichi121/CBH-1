@@ -1,0 +1,262 @@
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { api } from "@shared/routes";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+export default function AuthPage() {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (isLoading) return null;
+  if (user) {
+    setLocation("/work");
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center space-y-2">
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-xl shadow-primary/25 mb-6 rotate-3">
+            <span className="text-white font-display font-bold text-3xl">BK</span>
+          </div>
+          <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">
+            Grand Diamond
+          </h1>
+          <p className="text-muted-foreground">Schedule management system</p>
+        </div>
+
+        <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="register">Register</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="login">
+            <LoginForm />
+          </TabsContent>
+          
+          <TabsContent value="register">
+            <RegisterForm />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function LoginForm() {
+  const { loginMutation } = useAuth();
+  
+  const form = useForm({
+    resolver: zodResolver(api.auth.login.input),
+    defaultValues: { username: "", password: "" },
+  });
+
+  function onSubmit(data: z.infer<typeof api.auth.login.input>) {
+    loginMutation.mutate(data);
+  }
+
+  return (
+    <Card className="glass-card border-none shadow-2xl">
+      <CardHeader>
+        <CardTitle>Welcome back</CardTitle>
+        <CardDescription>Enter your credentials to access your account</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter username..." {...field} className="h-11" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} className="h-11" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button 
+              type="submit" 
+              className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Sign In
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RegisterForm() {
+  const { registerStaffMutation, registerManagerMutation } = useAuth();
+  const [role, setRole] = useState<"staff" | "manager">("staff");
+
+  // Schema depends on role
+  const schema = role === "staff" ? api.auth.registerStaff.input : api.auth.registerManager.input;
+  
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      fullName: "",
+      nickName: "",
+      phone: "",
+      email: "",
+      password: "",
+      verifyCode: "", // Only for manager
+    },
+  });
+
+  function onSubmit(data: any) {
+    if (role === "staff") {
+      registerStaffMutation.mutate(data);
+    } else {
+      registerManagerMutation.mutate(data);
+    }
+  }
+
+  const isPending = registerStaffMutation.isPending || registerManagerMutation.isPending;
+
+  return (
+    <Card className="glass-card border-none shadow-2xl">
+      <CardHeader>
+        <CardTitle>Create Account</CardTitle>
+        <CardDescription>Join the team today</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 mb-6">
+          <Button 
+            type="button" 
+            variant={role === "staff" ? "default" : "outline"} 
+            onClick={() => setRole("staff")}
+            className="flex-1"
+          >
+            Staff
+          </Button>
+          <Button 
+            type="button" 
+            variant={role === "manager" ? "default" : "outline"} 
+            onClick={() => setRole("manager")}
+            className="flex-1"
+          >
+            Manager
+          </Button>
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            <FormField
+              control={form.control}
+              name="fullName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl><Input {...field} className="h-10" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="nickName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nickname</FormLabel>
+                    <FormControl><Input {...field} className="h-10" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl><Input {...field} className="h-10" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {role === "manager" && (
+              <FormField
+                control={form.control}
+                name="verifyCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Verification Code</FormLabel>
+                    <FormControl><Input type="password" placeholder="Ask Admin..." {...field} className="h-10 border-primary/30" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full mt-4 h-11 shadow-lg shadow-primary/20"
+              disabled={isPending}
+            >
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Register {role === "manager" ? "Manager" : "Staff"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}

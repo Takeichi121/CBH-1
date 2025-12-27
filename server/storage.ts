@@ -1,38 +1,131 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { users, shifts, config, systemlog, sessions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift } from "@shared/schema";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  // Users
+  getUser(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUsers(): Promise<User[]>;
+
+  // Shifts
+  getShift(username: string, date: string): Promise<Shift | undefined>;
+  getShiftsInRange(startDate: string, endDate: string): Promise<Shift[]>;
+  upsertShift(shift: InsertShift): Promise<Shift>;
+  deleteShift(username: string, date: string): Promise<void>;
+
+  // Config
+  getConfig(): Promise<Record<string, string>>;
+  setConfig(key: string, value: string): Promise<void>;
+
+  // Sessions
+  createSession(session: typeof sessions.$inferInsert): Promise<void>;
+  getSession(token: string): Promise<Session | undefined>;
+  deleteSession(token: string): Promise<void>;
+
+  // Logs
+  log(action: string, byUser: string, detail: string): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getUser(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username.toLowerCase()));
+    return user;
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values({
+        ...user,
+        username: user.username.toLowerCase()
+    }).returning();
+    return newUser;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+  async getUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getShift(username: string, date: string): Promise<Shift | undefined> {
+    const [shift] = await db.select().from(shifts).where(
+      and(eq(shifts.username, username.toLowerCase()), eq(shifts.date, date))
+    );
+    return shift;
+  }
+
+  async getShiftsInRange(startDate: string, endDate: string): Promise<Shift[]> {
+    return await db.select().from(shifts)
+      .where(and(gte(shifts.date, startDate), lte(shifts.date, endDate)))
+      .orderBy(shifts.date);
+  }
+
+  async upsertShift(shift: InsertShift): Promise<Shift> {
+    // Try to find existing
+    const existing = await this.getShift(shift.username, shift.date);
+    if (existing) {
+      const [updated] = await db.update(shifts)
+        .set({
+          ...shift,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(shifts.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [inserted] = await db.insert(shifts)
+        .values({
+            ...shift,
+            username: shift.username.toLowerCase(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        })
+        .returning();
+      return inserted;
+    }
+  }
+
+  async deleteShift(username: string, date: string): Promise<void> {
+    await db.delete(shifts).where(
+      and(eq(shifts.username, username.toLowerCase()), eq(shifts.date, date))
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async getConfig(): Promise<Record<string, string>> {
+    const rows = await db.select().from(config);
+    const res: Record<string, string> = {};
+    rows.forEach(r => res[r.key] = r.value);
+    return res;
+  }
+
+  async setConfig(key: string, value: string): Promise<void> {
+    const [existing] = await db.select().from(config).where(eq(config.key, key));
+    if (existing) {
+      await db.update(config).set({ value, updatedAt: new Date().toISOString() }).where(eq(config.key, key));
+    } else {
+      await db.insert(config).values({ key, value, updatedAt: new Date().toISOString() });
+    }
+  }
+
+  async createSession(session: typeof sessions.$inferInsert): Promise<void> {
+    await db.insert(sessions).values(session);
+  }
+
+  async getSession(token: string): Promise<Session | undefined> {
+    const [session] = await db.select().from(sessions).where(eq(sessions.token, token));
+    return session;
+  }
+
+  async deleteSession(token: string): Promise<void> {
+    await db.delete(sessions).where(eq(sessions.token, token));
+  }
+
+  async log(action: string, byUser: string, detail: string): Promise<void> {
+    await db.insert(systemlog).values({
+      ts: new Date().toISOString(),
+      action,
+      byUser,
+      detail
+    });
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

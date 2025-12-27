@@ -176,6 +176,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const grp = SHIFT_GROUPS.find(g => g.key === shiftGroup);
     if (!grp) return res.json({ ok: false, message: "Shift group invalid" });
 
+    // Handle staff booking default time
+    let finalStartTime = startTime;
+    if (!finalStartTime || finalStartTime === "") {
+      finalStartTime = grp.main || grp.windowStart;
+    }
+
     // Capacity check
     const shiftsOnDate = await storage.getShiftsInRange(date, date);
     const count = shiftsOnDate.filter(s => s.shiftGroup === shiftGroup).length;

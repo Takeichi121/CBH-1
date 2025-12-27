@@ -29,7 +29,6 @@ type BookFormValues = z.infer<typeof bookSchema>;
 
 export default function WorkPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const { t } = useI18n();
   // Format date as YYYY-MM-DD for API
   const dateParam = format(currentDate, "yyyy-MM-dd");
   
@@ -51,7 +50,7 @@ export default function WorkPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-display font-bold text-foreground">{t("mySchedule")}</h2>
+          <h2 className="text-3xl font-display font-bold text-foreground">My Schedule</h2>
           <p className="text-muted-foreground flex items-center gap-2 mt-1">
             <CalendarIcon className="w-4 h-4" />
             {displayRange}
@@ -100,7 +99,7 @@ export default function WorkPage() {
         ) : (
           <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-3xl bg-white/50">
             <CalendarIcon className="w-12 h-12 mb-4 opacity-20" />
-            <p>{t("noShifts") || "No shifts booked for this week."}</p>
+            <p>No shifts booked for this week.</p>
           </div>
         )}
       </div>
@@ -112,7 +111,6 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
   const [open, setOpen] = useState(false);
   const { mutate: bookShift, isPending } = useBookShift();
   const { user } = useAuth();
-  const { t } = useI18n();
   
   const form = useForm<BookFormValues>({
     resolver: zodResolver(bookSchema),
@@ -143,34 +141,30 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
       <DialogTrigger asChild>
         <Button className="rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 transition-opacity">
           <Plus className="w-4 h-4 mr-2" />
-          {t("bookShift")}
+          Book Shift
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{t("bookShift")}</DialogTitle>
+          <DialogTitle>Book a Shift</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
           <div className="space-y-2">
-            <Label>{t("date")}</Label>
+            <Label>Date</Label>
             <Input type="date" {...form.register("date")} className="rounded-xl" />
             {form.formState.errors.date && <p className="text-xs text-red-500">{form.formState.errors.date.message}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label>{t("shiftGroup")}</Label>
-            <Select onValueChange={(val) => {
-              form.setValue("shiftGroup", val);
-              const grp = groups?.find(g => g.key === val);
-              if (grp) form.setValue("startTime", grp.windowStart);
-            }}>
+            <Label>Shift Group</Label>
+            <Select onValueChange={(val) => form.setValue("shiftGroup", val)}>
               <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder={t("shiftGroup")} />
+                <SelectValue placeholder="Select group" />
               </SelectTrigger>
               <SelectContent>
                 {groups?.map((g: any) => (
                   <SelectItem key={g.key} value={g.key}>
-                    {g.label}
+                    {g.label} ({g.windowStart} - {g.windowEnd})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -179,18 +173,25 @@ function BookShiftDialog({ groups }: { groups: any[] }) {
           </div>
 
           <div className="space-y-2">
-            <Label>{t("startTime")}</Label>
-            <Input type="text" {...form.register("startTime")} className="rounded-xl bg-muted" readOnly />
+            <Label>Start Time</Label>
+            <div className="flex gap-2">
+              <Input type="time" {...form.register("startTime")} className="rounded-xl" />
+              {selectedGroup && (
+                <div className="text-xs text-muted-foreground flex items-center whitespace-nowrap">
+                  Window: {selectedGroup.windowStart} - {selectedGroup.windowEnd}
+                </div>
+              )}
+            </div>
             {form.formState.errors.startTime && <p className="text-xs text-red-500">{form.formState.errors.startTime.message}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label>{t("note")} ({t("cancel").toLowerCase()})</Label>
-            <Textarea {...form.register("note")} className="rounded-xl resize-none" placeholder="..." />
+            <Label>Note (Optional)</Label>
+            <Textarea {...form.register("note")} className="rounded-xl resize-none" placeholder="Any special requests?" />
           </div>
 
           <Button type="submit" className="w-full rounded-xl" disabled={isPending}>
-            {isPending ? t("loading") : t("submit")}
+            {isPending ? "Booking..." : "Confirm Booking"}
           </Button>
         </form>
       </DialogContent>

@@ -58,8 +58,6 @@ const translations = {
     submit: "Submit",
     back: "Back",
     loading: "Loading...",
-    noShifts: "No shifts booked for this week.",
-    theme: "Theme",
   },
   th: {
     appName: "Grand Diamond",
@@ -116,8 +114,6 @@ const translations = {
     submit: "ส่ง",
     back: "กลับ",
     loading: "กำลังโหลด...",
-    noShifts: "ไม่มีการจองกะสำหรับสัปดาห์นี้",
-    theme: "ธีม",
   },
 };
 

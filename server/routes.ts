@@ -236,7 +236,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const range = getWeekRangeTuesday(anyDate);
     const shifts = await storage.getShiftsInRange(range.start, range.end);
-    res.json({ ok: true, weekRange: range, roster: shifts });
+    const allUsers = await storage.getUsers();
+    res.json({ ok: true, weekRange: range, roster: shifts, users: allUsers });
   });
 
   // Shifts: Set For User (Manager)
@@ -341,11 +342,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ 
       ok: true, 
       user: {
-        fullName: u.fullName,
-        nickName: u.nickName,
-        phone: u.phone,
-        email: u.email,
-        position: u.position
+        fullName: u.fullName || "",
+        nickName: u.nickName || "",
+        phone: u.phone || "",
+        email: u.email || "",
+        position: u.position || "Staff"
       }
     });
   });

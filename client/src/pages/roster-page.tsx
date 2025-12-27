@@ -34,9 +34,22 @@ export default function RosterPage() {
 
   const days = data?.weekRange?.days || [];
   const rosterItems = data?.roster || [];
+  const allUsers = data?.users || [];
   
   // Group shifts by user
   const userShifts: Record<string, any> = {};
+
+  // Initialize with all users to ensure they show up even without shifts
+  allUsers.forEach((u: any) => {
+    userShifts[u.username] = {
+      username: u.username,
+      fullName: u.fullName,
+      nickName: u.nickName,
+      role: u.role,
+      shifts: {}
+    };
+  });
+
   rosterItems.forEach((shift: any) => {
     if (!userShifts[shift.username]) {
       userShifts[shift.username] = {
@@ -305,8 +318,10 @@ function UserProfileDialog({ children, username }: { children: React.ReactNode; 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/getUserProfile", username],
     queryFn: async () => {
+      // Use the token from the request body as per the app's pattern
+      const token = localStorage.getItem("bk_token") || "";
       const res = await apiRequest("POST", "/api/getUserProfile", { 
-        token: localStorage.getItem("token") || "", 
+        token, 
         username 
       });
       return res.json();

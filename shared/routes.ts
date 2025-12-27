@@ -127,7 +127,13 @@ export const api = {
       path: "/api/getRosterWeek",
       input: z.object({ token: z.string(), anyDate: z.string().optional() }),
       responses: {
-        200: z.object({ ok: z.boolean(), weekRange: z.any().optional(), roster: z.array(z.any()).optional(), message: z.string().optional() }),
+        200: z.object({ 
+          ok: z.boolean(), 
+          weekRange: z.any().optional(), 
+          roster: z.array(z.any()).optional(), 
+          users: z.array(z.any()).optional(),
+          message: z.string().optional() 
+        }),
       },
     },
     setForUser: {

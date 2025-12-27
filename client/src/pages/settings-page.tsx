@@ -5,32 +5,43 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useI18n } from "@/hooks/use-i18n";
+import { useTheme } from "next-themes";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const { t, language, setLanguage } = useI18n();
+  const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { data, isLoading, error } = useSettings();
-  const { mutate: updateSettings, isPending } = useUpdateSettings();
+  const { data: settingsData, isLoading: settingsLoading } = useSettings();
+  const { mutate: updateSettings, isPending: settingsUpdating } = useUpdateSettings();
 
-  const form = useForm();
+  const [isProfileUpdating, setIsProfileUpdating] = useState(false);
+  const profileForm = useForm({
+    defaultValues: {
+      fullName: user?.fullName || "",
+      nickName: user?.nickName || "",
+      phone: user?.phone || "",
+      email: user?.email || "",
+    }
+  });
 
-  // Redirect if not manager
-  if (user && user.role !== "manager" && user.role !== "admin") {
-    setLocation("/work");
-    return null;
-  }
+  const capacityForm = useForm();
 
   useEffect(() => {
-    if (data?.capacity) {
-      form.reset(data.capacity);
+    if (settingsData?.capacity) {
+      capacityForm.reset(settingsData.capacity);
     }
-  }, [data, form]);
+  }, [settingsData, capacityForm]);
 
-  const onSubmit = (values: any) => {
-    // Ensure numbers
+  const onCapacitySubmit = (values: any) => {
     const payload: Record<string, number> = {};
     Object.keys(values).forEach(key => {
       payload[key] = Number(values[key]);
@@ -38,53 +49,175 @@ export default function SettingsPage() {
     updateSettings(payload);
   };
 
-  if (isLoading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
-  if (error) return <div className="p-8 text-center text-red-500">Error: {error.message}</div>;
+  const onProfileSubmit = async (values: any) => {
+    setIsProfileUpdating(true);
+    try {
+      const res = await apiRequest("POST", "/api/updateProfile", {
+        token: localStorage.getItem("bk_token"),
+        ...values
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "Success", description: "Profile updated successfully" });
+        // Optional: refresh page or user state
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update profile" });
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsProfileUpdating(false);
+    }
+  };
 
-  const groups = data?.groups || [];
+  const isManager = user?.role === "manager" || user?.role === "admin";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-8 pb-12">
       <div>
-        <h2 className="text-3xl font-display font-bold text-foreground">Settings</h2>
-        <p className="text-muted-foreground">Manage system configuration</p>
+        <h2 className="text-3xl font-display font-bold text-foreground">{t("settings")}</h2>
+        <p className="text-muted-foreground">Manage your profile and application preferences</p>
       </div>
 
+      {/* Profile Section */}
       <Card className="glass-card border-none shadow-xl">
-        <CardHeader>
-          <CardTitle>Shift Capacity</CardTitle>
-          <CardDescription>
-            Set the maximum number of staff allowed per shift group.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle>Profile Information</CardTitle>
+            <CardDescription>Update your personal details</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {groups.map((group: any) => (
-                <div key={group.key} className="space-y-2">
-                  <Label className="text-base font-medium">{group.label}</Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {group.windowStart} - {group.windowEnd}
-                  </p>
-                  <Input 
-                    type="number" 
-                    min="0"
-                    {...form.register(group.key)} 
-                    className="h-11 text-lg font-semibold text-center"
-                  />
-                </div>
-              ))}
+          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("fullName")}</Label>
+                <Input {...profileForm.register("fullName")} className="rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("nickname")}</Label>
+                <Input {...profileForm.register("nickName")} className="rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("phone")}</Label>
+                <Input {...profileForm.register("phone")} className="rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("email")}</Label>
+                <Input {...profileForm.register("email")} type="email" className="rounded-xl" />
+              </div>
             </div>
-            
-            <div className="flex justify-end pt-4">
-              <Button type="submit" size="lg" className="rounded-xl shadow-lg shadow-primary/20" disabled={isPending} data-testid="button-save-settings">
-                {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
-                Save Changes
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isProfileUpdating} className="rounded-xl">
+                {isProfileUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Update Profile
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+
+      {/* Appearance & Language Section */}
+      <Card className="glass-card border-none shadow-xl">
+        <CardHeader className="flex flex-row items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Globe className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle>Preferences</CardTitle>
+            <CardDescription>Language and appearance settings</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base">Language</Label>
+              <p className="text-sm text-muted-foreground">Select your preferred language</p>
+            </div>
+            <Select value={language} onValueChange={(v: any) => setLanguage(v)}>
+              <SelectTrigger className="w-[140px] rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="th">ไทย</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between border-t pt-6">
+            <div className="space-y-0.5">
+              <Label className="text-base">Theme</Label>
+              <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
+            </div>
+            <div className="flex bg-muted p-1 rounded-xl">
+              <Button 
+                variant={theme === "light" ? "default" : "ghost"} 
+                size="sm" 
+                onClick={() => setTheme("light")}
+                className="rounded-lg h-8"
+              >
+                <Sun className="w-4 h-4 mr-2" />
+                Light
+              </Button>
+              <Button 
+                variant={theme === "dark" ? "default" : "ghost"} 
+                size="sm" 
+                onClick={() => setTheme("dark")}
+                className="rounded-lg h-8"
+              >
+                <Moon className="w-4 h-4 mr-2" />
+                Dark
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Capacity Section (Managers only) */}
+      {isManager && (
+        <Card className="glass-card border-none shadow-xl">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Save className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Shift Capacity</CardTitle>
+              <CardDescription>System-wide maximum staff per shift group</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {settingsLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin w-6 h-6 text-primary" /></div>
+            ) : (
+              <form onSubmit={capacityForm.handleSubmit(onCapacitySubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {settingsData?.groups?.map((group: any) => (
+                    <div key={group.key} className="space-y-2">
+                      <Label className="text-sm font-semibold">{group.label}</Label>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        {...capacityForm.register(group.key)} 
+                        className="h-10 text-center rounded-xl"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" disabled={settingsUpdating} className="rounded-xl">
+                    {settingsUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Save Capacities
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

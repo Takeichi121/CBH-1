@@ -240,6 +240,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, weekRange: range, roster: shifts, users: allUsers });
   });
 
+  // User: Update Profile
+  app.post("/api/updateProfile", async (req, res) => {
+    const { token, fullName, nickName, phone, email } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    const [updated] = await db.update(users)
+      .set({ fullName, nickName, phone, email })
+      .where(eq(users.username, u.username))
+      .returning();
+
+    res.json({ ok: true, user: updated });
+  });
+
   // Shifts: Set For User (Manager)
   app.post(api.shifts.setForUser.path, async (req, res) => {
     const { token, username, date, shiftGroup, startTime, note } = req.body;

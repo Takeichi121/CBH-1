@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n } from "@/hooks/use-i18n";
 import { useMyWeek, useBookShift, useCancelShift, useRoster } from "@/hooks/use-shifts";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +30,7 @@ const bookSchema = z.object({
 type BookFormValues = z.infer<typeof bookSchema>;
 
 export default function WorkPage() {
+  const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   // Format date as YYYY-MM-DD for API
   const dateParam = format(currentDate, "yyyy-MM-dd");

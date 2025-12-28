@@ -83,7 +83,7 @@ export default function AuthPage() {
         {isDeveloperMode ? (
           <>
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Developer Mode</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground select-none">Developer Mode</h1>
               <Button
                 type="button"
                 variant="ghost"
@@ -105,12 +105,12 @@ export default function AuthPage() {
               {!isCodeVerified ? (
                 <>
                   <CardHeader>
-                    <CardTitle>Verify Access</CardTitle>
-                    <CardDescription>Enter code to access Developer Mode</CardDescription>
+                    <CardTitle className="select-none">Verify Access</CardTitle>
+                    <CardDescription className="select-none">Enter code to access Developer Mode</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="dev-verify-code">Verify Code</Label>
+                      <Label htmlFor="dev-verify-code" className="select-none">Verify Code</Label>
                       <Input
                         id="dev-verify-code"
                         type="password"

@@ -182,7 +182,7 @@ export default function AuthPage() {
           </>
         ) : (
           <>
-            <div className="text-center space-y-2 md:space-y-4">
+            <div className="text-center space-y-2 md:space-y-4 select-none">
               <div className="mx-auto h-24 w-24 md:h-40 md:w-40 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
                 <img src={logoImg} alt="Burger King Logo" className="w-full h-full object-contain drop-shadow-xl" />
               </div>
@@ -223,7 +223,7 @@ export default function AuthPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="md:hidden text-center pt-4 space-y-1">
+            <div className="md:hidden text-center pt-4 space-y-1 select-none">
               <p className="text-[10px] text-muted-foreground">
                 Created by{" "}
                 <button

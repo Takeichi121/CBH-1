@@ -114,10 +114,10 @@ export default function RosterPage() {
                 {days.map((day: string) => (
                   <TableHead key={day} className="text-center min-w-[120px]">
                     <div className="flex flex-col items-center py-2">
-                      <span className="text-xs uppercase text-primary font-bold">
+                      <span className="text-sm uppercase text-destructive font-black tracking-tighter">
                         {t(format(parseISO(day), "EEEE").toLowerCase() as any)}
                       </span>
-                      <span className="text-lg font-bold text-foreground">
+                      <span className="text-3xl font-black text-foreground mt-1">
                         {format(parseISO(day), "d")}
                       </span>
                     </div>

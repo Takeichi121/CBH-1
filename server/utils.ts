@@ -43,28 +43,45 @@ export function isSystemClosed(): boolean {
   return false;
 }
 
-export function getWeekRangeTuesday(anyDate?: string) {
-  const base = (anyDate && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) ? new Date(anyDate + "T00:00:00+07:00") : new Date();
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(base);
-  const yyyy = parts.find(p => p.type === "year")?.value;
-  const mm = parts.find(p => p.type === "month")?.value;
-  const dd = parts.find(p => p.type === "day")?.value;
-  const wd = parts.find(p => p.type === "weekday")?.value || "Mon";
-  const map: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
-  const u = map[wd] || 1;
+export function getWeekStartTuesday(date: Date | string) {
+  const d = (date instanceof Date)
+    ? new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    : new Date(date + "T00:00:00"); // local midnight
 
-  const d0 = new Date(`${yyyy}-${mm}-${dd}T00:00:00+07:00`);
-  const delta = (u >= 2) ? (u - 2) : (7 - (2 - u));
-  const start = new Date(d0.getTime());
-  start.setDate(start.getDate() - delta);
+  const day = d.getDay(); // 0=Sun,1=Mon,2=Tue,...6=Sat
+  const diff = (day - 2 + 7) % 7;   // how many days to go back to Tuesday
+  d.setDate(d.getDate() - diff);
+  return d; // Tuesday
+}
 
-  const days: string[] = [];
+export function getWeekDaysTuesday(date: Date | string) {
+  const start = getWeekStartTuesday(date);
+  const days = [];
   for (let i = 0; i < 7; i++) {
-    const x = new Date(start.getTime());
-    x.setDate(x.getDate() + i);
-    days.push(x.toISOString().slice(0, 10));
+    const x = new Date(start);
+    x.setDate(start.getDate() + i);
+    days.push(x);
   }
-  return { start: days[0], end: days[6], days };
+  return days; // [Tue..Mon]
+}
+
+export function toYMD(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function getWeekRangeTuesday(anyDate?: string) {
+  const base = anyDate || toYMD(new Date());
+  const weekDays = getWeekDaysTuesday(base);
+  const days = weekDays.map(d => toYMD(d));
+  
+  return {
+    start: days[0],
+    end: days[6],
+    days
+  };
 }
 
 export const DEFAULT_CAPACITY = { open: 4, lunch: 4, dinner: 4, late: 4 };

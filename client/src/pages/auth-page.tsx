@@ -23,8 +23,21 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [developerRole, setDeveloperRole] = useState<"staff" | "manager" | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [isCodeVerified, setIsCodeVerified] = useState(false);
   const { theme, setTheme } = useTheme();
   const loginAttemptedRef = useRef(false);
+
+  // Check for pending dev mode from layout
+  useEffect(() => {
+    const pendingRole = localStorage.getItem("pending_dev_mode") as "staff" | "manager" | null;
+    if (pendingRole) {
+      localStorage.removeItem("pending_dev_mode");
+      setIsDeveloperMode(true);
+      setIsCodeVerified(true); // Skip code if coming from inside app
+      setDeveloperRole(pendingRole);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -89,6 +102,8 @@ export default function AuthPage() {
                 onClick={() => {
                   setIsDeveloperMode(false);
                   setDeveloperRole(null);
+                  setVerifyCode("");
+                  setIsCodeVerified(false);
                   loginAttemptedRef.current = false;
                 }}
                 data-testid="button-exit-dev-mode"
@@ -98,38 +113,73 @@ export default function AuthPage() {
             </div>
 
             <Card className="glass-card border-none shadow-2xl">
-              <CardHeader>
-                <CardTitle>{t("welcomeBack")}</CardTitle>
-                <CardDescription>Select developer mode</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  type="button"
-                  variant="default"
-                  className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
-                  onClick={() => setDeveloperRole("staff")}
-                  disabled={loginMutation.isPending}
-                  data-testid="button-dev-mode-staff"
-                >
-                  {loginMutation.isPending && developerRole === "staff" ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  Staff Developer Mode
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-11 text-base font-semibold"
-                  onClick={() => setDeveloperRole("manager")}
-                  disabled={loginMutation.isPending}
-                  data-testid="button-dev-mode-manager"
-                >
-                  {loginMutation.isPending && developerRole === "manager" ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  Manager Developer Mode
-                </Button>
-              </CardContent>
+              {!isCodeVerified ? (
+                <>
+                  <CardHeader>
+                    <CardTitle>Verify Access</CardTitle>
+                    <CardDescription>Enter code to access Developer Mode</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dev-verify-code">Verify Code</Label>
+                      <Input
+                        id="dev-verify-code"
+                        type="password"
+                        placeholder="Enter code..."
+                        value={verifyCode}
+                        onChange={(e) => setVerifyCode(e.target.value)}
+                        className="h-11"
+                        autoFocus
+                      />
+                    </div>
+                    <Button
+                      className="w-full h-11 text-base font-semibold"
+                      onClick={() => {
+                        if (verifyCode === "bk1040") {
+                          setIsCodeVerified(true);
+                        }
+                      }}
+                    >
+                      Verify
+                    </Button>
+                  </CardContent>
+                </>
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle>{t("welcomeBack")}</CardTitle>
+                    <CardDescription>Select developer mode</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button
+                      type="button"
+                      variant="default"
+                      className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
+                      onClick={() => setDeveloperRole("staff")}
+                      disabled={loginMutation.isPending}
+                      data-testid="button-dev-mode-staff"
+                    >
+                      {loginMutation.isPending && developerRole === "staff" ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Staff Developer Mode
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 text-base font-semibold"
+                      onClick={() => setDeveloperRole("manager")}
+                      disabled={loginMutation.isPending}
+                      data-testid="button-dev-mode-manager"
+                    >
+                      {loginMutation.isPending && developerRole === "manager" ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Manager Developer Mode
+                    </Button>
+                  </CardContent>
+                </>
+              )}
             </Card>
           </>
         ) : (

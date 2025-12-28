@@ -37,12 +37,12 @@ export default function AuthPage() {
 
   // Auto-login for developer mode
   useEffect(() => {
-    if (developerRole && !loginAttemptedRef.current && !loginMutation.isPending) {
+    if (developerRole && isCodeVerified && !loginAttemptedRef.current && !loginMutation.isPending) {
       loginAttemptedRef.current = true;
       const username = developerRole === "staff" ? "staff" : "manager";
       loginMutation.mutate({ username, password: "1234" });
     }
-  }, [developerRole, loginMutation]);
+  }, [developerRole, isCodeVerified, loginMutation]);
 
   if (isLoading) return null;
   if (user) return null;

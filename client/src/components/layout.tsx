@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, X } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, X, Shield } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
@@ -37,10 +37,13 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const isManager = user.role === "manager" || user.role === "admin";
 
+  const isAdmin = user.role === "admin";
+
   const navItems = [
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
     { href: "/settings", label: t("settings") || "Settings", icon: Settings },
+    ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
   return (

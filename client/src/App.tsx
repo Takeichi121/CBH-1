@@ -13,6 +13,7 @@ import AuthPage from "@/pages/auth-page";
 import WorkPage from "@/pages/work-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
+import AdminPage from "@/pages/admin-page";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
@@ -49,6 +50,10 @@ function Router() {
           
           <Route path="/settings">
             <ProtectedRoute component={SettingsPage} path="/settings" />
+          </Route>
+          
+          <Route path="/admin">
+            <ProtectedRoute component={AdminPage} path="/admin" />
           </Route>
           
           <Route component={NotFound} />

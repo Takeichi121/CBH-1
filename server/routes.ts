@@ -346,6 +346,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Admin: Update User Role and Position
+  app.post("/api/admin/updateUserRole", async (req, res) => {
+    const { token, username, role, position } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+
+    const targetUser = await storage.getUser(username);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+
+    await storage.updateUserRole(username, role, position);
+    await storage.log("admin_update_role", u.username, `set ${username} role=${role} position=${position || "none"}`);
+    res.json({ ok: true });
+  });
+
+  // Admin: Get all users
+  app.post("/api/admin/getUsers", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+
+    const allUsers = await storage.getUsers();
+    res.json({ ok: true, users: allUsers.map(user => ({
+      ...user,
+      passhash: undefined // Don't send password hash
+    })) });
+  });
+
   // Shifts: Set For User (Manager)
   app.post(api.shifts.setForUser.path, async (req, res) => {
     const { token, username, date, shiftGroup, startTime, note } = req.body;

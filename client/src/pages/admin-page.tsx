@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 
 const positionHierarchy: Record<string, number> = {
@@ -89,6 +90,15 @@ export default function AdminPage() {
     created: language === "th" ? "สร้างสำเร็จ" : "Created successfully",
     fullNameEn: language === "th" ? "ชื่อ (อังกฤษ)" : "Name (English)",
     fullNameTh: language === "th" ? "ชื่อ (ไทย)" : "Name (Thai)",
+    delete: language === "th" ? "ลบ" : "Delete",
+    resign: language === "th" ? "ลาออก" : "Resigned",
+    resigned: language === "th" ? "ลาออกแล้ว" : "Resigned",
+    confirmDelete: language === "th" ? "ยืนยันการลบผู้ใช้?" : "Confirm delete user?",
+    confirmDeleteDesc: language === "th" ? "การลบผู้ใช้จะไม่สามารถกู้คืนได้" : "This action cannot be undone.",
+    confirmResign: language === "th" ? "ยืนยันการลาออก?" : "Confirm resignation?",
+    confirmResignDesc: language === "th" ? "ผู้ใช้จะถูกทำเครื่องหมายว่าลาออกแล้ว" : "User will be marked as resigned.",
+    deleted: language === "th" ? "ลบแล้ว" : "Deleted",
+    markedResigned: language === "th" ? "ทำเครื่องหมายลาออกแล้ว" : "Marked as resigned",
   };
 
   const roleColors: Record<string, string> = {
@@ -161,6 +171,38 @@ export default function AdminPage() {
       active: currentActive === 1 ? 0 : 1 
     });
     refetch();
+  };
+
+  const handleDeleteUser = async (username: string) => {
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      const res = await apiRequest("POST", "/api/admin/deleteUser", { token, username });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: labels.deleted });
+        refetch();
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleResignUser = async (username: string) => {
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      const res = await apiRequest("POST", "/api/admin/resignUser", { token, username });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: labels.markedResigned });
+        refetch();
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
   };
 
   const canCreatePosition = (pos: string): boolean => {
@@ -359,7 +401,7 @@ export default function AdminPage() {
             </TableHeader>
             <TableBody>
               {users.map((u: any) => (
-                <TableRow key={u.username} className={u.active === 0 ? "opacity-50" : ""}>
+                <TableRow key={u.username} className={u.active !== 1 ? "opacity-50" : ""}>
                   <TableCell className="font-medium">@{u.username}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -386,12 +428,12 @@ export default function AdminPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={u.active === 1 ? "default" : "secondary"}>
-                      {u.active === 1 ? labels.active : labels.inactive}
+                    <Badge variant={u.active === 1 ? "default" : u.active === 2 ? "destructive" : "secondary"}>
+                      {u.active === 1 ? labels.active : u.active === 2 ? labels.resigned : labels.inactive}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
                       {canEditUser(u) && (
                       <Dialog open={editingUser?.username === u.username} onOpenChange={(open) => !open && setEditingUser(null)}>
                         <DialogTrigger asChild>
@@ -481,6 +523,66 @@ export default function AdminPage() {
                       >
                         {u.active === 1 ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </Button>
+                      )}
+                      
+                      {canEditUser(u) && u.active !== 2 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            data-testid={`button-resign-${u.username}`}
+                          >
+                            <UserMinus className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{labels.confirmResign}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {labels.confirmResignDesc}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleResignUser(u.username)}>
+                              {labels.resign}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      )}
+                      
+                      {canEditUser(u) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            data-testid={`button-delete-${u.username}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{labels.confirmDelete}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {labels.confirmDeleteDesc}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteUser(u.username)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {labels.delete}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       )}
                     </div>
                   </TableCell>

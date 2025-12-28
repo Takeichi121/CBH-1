@@ -369,6 +369,60 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Admin/Manager: Delete User
+  app.post("/api/admin/deleteUser", async (req, res) => {
+    const { token, username } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    const targetUser = await storage.getUser(username);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+
+    // Cannot delete admin users unless you are admin
+    if (targetUser.role === "admin" && u.role !== "admin") {
+      return res.json({ ok: false, message: "Cannot delete admin" });
+    }
+
+    // Cannot delete yourself
+    if (username === u.username) {
+      return res.json({ ok: false, message: "Cannot delete yourself" });
+    }
+
+    await db.delete(users).where(eq(users.username, username));
+    await storage.log("delete_user", u.username, `deleted ${username}`);
+    res.json({ ok: true });
+  });
+
+  // Admin/Manager: Mark User as Resigned
+  app.post("/api/admin/resignUser", async (req, res) => {
+    const { token, username } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    const targetUser = await storage.getUser(username);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+
+    // Cannot resign yourself
+    if (username === u.username) {
+      return res.json({ ok: false, message: "Cannot resign yourself" });
+    }
+
+    // Set active = 2 for resigned
+    await db.update(users).set({ active: 2 }).where(eq(users.username, username));
+    await storage.log("resign_user", u.username, `marked ${username} as resigned`);
+    res.json({ ok: true });
+  });
+
   // Position hierarchy (lower number = higher rank)
   const positionHierarchy: Record<string, number> = {
     "admin": 0,

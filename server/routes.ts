@@ -341,7 +341,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Shifts: Swap
+  // Shifts: Swap Request (creates a pending request for manager approval)
   app.post(api.shifts.swap.path, async (req, res) => {
     const { token, myDate, targetUsername, targetDate } = req.body;
 
@@ -365,44 +365,125 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.json({ ok: false, message: "Swap allowed for staff only" });
     }
 
+    // Check if both have shifts on their respective dates
+    const myShift = await storage.getShift(me.username, myDate);
+    if (!myShift) return res.json({ ok: false, message: "You have no shift on the selected date" });
+
+    const targetShift = await storage.getShift(target.username, targetDate);
+    if (!targetShift) return res.json({ ok: false, message: "Target has no shift on the selected date" });
+
+    // Create swap request (pending manager approval)
+    const now = new Date().toISOString();
+    await storage.createSwapRequest({
+      requesterUsername: me.username,
+      requesterDate: myDate,
+      targetUsername: target.username,
+      targetDate: targetDate,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await storage.log("swap_request", me.username, `request swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
+    return res.json({ ok: true, message: "Swap request submitted for manager approval" });
+  });
+
+  // Get Swap Requests (for manager view)
+  app.post(api.shifts.getSwapRequests.path, async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    // Get pending requests for managers, or user's own requests for staff
+    const isManager = u.role === "admin" || u.role === "manager";
+    const requests = await storage.getSwapRequests(isManager ? "pending" : undefined);
+    
+    // For staff, filter to only their own requests
+    const filteredRequests = isManager 
+      ? requests 
+      : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
+
+    res.json({ ok: true, requests: filteredRequests });
+  });
+
+  // Approve Swap Request (manager only)
+  app.post(api.shifts.approveSwap.path, async (req, res) => {
+    const { token, requestId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    const request = await storage.getSwapRequestById(requestId);
+    if (!request) return res.json({ ok: false, message: "Request not found" });
+    if (request.status !== "pending") return res.json({ ok: false, message: "Request already processed" });
+
     try {
       await transaction(async (tx) => {
-        const [myShift] = await tx
+        const [requesterShift] = await tx
           .select()
           .from(shifts)
-          .where(and(eq(shifts.username, me.username), eq(shifts.date, myDate)))
+          .where(and(eq(shifts.username, request.requesterUsername), eq(shifts.date, request.requesterDate)))
           .limit(1);
 
-        if (!myShift) throw new Error("You have no shift on myDate");
+        if (!requesterShift) throw new Error("Requester shift not found");
 
         const [targetShift] = await tx
           .select()
           .from(shifts)
-          .where(and(eq(shifts.username, target.username), eq(shifts.date, targetDate)))
+          .where(and(eq(shifts.username, request.targetUsername), eq(shifts.date, request.targetDate)))
           .limit(1);
 
-        if (!targetShift) throw new Error("Target has no shift on targetDate");
+        if (!targetShift) throw new Error("Target shift not found");
 
         const now = new Date().toISOString();
 
-        await updateShiftById(tx, myShift.id, {
-          date: targetDate,
+        // Swap the dates
+        await updateShiftById(tx, requesterShift.id, {
+          date: request.targetDate,
           updatedAt: now,
-          updatedBy: me.username,
+          updatedBy: u.username,
         });
 
         await updateShiftById(tx, targetShift.id, {
-          date: myDate,
+          date: request.requesterDate,
           updatedAt: now,
-          updatedBy: me.username,
+          updatedBy: u.username,
         });
       });
 
-      await storage.log("swap_shift", me.username, `swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
+      await storage.updateSwapRequestStatus(requestId, "approved", u.username);
+      await storage.log("approve_swap", u.username, `approved swap #${requestId}`);
       return res.json({ ok: true });
     } catch (e: any) {
       return res.json({ ok: false, message: e?.message || "Swap failed" });
     }
+  });
+
+  // Reject Swap Request (manager only)
+  app.post(api.shifts.rejectSwap.path, async (req, res) => {
+    const { token, requestId, note } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    const request = await storage.getSwapRequestById(requestId);
+    if (!request) return res.json({ ok: false, message: "Request not found" });
+    if (request.status !== "pending") return res.json({ ok: false, message: "Request already processed" });
+
+    await storage.updateSwapRequestStatus(requestId, "rejected", u.username, note);
+    await storage.log("reject_swap", u.username, `rejected swap #${requestId}`);
+    return res.json({ ok: true });
   });
 
   // User: Get Profile

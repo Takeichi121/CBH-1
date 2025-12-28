@@ -167,6 +167,36 @@ export class DatabaseStorage implements IStorage {
       detail
     });
   }
+
+  async createSwapRequest(request: InsertSwapRequest): Promise<SwapRequest> {
+    const [created] = await db.insert(swapRequests).values(request).returning();
+    return created;
+  }
+
+  async getSwapRequests(status?: string): Promise<SwapRequest[]> {
+    if (status) {
+      return await db.select().from(swapRequests)
+        .where(eq(swapRequests.status, status))
+        .orderBy(desc(swapRequests.createdAt));
+    }
+    return await db.select().from(swapRequests).orderBy(desc(swapRequests.createdAt));
+  }
+
+  async getSwapRequestById(id: number): Promise<SwapRequest | undefined> {
+    const [request] = await db.select().from(swapRequests).where(eq(swapRequests.id, id));
+    return request;
+  }
+
+  async updateSwapRequestStatus(id: number, status: string, approvedBy?: string, note?: string): Promise<void> {
+    await db.update(swapRequests)
+      .set({ 
+        status, 
+        approvedBy: approvedBy || null, 
+        note: note || null,
+        updatedAt: new Date().toISOString() 
+      })
+      .where(eq(swapRequests.id, id));
+  }
 }
 
 export const storage = new DatabaseStorage();

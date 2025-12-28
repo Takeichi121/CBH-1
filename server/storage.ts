@@ -36,6 +36,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUsers(): Promise<User[]>;
   updateUserStatus(username: string, active: number): Promise<void>;
+  updateUser(username: string, data: Partial<{ nickName: string; phone: string; email: string }>): Promise<void>;
 
   // Shifts
   getShift(username: string, date: string): Promise<Shift | undefined>;
@@ -83,6 +84,12 @@ export class DatabaseStorage implements IStorage {
   async updateUserStatus(username: string, active: number): Promise<void> {
     await db.update(users)
       .set({ active })
+      .where(eq(users.username, username.toLowerCase()));
+  }
+
+  async updateUser(username: string, data: Partial<{ nickName: string; phone: string; email: string }>): Promise<void> {
+    await db.update(users)
+      .set(data)
       .where(eq(users.username, username.toLowerCase()));
   }
 

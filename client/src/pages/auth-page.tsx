@@ -322,12 +322,8 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
     resolver: zodResolver(schema),
     defaultValues: {
       fullName: "",
-      nickName: "",
-      phone: "",
-      email: "",
       password: "",
       verifyCode: "", // Only for manager
-      position: "" as ManagerPosition, // Only for manager
     },
   });
 
@@ -383,41 +379,6 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 <FormItem>
                   <FormLabel className="select-none">{t("fullName")}</FormLabel>
                   <FormControl><Input {...field} className="h-10" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="nickName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="select-none">{t("nickname")}</FormLabel>
-                    <FormControl><Input {...field} className="h-10" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="select-none">{t("phone")}</FormLabel>
-                    <FormControl><Input {...field} className="h-10" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="select-none">{t("email")}</FormLabel>
-                  <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

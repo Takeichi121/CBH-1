@@ -60,7 +60,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     await storage.createSession({ token, username: u.username, expiresAt });
 
     await storage.log("login_ok", u.username, "role=" + u.role);
-    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName } });
+    const profileComplete = !!(u.nickName && u.phone && u.email);
+    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName, profileComplete } });
   });
 
   // Auth: Validate
@@ -78,7 +79,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u || !u.active) return res.json({ ok: false });
 
-    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName } });
+    const profileComplete = !!(u.nickName && u.phone && u.email);
+    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName, profileComplete } });
   });
 
   // Auth: Logout
@@ -91,8 +93,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Register Staff
   app.post(api.auth.registerStaff.path, async (req, res) => {
     if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
-    const { fullName, nickName, phone, email, password } = req.body;
-    if (!fullName || !password || !email) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Email / Password" });
+    const { fullName, password } = req.body;
+    if (!fullName || !password) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Password" });
 
     const base = generateUsernameBase(fullName);
     const username = await allocateUsername(base, async (u) => !!(await storage.getUser(u)));
@@ -100,7 +102,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     await storage.createUser({
       username, passhash: hashPass(password), role: "staff",
-      fullName, nickName, phone, email, position: "Service Staff", active: 1, createdAt: new Date().toISOString()
+      fullName, nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString()
     });
     await storage.log("register_staff", username, "fullName=" + fullName);
     res.json({ ok: true, username });
@@ -109,9 +111,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Register Manager
   app.post(api.auth.registerManager.path, async (req, res) => {
     if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
-    const { fullName, nickName, phone, email, password, verifyCode } = req.body;
+    const { fullName, password, verifyCode } = req.body;
     if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก" });
-    if (!fullName || !password || !email) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Email / Password" });
+    if (!fullName || !password) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Password" });
 
     const base = generateUsernameBase(fullName);
     const username = await allocateUsername(base, async (u) => !!(await storage.getUser(u)));
@@ -120,10 +122,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     // Default all managers to Store Manager position
     await storage.createUser({
       username, passhash: hashPass(password), role: "manager",
-      fullName, nickName, phone, email, position: "store_manager", active: 1, createdAt: new Date().toISOString()
+      fullName, nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString()
     });
     await storage.log("register_manager", username, `fullName=${fullName}, position=store_manager`);
     res.json({ ok: true, username });
+  });
+
+  // Complete Profile (first login)
+  app.post(api.auth.completeProfile.path, async (req, res) => {
+    const { token, nickName, phone, email } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "session หมดอายุ" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "ไม่พบผู้ใช้" });
+
+    if (!nickName || !phone || !email) {
+      return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ" });
+    }
+
+    await storage.updateUser(u.username, { nickName, phone, email });
+    await storage.log("complete_profile", u.username, `nickName=${nickName}, phone=${phone}, email=${email}`);
+    res.json({ ok: true });
   });
 
   // Settings

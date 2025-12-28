@@ -48,9 +48,6 @@ export const api = {
       path: "/api/registerStaff",
       input: z.object({
         fullName: z.string(),
-        nickName: z.string(),
-        phone: z.string(),
-        email: z.string(),
         password: z.string(),
       }),
       responses: {
@@ -62,15 +59,24 @@ export const api = {
       path: "/api/registerManager",
       input: z.object({
         fullName: z.string(),
-        nickName: z.string(),
-        phone: z.string(),
-        email: z.string(),
         password: z.string(),
         verifyCode: z.string(),
-        position: z.enum(["store_manager", "assistant_store_manager", "shift_manager", "management_trainee"]),
       }),
       responses: {
         200: z.object({ ok: z.boolean(), username: z.string().optional(), message: z.string().optional() }),
+      },
+    },
+    completeProfile: {
+      method: "POST",
+      path: "/api/completeProfile",
+      input: z.object({
+        token: z.string(),
+        nickName: z.string().min(1),
+        phone: z.string().min(1),
+        email: z.string().email(),
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
   },

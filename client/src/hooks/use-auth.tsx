@@ -13,6 +13,7 @@ type User = {
   email?: string;
   phone?: string;
   position?: string;
+  profileComplete?: boolean;
 };
 
 type AuthContextType = {
@@ -23,6 +24,8 @@ type AuthContextType = {
   logoutMutation: ReturnType<typeof useLogoutMutation>;
   registerStaffMutation: ReturnType<typeof useRegisterStaffMutation>;
   registerManagerMutation: ReturnType<typeof useRegisterManagerMutation>;
+  completeProfileMutation: ReturnType<typeof useCompleteProfileMutation>;
+  setUserProfileComplete: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -75,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useLogoutMutation(setUser, setToken, setLocation, toast);
   const registerStaffMutation = useRegisterStaffMutation(toast);
   const registerManagerMutation = useRegisterManagerMutation(toast);
+  const completeProfileMutation = useCompleteProfileMutation(token, toast);
+
+  const setUserProfileComplete = () => {
+    setUser((prev) => prev ? { ...prev, profileComplete: true } : null);
+  };
 
   return (
     <AuthContext.Provider
@@ -86,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logoutMutation,
         registerStaffMutation,
         registerManagerMutation,
+        completeProfileMutation,
+        setUserProfileComplete,
       }}
     >
       {children}
@@ -207,6 +217,29 @@ function useRegisterManagerMutation(toast: any) {
       } else {
         toast({ variant: "destructive", title: "Registration Failed", description: data.message });
       }
+    },
+  });
+}
+
+function useCompleteProfileMutation(token: string | null, toast: any) {
+  return useMutation({
+    mutationFn: async (data: { nickName: string; phone: string; email: string }) => {
+      const res = await fetch(api.auth.completeProfile.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, token }),
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      if (data.ok) {
+        toast({ title: "Profile Complete", description: "Your profile has been updated" });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update profile" });
+      }
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Error", description: "Something went wrong" });
     },
   });
 }

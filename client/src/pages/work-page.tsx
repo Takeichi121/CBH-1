@@ -110,49 +110,51 @@ export default function WorkPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow className="hover:bg-muted/30 transition-colors">
-                <TableCell className="font-medium">
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-primary">Your Shifts</span>
-                    <span className="text-xs text-muted-foreground">Select to book/cancel</span>
-                  </div>
-                </TableCell>
-                {days.map((day: string) => {
-                  const shift = myShiftsByDate[day];
-                  return (
-                    <TableCell key={day} className="p-2">
-                      {shift ? (
-                        <div 
-                          className={`h-20 w-full rounded-xl p-2 border shadow-sm flex flex-col justify-center items-center gap-1 cursor-pointer hover:brightness-95 transition-all
-                            ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                              shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                              shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
-                              'bg-slate-100 text-slate-700 border-slate-200'}`}
-                          onClick={() => {
-                            if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
-                              cancelShift(day);
-                            }
-                          }}
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
-                          <span className="text-xs font-semibold">{shift.startTime}</span>
-                        </div>
-                      ) : (
-                        <BookShiftDialog 
-                          groups={settings?.groups} 
-                          day={day} 
-                          disabled={data.closed}
-                          settings={settings}
-                        >
-                          <div className={`h-20 w-full rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
+              {user?.role === "staff" && (
+                <TableRow className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-primary">Your Shifts</span>
+                      <span className="text-xs text-muted-foreground">Select to book/cancel</span>
+                    </div>
+                  </TableCell>
+                  {days.map((day: string) => {
+                    const shift = myShiftsByDate[day];
+                    return (
+                      <TableCell key={day} className="p-2">
+                        {shift ? (
+                          <div 
+                            className={`h-20 w-full rounded-xl p-2 border shadow-sm flex flex-col justify-center items-center gap-1 cursor-pointer hover:brightness-95 transition-all
+                              ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                'bg-slate-100 text-slate-700 border-slate-200'}`}
+                            onClick={() => {
+                              if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
+                                cancelShift(day);
+                              }
+                            }}
+                          >
+                            <span className="text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
+                            <span className="text-xs font-semibold">{shift.startTime}</span>
                           </div>
-                        </BookShiftDialog>
-                      )}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
+                        ) : (
+                          <BookShiftDialog 
+                            groups={settings?.groups} 
+                            day={day} 
+                            disabled={data.closed}
+                            settings={settings}
+                          >
+                            <div className={`h-20 w-full rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
+                            </div>
+                          </BookShiftDialog>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              )}
               {/* Other staff shifts for information */}
               {rosterData?.roster && rosterData.users && rosterData.users
                 .filter((u: any) => u.username !== user?.username && u.active === 1 && u.role === "staff")

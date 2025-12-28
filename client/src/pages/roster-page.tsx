@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 
 export default function RosterPage() {
+  const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   const dateParam = format(currentDate, "yyyy-MM-dd");
   

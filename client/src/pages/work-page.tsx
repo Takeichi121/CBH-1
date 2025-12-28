@@ -165,6 +165,7 @@ export default function WorkPage() {
 }
 
 function BookShiftDialog({ children, groups, day, disabled, settings }: { children: React.ReactNode; groups: any[]; day: string; disabled?: boolean, settings: any }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const { mutate: bookShift, isPending } = useBookShift();
   

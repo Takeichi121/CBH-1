@@ -1,26 +1,37 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Users, UserCog, Eye, EyeOff, Edit } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus } from "lucide-react";
 import { managerPositions, managerPositionLabels, type ManagerPosition } from "@shared/schema";
+
+const positionHierarchy: Record<string, number> = {
+  "admin": 0,
+  "store_manager": 1,
+  "assistant_store_manager": 2,
+  "shift_manager": 3,
+  "management_trainee": 4,
+  "staff": 5,
+};
 
 export default function AdminPage() {
   const { user } = useAuth();
   const { language } = useI18n();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [editingUser, setEditingUser] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newUser, setNewUser] = useState({ fullName: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["/api/admin/getUsers"],
@@ -29,14 +40,13 @@ export default function AdminPage() {
       const res = await apiRequest("POST", "/api/admin/getUsers", { token });
       return res.json();
     },
-    enabled: user?.role === "admin" || (user?.role === "manager" && user?.position === "store_manager"),
+    enabled: user?.role !== "staff",
   });
 
   const isAdmin = user?.role === "admin";
-  const isStoreManager = user?.role === "manager" && user?.position === "store_manager";
-  const canManageUsers = isAdmin || isStoreManager;
+  const isManager = user?.role === "manager";
 
-  if (!canManageUsers) {
+  if (user?.role === "staff") {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">
@@ -46,9 +56,12 @@ export default function AdminPage() {
     );
   }
 
+  const creatorRank = data?.creatorRank || 5;
+  const canManageAll = data?.canManageAll || false;
+
   const labels = {
-    title: language === "th" ? "จัดการผู้ใช้งาน" : "User Management",
-    subtitle: language === "th" ? "กำหนด Role และ Level ให้ผู้จัดการ" : "Set roles and levels for managers",
+    title: language === "th" ? "จัดการทีม" : "Team Management",
+    subtitle: language === "th" ? "สร้างโปรไฟล์และกำหนดตำแหน่งให้ทีม" : "Create profiles and set positions for team",
     username: language === "th" ? "ชื่อผู้ใช้" : "Username",
     fullName: language === "th" ? "ชื่อ-นามสกุล" : "Full Name",
     role: language === "th" ? "บทบาท" : "Role",
@@ -65,8 +78,13 @@ export default function AdminPage() {
     inactive: language === "th" ? "ไม่ใช้งาน" : "Inactive",
     selectRole: language === "th" ? "เลือก Role" : "Select Role",
     selectPosition: language === "th" ? "เลือกตำแหน่ง" : "Select Position",
-    noPosition: language === "th" ? "ไม่มี" : "None",
     updated: language === "th" ? "อัปเดตแล้ว" : "Updated",
+    createProfile: language === "th" ? "สร้างโปรไฟล์" : "Create Profile",
+    password: language === "th" ? "รหัสผ่าน" : "Password",
+    nickName: language === "th" ? "ชื่อเล่น" : "Nickname",
+    phone: language === "th" ? "เบอร์โทร" : "Phone",
+    email: language === "th" ? "อีเมล" : "Email",
+    created: language === "th" ? "สร้างสำเร็จ" : "Created successfully",
   };
 
   const roleColors: Record<string, string> = {
@@ -92,14 +110,38 @@ export default function AdminPage() {
         role: selectedRole,
         position: selectedRole === "manager" ? selectedPosition : null,
       });
-      const data = await res.json();
+      const result = await res.json();
       
-      if (data.ok) {
+      if (result.ok) {
         toast({ title: labels.updated });
         refetch();
         setEditingUser(null);
       } else {
-        toast({ title: data.message || "Error", variant: "destructive" });
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleCreateProfile = async () => {
+    const token = localStorage.getItem("bk_token") || "";
+    
+    try {
+      const res = await apiRequest("POST", "/api/admin/createProfile", {
+        token,
+        ...newUser,
+        position: newUser.role === "manager" ? newUser.position : undefined,
+      });
+      const result = await res.json();
+      
+      if (result.ok) {
+        toast({ title: `${labels.created}: @${result.username}` });
+        refetch();
+        setShowCreateDialog(false);
+        setNewUser({ fullName: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
       }
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
@@ -116,6 +158,31 @@ export default function AdminPage() {
     refetch();
   };
 
+  const canCreatePosition = (pos: string): boolean => {
+    if (isAdmin) return true;
+    const targetRank = positionHierarchy[pos] || 5;
+    return targetRank > creatorRank;
+  };
+
+  const canEditUser = (targetUser: any): boolean => {
+    if (isAdmin) return true;
+    if (targetUser.role === "admin") return false;
+    if (!canManageAll) {
+      if (targetUser.role === "manager") {
+        const targetRank = positionHierarchy[targetUser.position] || 5;
+        return targetRank > creatorRank;
+      }
+    }
+    return true;
+  };
+
+  const getAvailablePositions = (): ManagerPosition[] => {
+    if (isAdmin || canManageAll) {
+      return [...managerPositions];
+    }
+    return managerPositions.filter(pos => positionHierarchy[pos] > creatorRank);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -128,14 +195,120 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Shield className="w-6 h-6 text-primary" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Shield className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">{labels.title}</h2>
+            <p className="text-muted-foreground text-sm">{labels.subtitle}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">{labels.title}</h2>
-          <p className="text-muted-foreground text-sm">{labels.subtitle}</p>
-        </div>
+
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-profile">
+              <UserPlus className="w-4 h-4 mr-2" />
+              {labels.createProfile}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{labels.createProfile}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{labels.fullName} *</label>
+                <Input 
+                  value={newUser.fullName}
+                  onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                  placeholder={language === "th" ? "ชื่อ นามสกุล" : "Full name"}
+                  data-testid="input-fullname"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{labels.password} *</label>
+                <Input 
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  placeholder="********"
+                  data-testid="input-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{labels.role}</label>
+                <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v, position: "" })}>
+                  <SelectTrigger data-testid="select-new-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="staff">{labels.staff}</SelectItem>
+                    {(isAdmin || isManager) && <SelectItem value="manager">{labels.manager}</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
+              {newUser.role === "manager" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.position}</label>
+                  <Select value={newUser.position} onValueChange={(v) => setNewUser({ ...newUser, position: v })}>
+                    <SelectTrigger data-testid="select-new-position">
+                      <SelectValue placeholder={labels.selectPosition} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailablePositions().map((pos) => (
+                        <SelectItem key={pos} value={pos}>
+                          {managerPositionLabels[pos][language]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.nickName}</label>
+                  <Input 
+                    value={newUser.nickName}
+                    onChange={(e) => setNewUser({ ...newUser, nickName: e.target.value })}
+                    data-testid="input-nickname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.phone}</label>
+                  <Input 
+                    value={newUser.phone}
+                    onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                    data-testid="input-phone"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{labels.email}</label>
+                <Input 
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  data-testid="input-email"
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="flex-1">
+                  {labels.cancel}
+                </Button>
+                <Button 
+                  onClick={handleCreateProfile} 
+                  className="flex-1"
+                  disabled={!newUser.fullName || !newUser.password || (newUser.role === "manager" && !newUser.position)}
+                  data-testid="button-save-profile"
+                >
+                  {labels.save}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card className="glass-card border-none shadow-xl overflow-hidden">
@@ -182,8 +355,7 @@ export default function AdminPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1">
-                      {/* Store Manager cannot edit Admin users */}
-                      {(isAdmin || u.role !== "admin") && (
+                      {canEditUser(u) && (
                       <Dialog open={editingUser?.username === u.username} onOpenChange={(open) => !open && setEditingUser(null)}>
                         <DialogTrigger asChild>
                           <Button 
@@ -222,7 +394,7 @@ export default function AdminPage() {
                                     <SelectValue placeholder={labels.selectPosition} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {managerPositions.map((pos) => (
+                                    {getAvailablePositions().map((pos) => (
                                       <SelectItem key={pos} value={pos}>
                                         {managerPositionLabels[pos][language]}
                                       </SelectItem>
@@ -245,6 +417,7 @@ export default function AdminPage() {
                       </Dialog>
                       )}
                       
+                      {canEditUser(u) && (
                       <Button
                         size="icon"
                         variant="ghost"
@@ -253,6 +426,7 @@ export default function AdminPage() {
                       >
                         {u.active === 1 ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

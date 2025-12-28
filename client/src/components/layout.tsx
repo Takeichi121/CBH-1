@@ -38,14 +38,13 @@ export function Layout({ children }: { children: ReactNode }) {
   const isManager = user.role === "manager" || user.role === "admin";
 
   const isAdmin = user.role === "admin";
-  const isStoreManager = user.role === "manager" && user.position === "store_manager";
-  const canManageUsers = isAdmin || isStoreManager;
+  const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
 
   const navItems = [
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
     { href: "/settings", label: t("settings") || "Settings", icon: Settings },
-    ...(canManageUsers ? [{ href: "/admin", label: "Manage Team", icon: Shield }] : []),
+    ...(isManagerOrAdmin ? [{ href: "/admin", label: "Manage Team", icon: Shield }] : []),
   ];
 
   return (

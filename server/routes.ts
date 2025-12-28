@@ -346,12 +346,90 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Position hierarchy (lower number = higher rank)
+  const positionHierarchy: Record<string, number> = {
+    "admin": 0,
+    "store_manager": 1,
+    "assistant_store_manager": 2,
+    "shift_manager": 3,
+    "management_trainee": 4,
+    "staff": 5,
+  };
+
+  const getUserRank = (user: any): number => {
+    if (user.role === "admin") return 0;
+    if (user.role === "manager") return positionHierarchy[user.position] || 5;
+    return 5; // staff
+  };
+
   // Helper: Check if user can manage others
   const canManageUsers = (user: any) => {
     if (user.role === "admin") return true;
     if (user.role === "manager" && user.position === "store_manager") return true;
     return false;
   };
+
+  // Helper: Check if user can create profile for target role/position
+  const canCreateProfile = (creator: any, targetRole: string, targetPosition?: string): boolean => {
+    const creatorRank = getUserRank(creator);
+    
+    // Admin and Store Manager can create anyone (except Admin for Store Manager)
+    if (creator.role === "admin") return true;
+    if (creator.role === "manager" && creator.position === "store_manager") {
+      if (targetRole === "admin") return false;
+      return true;
+    }
+    
+    // Other managers can only create profiles for lower ranks
+    if (creator.role === "manager") {
+      if (targetRole === "admin") return false;
+      if (targetRole === "staff") return true;
+      if (targetRole === "manager" && targetPosition) {
+        const targetRank = positionHierarchy[targetPosition] || 5;
+        return targetRank > creatorRank; // Can only create lower rank
+      }
+    }
+    
+    return false;
+  };
+
+  // Manager: Create Profile for Team Member
+  app.post("/api/admin/createProfile", async (req, res) => {
+    const { token, fullName, password, role, position, nickName, phone, email } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role === "staff") return res.json({ ok: false, message: "No permission" });
+
+    if (!fullName || !password) {
+      return res.json({ ok: false, message: "Full name and password required" });
+    }
+
+    // Check if creator has permission to create this role/position
+    if (!canCreateProfile(u, role, position)) {
+      return res.json({ ok: false, message: "Cannot create profile with higher or equal rank" });
+    }
+
+    const base = generateUsernameBase(fullName);
+    const username = await allocateUsername(base, async (un) => !!(await storage.getUser(un)));
+    if (!username) return res.json({ ok: false, message: "Cannot create username" });
+
+    await storage.createUser({
+      username,
+      passhash: hashPass(password),
+      role: role || "staff",
+      fullName,
+      nickName: nickName || "",
+      phone: phone || "",
+      email: email || "",
+      position: role === "manager" ? (position || "store_manager") : "Service Staff",
+      active: 1,
+      createdAt: new Date().toISOString()
+    });
+
+    await storage.log("create_profile", u.username, `created ${username} role=${role} position=${position || "none"}`);
+    res.json({ ok: true, username });
+  });
 
   // Admin/Store Manager: Update User Role and Position
   app.post("/api/admin/updateUserRole", async (req, res) => {
@@ -379,19 +457,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Admin/Store Manager: Get all users
+  // Admin/Manager: Get all users
   app.post("/api/admin/getUsers", async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !canManageUsers(u)) return res.json({ ok: false, message: "No permission" });
+    if (!u || u.role === "staff") return res.json({ ok: false, message: "No permission" });
 
     const allUsers = await storage.getUsers();
-    res.json({ ok: true, users: allUsers.map(user => ({
-      ...user,
-      passhash: undefined // Don't send password hash
-    })) });
+    const creatorRank = getUserRank(u);
+    
+    res.json({ 
+      ok: true, 
+      users: allUsers.map(user => ({
+        ...user,
+        passhash: undefined // Don't send password hash
+      })),
+      creatorRank,
+      canManageAll: canManageUsers(u)
+    });
   });
 
   // Shifts: Set For User (Manager)

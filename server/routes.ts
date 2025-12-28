@@ -1,13 +1,13 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
+import { storage, transaction, updateShiftById } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import crypto from "crypto";
 import { hashPass, generateUsernameBase, allocateUsername, isSystemClosed, getWeekRangeTuesday, DEFAULT_CAPACITY, SHIFT_GROUPS } from "./utils";
 import { db } from "./db";
-import { users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { users, shifts } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
@@ -343,58 +343,66 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Shifts: Swap
   app.post(api.shifts.swap.path, async (req, res) => {
-    const { token, date, targetUsername } = req.body;
+    const { token, myDate, targetUsername, targetDate } = req.body;
+
+    if (!token) return res.json({ ok: false, message: "Missing token" });
+    if (!myDate || !targetDate) return res.json({ ok: false, message: "Missing date" });
+    if (!targetUsername) return res.json({ ok: false, message: "Missing targetUsername" });
+
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    const u = await storage.getUser(session.username);
-    if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // 1. Get current user's shift on this date
-    const myShift = await storage.getShift(u.username, date);
-    if (!myShift) return res.json({ ok: false, message: "You have no shift on this date" });
+    const me = await storage.getUser(session.username);
+    if (!me) return res.json({ ok: false, message: "User not found" });
 
-    // 2. Get target user's shift on this date
-    const targetUser = await storage.getUser(targetUsername);
-    if (!targetUser) return res.json({ ok: false, message: "Target user not found" });
-    const targetShift = await storage.getShift(targetUser.username, date);
-    if (!targetShift) return res.json({ ok: false, message: "Target user has no shift on this date" });
+    const target = await storage.getUser(String(targetUsername).toLowerCase().trim());
+    if (!target) return res.json({ ok: false, message: "Target user not found" });
 
-    // 3. Swap them
-    // We need to swap shiftGroup, startTime, endTime, note
-    const myOldGroup = myShift.shiftGroup;
-    const myOldStart = myShift.startTime;
-    const myOldEnd = myShift.endTime;
-    const myOldNote = myShift.note || "";
+    if (me.username === target.username) {
+      return res.json({ ok: false, message: "Cannot swap with yourself" });
+    }
+    if (me.role !== "staff" || target.role !== "staff") {
+      return res.json({ ok: false, message: "Swap allowed for staff only" });
+    }
 
-    const targetOldGroup = targetShift.shiftGroup;
-    const targetOldStart = targetShift.startTime;
-    const targetOldEnd = targetShift.endTime;
-    const targetOldNote = targetShift.note || "";
+    try {
+      await transaction(async (tx) => {
+        const [myShift] = await tx
+          .select()
+          .from(shifts)
+          .where(and(eq(shifts.username, me.username), eq(shifts.date, myDate)))
+          .limit(1);
 
-    // Update target user with my old details
-    await storage.upsertShift({
-      ...targetShift,
-      shiftGroup: myOldGroup,
-      startTime: myOldStart,
-      endTime: myOldEnd,
-      note: myOldNote,
-      updatedAt: new Date().toISOString(),
-      updatedBy: u.username
-    });
+        if (!myShift) throw new Error("You have no shift on myDate");
 
-    // Update me with target's old details
-    await storage.upsertShift({
-      ...myShift,
-      shiftGroup: targetOldGroup,
-      startTime: targetOldStart,
-      endTime: targetOldEnd,
-      note: targetOldNote,
-      updatedAt: new Date().toISOString(),
-      updatedBy: u.username
-    });
+        const [targetShift] = await tx
+          .select()
+          .from(shifts)
+          .where(and(eq(shifts.username, target.username), eq(shifts.date, targetDate)))
+          .limit(1);
 
-    await storage.log("swap_shift", u.username, `swapped with ${targetUsername} on ${date}`);
-    res.json({ ok: true });
+        if (!targetShift) throw new Error("Target has no shift on targetDate");
+
+        const now = new Date().toISOString();
+
+        await updateShiftById(tx, myShift.id, {
+          date: targetDate,
+          updatedAt: now,
+          updatedBy: me.username,
+        });
+
+        await updateShiftById(tx, targetShift.id, {
+          date: myDate,
+          updatedAt: now,
+          updatedBy: me.username,
+        });
+      });
+
+      await storage.log("swap_shift", me.username, `swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
+      return res.json({ ok: true });
+    } catch (e: any) {
+      return res.json({ ok: false, message: e?.message || "Swap failed" });
+    }
   });
 
   // User: Get Profile

@@ -2,6 +2,34 @@ import { db } from "./db";
 import { users, shifts, config, systemlog, sessions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift } from "@shared/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
+type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
+
+export async function transaction<T>(fn: (tx: Tx) => Promise<T>) {
+  return db.transaction(async (tx) => fn(tx));
+}
+
+export async function updateShiftById(
+  tx: Tx,
+  id: number | string,
+  patch: Partial<{
+    date: string;
+    shiftGroup: string;
+    startTime: string;
+    endTime: string;
+    note: string | null;
+    updatedAt: string;
+    updatedBy: string;
+  }>,
+) {
+  const r = await tx
+    .update(shifts)
+    .set(patch)
+    .where(eq(shifts.id, Number(id)))
+    .returning({ id: shifts.id });
+
+  if (!r.length) throw new Error("Shift not found");
+}
+
 export interface IStorage {
   // Users
   getUser(username: string): Promise<User | undefined>;

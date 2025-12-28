@@ -164,8 +164,9 @@ export const api = {
       path: "/api/swapShift",
       input: z.object({
         token: z.string(),
-        date: z.string(),
+        myDate: z.string(),
         targetUsername: z.string(),
+        targetDate: z.string(),
       }),
       responses: {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),

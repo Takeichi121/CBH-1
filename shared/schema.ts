@@ -53,18 +53,34 @@ export const sessions = pgTable("sessions", {
   expiresAt: integer("expires_at").notNull(),
 });
 
+export const swapRequests = pgTable("swap_requests", {
+  id: serial("id").primaryKey(),
+  requesterUsername: text("requester_username").notNull(),
+  requesterDate: text("requester_date").notNull(),
+  targetUsername: text("target_username").notNull(),
+  targetDate: text("target_date").notNull(),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  approvedBy: text("approved_by"),
+  note: text("note"),
+});
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);
 export const insertConfigSchema = createInsertSchema(config);
 export const insertLogSchema = createInsertSchema(systemlog);
 export const insertSessionSchema = createInsertSchema(sessions);
+export const insertSwapRequestSchema = createInsertSchema(swapRequests);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
+export type InsertSwapRequest = z.infer<typeof insertSwapRequestSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Shift = typeof shifts.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type SystemLog = typeof systemlog.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type SwapRequest = typeof swapRequests.$inferSelect;

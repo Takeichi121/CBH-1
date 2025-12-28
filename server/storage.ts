@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift } from "@shared/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { users, shifts, config, systemlog, sessions, swapRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest } from "@shared/schema";
+import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
 
@@ -54,6 +54,12 @@ export interface IStorage {
 
   // Logs
   log(action: string, byUser: string, detail: string): Promise<void>;
+
+  // Swap Requests
+  createSwapRequest(request: InsertSwapRequest): Promise<SwapRequest>;
+  getSwapRequests(status?: string): Promise<SwapRequest[]>;
+  getSwapRequestById(id: number): Promise<SwapRequest | undefined>;
+  updateSwapRequestStatus(id: number, status: string, approvedBy?: string, note?: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {

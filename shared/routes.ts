@@ -172,6 +172,30 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    getSwapRequests: {
+      method: "POST",
+      path: "/api/getSwapRequests",
+      input: z.object({ token: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), requests: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    approveSwap: {
+      method: "POST",
+      path: "/api/approveSwap",
+      input: z.object({ token: z.string(), requestId: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    rejectSwap: {
+      method: "POST",
+      path: "/api/rejectSwap",
+      input: z.object({ token: z.string(), requestId: z.number(), note: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
     getUserProfile: {
       method: "POST",
       path: "/api/getUserProfile",

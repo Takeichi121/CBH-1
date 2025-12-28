@@ -31,7 +31,18 @@ export async function allocateUsername(base6: string, checkExists: (u: string) =
 }
 
 export function isSystemClosed(): boolean {
-  return false; // Manager can always update, and we'll handle staff restriction in routes
+  // Get current time in Thailand (UTC+7)
+  const now = new Date();
+  const thTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+  
+  const day = thTime.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  const hour = thTime.getUTCHours();
+
+  // Tuesday (2) after 12:00 until Wednesday (3) midnight
+  if (day === 2 && hour >= 12) return true;
+  if (day === 3) return true;
+  
+  return false;
 }
 
 export function getWeekStartTuesday(date: Date | string) {

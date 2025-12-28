@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Shield, Eye, EyeOff, Edit, Plus, UserPlus } from "lucide-react";
-import { managerPositions, managerPositionLabels, type ManagerPosition } from "@shared/schema";
+import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 
 const positionHierarchy: Record<string, number> = {
   "admin": 0,
@@ -20,7 +20,9 @@ const positionHierarchy: Record<string, number> = {
   "assistant_store_manager": 2,
   "shift_manager": 3,
   "management_trainee": 4,
-  "staff": 5,
+  "team_lead": 5,
+  "guest_ambassador": 6,
+  "service_staff": 7,
 };
 
 export default function AdminPage() {
@@ -110,7 +112,7 @@ export default function AdminPage() {
         token,
         username: editingUser.username,
         role: selectedRole,
-        position: selectedRole === "manager" ? selectedPosition : null,
+        position: selectedRole === "manager" || selectedRole === "staff" ? selectedPosition : null,
       });
       const result = await res.json();
       
@@ -133,7 +135,7 @@ export default function AdminPage() {
       const res = await apiRequest("POST", "/api/admin/createProfile", {
         token,
         ...newUser,
-        position: newUser.role === "manager" ? newUser.position : undefined,
+        position: newUser.role === "manager" || newUser.role === "staff" ? newUser.position : undefined,
         mustChangePassword: true,
       });
       const result = await res.json();
@@ -280,6 +282,23 @@ export default function AdminPage() {
                   </Select>
                 </div>
               )}
+              {newUser.role === "staff" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.position}</label>
+                  <Select value={newUser.position} onValueChange={(v) => setNewUser({ ...newUser, position: v })}>
+                    <SelectTrigger data-testid="select-new-staff-position">
+                      <SelectValue placeholder={labels.selectPosition} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staffPositions.map((pos) => (
+                        <SelectItem key={pos} value={pos}>
+                          {staffPositionLabels[pos][language]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{labels.nickName}</label>
@@ -358,6 +377,10 @@ export default function AdminPage() {
                       <span className="text-sm">
                         {managerPositionLabels[u.position as ManagerPosition]?.[language] || u.position}
                       </span>
+                    ) : u.role === "staff" && u.position ? (
+                      <span className="text-sm">
+                        {staffPositionLabels[u.position as StaffPosition]?.[language] || u.position}
+                      </span>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
@@ -411,6 +434,24 @@ export default function AdminPage() {
                                     {getAvailablePositions().map((pos) => (
                                       <SelectItem key={pos} value={pos}>
                                         {managerPositionLabels[pos][language]}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            
+                            {selectedRole === "staff" && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">{labels.position}</label>
+                                <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+                                  <SelectTrigger data-testid="select-staff-position">
+                                    <SelectValue placeholder={labels.selectPosition} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {staffPositions.map((pos) => (
+                                      <SelectItem key={pos} value={pos}>
+                                        {staffPositionLabels[pos][language]}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>

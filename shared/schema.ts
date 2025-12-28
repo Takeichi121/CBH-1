@@ -19,6 +19,21 @@ export const managerPositionLabels: Record<ManagerPosition, { en: string; th: st
   management_trainee: { en: "Management Trainee", th: "ผู้ฝึกหัดผู้จัดการ" },
 };
 
+// Staff position levels
+export const staffPositions = [
+  "team_lead",
+  "guest_ambassador",
+  "service_staff",
+] as const;
+
+export type StaffPosition = typeof staffPositions[number];
+
+export const staffPositionLabels: Record<StaffPosition, { en: string; th: string }> = {
+  team_lead: { en: "Team Lead", th: "หัวหน้าทีม" },
+  guest_ambassador: { en: "Guest Ambassador", th: "ผู้ดูแลลูกค้า" },
+  service_staff: { en: "Service Staff", th: "พนักงานบริการ" },
+};
+
 export const users = pgTable("users", {
   username: text("username").primaryKey(),
   passhash: text("passhash").notNull(),

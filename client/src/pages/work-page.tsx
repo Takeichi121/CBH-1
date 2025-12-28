@@ -5,7 +5,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2, EyeOff, Eye } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -85,6 +85,12 @@ export default function WorkPage() {
         </div>
         
         <div className="flex items-center gap-2">
+          {isManager && rosterData?.users?.some((u: any) => u.active === 0 && u.role === "staff") && (
+            <HiddenStaffDialogInWork 
+              users={rosterData.users.filter((u: any) => u.active === 0 && u.role === "staff")} 
+              onUpdateStatus={handleUpdateUserStatus} 
+            />
+          )}
           <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full" data-testid="button-prev-week">
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -339,6 +345,49 @@ function BookShiftDialog({ children, groups, day, disabled, settings }: { childr
             {isPending ? "Booking..." : "Confirm Booking"}
           </Button>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function HiddenStaffDialogInWork({ users, onUpdateStatus }: { users: any[]; onUpdateStatus: (username: string, active: number) => void }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="rounded-full gap-2">
+          <EyeOff className="w-4 h-4" />
+          <span>Hidden ({users.length})</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <EyeOff className="w-5 h-5 text-destructive" />
+            Hidden Staff Members
+          </DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+          <p className="text-sm text-muted-foreground">The following staff members are currently hidden from the roster.</p>
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+            {users.map((u) => (
+              <div key={u.username} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">{u.nickName || u.fullName || u.username}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase">{u.username}</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 gap-2 text-primary hover:text-primary hover:bg-primary/10 rounded-lg"
+                  onClick={() => onUpdateStatus(u.username, 1)}
+                >
+                  <Eye className="w-4 h-4" />
+                  Show
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

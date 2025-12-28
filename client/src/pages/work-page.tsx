@@ -5,7 +5,10 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -40,6 +43,18 @@ export default function WorkPage() {
   const { data: rosterData, isLoading: isLoadingRoster } = useRoster(dateParam);
   const { data: settings } = useSettings();
   const { mutate: cancelShift } = useCancelShift();
+  const queryClient = useQueryClient();
+  const isManager = user?.role === "manager" || user?.role === "admin";
+
+  const handleUpdateUserStatus = (username: string, active: number) => {
+    if (confirm(active === 0 ? "Hide/Disable this staff member?" : "Show/Enable this staff member?")) {
+      const token = localStorage.getItem("bk_token") || "";
+      apiRequest("POST", "/api/updateUserStatus", { token, username, active })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+        });
+    }
+  };
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
@@ -168,23 +183,49 @@ export default function WorkPage() {
                       <TableCell className="font-medium text-xs py-1">
                         <div className="flex flex-col">
                           <span className="font-medium text-muted-foreground">{u.nickName || u.fullName || u.username}</span>
+                          {isManager && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 px-1 text-[8px] text-destructive hover:text-destructive mt-1 justify-start w-fit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateUserStatus(u.username, 0);
+                              }}
+                            >
+                              <Trash2 className="w-2.5 h-2.5 mr-1" />
+                              Hide
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                       {days.map((day: string) => {
                         const s = staffShifts[day];
+                        const content = s ? (
+                          <div className={`h-12 w-full rounded-lg p-1 border flex flex-col justify-center items-center opacity-60
+                            ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                              s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                              s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                              'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                            <span className="text-[8px] font-bold uppercase">{s.shiftGroup}</span>
+                            <span className="text-[9px]">{s.startTime}</span>
+                          </div>
+                        ) : (
+                          <div className="h-12 w-full rounded-lg bg-muted/5"></div>
+                        );
+
                         return (
                           <TableCell key={day} className="p-1">
-                            {s ? (
-                              <div className={`h-12 w-full rounded-lg p-1 border flex flex-col justify-center items-center opacity-60
-                                ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                  s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                  s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                  'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                <span className="text-[8px] font-bold uppercase">{s.shiftGroup}</span>
-                                <span className="text-[9px]">{s.startTime}</span>
-                              </div>
+                            {isManager ? (
+                              <ManageShiftDialogInWork username={u.username} date={day} existingShift={s} mode={s ? "edit" : "create"} groups={settings?.groups}>
+                                {s ? content : (
+                                  <div className="h-12 w-full rounded-lg border border-dashed border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100">
+                                    <Plus className="w-3 h-3 text-primary/30" />
+                                  </div>
+                                )}
+                              </ManageShiftDialogInWork>
                             ) : (
-                              <div className="h-12 w-full rounded-lg bg-muted/5"></div>
+                              content
                             )}
                           </TableCell>
                         );
@@ -297,6 +338,143 @@ function BookShiftDialog({ children, groups, day, disabled, settings }: { childr
           <Button type="submit" className="w-full rounded-xl" disabled={isPending} data-testid="button-confirm-booking">
             {isPending ? "Booking..." : "Confirm Booking"}
           </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ManageShiftDialogInWork({ 
+  children, 
+  username, 
+  date, 
+  existingShift, 
+  mode,
+  groups
+}: { 
+  children: React.ReactNode; 
+  username: string; 
+  date: string; 
+  existingShift?: any; 
+  mode: "create" | "edit";
+  groups?: any[];
+}) {
+  const [open, setOpen] = useState(false);
+  const { mutate: bookShift } = useBookShift();
+  const { mutate: cancelShift } = useCancelShift();
+  const queryClient = useQueryClient();
+  
+  const [formData, setFormData] = useState({
+    shiftGroup: existingShift?.shiftGroup || groups?.[0]?.key || "open",
+    startTime: existingShift?.startTime || groups?.[0]?.times?.[0] || "07:00 - 16:00",
+    note: existingShift?.note || "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem("bk_token") || "";
+    apiRequest("POST", "/api/setShiftForUser", {
+      token,
+      username,
+      date,
+      shiftGroup: formData.shiftGroup,
+      startTime: formData.startTime,
+      note: formData.note
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+      setOpen(false);
+    });
+  };
+
+  const handleDelete = () => {
+    if (confirm("Remove this shift?")) {
+      const token = localStorage.getItem("bk_token") || "";
+      apiRequest("POST", "/api/deleteShiftForUser", { token, username, date })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+          setOpen(false);
+        });
+    }
+  };
+
+  const currentGroup = groups?.find(g => g.key === formData.shiftGroup);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>{mode === "create" ? "Add Shift" : "Edit Shift"}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="py-2 space-y-1">
+          <p className="text-sm text-muted-foreground">User: <span className="font-medium text-foreground">{username}</span></p>
+          <p className="text-sm text-muted-foreground">Date: <span className="font-medium text-foreground">{format(parseISO(date), "MMM d, yyyy")}</span></p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Shift Group</Label>
+            <Select 
+              value={formData.shiftGroup} 
+              onValueChange={(v) => {
+                const grp = groups?.find(g => g.key === v);
+                setFormData({
+                  ...formData, 
+                  shiftGroup: v, 
+                  startTime: grp?.times?.[0] || ""
+                });
+              }}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {groups?.map(g => (
+                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Time Period</Label>
+            <Select 
+              value={formData.startTime} 
+              onValueChange={(v) => setFormData({...formData, startTime: v})}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentGroup?.times?.map((t: string) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Note</Label>
+            <Input 
+              value={formData.note}
+              onChange={(e) => setFormData({...formData, note: e.target.value})}
+              placeholder="Optional note"
+              className="rounded-xl"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            {mode === "edit" && (
+              <Button type="button" variant="destructive" onClick={handleDelete} className="flex-1 rounded-xl">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remove
+              </Button>
+            )}
+            <Button type="submit" className="flex-1 rounded-xl">
+              Save Shift
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

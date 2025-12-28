@@ -24,11 +24,13 @@ export const users = pgTable("users", {
   passhash: text("passhash").notNull(),
   role: text("role").notNull().default("staff"),
   fullName: text("full_name"),
+  fullNameTh: text("full_name_th"),
   nickName: text("nick_name"),
   phone: text("phone"),
   email: text("email"),
   position: text("position"),
   active: integer("active").notNull().default(1),
+  mustChangePassword: integer("must_change_password").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });
 

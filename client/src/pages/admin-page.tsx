@@ -31,7 +31,7 @@ export default function AdminPage() {
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ fullName: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
+  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["/api/admin/getUsers"],
@@ -85,6 +85,8 @@ export default function AdminPage() {
     phone: language === "th" ? "เบอร์โทร" : "Phone",
     email: language === "th" ? "อีเมล" : "Email",
     created: language === "th" ? "สร้างสำเร็จ" : "Created successfully",
+    fullNameEn: language === "th" ? "ชื่อ (อังกฤษ)" : "Name (English)",
+    fullNameTh: language === "th" ? "ชื่อ (ไทย)" : "Name (Thai)",
   };
 
   const roleColors: Record<string, string> = {
@@ -132,6 +134,7 @@ export default function AdminPage() {
         token,
         ...newUser,
         position: newUser.role === "manager" ? newUser.position : undefined,
+        mustChangePassword: true,
       });
       const result = await res.json();
       
@@ -139,7 +142,7 @@ export default function AdminPage() {
         toast({ title: `${labels.created}: @${result.username}` });
         refetch();
         setShowCreateDialog(false);
-        setNewUser({ fullName: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
+        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
       } else {
         toast({ title: result.message || "Error", variant: "destructive" });
       }
@@ -218,14 +221,25 @@ export default function AdminPage() {
               <DialogTitle>{labels.createProfile}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{labels.fullName} *</label>
-                <Input 
-                  value={newUser.fullName}
-                  onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-                  placeholder={language === "th" ? "ชื่อ นามสกุล" : "Full name"}
-                  data-testid="input-fullname"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.fullNameEn} *</label>
+                  <Input 
+                    value={newUser.fullName}
+                    onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                    placeholder="Full name"
+                    data-testid="input-fullname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.fullNameTh}</label>
+                  <Input 
+                    value={newUser.fullNameTh}
+                    onChange={(e) => setNewUser({ ...newUser, fullNameTh: e.target.value })}
+                    placeholder="ชื่อ นามสกุล"
+                    data-testid="input-fullname-th"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">{labels.password} *</label>
@@ -330,7 +344,7 @@ export default function AdminPage() {
                   <TableCell className="font-medium">@{u.username}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span>{u.fullName || "-"}</span>
+                      <span>{language === "th" && u.fullNameTh ? u.fullNameTh : (u.fullName || "-")}</span>
                       {u.nickName && <span className="text-xs text-muted-foreground">({u.nickName})</span>}
                     </div>
                   </TableCell>

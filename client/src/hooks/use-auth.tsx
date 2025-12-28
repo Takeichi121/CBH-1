@@ -9,11 +9,13 @@ type User = {
   username: string;
   role: "staff" | "manager" | "admin";
   fullName: string;
+  fullNameTh?: string;
   nickName?: string;
   email?: string;
   phone?: string;
   position?: string;
   profileComplete?: boolean;
+  mustChangePassword?: boolean;
 };
 
 type AuthContextType = {
@@ -25,7 +27,9 @@ type AuthContextType = {
   registerStaffMutation: ReturnType<typeof useRegisterStaffMutation>;
   registerManagerMutation: ReturnType<typeof useRegisterManagerMutation>;
   completeProfileMutation: ReturnType<typeof useCompleteProfileMutation>;
+  forceChangePasswordMutation: ReturnType<typeof useForceChangePasswordMutation>;
   setUserProfileComplete: () => void;
+  setUserPasswordChanged: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -79,9 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerStaffMutation = useRegisterStaffMutation(toast);
   const registerManagerMutation = useRegisterManagerMutation(toast);
   const completeProfileMutation = useCompleteProfileMutation(token, toast);
+  const forceChangePasswordMutation = useForceChangePasswordMutation(token, toast);
 
   const setUserProfileComplete = () => {
     setUser((prev) => prev ? { ...prev, profileComplete: true } : null);
+  };
+
+  const setUserPasswordChanged = () => {
+    setUser((prev) => prev ? { ...prev, mustChangePassword: false } : null);
   };
 
   return (
@@ -95,7 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerStaffMutation,
         registerManagerMutation,
         completeProfileMutation,
+        forceChangePasswordMutation,
         setUserProfileComplete,
+        setUserPasswordChanged,
       }}
     >
       {children}
@@ -236,6 +247,29 @@ function useCompleteProfileMutation(token: string | null, toast: any) {
         toast({ title: "Profile Complete", description: "Your profile has been updated" });
       } else {
         toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update profile" });
+      }
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Error", description: "Something went wrong" });
+    },
+  });
+}
+
+function useForceChangePasswordMutation(token: string | null, toast: any) {
+  return useMutation({
+    mutationFn: async (data: { newPassword: string }) => {
+      const res = await fetch("/api/forceChangePassword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, token }),
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      if (data.ok) {
+        toast({ title: "Password Updated", description: "Your password has been changed successfully" });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message || "Failed to change password" });
       }
     },
     onError: () => {

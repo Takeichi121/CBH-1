@@ -7,6 +7,7 @@ import { I18nProvider } from "@/hooks/use-i18n";
 import { Layout } from "@/components/layout";
 import { LoadingScreen } from "@/components/loading-screen";
 import { CompleteProfileModal } from "@/components/complete-profile-modal";
+import { ChangePasswordModal } from "@/components/change-password-modal";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
@@ -59,6 +60,7 @@ function Router() {
           <Route component={NotFound} />
         </Switch>
       </Layout>
+      <ChangePasswordModal />
       <CompleteProfileModal />
       <Toaster />
     </>

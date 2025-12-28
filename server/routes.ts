@@ -61,7 +61,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     await storage.log("login_ok", u.username, "role=" + u.role);
     const profileComplete = !!(u.nickName && u.phone && u.email);
-    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName, profileComplete } });
+    const mustChangePassword = u.mustChangePassword === 1;
+    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, profileComplete, mustChangePassword } });
   });
 
   // Auth: Validate
@@ -80,7 +81,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!u || !u.active) return res.json({ ok: false });
 
     const profileComplete = !!(u.nickName && u.phone && u.email);
-    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, nickName: u.nickName, profileComplete } });
+    const mustChangePassword = u.mustChangePassword === 1;
+    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, profileComplete, mustChangePassword } });
   });
 
   // Auth: Logout
@@ -326,10 +328,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     await db.update(users)
-      .set({ passhash: hashPass(newPassword) })
+      .set({ passhash: hashPass(newPassword), mustChangePassword: 0 })
       .where(eq(users.username, u.username));
 
     await storage.log("change_password", u.username, "password updated");
+    res.json({ ok: true });
+  });
+
+  // User: First-time Password Change (when mustChangePassword is true)
+  app.post("/api/forceChangePassword", async (req, res) => {
+    const { token, newPassword } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    if (u.mustChangePassword !== 1) {
+      return res.json({ ok: false, message: "Not required to change password" });
+    }
+
+    await db.update(users)
+      .set({ passhash: hashPass(newPassword), mustChangePassword: 0 })
+      .where(eq(users.username, u.username));
+
+    await storage.log("force_change_password", u.username, "first-time password updated");
     res.json({ ok: true });
   });
 
@@ -395,7 +418,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Manager: Create Profile for Team Member
   app.post("/api/admin/createProfile", async (req, res) => {
-    const { token, fullName, password, role, position, nickName, phone, email } = req.body;
+    const { token, fullName, fullNameTh, password, role, position, nickName, phone, email, mustChangePassword } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
@@ -419,11 +442,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       passhash: hashPass(password),
       role: role || "staff",
       fullName,
+      fullNameTh: fullNameTh || "",
       nickName: nickName || "",
       phone: phone || "",
       email: email || "",
       position: role === "manager" ? (position || "store_manager") : "Service Staff",
       active: 1,
+      mustChangePassword: mustChangePassword ? 1 : 0,
       createdAt: new Date().toISOString()
     });
 

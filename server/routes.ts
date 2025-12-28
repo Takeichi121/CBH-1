@@ -346,29 +346,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Admin: Update User Role and Position
+  // Helper: Check if user can manage others
+  const canManageUsers = (user: any) => {
+    if (user.role === "admin") return true;
+    if (user.role === "manager" && user.position === "store_manager") return true;
+    return false;
+  };
+
+  // Admin/Store Manager: Update User Role and Position
   app.post("/api/admin/updateUserRole", async (req, res) => {
     const { token, username, role, position } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+    if (!u || !canManageUsers(u)) return res.json({ ok: false, message: "No permission" });
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
 
+    // Store Manager cannot set someone as Admin
+    if (u.role !== "admin" && role === "admin") {
+      return res.json({ ok: false, message: "Only Admin can set Admin role" });
+    }
+
+    // Store Manager cannot modify Admin users
+    if (u.role !== "admin" && targetUser.role === "admin") {
+      return res.json({ ok: false, message: "Cannot modify Admin users" });
+    }
+
     await storage.updateUserRole(username, role, position);
-    await storage.log("admin_update_role", u.username, `set ${username} role=${role} position=${position || "none"}`);
+    await storage.log("update_user_role", u.username, `set ${username} role=${role} position=${position || "none"}`);
     res.json({ ok: true });
   });
 
-  // Admin: Get all users
+  // Admin/Store Manager: Get all users
   app.post("/api/admin/getUsers", async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+    if (!u || !canManageUsers(u)) return res.json({ ok: false, message: "No permission" });
 
     const allUsers = await storage.getUsers();
     res.json({ ok: true, users: allUsers.map(user => ({

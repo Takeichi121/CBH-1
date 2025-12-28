@@ -29,14 +29,18 @@ export default function AdminPage() {
       const res = await apiRequest("POST", "/api/admin/getUsers", { token });
       return res.json();
     },
-    enabled: user?.role === "admin",
+    enabled: user?.role === "admin" || (user?.role === "manager" && user?.position === "store_manager"),
   });
 
-  if (user?.role !== "admin") {
+  const isAdmin = user?.role === "admin";
+  const isStoreManager = user?.role === "manager" && user?.position === "store_manager";
+  const canManageUsers = isAdmin || isStoreManager;
+
+  if (!canManageUsers) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">
-          {language === "th" ? "เฉพาะ Admin เท่านั้น" : "Admin only"}
+          {language === "th" ? "ไม่มีสิทธิ์เข้าถึง" : "No access"}
         </p>
       </div>
     );
@@ -178,6 +182,8 @@ export default function AdminPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1">
+                      {/* Store Manager cannot edit Admin users */}
+                      {(isAdmin || u.role !== "admin") && (
                       <Dialog open={editingUser?.username === u.username} onOpenChange={(open) => !open && setEditingUser(null)}>
                         <DialogTrigger asChild>
                           <Button 
@@ -203,7 +209,7 @@ export default function AdminPage() {
                                 <SelectContent>
                                   <SelectItem value="staff">{labels.staff}</SelectItem>
                                   <SelectItem value="manager">{labels.manager}</SelectItem>
-                                  <SelectItem value="admin">{labels.admin}</SelectItem>
+                                  {isAdmin && <SelectItem value="admin">{labels.admin}</SelectItem>}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -237,6 +243,7 @@ export default function AdminPage() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      )}
                       
                       <Button
                         size="icon"

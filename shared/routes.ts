@@ -67,6 +67,7 @@ export const api = {
         email: z.string(),
         password: z.string(),
         verifyCode: z.string(),
+        position: z.enum(["store_manager", "assistant_store_manager", "shift_manager", "management_trainee"]),
       }),
       responses: {
         200: z.object({ ok: z.boolean(), username: z.string().optional(), message: z.string().optional() }),

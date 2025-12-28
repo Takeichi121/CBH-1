@@ -2,6 +2,23 @@ import { pgTable, text, serial, integer, boolean, unique, timestamp } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Manager position levels
+export const managerPositions = [
+  "store_manager",
+  "assistant_store_manager", 
+  "shift_manager",
+  "management_trainee",
+] as const;
+
+export type ManagerPosition = typeof managerPositions[number];
+
+export const managerPositionLabels: Record<ManagerPosition, { en: string; th: string }> = {
+  store_manager: { en: "Store Manager", th: "ผู้จัดการร้าน" },
+  assistant_store_manager: { en: "Assistant Store Manager", th: "ผู้ช่วยผู้จัดการร้าน" },
+  shift_manager: { en: "Shift Manager", th: "ผู้จัดการกะ" },
+  management_trainee: { en: "Management Trainee", th: "ผู้ฝึกหัดผู้จัดการ" },
+};
+
 export const users = pgTable("users", {
   username: text("username").primaryKey(),
   passhash: text("passhash").notNull(),

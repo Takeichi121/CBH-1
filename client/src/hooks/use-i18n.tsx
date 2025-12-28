@@ -77,6 +77,12 @@ const translations = {
     confirmNewPassword: "Confirm New Password",
     passwordsDoNotMatch: "Passwords do not match",
     passwordChanged: "Password changed successfully",
+    position: "Position",
+    selectPosition: "Select Position",
+    storeManager: "Store Manager",
+    assistantStoreManager: "Assistant Store Manager",
+    shiftManager: "Shift Manager",
+    managementTrainee: "Management Trainee",
   },
   th: {
     appName: "Grand Diamond",
@@ -152,6 +158,12 @@ const translations = {
     confirmNewPassword: "ยืนยันรหัสผ่านใหม่",
     passwordsDoNotMatch: "รหัสผ่านไม่ตรงกัน",
     passwordChanged: "เปลี่ยนรหัสผ่านสำเร็จแล้ว",
+    position: "ตำแหน่ง",
+    selectPosition: "เลือกตำแหน่ง",
+    storeManager: "ผู้จัดการร้าน",
+    assistantStoreManager: "ผู้ช่วยผู้จัดการร้าน",
+    shiftManager: "ผู้จัดการกะ",
+    managementTrainee: "ผู้ฝึกหัดผู้จัดการ",
   },
 };
 

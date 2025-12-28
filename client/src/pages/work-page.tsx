@@ -61,7 +61,7 @@ export default function WorkPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-display font-bold text-foreground">Book Shift</h2>
+          <h2 className="text-3xl font-display font-bold text-foreground">My Work & Roster</h2>
           <p className="text-muted-foreground flex items-center gap-2 mt-1">
             <CalendarIcon className="w-4 h-4" />
             {displayRange}
@@ -152,7 +152,44 @@ export default function WorkPage() {
                   );
                 })}
               </TableRow>
-              {/* Optional: Show other staff members summary if needed, but the primary request is the booking table */}
+              {/* Other staff shifts for information */}
+              {rosterData?.roster && rosterData.users && rosterData.users
+                .filter((u: any) => u.username !== user?.username && u.active === 1 && u.role === "staff")
+                .map((u: any) => {
+                  const staffShifts: Record<string, any> = {};
+                  rosterData.roster.filter((s: any) => s.username === u.username).forEach((s: any) => {
+                    staffShifts[s.date] = s;
+                  });
+                  return (
+                    <TableRow key={u.username} className="hover:bg-muted/10 transition-colors opacity-80">
+                      <TableCell className="font-medium text-xs py-1">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-muted-foreground">{u.nickName || u.fullName || u.username}</span>
+                        </div>
+                      </TableCell>
+                      {days.map((day: string) => {
+                        const s = staffShifts[day];
+                        return (
+                          <TableCell key={day} className="p-1">
+                            {s ? (
+                              <div className={`h-12 w-full rounded-lg p-1 border flex flex-col justify-center items-center opacity-60
+                                ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                  s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                  s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                  'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                                <span className="text-[8px] font-bold uppercase">{s.shiftGroup}</span>
+                                <span className="text-[9px]">{s.startTime}</span>
+                              </div>
+                            ) : (
+                              <div className="h-12 w-full rounded-lg bg-muted/5"></div>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })
+              }
               <TableRow>
                 <TableCell colSpan={8} className="h-8 bg-muted/20 text-center text-[10px] text-muted-foreground uppercase tracking-widest">
                   End of Weekly View

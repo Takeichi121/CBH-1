@@ -31,16 +31,7 @@ export async function allocateUsername(base6: string, checkExists: (u: string) =
 }
 
 export function isSystemClosed(): boolean {
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false }).formatToParts(new Date());
-  const hh = parts.find(p => p.type === "hour")?.value || "00";
-  const mm = parts.find(p => p.type === "minute")?.value || "00";
-  const wd = parts.find(p => p.type === "weekday")?.value || "Mon";
-  const map: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
-  const d = map[wd] || 1;
-  const hhmm = `${hh}:${mm}`;
-  if (d === 2) return hhmm >= "12:00";
-  if (d === 3) return true;
-  return false;
+  return false; // Manager can always update, and we'll handle staff restriction in routes
 }
 
 export function getWeekStartTuesday(date: Date | string) {

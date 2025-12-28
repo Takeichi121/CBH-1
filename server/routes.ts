@@ -180,12 +180,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Shifts: Book
   app.post(api.shifts.book.path, async (req, res) => {
-    if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     const { token, date, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false });
+
+    const isManager = u.role === "admin" || u.role === "manager";
+    if (!isManager && isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
 
     // Validate
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.json({ ok: false, message: "Date invalid" });
@@ -226,12 +228,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Shifts: Cancel
   app.post(api.shifts.cancel.path, async (req, res) => {
-    if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false });
+
+    const isManager = u.role === "admin" || u.role === "manager";
+    if (!isManager && isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
 
     await storage.deleteShift(u.username, date);
     await storage.log("cancel_shift", u.username, date);

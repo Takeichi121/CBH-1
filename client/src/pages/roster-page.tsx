@@ -139,18 +139,20 @@ export default function RosterPage() {
                         </div>
                       </UserProfileDialog>
                       {isManager && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 px-2 text-[10px] text-destructive hover:text-destructive mt-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateUserStatus(u.username, 0);
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          Hide Staff
-                        </Button>
+                        <div className="flex flex-col gap-1 mt-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateUserStatus(u.username, 0);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Hide Staff
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                     {days.map((day: string) => {

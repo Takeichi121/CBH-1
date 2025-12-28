@@ -179,6 +179,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, weekRange: range, shifts: myShifts });
   });
 
+  // Shifts: Get My Month (for managers)
+  app.post(api.shifts.getMyMonth.path, async (req, res) => {
+    const { token, month, year } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    // Get first and last day of the month
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const shifts = await storage.getShiftsInRange(startDate, endDate);
+    const myShifts = shifts.filter(s => s.username === u.username);
+
+    res.json({ ok: true, month, year, shifts: myShifts });
+  });
+
   // Shifts: Book
   app.post(api.shifts.book.path, async (req, res) => {
     const { token, date, shiftGroup, startTime, note } = req.body;

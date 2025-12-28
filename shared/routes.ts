@@ -101,6 +101,14 @@ export const api = {
         200: z.object({ ok: z.boolean(), weekRange: z.any().optional(), shifts: z.array(z.any()).optional(), message: z.string().optional() }),
       },
     },
+    getMyMonth: {
+      method: "POST",
+      path: "/api/getMyMonth",
+      input: z.object({ token: z.string(), month: z.number(), year: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), month: z.number().optional(), year: z.number().optional(), shifts: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
     book: {
       method: "POST",
       path: "/api/bookMyShift",

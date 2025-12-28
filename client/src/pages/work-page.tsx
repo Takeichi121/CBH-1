@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
-import { useMyWeek, useBookShift, useCancelShift, useRoster } from "@/hooks/use-shifts";
+import { useMyWeek, useMyMonth, useBookShift, useCancelShift, useRoster } from "@/hooks/use-shifts";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
-import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
+import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2, EyeOff, Eye } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,6 +45,11 @@ export default function WorkPage() {
   const { mutate: cancelShift } = useCancelShift();
   const queryClient = useQueryClient();
   const isManager = user?.role === "manager" || user?.role === "admin";
+
+  // For managers, show monthly view
+  if (isManager) {
+    return <ManagerMonthlyView />;
+  }
 
   const handleUpdateUserStatus = (username: string, active: number) => {
     if (confirm(active === 0 ? "Hide/Disable this staff member?" : "Show/Enable this staff member?")) {
@@ -532,6 +537,141 @@ function ManageShiftDialogInWork({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ManagerMonthlyView() {
+  const { t, language } = useI18n();
+  const { user } = useAuth();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const month = currentDate.getMonth() + 1;
+  const year = currentDate.getFullYear();
+  
+  const { data, isLoading } = useMyMonth(month, year);
+  
+  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+
+  if (isLoading) return <WorkPageSkeleton />;
+
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Get the day of week for the first day (0 = Sunday, 1 = Monday, etc.)
+  const startDayOfWeek = getDay(monthStart);
+  
+  // Build shifts by date
+  const shiftsByDate: Record<string, any> = {};
+  data?.shifts?.forEach((s: any) => {
+    shiftsByDate[s.date] = s;
+  });
+
+  const weekDays = language === "th" 
+    ? ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const monthNames = language === "th"
+    ? ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+    : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  const groupColors: Record<string, string> = {
+    open: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+    lunch: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+    dinner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+    late: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700",
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-display font-bold text-foreground">
+            {language === "th" ? "ตารางงานของฉัน" : "My Schedule"}
+          </h2>
+          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+            <CalendarIcon className="w-4 h-4" />
+            {monthNames[month - 1]} {year}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
+            <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 rounded-full" data-testid="button-prev-month">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="h-4 w-px bg-border/50 mx-1" />
+            <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 rounded-full" data-testid="button-next-month">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Card className="glass-card overflow-hidden border-none shadow-xl p-4">
+        <div className="grid grid-cols-7 gap-1 md:gap-2">
+          {weekDays.map((day, i) => (
+            <div key={day} className={`text-center py-2 text-xs md:text-sm font-bold uppercase tracking-wider ${i === 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {day}
+            </div>
+          ))}
+          
+          {Array.from({ length: startDayOfWeek }).map((_, i) => (
+            <div key={`empty-${i}`} className="aspect-square" />
+          ))}
+          
+          {days.map((day) => {
+            const dateStr = format(day, "yyyy-MM-dd");
+            const shift = shiftsByDate[dateStr];
+            const isToday = format(new Date(), "yyyy-MM-dd") === dateStr;
+            const isSunday = getDay(day) === 0;
+            
+            return (
+              <div 
+                key={dateStr} 
+                className={`aspect-square rounded-xl border p-1 md:p-2 flex flex-col transition-all
+                  ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                  ${shift ? groupColors[shift.shiftGroup?.toLowerCase()] || 'bg-muted/30 border-border/50' : 'bg-muted/10 border-border/30'}
+                `}
+                data-testid={`day-cell-${dateStr}`}
+              >
+                <span className={`text-xs md:text-sm font-bold ${isSunday ? 'text-destructive' : ''} ${isToday ? 'text-primary' : ''}`}>
+                  {format(day, "d")}
+                </span>
+                {shift && (
+                  <div className="flex-1 flex flex-col justify-center items-center">
+                    <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
+                    <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime?.split(' - ')[0]}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="glass-card border-none shadow-lg p-4">
+        <h3 className="font-bold text-foreground mb-3">{language === "th" ? "สรุปประจำเดือน" : "Monthly Summary"}</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Object.entries(groupColors).map(([key, colorClass]) => {
+            const count = data?.shifts?.filter((s: any) => s.shiftGroup?.toLowerCase() === key).length || 0;
+            return (
+              <div key={key} className={`rounded-xl border p-3 ${colorClass}`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider block">{key}</span>
+                <span className="text-2xl font-black">{count}</span>
+                <span className="text-[10px] ml-1">{language === "th" ? "กะ" : "shifts"}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 pt-4 border-t border-border/50">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{language === "th" ? "รวมทั้งหมด" : "Total Shifts"}</span>
+            <span className="text-xl font-bold text-primary">{data?.shifts?.length || 0}</span>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }
 

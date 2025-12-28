@@ -260,8 +260,8 @@ function LoginForm() {
   return (
     <Card className="glass-card border-none shadow-2xl">
       <CardHeader>
-        <CardTitle>{t("welcomeBack")}</CardTitle>
-        <CardDescription>{t("enterCredentials")}</CardDescription>
+        <CardTitle className="select-none">{t("welcomeBack")}</CardTitle>
+        <CardDescription className="select-none">{t("enterCredentials")}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -271,7 +271,7 @@ function LoginForm() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("username")}</FormLabel>
+                  <FormLabel className="select-none">{t("username")}</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter username..." {...field} className="h-11" data-testid="input-username" />
                   </FormControl>
@@ -284,7 +284,7 @@ function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("password")}</FormLabel>
+                  <FormLabel className="select-none">{t("password")}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
                   </FormControl>
@@ -341,8 +341,8 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <Card className="glass-card border-none shadow-2xl">
       <CardHeader>
-        <CardTitle>{t("createAccount")}</CardTitle>
-        <CardDescription>{t("joinTeam")}</CardDescription>
+        <CardTitle className="select-none">{t("createAccount")}</CardTitle>
+        <CardDescription className="select-none">{t("joinTeam")}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-6">
@@ -371,7 +371,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("fullName")}</FormLabel>
+                  <FormLabel className="select-none">{t("fullName")}</FormLabel>
                   <FormControl><Input {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -383,7 +383,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 name="nickName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("nickname")}</FormLabel>
+                    <FormLabel className="select-none">{t("nickname")}</FormLabel>
                     <FormControl><Input {...field} className="h-10" /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -394,7 +394,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("phone")}</FormLabel>
+                    <FormLabel className="select-none">{t("phone")}</FormLabel>
                     <FormControl><Input {...field} className="h-10" /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -406,7 +406,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("email")}</FormLabel>
+                  <FormLabel className="select-none">{t("email")}</FormLabel>
                   <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -417,7 +417,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("password")}</FormLabel>
+                  <FormLabel className="select-none">{t("password")}</FormLabel>
                   <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -430,7 +430,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 name="verifyCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("verificationCode")}</FormLabel>
+                    <FormLabel className="select-none">{t("verificationCode")}</FormLabel>
                     <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
                     <FormMessage />
                   </FormItem>

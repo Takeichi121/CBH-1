@@ -30,6 +30,7 @@ const bookSchema = z.object({
 type BookFormValues = z.infer<typeof bookSchema>;
 
 export default function WorkPage() {
+  const { user } = useAuth();
   const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   // Format date as YYYY-MM-DD for API

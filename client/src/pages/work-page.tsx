@@ -5,7 +5,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2, EyeOff, Eye } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2, EyeOff, Eye, Users, UserCog, ArrowLeft } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -46,9 +46,9 @@ export default function WorkPage() {
   const queryClient = useQueryClient();
   const isManager = user?.role === "manager" || user?.role === "admin";
 
-  // For managers, show monthly view
+  // For managers, show dashboard with selection
   if (isManager) {
-    return <ManagerMonthlyView />;
+    return <ManagerDashboard />;
   }
 
   const handleUpdateUserStatus = (username: string, active: number) => {
@@ -540,9 +540,214 @@ function ManageShiftDialogInWork({
   );
 }
 
+function ManagerDashboard() {
+  const { language } = useI18n();
+  const [selectedView, setSelectedView] = useState<"none" | "employee" | "manager">("none");
+
+  const labels = {
+    title: language === "th" ? "เลือกตารางที่ต้องการดู" : "Select Schedule View",
+    employeeSchedule: language === "th" ? "ตารางงานพนักงาน" : "Employee Schedule",
+    managerSchedule: language === "th" ? "ตารางงานผู้จัดการ" : "Manager Schedule",
+    employeeDesc: language === "th" ? "ดูและจัดการตารางงานของพนักงานทั้งหมด" : "View and manage all employee schedules",
+    managerDesc: language === "th" ? "ดูตารางงานของตัวเองรายเดือน" : "View your own monthly schedule",
+    back: language === "th" ? "กลับ" : "Back",
+  };
+
+  if (selectedView === "employee") {
+    return (
+      <div className="space-y-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => setSelectedView("none")} 
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {labels.back}
+        </Button>
+        <ManagerEmployeeRosterView />
+      </div>
+    );
+  }
+
+  if (selectedView === "manager") {
+    return (
+      <div className="space-y-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => setSelectedView("none")} 
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {labels.back}
+        </Button>
+        <ManagerMonthlyView />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-display font-bold text-foreground">
+          {labels.title}
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+        <Card 
+          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          onClick={() => setSelectedView("employee")}
+          data-testid="card-employee-schedule"
+        >
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Users className="w-12 h-12 text-primary" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">{labels.employeeSchedule}</h3>
+            <p className="text-sm text-muted-foreground">{labels.employeeDesc}</p>
+          </div>
+        </Card>
+
+        <Card 
+          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          onClick={() => setSelectedView("manager")}
+          data-testid="card-manager-schedule"
+        >
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <UserCog className="w-12 h-12 text-primary" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">{labels.managerSchedule}</h3>
+            <p className="text-sm text-muted-foreground">{labels.managerDesc}</p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function ManagerEmployeeRosterView() {
+  const { language } = useI18n();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const dateParam = format(currentDate, "yyyy-MM-dd");
+  const { data: rosterData, isLoading } = useRoster(dateParam);
+  const queryClient = useQueryClient();
+
+  const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
+  const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+
+  const handleUpdateUserStatus = (username: string, active: number) => {
+    if (confirm(active === 0 ? "ซ่อนพนักงานนี้?" : "แสดงพนักงานนี้?")) {
+      const token = localStorage.getItem("bk_token") || "";
+      apiRequest("POST", "/api/updateUserStatus", { token, username, active })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+        });
+    }
+  };
+
+  if (isLoading) return <WorkPageSkeleton />;
+
+  const weekRange = rosterData?.weekRange;
+  const displayRange = weekRange ? `${format(new Date(weekRange.start), "MMM d")} - ${format(new Date(weekRange.end), "MMM d, yyyy")}` : "";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-display font-bold text-foreground">
+            {language === "th" ? "ตารางงานพนักงาน" : "Employee Schedule"}
+          </h2>
+          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+            <CalendarIcon className="w-4 h-4" />
+            {displayRange}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
+            <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="h-8 w-8 rounded-full" data-testid="button-prev-week">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="h-4 w-px bg-border/50 mx-1" />
+            <Button variant="ghost" size="icon" onClick={handleNextWeek} className="h-8 w-8 rounded-full" data-testid="button-next-week">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Card className="glass-card overflow-hidden border-none shadow-xl">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 bg-card z-10 min-w-[150px]">
+                  {language === "th" ? "พนักงาน" : "Staff"}
+                </TableHead>
+                {weekRange?.days?.map((day: any) => (
+                  <TableHead key={day.date} className="text-center min-w-[80px]">
+                    <div className="text-xs font-medium">{day.dayName}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(day.date), "d MMM")}</div>
+                  </TableHead>
+                ))}
+                <TableHead className="text-center min-w-[60px]">
+                  {language === "th" ? "สถานะ" : "Status"}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rosterData?.staffWithShifts?.map((staff: any) => (
+                <TableRow key={staff.username} className={staff.active === 0 ? "opacity-50" : ""}>
+                  <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                    <div className="flex flex-col">
+                      <span>{staff.nickName || staff.fullName}</span>
+                      <span className="text-xs text-muted-foreground">@{staff.username}</span>
+                    </div>
+                  </TableCell>
+                  {weekRange?.days?.map((day: any) => {
+                    const shift = staff.shifts?.[day.date];
+                    return (
+                      <TableCell key={day.date} className="text-center p-1">
+                        {shift ? (
+                          <div className={`text-xs px-1 py-0.5 rounded ${
+                            shift.shiftGroup === "open" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                            shift.shiftGroup === "lunch" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
+                            shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
+                            "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+                          }`}>
+                            {shift.shiftGroup}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-center">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleUpdateUserStatus(staff.username, staff.active === 1 ? 0 : 1)}
+                      data-testid={`button-toggle-status-${staff.username}`}
+                    >
+                      {staff.active === 1 ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function ManagerMonthlyView() {
-  const { t, language } = useI18n();
-  const { user } = useAuth();
+  const { language } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   const month = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();
@@ -558,10 +763,8 @@ function ManagerMonthlyView() {
   const monthEnd = endOfMonth(currentDate);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   
-  // Get the day of week for the first day (0 = Sunday, 1 = Monday, etc.)
   const startDayOfWeek = getDay(monthStart);
   
-  // Build shifts by date
   const shiftsByDate: Record<string, any> = {};
   data?.shifts?.forEach((s: any) => {
     shiftsByDate[s.date] = s;

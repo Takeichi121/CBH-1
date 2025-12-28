@@ -132,16 +132,16 @@ export default function AuthPage() {
                         autoFocus
                       />
                     </div>
-                    <Button
-                      className="w-full h-11 text-base font-semibold"
-                      onClick={() => {
-                        if (verifyCode === "bk1040") {
-                          setIsCodeVerified(true);
-                        }
-                      }}
-                    >
-                      Verify
-                    </Button>
+                      <Button
+                        className="w-full h-11 text-base font-semibold"
+                        onClick={() => {
+                          if (verifyCode === "200103") {
+                            setIsCodeVerified(true);
+                          }
+                        }}
+                      >
+                        Verify
+                      </Button>
                   </CardContent>
                 </>
               ) : (

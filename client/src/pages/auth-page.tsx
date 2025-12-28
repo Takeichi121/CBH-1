@@ -118,16 +118,20 @@ export default function AuthPage() {
                         value={verifyCode}
                         onChange={(e) => setVerifyCode(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && verifyCode === "bk1040") {
-                            setIsCodeVerified(true);
+                          if (e.key === "Enter") {
+                            if (verifyCode === "bk1040") {
+                              setIsCodeVerified(true);
+                            } else {
+                              // Optional: clear code or show error if needed
+                            }
                           }
                         }}
-                        className="h-11"
+                        className="h-11 border-primary/20 focus-visible:ring-primary/20"
                         autoFocus
                       />
                     </div>
                     <Button
-                      className="w-full h-11 text-base font-semibold"
+                      className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
                       onClick={() => {
                         if (verifyCode === "bk1040") {
                           setIsCodeVerified(true);

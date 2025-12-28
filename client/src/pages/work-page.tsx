@@ -95,8 +95,8 @@ export default function WorkPage() {
                 {days.map((day: string) => (
                   <TableHead key={day} className="text-center min-w-[120px]">
                     <div className="flex flex-col items-center py-2">
-                      <span className="text-xs uppercase text-muted-foreground font-semibold">
-                        {format(parseISO(day), "EEE")}
+                      <span className="text-xs uppercase text-primary font-bold">
+                        {t(format(parseISO(day), "EEEE").toLowerCase() as any)}
                       </span>
                       <span className="text-lg font-bold text-foreground">
                         {format(parseISO(day), "d")}

@@ -117,6 +117,11 @@ export default function AuthPage() {
                         placeholder="Enter code..."
                         value={verifyCode}
                         onChange={(e) => setVerifyCode(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && verifyCode === "bk1040") {
+                            setIsCodeVerified(true);
+                          }
+                        }}
                         className="h-11"
                         autoFocus
                       />

@@ -28,17 +28,6 @@ export default function AuthPage() {
   const { theme, setTheme } = useTheme();
   const loginAttemptedRef = useRef(false);
 
-  // Check for pending dev mode from layout
-  useEffect(() => {
-    const pendingRole = localStorage.getItem("pending_dev_mode") as "staff" | "manager" | null;
-    if (pendingRole) {
-      localStorage.removeItem("pending_dev_mode");
-      setIsDeveloperMode(true);
-      setIsCodeVerified(true); // Skip code if coming from inside app
-      setDeveloperRole(pendingRole);
-    }
-  }, []);
-
   useEffect(() => {
     if (!isLoading && user) {
       const targetPath = user.role === "manager" ? "/roster" : "/work";

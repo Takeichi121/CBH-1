@@ -43,17 +43,6 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/settings", label: t("settings") || "Settings", icon: Settings },
   ];
 
-  const handleDevMode = (role: "staff" | "manager") => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        // We'll use a hacky way to trigger dev mode after logout
-        // Since we're in build mode and want to be fast
-        localStorage.setItem("pending_dev_mode", role);
-        window.location.href = "/";
-      }
-    });
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Mobile Header */}
@@ -165,29 +154,6 @@ export function Layout({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
-          
-          {/* Developer Mode Dropdown next to Settings */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full gap-2 border-primary/20 hover:bg-primary/5 h-9"
-              >
-                <span className="text-xs font-bold">Dev Mode</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Select Role</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleDevMode("staff")}>
-                Staff Developer Mode
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDevMode("manager")}>
-                Manager Developer Mode
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </nav>
 
         <div className="flex items-center gap-2">

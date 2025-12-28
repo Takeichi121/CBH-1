@@ -109,20 +109,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Register Manager
   app.post(api.auth.registerManager.path, async (req, res) => {
     if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
-    const { fullName, nickName, phone, email, password, verifyCode, position } = req.body;
+    const { fullName, nickName, phone, email, password, verifyCode } = req.body;
     if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก" });
     if (!fullName || !password || !email) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Email / Password" });
-    if (!position) return res.json({ ok: false, message: "กรุณาเลือกตำแหน่ง" });
 
     const base = generateUsernameBase(fullName);
     const username = await allocateUsername(base, async (u) => !!(await storage.getUser(u)));
     if (!username) return res.json({ ok: false, message: "สร้าง username ไม่สำเร็จ" });
 
+    // Default all managers to Store Manager position
     await storage.createUser({
       username, passhash: hashPass(password), role: "manager",
-      fullName, nickName, phone, email, position, active: 1, createdAt: new Date().toISOString()
+      fullName, nickName, phone, email, position: "store_manager", active: 1, createdAt: new Date().toISOString()
     });
-    await storage.log("register_manager", username, `fullName=${fullName}, position=${position}`);
+    await storage.log("register_manager", username, `fullName=${fullName}, position=store_manager`);
     res.json({ ok: true, username });
   });
 

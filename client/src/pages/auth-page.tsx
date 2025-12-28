@@ -435,43 +435,17 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
             />
             
             {role === "manager" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="position"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="select-none">{t("position")}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-10 border-primary/30" data-testid="select-manager-position">
-                            <SelectValue placeholder={t("selectPosition")} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {managerPositions.map((pos) => (
-                            <SelectItem key={pos} value={pos} data-testid={`option-position-${pos}`}>
-                              {positionLabels[pos]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="verifyCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="select-none">{t("verificationCode")}</FormLabel>
-                      <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+              <FormField
+                control={form.control}
+                name="verifyCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="select-none">{t("verificationCode")}</FormLabel>
+                    <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             <Button 

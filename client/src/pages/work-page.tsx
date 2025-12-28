@@ -84,20 +84,23 @@ export default function WorkPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          {isManager && rosterData?.users?.some((u: any) => u.active === 0 && u.role === "staff") && (
-            <HiddenStaffDialogInWork 
-              users={rosterData.users.filter((u: any) => u.active === 0 && u.role === "staff")} 
-              onUpdateStatus={handleUpdateUserStatus} 
-            />
-          )}
-          <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full" data-testid="button-prev-week">
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full" data-testid="button-next-week">
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            {isManager && rosterData?.users?.some((u: any) => u.active === 0 && u.role === "staff") && (
+              <HiddenStaffDialogInWork 
+                users={rosterData.users.filter((u: any) => u.active === 0 && u.role === "staff")} 
+                onUpdateStatus={handleUpdateUserStatus} 
+              />
+            )}
+            <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
+              <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="h-8 w-8 rounded-full" data-testid="button-prev-week">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="h-4 w-px bg-border/50 mx-1" />
+              <Button variant="ghost" size="icon" onClick={handleNextWeek} className="h-8 w-8 rounded-full" data-testid="button-next-week">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
       </div>
 
       {data?.closed && (
@@ -111,9 +114,10 @@ export default function WorkPage() {
       )}
 
       <Card className="glass-card overflow-hidden border-none shadow-xl">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
+        <div className="overflow-x-auto -mx-4 md:mx-0">
+          <div className="min-w-[800px] md:min-w-0 p-4 md:p-0">
+            <Table>
+              <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-[150px] font-bold">Staff Member</TableHead>
                 {days.map((day: string) => (
@@ -247,6 +251,7 @@ export default function WorkPage() {
               </TableRow>
             </TableBody>
           </Table>
+          </div>
         </div>
       </Card>
     </div>

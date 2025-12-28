@@ -102,23 +102,27 @@ export default function RosterPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2">
           {isManager && hiddenUsers.length > 0 && (
             <HiddenStaffDialog users={hiddenUsers} onUpdateStatus={handleUpdateUserStatus} />
           )}
-          <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full" data-testid="button-prev-week">
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full" data-testid="button-next-week">
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
+            <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="h-8 w-8 rounded-full" data-testid="button-prev-week">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="h-4 w-px bg-border/50 mx-1" />
+            <Button variant="ghost" size="icon" onClick={handleNextWeek} className="h-8 w-8 rounded-full" data-testid="button-next-week">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
       <Card className="glass-card overflow-hidden border-none shadow-xl">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
+        <div className="overflow-x-auto -mx-4 md:mx-0">
+          <div className="min-w-[800px] md:min-w-0 p-4 md:p-0">
+            <Table>
+              <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-[200px] font-bold">Staff Member</TableHead>
                 {days.map((day: string) => (
@@ -196,6 +200,7 @@ export default function RosterPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </Card>
     </div>

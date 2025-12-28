@@ -139,6 +139,7 @@ export default function WorkPage() {
                           groups={settings?.groups} 
                           day={day} 
                           disabled={data.closed}
+                          settings={settings}
                         >
                           <div className={`h-20 w-full rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
                             <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
@@ -163,7 +164,7 @@ export default function WorkPage() {
   );
 }
 
-function BookShiftDialog({ children, groups, day, disabled }: { children: React.ReactNode; groups: any[]; day: string; disabled?: boolean }) {
+function BookShiftDialog({ children, groups, day, disabled, settings }: { children: React.ReactNode; groups: any[]; day: string; disabled?: boolean, settings: any }) {
   const [open, setOpen] = useState(false);
   const { mutate: bookShift, isPending } = useBookShift();
   

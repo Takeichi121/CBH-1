@@ -690,7 +690,7 @@ function ManagerEmployeeRosterView() {
                 {weekRange?.days?.map((day: any) => (
                   <TableHead key={day.date} className="text-center min-w-[80px]">
                     <div className="text-xs font-medium">{day.dayName}</div>
-                    <div className="text-xs text-muted-foreground">{format(new Date(day.date), "d MMM")}</div>
+                    <div className="text-xs text-muted-foreground">{day.date ? format(parseISO(day.date), "d MMM") : ""}</div>
                   </TableHead>
                 ))}
                 <TableHead className="text-center min-w-[60px]">

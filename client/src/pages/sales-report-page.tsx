@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -125,22 +125,39 @@ export default function SalesReportPage() {
   });
 
   const { saveData, restoreData, clearData, hasDraft } = useFormPersistence<FormData>('daily-sales-form');
-  const { markAsSaved } = useUnsavedChanges();
+  const { hasUnsavedChanges, markAsChanged, markAsSaved } = useUnsavedChanges();
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedSave = useCallback((values: FormData) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      saveData(values);
+      setLastSaved(new Date());
+      setShowAutoSave(true);
+      markAsSaved();
+      if (hideAutoSaveTimerRef.current) {
+        clearTimeout(hideAutoSaveTimerRef.current);
+      }
+      hideAutoSaveTimerRef.current = setTimeout(() => setShowAutoSave(false), 3000);
+    }, 1000);
+  }, [saveData, markAsSaved]);
 
   useEffect(() => {
     const subscription = form.watch((values) => {
-      if (Object.values(values).some(value => value && value !== "0")) {
-        const timer = setTimeout(() => {
-          saveData(values as FormData);
-          setLastSaved(new Date());
-          setShowAutoSave(true);
-          setTimeout(() => setShowAutoSave(false), 3000);
-        }, 1000);
-        return () => clearTimeout(timer);
+      if (Object.values(values).some(value => value && value !== "0" && value !== "")) {
+        markAsChanged();
+        debouncedSave(values as FormData);
       }
     });
-    return () => subscription.unsubscribe();
-  }, [form.watch, saveData]);
+    return () => {
+      subscription.unsubscribe();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (hideAutoSaveTimerRef.current) clearTimeout(hideAutoSaveTimerRef.current);
+    };
+  }, [debouncedSave, markAsChanged]);
 
   useEffect(() => {
     const restored = restoreData();
@@ -346,7 +363,7 @@ Report by ${v.reportBy}`;
 
   const handleAutoCalculateWaste = () => {
     const dailyDivisor = customWasteDivisor ? parseFloat(customWasteDivisor) : actualSales;
-    const mtdDivisor = customWasteMtdDivisor ? parseFloat(customWasteMtdDivisor) : actualSales;
+    const mtdDivisor = customWasteMtdDivisor ? parseFloat(customWasteMtdDivisor) : mtdActual;
     
     if (dailyDivisor > 0 || mtdDivisor > 0) {
       if (dailyDivisor > 0) {

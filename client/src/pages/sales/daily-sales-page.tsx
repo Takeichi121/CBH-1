@@ -492,7 +492,7 @@ Report by ${v.reportBy}`;
               
               <div className="bg-muted/50 p-3 md:p-4 rounded-lg">
                 <h3 className="text-sm md:text-base font-medium mb-3">{t.basicInfo}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField control={form.control} name="reportDate" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs md:text-sm">{t.date}</FormLabel>
@@ -503,23 +503,6 @@ Report by ${v.reportBy}`;
                     <FormItem>
                       <FormLabel className="text-xs md:text-sm">{t.reporter}</FormLabel>
                       <FormControl><Input className="text-sm" placeholder={t.reporter} {...field} data-testid="input-reporter" /></FormControl>
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="workShift" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs md:text-sm">{t.shift}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="text-sm" data-testid="select-shift">
-                            <SelectValue placeholder={t.shift} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="full">{t.shiftFull}</SelectItem>
-                          <SelectItem value="morning">{t.shiftMorning}</SelectItem>
-                          <SelectItem value="evening">{t.shiftEvening}</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </FormItem>
                   )} />
                 </div>

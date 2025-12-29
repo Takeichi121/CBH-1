@@ -15,6 +15,8 @@ import WorkPage from "@/pages/work-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
+import SalesReportPage from "@/pages/sales-report-page";
+import BorrowTrackerPage from "@/pages/borrow-tracker-page";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
@@ -55,6 +57,14 @@ function Router() {
           
           <Route path="/admin">
             <ProtectedRoute component={AdminPage} path="/admin" />
+          </Route>
+          
+          <Route path="/sales">
+            <ProtectedRoute component={SalesReportPage} path="/sales" />
+          </Route>
+          
+          <Route path="/borrow">
+            <ProtectedRoute component={BorrowTrackerPage} path="/borrow" />
           </Route>
           
           <Route component={NotFound} />

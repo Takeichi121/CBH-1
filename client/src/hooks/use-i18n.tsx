@@ -88,6 +88,9 @@ const translations = {
     version: "Version",
     lastUpdated: "Last Updated",
     developer: "Developer",
+    salesReport: "Sales Report",
+    borrowTracker: "Borrow",
+    manageTeam: "Manage Team",
   },
   th: {
     appName: "Grand Diamond",
@@ -174,6 +177,9 @@ const translations = {
     version: "เวอร์ชัน",
     lastUpdated: "อัปเดตล่าสุด",
     developer: "ผู้พัฒนา",
+    salesReport: "สรุปยอดขาย",
+    borrowTracker: "ยืม-คืน",
+    manageTeam: "จัดการทีม",
   },
 };
 

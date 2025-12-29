@@ -15,9 +15,15 @@ import WorkPage from "@/pages/work-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
-import SalesReportPage from "@/pages/sales-report-page";
 import BorrowTrackerPage from "@/pages/borrow-tracker-page";
 import NotFound from "@/pages/not-found";
+
+// Sales Pages
+import SalesDashboardPage from "@/pages/sales/dashboard-page";
+import DailySalesPage from "@/pages/sales/daily-sales-page";
+import SalesReportsPage from "@/pages/sales/reports-page";
+import SalesSettingsPage from "@/pages/sales/settings-page";
+
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType, path: string }) {
@@ -59,8 +65,21 @@ function Router() {
             <ProtectedRoute component={AdminPage} path="/admin" />
           </Route>
           
+          {/* Sales Routes */}
           <Route path="/sales">
-            <ProtectedRoute component={SalesReportPage} path="/sales" />
+            <ProtectedRoute component={SalesDashboardPage} path="/sales" />
+          </Route>
+          
+          <Route path="/sales/daily">
+            <ProtectedRoute component={DailySalesPage} path="/sales/daily" />
+          </Route>
+          
+          <Route path="/sales/reports">
+            <ProtectedRoute component={SalesReportsPage} path="/sales/reports" />
+          </Route>
+          
+          <Route path="/sales/settings">
+            <ProtectedRoute component={SalesSettingsPage} path="/sales/settings" />
           </Route>
           
           <Route path="/borrow">

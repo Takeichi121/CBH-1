@@ -16,6 +16,7 @@ import { CheckCircle, Save, Trash2, Copy, Calculator, BarChart3 } from "lucide-r
 import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useToast } from "@/hooks/use-toast";
+import { SalesLayout } from "./sales-layout";
 
 const formSchema = z.object({
   reportDate: z.string().min(1, "กรุณาเลือกวันที่"),
@@ -452,6 +453,7 @@ Report by ${v.reportBy}`;
   };
 
   return (
+    <SalesLayout>
     <div className="space-y-6 pb-20">
       <Card>
         <CardHeader>
@@ -978,5 +980,6 @@ Report by ${v.reportBy}`;
         </CardContent>
       </Card>
     </div>
+    </SalesLayout>
   );
 }

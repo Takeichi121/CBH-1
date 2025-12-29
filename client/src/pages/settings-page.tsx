@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState } from "react";
@@ -313,6 +313,41 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* System Information */}
+        <Card className="glass-card border-none shadow-xl md:col-span-2">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Info className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>{t("systemInformation")}</CardTitle>
+              <CardDescription>{t("aboutSystem")}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm">{t("version")}</Label>
+                <p className="font-medium text-foreground" data-testid="text-version">1.0.0</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm">{t("lastUpdated")}</Label>
+                <p className="font-medium text-foreground" data-testid="text-last-updated">12/29/2025</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm">{t("developer")}</Label>
+                <p className="font-medium text-foreground" data-testid="text-developer">Chanon Jaimool</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center text-sm text-muted-foreground pt-6 border-t border-border/50 space-y-1">
+        <p>&copy; 2025 BK Grand Diamond Plaza. Developed by Chanon Jaimool</p>
+        <p>Version 1.0.0 | Last updated: 12/29/2025</p>
       </div>
     </div>
   );

@@ -83,6 +83,11 @@ const translations = {
     assistantStoreManager: "Assistant Store Manager",
     shiftManager: "Shift Manager",
     managementTrainee: "Management Trainee",
+    systemInformation: "System Information",
+    aboutSystem: "About this system",
+    version: "Version",
+    lastUpdated: "Last Updated",
+    developer: "Developer",
   },
   th: {
     appName: "Grand Diamond",
@@ -164,6 +169,11 @@ const translations = {
     assistantStoreManager: "ผู้ช่วยผู้จัดการร้าน",
     shiftManager: "ผู้จัดการกะ",
     managementTrainee: "ผู้ฝึกหัดผู้จัดการ",
+    systemInformation: "ข้อมูลระบบ",
+    aboutSystem: "เกี่ยวกับระบบนี้",
+    version: "เวอร์ชัน",
+    lastUpdated: "อัปเดตล่าสุด",
+    developer: "ผู้พัฒนา",
   },
 };
 

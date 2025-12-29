@@ -758,5 +758,115 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
   });
 
+  // =============== SALES ROUTES ===============
+
+  // Create Daily Sales Report
+  app.post(api.sales.createReport.path, async (req, res) => {
+    const { token, report } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    try {
+      const created = await storage.createDailySalesReport(report);
+      await storage.log("create_sales_report", u.username, `date=${report.reportDate}`);
+      res.json({ ok: true, report: created });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to create report" });
+    }
+  });
+
+  // Get Single Report
+  app.post(api.sales.getReport.path, async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const report = await storage.getDailySalesReport(id);
+    if (!report) return res.json({ ok: false, message: "Report not found" });
+    res.json({ ok: true, report });
+  });
+
+  // Get Reports List
+  app.post(api.sales.getReports.path, async (req, res) => {
+    const { token, date, limit } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const reports = await storage.getDailySalesReports(date, limit);
+    res.json({ ok: true, reports });
+  });
+
+  // Update Report
+  app.post(api.sales.updateReport.path, async (req, res) => {
+    const { token, id, report } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    try {
+      const updated = await storage.updateDailySalesReport(id, report);
+      await storage.log("update_sales_report", u.username, `id=${id}`);
+      res.json({ ok: true, report: updated });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to update report" });
+    }
+  });
+
+  // Delete Report
+  app.post(api.sales.deleteReport.path, async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    const deleted = await storage.deleteDailySalesReport(id);
+    if (!deleted) return res.json({ ok: false, message: "Report not found" });
+    await storage.log("delete_sales_report", u.username, `id=${id}`);
+    res.json({ ok: true });
+  });
+
+  // Get Store Settings
+  app.post(api.sales.getSettings.path, async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const settings = await storage.getStoreSettings();
+    res.json({ ok: true, settings });
+  });
+
+  // Update Store Settings
+  app.post(api.sales.updateSettings.path, async (req, res) => {
+    const { token, settings } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    try {
+      const updated = await storage.updateStoreSettings(settings);
+      await storage.log("update_store_settings", u.username, "settings updated");
+      res.json({ ok: true, settings: updated });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to update settings" });
+    }
+  });
+
   return httpServer;
 }

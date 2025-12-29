@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -62,6 +62,17 @@ export interface IStorage {
   getSwapRequests(status?: string): Promise<SwapRequest[]>;
   getSwapRequestById(id: number): Promise<SwapRequest | undefined>;
   updateSwapRequestStatus(id: number, status: string, approvedBy?: string, note?: string): Promise<void>;
+
+  // Daily Sales Reports
+  createDailySalesReport(report: InsertDailySales): Promise<DailySalesReport>;
+  getDailySalesReport(id: number): Promise<DailySalesReport | undefined>;
+  getDailySalesReports(date?: string, limit?: number): Promise<DailySalesReport[]>;
+  updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport>;
+  deleteDailySalesReport(id: number): Promise<boolean>;
+
+  // Store Settings
+  getStoreSettings(): Promise<StoreSettings | undefined>;
+  updateStoreSettings(settings: InsertStoreSettings): Promise<StoreSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -210,6 +221,71 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date().toISOString() 
       })
       .where(eq(swapRequests.id, id));
+  }
+
+  // Daily Sales Reports
+  async createDailySalesReport(report: InsertDailySales): Promise<DailySalesReport> {
+    const [created] = await db.insert(dailySalesReports).values({
+      ...report,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }).returning();
+    return created;
+  }
+
+  async getDailySalesReport(id: number): Promise<DailySalesReport | undefined> {
+    const [report] = await db.select().from(dailySalesReports).where(eq(dailySalesReports.id, id));
+    return report;
+  }
+
+  async getDailySalesReports(date?: string, limit: number = 30): Promise<DailySalesReport[]> {
+    if (date) {
+      return await db.select().from(dailySalesReports)
+        .where(eq(dailySalesReports.reportDate, date))
+        .orderBy(desc(dailySalesReports.reportDate))
+        .limit(limit);
+    }
+    return await db.select().from(dailySalesReports)
+      .orderBy(desc(dailySalesReports.reportDate))
+      .limit(limit);
+  }
+
+  async updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport> {
+    const [updated] = await db.update(dailySalesReports)
+      .set({ ...report, updatedAt: new Date().toISOString() })
+      .where(eq(dailySalesReports.id, id))
+      .returning();
+    if (!updated) throw new Error("Report not found");
+    return updated;
+  }
+
+  async deleteDailySalesReport(id: number): Promise<boolean> {
+    const result = await db.delete(dailySalesReports).where(eq(dailySalesReports.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Store Settings
+  async getStoreSettings(): Promise<StoreSettings | undefined> {
+    const [settings] = await db.select().from(storeSettings).limit(1);
+    return settings;
+  }
+
+  async updateStoreSettings(settings: InsertStoreSettings): Promise<StoreSettings> {
+    const existing = await this.getStoreSettings();
+    if (existing) {
+      const [updated] = await db.update(storeSettings)
+        .set({ ...settings, updatedAt: new Date().toISOString() })
+        .where(eq(storeSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(storeSettings).values({
+        ...settings,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).returning();
+      return created;
+    }
   }
 }
 

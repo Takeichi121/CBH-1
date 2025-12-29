@@ -230,4 +230,62 @@ export const api = {
       },
     },
   },
+  sales: {
+    createReport: {
+      method: "POST",
+      path: "/api/sales/createReport",
+      input: z.object({ token: z.string(), report: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    getReport: {
+      method: "POST",
+      path: "/api/sales/getReport",
+      input: z.object({ token: z.string(), id: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    getReports: {
+      method: "POST",
+      path: "/api/sales/getReports",
+      input: z.object({ token: z.string(), date: z.string().optional(), limit: z.number().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), reports: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    updateReport: {
+      method: "POST",
+      path: "/api/sales/updateReport",
+      input: z.object({ token: z.string(), id: z.number(), report: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    deleteReport: {
+      method: "POST",
+      path: "/api/sales/deleteReport",
+      input: z.object({ token: z.string(), id: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    getSettings: {
+      method: "POST",
+      path: "/api/sales/getSettings",
+      input: z.object({ token: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), settings: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    updateSettings: {
+      method: "POST",
+      path: "/api/sales/updateSettings",
+      input: z.object({ token: z.string(), settings: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), settings: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+  },
 };

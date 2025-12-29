@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, unique, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 // Manager position levels
 export const managerPositions = [
@@ -100,6 +101,86 @@ export const swapRequests = pgTable("swap_requests", {
   note: text("note"),
 });
 
+// Daily Sales Reports
+export const dailySalesReports = pgTable("daily_sales_reports", {
+  id: serial("id").primaryKey(),
+  reportDate: text("report_date").notNull(),
+  reportBy: text("report_by").notNull(),
+  workShift: text("work_shift").notNull().default("full"),
+  
+  // Daily Sales
+  dailyTarget: text("daily_target").notNull().default("0"),
+  actualSales: text("actual_sales").notNull().default("0"),
+  transactionCount: text("transaction_count").notNull().default("0"),
+  
+  // MTD (Month To Date)
+  mtdTarget: text("mtd_target").default("0"),
+  mtdActual: text("mtd_actual").default("0"),
+  mtdTc: text("mtd_tc").default("0"),
+  
+  // In Store
+  dineIn: text("dine_in").default("0"),
+  dineInTc: text("dine_in_tc").default("0"),
+  takeAway: text("take_away").default("0"),
+  takeAwayTc: text("take_away_tc").default("0"),
+  
+  // Delivery
+  grabfood: text("grabfood").default("0"),
+  lineman: text("lineman").default("0"),
+  shopee: text("shopee").default("0"),
+  bkapp: text("bkapp").default("0"),
+  
+  // Performance Metrics
+  osat: text("osat").default("0"),
+  surveyCount: text("survey_count").default("0"),
+  voidAmount: text("void_amount").default("0"),
+  voidCount: text("void_count").default("0"),
+  
+  // Add-ons
+  addCheeseCount: text("add_cheese_count").default("0"),
+  addCheesePercent: text("add_cheese_percent").default("0"),
+  vMealCount: text("v_meal_count").default("0"),
+  vMealPercent: text("v_meal_percent").default("0"),
+  upSizeCount: text("up_size_count").default("0"),
+  upSizePercent: text("up_size_percent").default("0"),
+  
+  // Waste - Daily
+  wasteRawDaily: text("waste_raw_daily").default("0"),
+  wasteRawDailyPercent: text("waste_raw_daily_percent").default("0"),
+  wasteMealDaily: text("waste_meal_daily").default("0"),
+  wasteMealDailyPercent: text("waste_meal_daily_percent").default("0"),
+  
+  // Waste - MTD
+  wasteRawMtd: text("waste_raw_mtd").default("0"),
+  wasteRawMtdPercent: text("waste_raw_mtd_percent").default("0"),
+  wasteMealMtd: text("waste_meal_mtd").default("0"),
+  wasteMealMtdPercent: text("waste_meal_mtd_percent").default("0"),
+  
+  // Labor
+  colPercent: text("col_percent").default("0"),
+  laborHour: text("labor_hour").default("0"),
+  tcmh: text("tcmh").default("0"),
+  
+  // Roster
+  managerRosterDate: text("manager_roster_date"),
+  managerRosterText: text("manager_roster_text"),
+  staffRosterText: text("staff_roster_text"),
+  
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// Store Settings
+export const storeSettings = pgTable("store_settings", {
+  id: serial("id").primaryKey(),
+  storeName: text("store_name").notNull(),
+  storeCode: text("store_code").notNull(),
+  dailyTarget: text("daily_target").notNull().default("250000"),
+  mtdTarget: text("mtd_target").default("7500000"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);
@@ -107,10 +188,14 @@ export const insertConfigSchema = createInsertSchema(config);
 export const insertLogSchema = createInsertSchema(systemlog);
 export const insertSessionSchema = createInsertSchema(sessions);
 export const insertSwapRequestSchema = createInsertSchema(swapRequests);
+export const insertDailySalesSchema = createInsertSchema(dailySalesReports).omit({ id: true });
+export const insertStoreSettingsSchema = createInsertSchema(storeSettings).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type InsertSwapRequest = z.infer<typeof insertSwapRequestSchema>;
+export type InsertDailySales = z.infer<typeof insertDailySalesSchema>;
+export type InsertStoreSettings = z.infer<typeof insertStoreSettingsSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Shift = typeof shifts.$inferSelect;
@@ -118,3 +203,5 @@ export type Config = typeof config.$inferSelect;
 export type SystemLog = typeof systemlog.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SwapRequest = typeof swapRequests.$inferSelect;
+export type DailySalesReport = typeof dailySalesReports.$inferSelect;
+export type StoreSettings = typeof storeSettings.$inferSelect;

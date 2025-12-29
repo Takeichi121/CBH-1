@@ -44,6 +44,7 @@ export function SalesLayout({ children }: SalesLayoutProps) {
           const isExactDashboard = tab.href === "/sales" && location === "/sales";
           const active = isExactDashboard || (tab.href !== "/sales" && isActive);
           
+          const tabId = tab.href === "/sales" ? "dashboard" : tab.href.replace("/sales/", "");
           return (
             <Link key={tab.href} href={tab.href}>
               <a
@@ -53,10 +54,10 @@ export function SalesLayout({ children }: SalesLayoutProps) {
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-                data-testid={`tab-${tab.href.replace("/sales/", "").replace("/sales", "dashboard")}`}
+                data-testid={`tab-sales-${tabId}`}
               >
-                <tab.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <tab.icon className="w-4 h-4" data-testid={`icon-sales-${tabId}`} />
+                <span className="hidden sm:inline" data-testid={`text-sales-${tabId}`}>{tab.label}</span>
               </a>
             </Link>
           );

@@ -64,7 +64,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function SalesReportPage() {
+export default function DailySalesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { language } = useI18n();
@@ -173,16 +173,18 @@ export default function SalesReportPage() {
 
   if (!isManager) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Card className="p-8 text-center">
-          <CardTitle className="text-destructive mb-2">
-            {language === "th" ? "ไม่มีสิทธิ์เข้าถึง" : "Access Denied"}
-          </CardTitle>
-          <CardDescription>
-            {language === "th" ? "เฉพาะผู้จัดการเท่านั้น" : "Only managers can access this page"}
-          </CardDescription>
-        </Card>
-      </div>
+      <SalesLayout>
+        <div className="flex items-center justify-center h-64">
+          <Card className="p-8 text-center" data-testid="card-access-denied">
+            <CardTitle className="text-destructive mb-2" data-testid="text-access-denied-title">
+              {language === "th" ? "ไม่มีสิทธิ์เข้าถึง" : "Access Denied"}
+            </CardTitle>
+            <CardDescription data-testid="text-access-denied-desc">
+              {language === "th" ? "เฉพาะผู้จัดการเท่านั้น" : "Only managers can access this page"}
+            </CardDescription>
+          </Card>
+        </div>
+      </SalesLayout>
     );
   }
 

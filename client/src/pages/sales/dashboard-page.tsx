@@ -67,21 +67,24 @@ export default function SalesDashboardPage() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpiCards.map((card, index) => (
-            <Card key={index} className={card.bgColor}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{card.title}</p>
-                    <p className="text-xl font-bold mt-1">{card.value}</p>
+          {kpiCards.map((card, index) => {
+            const cardId = card.title.toLowerCase().replace(/[^a-z0-9]/g, "-");
+            return (
+              <Card key={cardId} className={card.bgColor} data-testid={`card-kpi-${cardId}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground" data-testid={`text-kpi-title-${cardId}`}>{card.title}</p>
+                      <p className="text-xl font-bold mt-1" data-testid={`text-kpi-value-${cardId}`}>{card.value}</p>
+                    </div>
+                    <div className={`p-2 rounded-full ${card.bgColor}`}>
+                      <card.icon className={`w-5 h-5 ${card.color}`} />
+                    </div>
                   </div>
-                  <div className={`p-2 rounded-full ${card.bgColor}`}>
-                    <card.icon className={`w-5 h-5 ${card.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

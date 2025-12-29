@@ -337,7 +337,7 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-sm">{t("developer")}</Label>
-                <p className="font-medium text-foreground" data-testid="text-developer">Chanon Jaimool</p>
+                <p className="font-medium text-foreground" data-testid="text-developer">Chanon</p>
               </div>
             </div>
           </CardContent>
@@ -346,7 +346,7 @@ export default function SettingsPage() {
 
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground pt-6 border-t border-border/50 space-y-1">
-        <p>&copy; 2025 BK Grand Diamond Plaza. Developed by Chanon Jaimool</p>
+        <p>&copy; 2025 BK Grand Diamond. Developed by Chanon</p>
         <p>Version 1.0.0 | Last updated: 12/29/2025</p>
       </div>
     </div>

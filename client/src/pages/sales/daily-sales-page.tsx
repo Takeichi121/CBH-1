@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,6 +17,79 @@ import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
+
+const formatNumber = (value: string | number): string => {
+  const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value;
+  if (isNaN(num)) return '0';
+  return num.toLocaleString('en-US');
+};
+
+const parseNumber = (value: string): string => {
+  return value.replace(/,/g, '');
+};
+
+interface NumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
+  value: string;
+  onChange: (value: string) => void;
+  prefix?: string;
+}
+
+const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
+  ({ value, onChange, prefix, className, ...props }, ref) => {
+    const [displayValue, setDisplayValue] = useState(formatNumber(value));
+
+    useEffect(() => {
+      setDisplayValue(formatNumber(value));
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value.replace(/[^0-9.,]/g, '');
+      setDisplayValue(rawValue);
+    };
+
+    const handleBlur = () => {
+      const parsed = parseNumber(displayValue);
+      onChange(parsed || '0');
+      setDisplayValue(formatNumber(parsed || '0'));
+    };
+
+    const handleFocus = () => {
+      const parsed = parseNumber(displayValue);
+      if (parsed === '0') {
+        setDisplayValue('');
+      }
+    };
+
+    return prefix ? (
+      <div className="relative">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{prefix}</span>
+        <Input
+          ref={ref}
+          type="text"
+          inputMode="numeric"
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          className={`pl-6 ${className || ''}`}
+          {...props}
+        />
+      </div>
+    ) : (
+      <Input
+        ref={ref}
+        type="text"
+        inputMode="numeric"
+        value={displayValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
+        className={className}
+        {...props}
+      />
+    );
+  }
+);
 
 const formSchema = z.object({
   reportDate: z.string().min(1, "กรุณาเลือกวันที่"),

@@ -1,0 +1,1283 @@
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CheckCircle, Save, Trash2, Copy, Calculator } from "lucide-react";
+import { useFormPersistence } from "@/hooks/use-form-persistence";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/contexts/language-context";
+
+const formSchema = z.object({
+  reportDate: z.string().min(1, "กรุณาเลือกวันที่"),
+  reportBy: z.string().min(1, "กรุณากรอกชื่อผู้รายงาน"),
+  workShift: z.string().optional().default("full"),
+  
+  // Daily
+  dailyTarget: z.string().default("0"),
+  actualSales: z.string().default("0"),
+  transactionCount: z.string().default("0"),
+  
+  // MTD
+  mtdTarget: z.string().default("0"),
+  mtdActual: z.string().default("0"),
+  mtdTc: z.string().default("0"),
+  
+  // In Store
+  dineIn: z.string().default("0"),
+  dineInTc: z.string().default("0"),
+  takeAway: z.string().default("0"),
+  takeAwayTc: z.string().default("0"),
+  
+  // Delivery
+  grabfood: z.string().default("0"),
+  lineman: z.string().default("0"),
+  shopee: z.string().default("0"),
+  bkapp: z.string().default("0"),
+  
+  // Performance
+  osat: z.string().default("0"),
+  surveyCount: z.string().default("0"),
+  voidAmount: z.string().default("0"),
+  voidCount: z.string().default("0"),
+  
+  // Add-ons
+  addCheeseCount: z.string().default("0"),
+  addCheesePercent: z.string().default("0"),
+  vMealCount: z.string().default("0"),
+  vMealPercent: z.string().default("0"),
+  upSizeCount: z.string().default("0"),
+  upSizePercent: z.string().default("0"),
+  
+  // Waste Daily
+  wasteRawDaily: z.string().default("0"),
+  wasteRawDailyPercent: z.string().default("0"),
+  wasteMealDaily: z.string().default("0"),
+  wasteMealDailyPercent: z.string().default("0"),
+  
+  // Waste MTD
+  wasteRawMtd: z.string().default("0"),
+  wasteRawMtdPercent: z.string().default("0"),
+  wasteMealMtd: z.string().default("0"),
+  wasteMealMtdPercent: z.string().default("0"),
+  
+  // Labor
+  colPercent: z.string().default("0"),
+  laborHour: z.string().default("0"),
+  tcmh: z.string().default("0"),
+  
+  // Roster
+  managerRosterDate: z.string().default(""),
+  managerRosterText: z.string().default(""),
+  staffRosterText: z.string().default(""),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+export default function DailySalesForm() {
+  const { toast } = useToast();
+  const { t, language } = useLanguage();
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [showAutoSave, setShowAutoSave] = useState(false);
+  const [addonDialogOpen, setAddonDialogOpen] = useState(false);
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [inStoreDialogOpen, setInStoreDialogOpen] = useState(false);
+  const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
+  const [laborDialogOpen, setLaborDialogOpen] = useState(false);
+  
+  // Custom divisor values for formula editing
+  const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
+  const [customWasteDivisor, setCustomWasteDivisor] = useState<string>("");
+  const [customWasteMtdDivisor, setCustomWasteMtdDivisor] = useState<string>("");
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      reportDate: new Date().toISOString().split('T')[0],
+      reportBy: "",
+      workShift: "full",
+      dailyTarget: "0",
+      actualSales: "0",
+      transactionCount: "0",
+      mtdTarget: "0",
+      mtdActual: "0",
+      mtdTc: "0",
+      dineIn: "0",
+      dineInTc: "0",
+      takeAway: "0",
+      takeAwayTc: "0",
+      grabfood: "0",
+      lineman: "0",
+      shopee: "0",
+      bkapp: "0",
+      osat: "0",
+      surveyCount: "0",
+      voidAmount: "0",
+      voidCount: "0",
+      addCheeseCount: "0",
+      addCheesePercent: "0",
+      vMealCount: "0",
+      vMealPercent: "0",
+      upSizeCount: "0",
+      upSizePercent: "0",
+      wasteRawDaily: "0",
+      wasteRawDailyPercent: "0",
+      wasteMealDaily: "0",
+      wasteMealDailyPercent: "0",
+      wasteRawMtd: "0",
+      wasteRawMtdPercent: "0",
+      wasteMealMtd: "0",
+      wasteMealMtdPercent: "0",
+      colPercent: "0",
+      laborHour: "0",
+      tcmh: "0",
+      managerRosterDate: "",
+      managerRosterText: "",
+      staffRosterText: "",
+    }
+  });
+
+  const { 
+    saveData, 
+    restoreData, 
+    clearData, 
+    hasDraft,
+  } = useFormPersistence<FormData>('daily-sales-form');
+
+  const { markAsSaved } = useUnsavedChanges();
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      if (Object.values(values).some(value => value && value !== "0")) {
+        const timer = setTimeout(() => {
+          saveData(values as FormData);
+          setLastSaved(new Date());
+          setShowAutoSave(true);
+          setTimeout(() => setShowAutoSave(false), 3000);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, saveData]);
+
+  useEffect(() => {
+    const restored = restoreData();
+    if (restored) {
+      (Object.keys(restored) as Array<keyof FormData>).forEach((key) => {
+        if (restored[key] !== undefined) {
+          form.setValue(key, restored[key]);
+        }
+      });
+    }
+  }, [form.setValue, restoreData]);
+
+  const queryClient = useQueryClient();
+  
+  const mutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const apiData = {
+        reportDate: data.reportDate,
+        reportBy: data.reportBy,
+        workShift: data.workShift,
+        dailyTarget: data.dailyTarget,
+        actualSales: data.actualSales,
+        transactionCount: parseInt(data.transactionCount) || 0,
+        mtdTarget: data.mtdTarget,
+        mtdActual: data.mtdActual,
+        mtdTc: parseInt(data.mtdTc) || 0,
+        dineIn: data.dineIn,
+        dineInTc: parseInt(data.dineInTc) || 0,
+        takeAway: data.takeAway,
+        takeAwayTc: parseInt(data.takeAwayTc) || 0,
+        delivery: String((parseFloat(data.grabfood) || 0) + (parseFloat(data.lineman) || 0) + (parseFloat(data.shopee) || 0) + (parseFloat(data.bkapp) || 0)),
+        deliveryBreakdown: {
+          grabfood: parseFloat(data.grabfood) || 0,
+          lineman: parseFloat(data.lineman) || 0,
+          shopee: parseFloat(data.shopee) || 0,
+          bkapp: parseFloat(data.bkapp) || 0,
+        },
+        osat: data.osat,
+        surveyCount: parseInt(data.surveyCount) || 0,
+        voidAmount: data.voidAmount,
+        voidCount: parseInt(data.voidCount) || 0,
+        addCheeseCount: parseInt(data.addCheeseCount) || 0,
+        addCheesePercent: data.addCheesePercent,
+        vMealCount: parseInt(data.vMealCount) || 0,
+        vMealPercent: data.vMealPercent,
+        upSizeCount: parseInt(data.upSizeCount) || 0,
+        upSizePercent: data.upSizePercent,
+        wasteRawDaily: data.wasteRawDaily,
+        wasteRawDailyPercent: data.wasteRawDailyPercent,
+        wasteMealDaily: data.wasteMealDaily,
+        wasteMealDailyPercent: data.wasteMealDailyPercent,
+        wasteTotalDaily: String((parseFloat(data.wasteRawDaily) || 0) + (parseFloat(data.wasteMealDaily) || 0)),
+        wasteRawMtd: data.wasteRawMtd,
+        wasteRawMtdPercent: data.wasteRawMtdPercent,
+        wasteMealMtd: data.wasteMealMtd,
+        wasteMealMtdPercent: data.wasteMealMtdPercent,
+        wasteTotalMtd: String((parseFloat(data.wasteRawMtd) || 0) + (parseFloat(data.wasteMealMtd) || 0)),
+        colPercent: data.colPercent,
+        laborHour: data.laborHour,
+        tcmh: data.tcmh,
+        managerRosterDate: data.managerRosterDate,
+      };
+      
+      return await apiRequest("POST", "/api/daily-sales", apiData);
+    },
+    onSuccess: () => {
+      clearData();
+      markAsSaved();
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpi"] });
+      toast({
+        title: t.form.saveSuccess,
+        description: t.form.saveSuccessDesc,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: t.form.error,
+        description: error.message || t.form.errorDesc,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const onSubmit = (data: FormData) => {
+    mutation.mutate(data);
+  };
+
+  const handleClearForm = () => {
+    const confirmMessage = language === 'th' 
+      ? 'คุณแน่ใจหรือไม่ที่จะล้างข้อมูลทั้งหมด?' 
+      : 'Are you sure you want to clear all data?';
+    if (confirm(confirmMessage)) {
+      clearData();
+      form.reset();
+      markAsSaved();
+    }
+  };
+
+  const handleCopyReport = () => {
+    const v = form.getValues();
+    const actualSalesVal = parseFloat(v.actualSales) || 0;
+    const tcVal = parseInt(v.transactionCount) || 0;
+    const taVal = tcVal > 0 ? (actualSalesVal / tcVal).toFixed(2) : "0";
+    
+    const mtdActualVal = parseFloat(v.mtdActual) || 0;
+    const mtdTargetVal = parseFloat(v.mtdTarget) || 0;
+    const mtdVariance = mtdActualVal - mtdTargetVal;
+    const mtdTcVal = parseInt(v.mtdTc) || 0;
+    const mtdTaVal = mtdTcVal > 0 ? (mtdActualVal / mtdTcVal).toFixed(2) : "0";
+    
+    const dineInVal = parseFloat(v.dineIn) || 0;
+    const takeAwayVal = parseFloat(v.takeAway) || 0;
+    const inStoreTotal = dineInVal + takeAwayVal;
+    const dineInPercent = actualSalesVal > 0 ? ((dineInVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const takeAwayPercent = actualSalesVal > 0 ? ((takeAwayVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const inStoreTotalPercent = actualSalesVal > 0 ? ((inStoreTotal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    
+    const grabVal = parseFloat(v.grabfood) || 0;
+    const linemanVal = parseFloat(v.lineman) || 0;
+    const shopeeVal = parseFloat(v.shopee) || 0;
+    const bkappVal = parseFloat(v.bkapp) || 0;
+    const deliveryTotal = grabVal + linemanVal + shopeeVal + bkappVal;
+    const grabPercent = actualSalesVal > 0 ? ((grabVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const linemanPercent = actualSalesVal > 0 ? ((linemanVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const shopeePercent = actualSalesVal > 0 ? ((shopeeVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const bkappPercent = actualSalesVal > 0 ? ((bkappVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const deliveryTotalPercent = actualSalesVal > 0 ? ((deliveryTotal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    
+    const wasteRawDailyVal = parseFloat(v.wasteRawDaily) || 0;
+    const wasteMealDailyVal = parseFloat(v.wasteMealDaily) || 0;
+    const wasteTotalDailyVal = wasteRawDailyVal + wasteMealDailyVal;
+    
+    const wasteRawMtdVal = parseFloat(v.wasteRawMtd) || 0;
+    const wasteMealMtdVal = parseFloat(v.wasteMealMtd) || 0;
+    const wasteTotalMtdVal = wasteRawMtdVal + wasteMealMtdVal;
+
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
+    const reportText = `Daily Sales Report - Grand Diamond
+Date: ${formatDate(v.reportDate)}
+================================
+
+Daily
+TG (Target): ฿${parseFloat(v.dailyTarget).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+AC (Actual Sales): ฿${actualSalesVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+TC (Transaction Count): ${tcVal.toLocaleString()}
+TA (Average Transaction): ${taVal}
+
+MTD (Month To Day) 
+MTD TG: ฿${mtdTargetVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+MTD AC: ฿${mtdActualVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+Variance: ฿${mtdVariance >= 0 ? '+' : ''}${mtdVariance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+MTD TC: ${mtdTcVal.toLocaleString()}
+MTD TA: ${mtdTaVal}
+
+In Store
+Dine In: ฿${dineInVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${dineInPercent}%
+TC: ${parseInt(v.dineInTc) || 0}
+Take Away: ฿${takeAwayVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${takeAwayPercent}%
+TC: ${parseInt(v.takeAwayTc) || 0}
+In Store Total: ฿${inStoreTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${inStoreTotalPercent}%
+
+DELIVERY
+Grab: ฿${grabVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${grabPercent}%
+LINE MAN: ฿${linemanVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${linemanPercent}%
+Shoppee Food: ฿${shopeeVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${shopeePercent}%
+BK App/Web: ฿${bkappVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${bkappPercent}%
+Delivery Total: ฿${deliveryTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${deliveryTotalPercent}%
+================================
+
+OSAT: ${v.osat}
+Survey count: ${v.surveyCount}
+Void: -฿${parseFloat(v.voidAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+count: ${v.voidCount || 0} Bill
+
+Add Cheese: ${v.addCheeseCount}/${v.addCheesePercent}%
+V-meal: ${v.vMealCount}/${v.vMealPercent}%
+Up Size: ${v.upSizeCount}/${v.upSizePercent}%
+================================
+
+WASTE
+Daily
+Raw: ${wasteRawDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteRawDailyPercent}%
+Meal: ${wasteMealDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteMealDailyPercent}%
+Daily: ${wasteTotalDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${((parseFloat(v.wasteRawDailyPercent) || 0) + (parseFloat(v.wasteMealDailyPercent) || 0)).toFixed(2)}%
+
+MTD 
+Raw: ${wasteRawMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteRawMtdPercent}%
+Meal: ${wasteMealMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteMealMtdPercent}%
+MTD: ${wasteTotalMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${((parseFloat(v.wasteRawMtdPercent) || 0) + (parseFloat(v.wasteMealMtdPercent) || 0)).toFixed(2)}%
+================================
+
+COL: ${v.colPercent}%
+Hour: ${v.laborHour}
+TCMH = ${v.tcmh}
+================================
+
+Menager Roster Date:${formatDate(v.managerRosterDate)}
+
+${v.managerRosterText || 'Name:Gruop Shift | Time/OFF,COM,Vacation'}
+
+Roster Staff
+${v.staffRosterText || 'Gruop Shift | Time: Name'}
+
+Report by ${v.reportBy}`;
+
+    navigator.clipboard.writeText(reportText).then(() => {
+      toast({
+        title: t.form.copySuccess,
+        description: t.form.copySuccessDesc,
+      });
+    }).catch(() => {
+      toast({
+        title: t.form.error,
+        description: t.form.copyError,
+        variant: "destructive",
+      });
+    });
+  };
+
+  const actualSales = parseFloat(form.watch("actualSales") || "0");
+  const transactionCount = parseInt(form.watch("transactionCount") || "0");
+  const avgTransaction = transactionCount > 0 ? (actualSales / transactionCount).toFixed(2) : "0";
+  
+  const mtdActual = parseFloat(form.watch("mtdActual") || "0");
+  const mtdTc = parseInt(form.watch("mtdTc") || "0");
+  const mtdTa = mtdTc > 0 ? (mtdActual / mtdTc).toFixed(2) : "0";
+  const mtdTarget = parseFloat(form.watch("mtdTarget") || "0");
+  const mtdVariance = mtdActual - mtdTarget;
+
+  const addCheeseCount = parseInt(form.watch("addCheeseCount") || "0");
+  const vMealCount = parseInt(form.watch("vMealCount") || "0");
+  const upSizeCount = parseInt(form.watch("upSizeCount") || "0");
+
+  const dineInVal = parseFloat(form.watch("dineIn") || "0");
+  const takeAwayVal = parseFloat(form.watch("takeAway") || "0");
+  const grabVal = parseFloat(form.watch("grabfood") || "0");
+  const linemanVal = parseFloat(form.watch("lineman") || "0");
+  const shopeeVal = parseFloat(form.watch("shopee") || "0");
+  const bkappVal = parseFloat(form.watch("bkapp") || "0");
+  const deliveryTotal = grabVal + linemanVal + shopeeVal + bkappVal;
+  const inStoreTotal = dineInVal + takeAwayVal;
+
+  const wasteRawDailyVal = parseFloat(form.watch("wasteRawDaily") || "0");
+  const wasteMealDailyVal = parseFloat(form.watch("wasteMealDaily") || "0");
+  const wasteRawMtdVal = parseFloat(form.watch("wasteRawMtd") || "0");
+  const wasteMealMtdVal = parseFloat(form.watch("wasteMealMtd") || "0");
+
+  const handleAutoCalculateDelivery = () => {
+    if (actualSales > 0) {
+      const grabPercent = ((grabVal / actualSales) * 100).toFixed(2);
+      const linemanPercent = ((linemanVal / actualSales) * 100).toFixed(2);
+      const shopeePercent = ((shopeeVal / actualSales) * 100).toFixed(2);
+      const bkappPercent = ((bkappVal / actualSales) * 100).toFixed(2);
+      toast({
+        title: language === 'th' ? 'Delivery %' : 'Delivery %',
+        description: `Grab: ${grabPercent}% | LINE MAN: ${linemanPercent}% | Shopee: ${shopeePercent}% | BK App: ${bkappPercent}%`,
+      });
+    } else {
+      toast({
+        title: language === 'th' ? "ไม่สามารถคำนวณได้" : "Cannot calculate",
+        description: language === 'th' ? "กรุณากรอกยอดขายจริง (AC) ก่อน" : "Please enter Actual Sales (AC) first",
+        variant: "destructive",
+      });
+    }
+    setDeliveryDialogOpen(false);
+  };
+
+  const handleAutoCalculateInStore = () => {
+    if (actualSales > 0) {
+      const dineInPercent = ((dineInVal / actualSales) * 100).toFixed(2);
+      const takeAwayPercent = ((takeAwayVal / actualSales) * 100).toFixed(2);
+      const totalPercent = ((inStoreTotal / actualSales) * 100).toFixed(2);
+      toast({
+        title: language === 'th' ? 'In Store %' : 'In Store %',
+        description: `Dine In: ${dineInPercent}% | Take Away: ${takeAwayPercent}% | Total: ${totalPercent}%`,
+      });
+    } else {
+      toast({
+        title: language === 'th' ? "ไม่สามารถคำนวณได้" : "Cannot calculate",
+        description: language === 'th' ? "กรุณากรอกยอดขายจริง (AC) ก่อน" : "Please enter Actual Sales (AC) first",
+        variant: "destructive",
+      });
+    }
+    setInStoreDialogOpen(false);
+  };
+
+  const handleAutoCalculateWaste = () => {
+    // Use custom divisor if provided, otherwise use AC
+    const dailyDivisor = customWasteDivisor ? parseFloat(customWasteDivisor) : actualSales;
+    const mtdDivisor = customWasteMtdDivisor ? parseFloat(customWasteMtdDivisor) : actualSales;
+    
+    if (dailyDivisor > 0 || mtdDivisor > 0) {
+      if (dailyDivisor > 0) {
+        form.setValue("wasteRawDailyPercent", ((wasteRawDailyVal / dailyDivisor) * 100).toFixed(2));
+        form.setValue("wasteMealDailyPercent", ((wasteMealDailyVal / dailyDivisor) * 100).toFixed(2));
+      }
+      if (mtdDivisor > 0) {
+        form.setValue("wasteRawMtdPercent", ((wasteRawMtdVal / mtdDivisor) * 100).toFixed(2));
+        form.setValue("wasteMealMtdPercent", ((wasteMealMtdVal / mtdDivisor) * 100).toFixed(2));
+      }
+      toast({
+        title: language === 'th' ? "คำนวณสำเร็จ" : "Calculated",
+        description: language === 'th' ? "คำนวณเปอร์เซ็นต์ Waste แล้ว" : "Waste percentages calculated",
+      });
+    } else {
+      toast({
+        title: language === 'th' ? "ไม่สามารถคำนวณได้" : "Cannot calculate",
+        description: language === 'th' ? "กรุณากรอกตัวหารหรือยอดขาย (AC) ก่อน" : "Please enter divisor or Actual Sales (AC) first",
+        variant: "destructive",
+      });
+    }
+    setWasteDialogOpen(false);
+  };
+
+  const handleAutoCalculateAddons = () => {
+    // Use custom divisor if provided, otherwise use TC
+    const divisor = customAddonDivisor ? parseFloat(customAddonDivisor) : transactionCount;
+    if (divisor > 0) {
+      form.setValue("addCheesePercent", ((addCheeseCount / divisor) * 100).toFixed(2));
+      form.setValue("vMealPercent", ((vMealCount / divisor) * 100).toFixed(2));
+      form.setValue("upSizePercent", ((upSizeCount / divisor) * 100).toFixed(2));
+      toast({
+        title: language === 'th' ? "คำนวณสำเร็จ" : "Calculated",
+        description: language === 'th' ? `คำนวณเปอร์เซ็นต์ Add-on จากตัวหาร ${divisor} แล้ว` : `Add-on percentages calculated with divisor ${divisor}`,
+      });
+    } else {
+      toast({
+        title: language === 'th' ? "ไม่สามารถคำนวณได้" : "Cannot calculate",
+        description: language === 'th' ? "กรุณากรอกตัวหารหรือ TC ก่อน" : "Please enter divisor or TC first",
+        variant: "destructive",
+      });
+    }
+    setAddonDialogOpen(false);
+  };
+
+  return (
+    <Card className="border-gray-200">
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <CardTitle className="text-lg md:text-xl font-semibold text-gray-900">
+              {t.pages.dailySales.formTitle}
+            </CardTitle>
+            <p className="text-gray-600 text-xs md:text-sm mt-1">
+              {t.pages.dailySales.formSubtitle}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            {hasDraft && (
+              <Badge variant="secondary" className="bg-amber-50 border-amber-200 text-amber-700 text-xs">
+                <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse mr-1" />
+                {t.form.unsavedDraft}
+              </Badge>
+            )}
+            {showAutoSave && (
+              <div className="flex items-center space-x-1 text-xs text-gray-500">
+                <CheckCircle className="w-3 h-3 text-green-500" />
+                <span>{t.form.autoSaved}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            
+            {/* Basic Information */}
+            <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+              <h3 className="text-sm md:text-base font-medium text-gray-900 mb-3">{t.form.basicInfo}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="reportDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs md:text-sm">{t.form.date}</FormLabel>
+                      <FormControl>
+                        <Input type="date" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="reportBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs md:text-sm">{t.form.reporter}</FormLabel>
+                      <FormControl>
+                        <Input className="text-sm" placeholder={t.form.reporterPlaceholder} {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Daily Sales */}
+            <div className="bg-blue-50 p-3 md:p-4 rounded-lg">
+              <h3 className="text-sm md:text-base font-medium text-gray-900 mb-3">{t.form.daily}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <FormField
+                  control={form.control}
+                  name="dailyTarget"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.target}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">฿</span>
+                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="actualSales"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.actual}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">฿</span>
+                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="transactionCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.tc}</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div>
+                  <FormLabel className="text-xs">{t.form.ta}</FormLabel>
+                  <Input value={avgTransaction} readOnly className="bg-gray-100 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            {/* MTD */}
+            <div className="bg-green-50 p-3 md:p-4 rounded-lg">
+              <h3 className="text-sm md:text-base font-medium text-gray-900 mb-3">{t.form.mtd}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <FormField
+                  control={form.control}
+                  name="mtdTarget"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.mtdTarget}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">฿</span>
+                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="mtdActual"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.mtdActual}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">฿</span>
+                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div>
+                  <FormLabel className="text-xs">{t.form.variance}</FormLabel>
+                  <Input value={`${mtdVariance >= 0 ? '+' : ''}${mtdVariance.toLocaleString()}`} readOnly className={`text-sm ${mtdVariance >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`} />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="mtdTc"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.mtdTc}</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div>
+                  <FormLabel className="text-xs">{t.form.mtdTa}</FormLabel>
+                  <Input value={mtdTa} readOnly className="bg-gray-100 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            {/* In Store */}
+            <div className="bg-orange-50 p-3 md:p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm md:text-base font-medium text-gray-900">{t.form.inStore}</h3>
+                <Dialog open={inStoreDialogOpen} onOpenChange={setInStoreDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                      <Calculator className="w-3 h-3 mr-1" />
+                      {language === 'th' ? 'สูตรคำนวณ' : 'Formula'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>{language === 'th' ? 'สูตรคำนวณ In Store %' : 'In Store % Formula'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
+                        <p className="text-gray-600">Dine In % = (Dine In ÷ AC) × 100</p>
+                        <p className="text-gray-600">Take Away % = (Take Away ÷ AC) × 100</p>
+                        <p className="text-gray-600">In Store Total % = ((Dine In + Take Away) ÷ AC) × 100</p>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'ค่าปัจจุบัน:' : 'Current Values:'}</p>
+                        <p>AC = ฿{actualSales.toLocaleString()}</p>
+                        <p>Dine In = ฿{dineInVal.toLocaleString()} → {actualSales > 0 ? ((dineInVal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                        <p>Take Away = ฿{takeAwayVal.toLocaleString()} → {actualSales > 0 ? ((takeAwayVal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                        <p className="font-medium">Total = ฿{inStoreTotal.toLocaleString()} → {actualSales > 0 ? ((inStoreTotal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                      </div>
+                      <Button type="button" onClick={handleAutoCalculateInStore} className="w-full bg-bk-red hover:bg-red-700">
+                        <Calculator className="w-4 h-4 mr-2" />
+                        {language === 'th' ? 'ดูผลคำนวณ' : 'View Calculation'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <FormField
+                  control={form.control}
+                  name="dineIn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.dineInAmount} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dineInTc"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.dineInTc}</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="takeAway"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.takeAwayAmount} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="takeAwayTc"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.takeAwayTc}</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Delivery */}
+            <div className="bg-purple-50 p-3 md:p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm md:text-base font-medium text-gray-900">{t.form.delivery}</h3>
+                <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                      <Calculator className="w-3 h-3 mr-1" />
+                      {language === 'th' ? 'สูตรคำนวณ' : 'Formula'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>{language === 'th' ? 'สูตรคำนวณ Delivery %' : 'Delivery % Formula'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
+                        <p className="text-gray-600">Grab % = (Grab ÷ AC) × 100</p>
+                        <p className="text-gray-600">LINE MAN % = (LINE MAN ÷ AC) × 100</p>
+                        <p className="text-gray-600">Shopee Food % = (Shopee ÷ AC) × 100</p>
+                        <p className="text-gray-600">BK App % = (BK App ÷ AC) × 100</p>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'ค่าปัจจุบัน:' : 'Current Values:'}</p>
+                        <p>AC = ฿{actualSales.toLocaleString()}</p>
+                        <p>Grab = ฿{grabVal.toLocaleString()} → {actualSales > 0 ? ((grabVal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                        <p>LINE MAN = ฿{linemanVal.toLocaleString()} → {actualSales > 0 ? ((linemanVal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                        <p>Shopee = ฿{shopeeVal.toLocaleString()} → {actualSales > 0 ? ((shopeeVal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                        <p>BK App = ฿{bkappVal.toLocaleString()} → {actualSales > 0 ? ((bkappVal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                        <p className="font-medium">Total = ฿{deliveryTotal.toLocaleString()} → {actualSales > 0 ? ((deliveryTotal / actualSales) * 100).toFixed(2) : '0.00'}%</p>
+                      </div>
+                      <Button type="button" onClick={handleAutoCalculateDelivery} className="w-full bg-bk-red hover:bg-red-700">
+                        <Calculator className="w-4 h-4 mr-2" />
+                        {language === 'th' ? 'ดูผลคำนวณ' : 'View Calculation'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <FormField
+                  control={form.control}
+                  name="grabfood"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.grab} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lineman"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.lineman} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="shopee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.shopee} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="bkapp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.bkapp} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Performance */}
+            <div className="bg-yellow-50 p-3 md:p-4 rounded-lg">
+              <h3 className="text-sm md:text-base font-medium text-gray-900 mb-3">{t.form.performance}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <FormField
+                  control={form.control}
+                  name="osat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.osat}</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="surveyCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.surveyCount}</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="voidAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.form.void} (฿)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="voidCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{language === 'th' ? 'Void (Bill)' : 'Void Count'}</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="text-sm" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Add-ons */}
+            <div className="bg-pink-50 p-3 md:p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm md:text-base font-medium text-gray-900">{t.form.addons}</h3>
+                <Dialog open={addonDialogOpen} onOpenChange={setAddonDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                      <Calculator className="w-3 h-3 mr-1" />
+                      {language === 'th' ? 'สูตรคำนวณ' : 'Formula'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>{language === 'th' ? 'สูตรคำนวณ Add-on %' : 'Add-on % Formula'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
+                        <p className="text-gray-600">Add Cheese % = (Add Cheese # ÷ {language === 'th' ? 'ตัวหาร' : 'Divisor'}) × 100</p>
+                        <p className="text-gray-600">V-meal % = (V-meal # ÷ {language === 'th' ? 'ตัวหาร' : 'Divisor'}) × 100</p>
+                        <p className="text-gray-600">Up Size % = (Up Size # ÷ {language === 'th' ? 'ตัวหาร' : 'Divisor'}) × 100</p>
+                      </div>
+                      <div className="bg-yellow-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'แก้ไขตัวหาร:' : 'Edit Divisor:'}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600">{language === 'th' ? 'ตัวหาร' : 'Divisor'} =</span>
+                          <Input 
+                            type="number" 
+                            value={customAddonDivisor || transactionCount.toString()} 
+                            onChange={(e) => setCustomAddonDivisor(e.target.value)}
+                            className="w-24 text-sm"
+                            placeholder={transactionCount.toString()}
+                          />
+                          <span className="text-xs text-gray-500">({language === 'th' ? 'ค่าเริ่มต้น: TC' : 'Default: TC'})</span>
+                        </div>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'ค่าปัจจุบัน:' : 'Current Values:'}</p>
+                        <p>TC = {transactionCount}</p>
+                        {(() => {
+                          const divisor = customAddonDivisor ? parseFloat(customAddonDivisor) : transactionCount;
+                          return (
+                            <>
+                              <p>Add Cheese # = {addCheeseCount} → {divisor > 0 ? ((addCheeseCount / divisor) * 100).toFixed(2) : '0.00'}%</p>
+                              <p>V-meal # = {vMealCount} → {divisor > 0 ? ((vMealCount / divisor) * 100).toFixed(2) : '0.00'}%</p>
+                              <p>Up Size # = {upSizeCount} → {divisor > 0 ? ((upSizeCount / divisor) * 100).toFixed(2) : '0.00'}%</p>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <Button type="button" onClick={handleAutoCalculateAddons} className="w-full bg-bk-red hover:bg-red-700">
+                        <Calculator className="w-4 h-4 mr-2" />
+                        {language === 'th' ? 'คำนวณอัตโนมัติ' : 'Auto Calculate'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <FormField control={form.control} name="addCheeseCount" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.addCheese} #</FormLabel>
+                    <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="addCheesePercent" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.addCheese} %</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="vMealCount" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.vMeal} #</FormLabel>
+                    <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="vMealPercent" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.vMeal} %</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="upSizeCount" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.upSize} #</FormLabel>
+                    <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="upSizePercent" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.upSize} %</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                  </FormItem>
+                )} />
+              </div>
+            </div>
+
+            {/* Waste */}
+            <div className="bg-red-50 p-3 md:p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm md:text-base font-medium text-gray-900">{t.form.waste}</h3>
+                <Dialog open={wasteDialogOpen} onOpenChange={setWasteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                      <Calculator className="w-3 h-3 mr-1" />
+                      {language === 'th' ? 'สูตรคำนวณ' : 'Formula'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>{language === 'th' ? 'สูตรคำนวณ Waste %' : 'Waste % Formula'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
+                        <p className="text-gray-600">Raw % = (Raw ÷ {language === 'th' ? 'ตัวหาร' : 'Divisor'}) × 100</p>
+                        <p className="text-gray-600">Meal % = (Meal ÷ {language === 'th' ? 'ตัวหาร' : 'Divisor'}) × 100</p>
+                      </div>
+                      <div className="bg-yellow-50 p-3 rounded-lg space-y-3 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'แก้ไขตัวหาร:' : 'Edit Divisor:'}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 w-16">Daily =</span>
+                          <Input 
+                            type="number" 
+                            value={customWasteDivisor || actualSales.toString()} 
+                            onChange={(e) => setCustomWasteDivisor(e.target.value)}
+                            className="w-28 text-sm"
+                            placeholder={actualSales.toString()}
+                          />
+                          <span className="text-xs text-gray-500">({language === 'th' ? 'ค่าเริ่มต้น: AC' : 'Default: AC'})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 w-16">MTD =</span>
+                          <Input 
+                            type="number" 
+                            value={customWasteMtdDivisor || actualSales.toString()} 
+                            onChange={(e) => setCustomWasteMtdDivisor(e.target.value)}
+                            className="w-28 text-sm"
+                            placeholder={actualSales.toString()}
+                          />
+                          <span className="text-xs text-gray-500">({language === 'th' ? 'ค่าเริ่มต้น: AC' : 'Default: AC'})</span>
+                        </div>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'ค่าปัจจุบัน:' : 'Current Values:'}</p>
+                        <p>AC = ฿{actualSales.toLocaleString()}</p>
+                        {(() => {
+                          const dailyDiv = customWasteDivisor ? parseFloat(customWasteDivisor) : actualSales;
+                          const mtdDiv = customWasteMtdDivisor ? parseFloat(customWasteMtdDivisor) : actualSales;
+                          return (
+                            <>
+                              <p className="font-medium mt-2">Daily:</p>
+                              <p>Raw = ฿{wasteRawDailyVal.toLocaleString()} → {dailyDiv > 0 ? ((wasteRawDailyVal / dailyDiv) * 100).toFixed(2) : '0.00'}%</p>
+                              <p>Meal = ฿{wasteMealDailyVal.toLocaleString()} → {dailyDiv > 0 ? ((wasteMealDailyVal / dailyDiv) * 100).toFixed(2) : '0.00'}%</p>
+                              <p className="font-medium mt-2">MTD:</p>
+                              <p>Raw = ฿{wasteRawMtdVal.toLocaleString()} → {mtdDiv > 0 ? ((wasteRawMtdVal / mtdDiv) * 100).toFixed(2) : '0.00'}%</p>
+                              <p>Meal = ฿{wasteMealMtdVal.toLocaleString()} → {mtdDiv > 0 ? ((wasteMealMtdVal / mtdDiv) * 100).toFixed(2) : '0.00'}%</p>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <Button type="button" onClick={handleAutoCalculateWaste} className="w-full bg-bk-red hover:bg-red-700">
+                        <Calculator className="w-4 h-4 mr-2" />
+                        {language === 'th' ? 'คำนวณอัตโนมัติ' : 'Auto Calculate'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-xs font-medium text-gray-700 mb-2">{t.form.wasteDaily}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField control={form.control} name="wasteRawDaily" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.raw} (฿)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="wasteRawDailyPercent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.raw} %</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="wasteMealDaily" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.meal} (฿)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="wasteMealDailyPercent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.meal} %</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-gray-700 mb-2">{t.form.wasteMtd}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField control={form.control} name="wasteRawMtd" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.raw} (฿)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="wasteRawMtdPercent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.raw} %</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="wasteMealMtd" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.meal} (฿)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="wasteMealMtdPercent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t.form.meal} %</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="text-sm bg-gray-100 cursor-not-allowed" readOnly {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Labor */}
+            <div className="bg-indigo-50 p-3 md:p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm md:text-base font-medium text-gray-900">{t.form.labor}</h3>
+                <Dialog open={laborDialogOpen} onOpenChange={setLaborDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                      <Calculator className="w-3 h-3 mr-1" />
+                      {language === 'th' ? 'สูตรคำนวณ' : 'Formula'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>{language === 'th' ? 'สูตรคำนวณ Labor' : 'Labor Formula'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
+                        <p className="text-gray-600">COL % = (Labor Cost ÷ AC) × 100</p>
+                        <p className="text-gray-600">TCMH = TC ÷ Labor Hour</p>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm">
+                        <p className="font-medium">{language === 'th' ? 'ค่าปัจจุบัน:' : 'Current Values:'}</p>
+                        <p>AC = ฿{actualSales.toLocaleString()}</p>
+                        <p>TC = {transactionCount}</p>
+                        <p>COL % = {form.watch("colPercent") || "0"}%</p>
+                        <p>Hour = {form.watch("laborHour") || "0"}</p>
+                        <p>TCMH = {form.watch("tcmh") || "0"}</p>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <FormField control={form.control} name="colPercent" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.col}</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="laborHour" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.hour}</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="tcmh" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.tcmh}</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+              </div>
+            </div>
+
+            {/* Roster */}
+            <div className="bg-teal-50 p-3 md:p-4 rounded-lg">
+              <h3 className="text-sm md:text-base font-medium text-gray-900 mb-3">{t.form.roster}</h3>
+              <div className="space-y-3">
+                <FormField control={form.control} name="managerRosterDate" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.managerRosterDate}</FormLabel>
+                    <FormControl><Input type="date" className="text-sm" {...field} /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="managerRosterText" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.managerRoster} (Name:Group Shift | Time/OFF,COM,Vacation)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Name:Group Shift | Time/OFF,COM,Vacation&#10;Name:Group Shift | Time/OFF,COM,Vacation" 
+                        className="text-sm min-h-[80px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="staffRosterText" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">{t.form.staffRoster} (Group Shift | Time: Name)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Group Shift | Time: Name&#10;Group Shift | Time: Name" 
+                        className="text-sm min-h-[80px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                  </FormItem>
+                )} />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleCopyReport}
+                className="flex-1 sm:flex-none"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                {t.form.copyReport}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleClearForm}
+                className="flex-1 sm:flex-none text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {t.form.clearData}
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1 sm:flex-none bg-bk-red hover:bg-red-700"
+                disabled={mutation.isPending}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {mutation.isPending ? t.form.saving : t.form.saveData}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}

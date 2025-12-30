@@ -60,6 +60,7 @@ export default function RosterPage() {
       fullName: u.fullName,
       nickName: u.nickName,
       role: u.role,
+      active: u.active,
       shifts: {}
     };
   });
@@ -80,9 +81,16 @@ export default function RosterPage() {
   const sortedUsers = Object.values(userShifts)
     .filter((u: any) => {
       if (u.role === "admin" || u.role === "manager") return false;
-      return u.active === 1;
+      return u.active === 1 || u.active === undefined;
     })
-    .sort((a: any, b: any) => a.username.localeCompare(b.username));
+    .sort((a: any, b: any) => {
+      // Sort by earliest shift time
+      const aShift = days.map(d => a.shifts[d]).find((s: any) => s);
+      const bShift = days.map(d => b.shifts[d]).find((s: any) => s);
+      const aTime = aShift?.startTime?.split(" - ")[0] || "99:99";
+      const bTime = bShift?.startTime?.split(" - ")[0] || "99:99";
+      return aTime.localeCompare(bTime);
+    });
 
   const hiddenUsers = Object.values(userShifts)
     .filter((u: any) => {
@@ -178,12 +186,12 @@ export default function RosterPage() {
                           ) : (
                             isManager ? (
                               <ManageShiftDialog username={u.username} date={day} mode="create" groups={settings?.groups}>
-                                <div className="h-16 w-full rounded-lg border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100 group">
+                                <div className="h-10 w-full rounded-lg border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100 group">
                                   <UserPlus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
                                 </div>
                               </ManageShiftDialog>
                             ) : (
-                              <div className="h-16 w-full rounded-lg bg-muted/10"></div>
+                              <div className="h-10 w-full rounded-lg bg-muted/10"></div>
                             )
                           )}
                         </TableCell>

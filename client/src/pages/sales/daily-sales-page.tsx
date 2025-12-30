@@ -988,6 +988,22 @@ Report by ${v.reportBy}`;
                           <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
                         </FormItem>
                       )} />
+                      <div>
+                        <FormLabel className="text-xs">Daily (฿)</FormLabel>
+                        <Input 
+                          value={((parseFloat(form.watch("wasteRawDaily") || "0") + parseFloat(form.watch("wasteMealDaily") || "0"))).toFixed(2)} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
+                      <div>
+                        <FormLabel className="text-xs">Daily %</FormLabel>
+                        <Input 
+                          value={actualSales > 0 ? (((parseFloat(form.watch("wasteRawDaily") || "0") + parseFloat(form.watch("wasteMealDaily") || "0")) / actualSales) * 100).toFixed(2) : "0.00"} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -1017,6 +1033,22 @@ Report by ${v.reportBy}`;
                           <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
                         </FormItem>
                       )} />
+                      <div>
+                        <FormLabel className="text-xs">MTD (฿)</FormLabel>
+                        <Input 
+                          value={((parseFloat(form.watch("wasteRawMtd") || "0") + parseFloat(form.watch("wasteMealMtd") || "0"))).toFixed(2)} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
+                      <div>
+                        <FormLabel className="text-xs">MTD %</FormLabel>
+                        <Input 
+                          value={mtdActual > 0 ? (((parseFloat(form.watch("wasteRawMtd") || "0") + parseFloat(form.watch("wasteMealMtd") || "0")) / mtdActual) * 100).toFixed(2) : "0.00"} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -629,10 +629,12 @@ function ManagerDashboard() {
 }
 
 function ManagerEmployeeRosterView() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<"roster" | "booked">("roster");
   const dateParam = format(currentDate, "yyyy-MM-dd");
   const { data: rosterData, isLoading } = useRoster(dateParam);
+  const { data: settings } = useSettings();
   const queryClient = useQueryClient();
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
@@ -651,14 +653,27 @@ function ManagerEmployeeRosterView() {
   if (isLoading) return <WorkPageSkeleton />;
 
   const weekRange = rosterData?.weekRange;
+  const days = weekRange?.days || [];
   const displayRange = weekRange ? `${format(new Date(weekRange.start), "MMM d")} - ${format(new Date(weekRange.end), "MMM d, yyyy")}` : "";
+
+  const labels = {
+    title: language === "th" ? "ตารางงานพนักงาน" : "Employee Schedule",
+    staffMember: language === "th" ? "Staff Member" : "Staff Member",
+    yourShifts: language === "th" ? "Your Shifts" : "Your Shifts",
+    selectToBook: language === "th" ? "Select to book/cancel" : "Select to book/cancel",
+    customSchedule: language === "th" ? "สร้างตารางกำหนดเอง" : "Create Custom Schedule",
+    viewBooked: language === "th" ? "ดูตารางที่ book ไว้" : "View Booked Shifts",
+    viewRoster: language === "th" ? "ดูตารางงาน" : "View Roster",
+  };
+
+  const bookedShifts = rosterData?.roster || [];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-display font-bold text-foreground">
-            {language === "th" ? "ตารางงานพนักงาน" : "Employee Schedule"}
+            {labels.title}
           </h2>
           <p className="text-muted-foreground flex items-center gap-2 mt-1">
             <CalendarIcon className="w-4 h-4" />
@@ -666,7 +681,15 @@ function ManagerEmployeeRosterView() {
           </p>
         </div>
         
-        <div className="flex items-center gap-1.5 md:gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={viewMode === "booked" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode(viewMode === "booked" ? "roster" : "booked")}
+            data-testid="button-toggle-view-mode"
+          >
+            {viewMode === "booked" ? labels.viewRoster : labels.viewBooked}
+          </Button>
           <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
             <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="h-8 w-8 rounded-full" data-testid="button-prev-week">
               <ChevronLeft className="w-4 h-4" />
@@ -683,66 +706,226 @@ function ManagerEmployeeRosterView() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="sticky left-0 bg-card z-10 min-w-[150px]">
-                  {language === "th" ? "พนักงาน" : "Staff"}
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="sticky left-0 bg-muted/50 z-10 min-w-[150px] font-bold">
+                  {labels.staffMember}
                 </TableHead>
-                {weekRange?.days?.map((day: any) => (
-                  <TableHead key={day.date} className="text-center min-w-[80px]">
-                    <div className="text-xs font-medium">{day.dayName}</div>
-                    <div className="text-xs text-muted-foreground">{day.date ? format(parseISO(day.date), "d MMM") : ""}</div>
+                {days.map((day: string) => (
+                  <TableHead key={day} className="text-center min-w-[100px]">
+                    <div className="flex flex-col items-center py-2">
+                      <span className="text-xs uppercase text-primary font-black tracking-tight">
+                        {t(format(parseISO(day), "EEEE").toLowerCase() as any)}
+                      </span>
+                      <span className="text-2xl font-black text-foreground mt-1">
+                        {format(parseISO(day), "d")}
+                      </span>
+                    </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-center min-w-[60px]">
-                  {language === "th" ? "สถานะ" : "Status"}
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rosterData?.staffWithShifts?.map((staff: any) => (
-                <TableRow key={staff.username} className={staff.active === 0 ? "opacity-50" : ""}>
-                  <TableCell className="sticky left-0 bg-card z-10 font-medium">
-                    <div className="flex flex-col">
-                      <span>{staff.nickName || staff.fullName}</span>
-                      <span className="text-xs text-muted-foreground">@{staff.username}</span>
-                    </div>
-                  </TableCell>
-                  {weekRange?.days?.map((day: any) => {
-                    const shift = staff.shifts?.[day.date];
-                    return (
-                      <TableCell key={day.date} className="text-center p-1">
-                        {shift ? (
-                          <div className={`text-xs px-1 py-0.5 rounded ${
-                            shift.shiftGroup === "open" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
-                            shift.shiftGroup === "lunch" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
-                            shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
-                            "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
-                          }`}>
-                            {shift.shiftGroup}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+              {viewMode === "roster" ? (
+                <>
+                  <TableRow className="hover:bg-muted/30 border-b-2 border-primary/20">
+                    <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-primary">{labels.yourShifts}</span>
+                        <span className="text-xs text-muted-foreground">{labels.selectToBook}</span>
+                      </div>
+                    </TableCell>
+                    {days.map((day: string) => (
+                      <TableCell key={day} className="text-center p-2">
+                        <ManagerBookShiftDialog groups={settings?.groups} day={day}>
+                          <button 
+                            className="w-full h-16 border-2 border-dashed border-primary/30 rounded-lg flex items-center justify-center hover:bg-primary/5 transition-colors cursor-pointer"
+                            data-testid={`button-book-shift-${day}`}
+                          >
+                            <Plus className="w-5 h-5 text-primary/50" />
+                          </button>
+                        </ManagerBookShiftDialog>
                       </TableCell>
+                    ))}
+                  </TableRow>
+                  {rosterData?.users?.filter((u: any) => u.role === "staff" && u.active === 1).map((staff: any) => {
+                    const staffShifts: Record<string, any> = {};
+                    rosterData?.roster?.forEach((s: any) => {
+                      if (s.username === staff.username) {
+                        staffShifts[s.date] = s;
+                      }
+                    });
+                    return (
+                      <TableRow key={staff.username} className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                          <span>{staff.nickName || staff.fullName}</span>
+                        </TableCell>
+                        {days.map((day: string) => {
+                          const shift = staffShifts[day];
+                          return (
+                            <TableCell key={day} className="text-center p-2">
+                              {shift ? (
+                                <div className={`h-16 rounded-lg p-2 flex flex-col justify-center items-center ${
+                                  shift.shiftGroup === "open" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                                  shift.shiftGroup === "lunch" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
+                                  shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
+                                  "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+                                }`}>
+                                  <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
+                                  <span className="text-xs">{shift.startTime?.split(" - ")[0]}</span>
+                                </div>
+                              ) : (
+                                <div className="h-16 border border-dashed border-border/50 rounded-lg" />
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
                     );
                   })}
-                  <TableCell className="text-center">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleUpdateUserStatus(staff.username, staff.active === 1 ? 0 : 1)}
-                      data-testid={`button-toggle-status-${staff.username}`}
-                    >
-                      {staff.active === 1 ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                </>
+              ) : (
+                bookedShifts.length > 0 ? (
+                  bookedShifts.map((shift: any, idx: number) => (
+                    <TableRow key={`${shift.username}-${shift.date}-${idx}`} className="hover:bg-muted/30">
+                      <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                        <div className="flex flex-col">
+                          <span>{shift.nickName || shift.fullName}</span>
+                          <span className="text-xs text-muted-foreground">{shift.date}</span>
+                        </div>
+                      </TableCell>
+                      {days.map((day: string) => (
+                        <TableCell key={day} className="text-center p-2">
+                          {shift.date === day ? (
+                            <div className={`h-16 rounded-lg p-2 flex flex-col justify-center items-center ${
+                              shift.shiftGroup === "open" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                              shift.shiftGroup === "lunch" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
+                              shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
+                              "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+                            }`}>
+                              <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
+                              <span className="text-xs">{shift.startTime?.split(" - ")[0]}</span>
+                            </div>
+                          ) : null}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={days.length + 1} className="text-center py-8 text-muted-foreground">
+                      {language === "th" ? "ยังไม่มีตารางที่ book ไว้" : "No booked shifts yet"}
+                    </TableCell>
+                  </TableRow>
+                )
+              )}
             </TableBody>
           </Table>
         </div>
       </Card>
     </div>
+  );
+}
+
+function ManagerBookShiftDialog({ groups, day, children }: { groups: any; day: string; children: React.ReactNode }) {
+  const { language } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [selectedUser, setSelectedUser] = useState("");
+  const [note, setNote] = useState("");
+  const queryClient = useQueryClient();
+  const { data: rosterData } = useRoster(day);
+
+  const handleSubmit = async () => {
+    if (!selectedUser || !selectedGroup || !selectedTime) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", api.shifts.setForUser.path, {
+        token,
+        username: selectedUser,
+        date: day,
+        shiftGroup: selectedGroup,
+        startTime: selectedTime,
+        note,
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+      setOpen(false);
+      setSelectedGroup("");
+      setSelectedTime("");
+      setSelectedUser("");
+      setNote("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const staffUsers = rosterData?.users?.filter((u: any) => u.role === "staff" && u.active === 1) || [];
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {language === "th" ? "สร้างตารางงาน" : "Create Schedule"} - {format(parseISO(day), "d MMM yyyy")}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>{language === "th" ? "เลือกพนักงาน" : "Select Staff"}</Label>
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกพนักงาน..." : "Select staff..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {staffUsers.map((u: any) => (
+                  <SelectItem key={u.username} value={u.username}>
+                    {u.nickName || u.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
+            <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกกะ..." : "Select shift..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {groups?.map((g: any) => (
+                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedGroup && (
+            <div className="space-y-2">
+              <Label>{language === "th" ? "เวลา" : "Time"}</Label>
+              <Select value={selectedTime} onValueChange={setSelectedTime}>
+                <SelectTrigger>
+                  <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
+                    <SelectItem key={time} value={time}>{time}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
+          </div>
+          <Button onClick={handleSubmit} className="w-full" disabled={!selectedUser || !selectedGroup || !selectedTime}>
+            {language === "th" ? "บันทึก" : "Save"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

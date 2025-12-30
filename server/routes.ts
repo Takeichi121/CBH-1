@@ -53,14 +53,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     // Check user first to determine if they have 24/7 access
     const u = await storage.getUser(username);
     
-    // Chan.J (creator) has 24/7 access - check by username or fullName
+    // 24/7 access: admin, creator (Chan.J), or developer mode
     const isCreator = u && (
       u.username.toLowerCase().includes("chan") ||
       (u.fullName && u.fullName.toLowerCase().includes("chanon"))
     );
+    const isAdmin = u && u.role === "admin";
     
-    // Check if system is closed (allow developer mode or creator to bypass)
-    if (isSystemClosed() && !developerMode && !isCreator) {
+    // Check if system is closed (allow admin, developer mode, or creator to bypass)
+    if (isSystemClosed() && !developerMode && !isCreator && !isAdmin) {
       return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     }
 

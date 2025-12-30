@@ -5,7 +5,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2, EyeOff, Eye, Users, UserCog, ArrowLeft } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, AlertCircle, Clock, Trash2, EyeOff, Eye, Users, UserCog, ArrowLeft, Pencil, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -634,6 +634,197 @@ const timeOptions = Array.from({ length: 24 }, (_, i) => {
   return `${hour}:00`;
 });
 
+function ShiftCellWithActions({ shift, groups, onRefresh }: { shift: any; groups: any; onRefresh: () => void }) {
+  const { language } = useI18n();
+  const [showActions, setShowActions] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(shift.shiftGroup);
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [selectedTime, setSelectedTime] = useState(shift.startTime);
+  const [customStartTime, setCustomStartTime] = useState(shift.startTime?.split(" - ")[0] || "08:00");
+  const [customEndTime, setCustomEndTime] = useState(shift.startTime?.split(" - ")[1] || "16:00");
+  const [note, setNote] = useState(shift.note || "");
+  const queryClient = useQueryClient();
+
+  const handleDelete = async () => {
+    if (!confirm(language === "th" ? "ต้องการลบตารางนี้?" : "Delete this shift?")) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", "/api/deleteShift", { token, shiftId: shift.id });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedGroup) return;
+    const finalTime = useCustomTime ? `${customStartTime} - ${customEndTime}` : selectedTime;
+    if (!finalTime) return;
+    
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", "/api/updateShift", {
+        token,
+        shiftId: shift.id,
+        shiftGroup: selectedGroup,
+        startTime: finalTime,
+        note,
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+      setEditOpen(false);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const groupColors: Record<string, string> = {
+    open: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    lunch: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+    dinner: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    late: "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
+  };
+
+  return (
+    <>
+      <div 
+        className={`relative h-16 rounded-lg p-2 flex flex-col justify-center items-center cursor-pointer ${groupColors[shift.shiftGroup] || groupColors.late}`}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
+        onClick={() => setEditOpen(true)}
+      >
+        <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
+        <span className="text-xs">{shift.startTime?.split(" - ")[0]}</span>
+        {shift.note && <span className="text-[9px] opacity-70 truncate max-w-full">{shift.note}</span>}
+        
+        <div 
+          className={`absolute top-0.5 right-0.5 flex gap-0.5 transition-opacity ${showActions ? 'opacity-100' : 'opacity-0'}`}
+          style={{ visibility: showActions ? 'visible' : 'hidden' }}
+        >
+          <button 
+            onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}
+            className="p-1 rounded bg-background/80 hover:bg-background shadow-sm"
+            data-testid={`button-edit-shift-${shift.id}`}
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+            className="p-1 rounded bg-background/80 hover:bg-destructive hover:text-destructive-foreground shadow-sm"
+            data-testid={`button-delete-shift-${shift.id}`}
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "th" ? "แก้ไขตารางงาน" : "Edit Schedule"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{shift.nickName || shift.fullName}</span> - {format(parseISO(shift.date), "EEEE d MMM yyyy")}
+            </div>
+            <div className="space-y-2">
+              <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
+              <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups?.map((g: any) => (
+                    <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="editCustomTime" 
+                  checked={useCustomTime} 
+                  onChange={(e) => setUseCustomTime(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="editCustomTime" className="cursor-pointer">
+                  {language === "th" ? "กำหนดเวลาเอง" : "Custom Time"}
+                </Label>
+              </div>
+              
+              {useCustomTime ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาเริ่ม" : "Start Time"}</Label>
+                    <Select value={customStartTime} onValueChange={setCustomStartTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาจบ" : "End Time"}</Label>
+                    <Select value={customEndTime} onValueChange={setCustomEndTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>{language === "th" ? "เวลา" : "Time"}</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button onClick={handleSave} className="flex-1">
+                {language === "th" ? "บันทึก" : "Save"}
+              </Button>
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function StaffCellBookDialog({ groups, day, username, staffName, children }: { groups: any; day: string; username: string; staffName: string; children: React.ReactNode }) {
   const { language } = useI18n();
   const [open, setOpen] = useState(false);
@@ -1094,15 +1285,11 @@ function ManagerEmployeeRosterView() {
                           return (
                             <TableCell key={day} className="text-center p-2">
                               {shift ? (
-                                <div className={`h-16 rounded-lg p-2 flex flex-col justify-center items-center ${
-                                  shift.shiftGroup === "open" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
-                                  shift.shiftGroup === "lunch" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
-                                  shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
-                                  "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
-                                }`}>
-                                  <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
-                                  <span className="text-xs">{shift.startTime?.split(" - ")[0]}</span>
-                                </div>
+                                <ShiftCellWithActions 
+                                  shift={shift} 
+                                  groups={settings?.groups} 
+                                  onRefresh={() => queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] })}
+                                />
                               ) : (
                                 <StaffCellBookDialog groups={settings?.groups} day={day} username={staff.username} staffName={staff.nickName || staff.fullName}>
                                   <button className="w-full h-16 border border-dashed border-border/50 rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer">

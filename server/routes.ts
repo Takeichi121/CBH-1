@@ -605,6 +605,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Shifts: Delete by ID (Manager)
+  app.post("/api/deleteShift", async (req, res) => {
+    const { token, shiftId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false });
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+
+    try {
+      await db.delete(shifts).where(eq(shifts.id, shiftId));
+      await storage.log("manager_delete_shift_by_id", u.username, `shiftId=${shiftId}`);
+      res.json({ ok: true });
+    } catch (err) {
+      res.json({ ok: false, message: "Failed to delete" });
+    }
+  });
+
+  // Shifts: Update by ID (Manager)
+  app.post("/api/updateShift", async (req, res) => {
+    const { token, shiftId, shiftGroup, startTime, note } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false });
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+
+    try {
+      await db.update(shifts).set({
+        shiftGroup,
+        startTime,
+        note: note || "",
+        updatedAt: new Date().toISOString(),
+        updatedBy: u.username,
+      }).where(eq(shifts.id, shiftId));
+      await storage.log("manager_update_shift", u.username, `shiftId=${shiftId}`);
+      res.json({ ok: true });
+    } catch (err) {
+      res.json({ ok: false, message: "Failed to update" });
+    }
+  });
+
   // Shifts: Swap Request (creates a pending request for manager approval)
   app.post(api.shifts.swap.path, async (req, res) => {
     const { token, myDate, targetUsername, targetDate } = req.body;

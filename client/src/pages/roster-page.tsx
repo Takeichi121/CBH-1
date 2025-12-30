@@ -228,8 +228,10 @@ export default function RosterPage() {
 function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolean; groups?: any[] }) {
   const groupColors: Record<string, string> = {
     open: "bg-blue-100 text-blue-700 border-blue-200",
+    swing: "bg-cyan-100 text-cyan-700 border-cyan-200",
     lunch: "bg-orange-100 text-orange-700 border-orange-200",
     dinner: "bg-purple-100 text-purple-700 border-purple-200",
+    close: "bg-pink-100 text-pink-700 border-pink-200",
     late: "bg-slate-100 text-slate-700 border-slate-200",
   };
   

@@ -86,7 +86,7 @@ export function getWeekRangeTuesday(anyDate?: string) {
   };
 }
 
-export const DEFAULT_CAPACITY = { open: 4, lunch: 4, dinner: 4, late: 4 };
+export const DEFAULT_CAPACITY = { open: 4, swing: 4, lunch: 4, dinner: 4, close: 4, late: 4 };
 export const SHIFT_GROUPS = [
   { 
     key: "open", 
@@ -94,30 +94,52 @@ export const SHIFT_GROUPS = [
     windowStart: "00:00", 
     windowEnd: "11:00", 
     main: "07:00",
-    times: ["07:00 - 16:00", "08:00 - 17:00", "09:00 - 18:00"]
+    defaultTime: "07:00 - 16:00",
+    times: ["07:00 - 16:00"]
+  },
+  { 
+    key: "swing", 
+    label: "Swing", 
+    windowStart: "08:00", 
+    windowEnd: "12:00", 
+    main: "09:00",
+    defaultTime: "09:00 - 18:00",
+    times: ["09:00 - 18:00"]
   },
   { 
     key: "lunch", 
     label: "Lunch", 
     windowStart: "12:00", 
-    windowEnd: "14:00", 
+    windowEnd: "15:00", 
     main: "13:00",
-    times: ["10:00 - 19:00", "11:00 - 20:00", "12:00 - 21:00"]
+    defaultTime: "13:00 - 22:00",
+    times: ["13:00 - 22:00"]
   },
   { 
     key: "dinner", 
     label: "Dinner", 
-    windowStart: "15:00", 
-    windowEnd: "18:00", 
+    windowStart: "14:00", 
+    windowEnd: "17:00", 
     main: "15:00",
-    times: ["13:00 - 22:00", "14:00 - 23:00", "15:00 - 00:00"]
+    defaultTime: "15:00 - 00:00",
+    times: ["15:00 - 00:00"]
+  },
+  { 
+    key: "close", 
+    label: "Close", 
+    windowStart: "18:00", 
+    windowEnd: "21:00", 
+    main: "19:00",
+    defaultTime: "19:00 - 04:00",
+    times: ["19:00 - 04:00"]
   },
   { 
     key: "late", 
     label: "Late Night", 
     windowStart: "20:00", 
-    windowEnd: "23:00", 
+    windowEnd: "23:59", 
     main: "22:00",
-    times: ["17:00 - 02:00", "18:00 - 03:00", "20:00 - 05:00"]
+    defaultTime: "22:00 - 07:00",
+    times: ["22:00 - 07:00"]
   },
 ];

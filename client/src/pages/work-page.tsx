@@ -682,8 +682,10 @@ function ShiftCellWithActions({ shift, groups, onRefresh }: { shift: any; groups
 
   const groupColors: Record<string, string> = {
     open: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    swing: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
     lunch: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
     dinner: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    close: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
     late: "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
   };
 
@@ -1489,8 +1491,10 @@ function ManagerMonthlyView() {
 
   const groupColors: Record<string, string> = {
     open: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+    swing: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",
     lunch: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
     dinner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+    close: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
     late: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700",
   };
 

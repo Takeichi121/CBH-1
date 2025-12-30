@@ -484,6 +484,7 @@ Report by ${v.reportBy}`;
     autoSaved: language === 'th' ? "บันทึกแล้ว" : "Auto saved",
     clearForm: language === 'th' ? "ล้างข้อมูล" : "Clear",
     copyReport: language === 'th' ? "คัดลอกรายงาน" : "Copy Report",
+    saveReport: language === 'th' ? "บันทึก" : "Save",
     formula: language === 'th' ? "สูตรคำนวณ" : "Formula",
     autoCalculate: language === 'th' ? "คำนวณอัตโนมัติ" : "Auto Calculate",
     divisor: language === 'th' ? "ตัวหาร" : "Divisor",
@@ -1071,6 +1072,10 @@ Report by ${v.reportBy}`;
                 <Button type="button" variant="outline" onClick={handleClearForm} className="gap-2" data-testid="button-clear-form">
                   <Trash2 className="w-4 h-4" />
                   {t.clearForm}
+                </Button>
+                <Button type="submit" variant="default" className="gap-2" data-testid="button-save-report">
+                  <Save className="w-4 h-4" />
+                  {t.saveReport}
                 </Button>
                 <Button type="button" onClick={handleCopyReport} className="gap-2 flex-1 sm:flex-none" data-testid="button-copy-report">
                   <Copy className="w-4 h-4" />

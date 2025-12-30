@@ -884,15 +884,22 @@ Report by ${v.reportBy}`;
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
-                          <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
+                          <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ Daily:' : 'Daily Calculation Formula:'}</p>
                           <p className="text-muted-foreground">Daily % = (Daily / AC) x 100</p>
                           <p className="text-muted-foreground">Meal % = (Meal / AC) x 100</p>
                           <p className="text-muted-foreground">Raw % = (Raw / AC) x 100</p>
                         </div>
+                        <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+                          <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ MTD:' : 'MTD Calculation Formula:'}</p>
+                          <p className="text-muted-foreground">MTD % = (MTD / MTD AC) x 100</p>
+                          <p className="text-muted-foreground">Meal % = (Meal / MTD AC) x 100</p>
+                          <p className="text-muted-foreground">Raw % = (Raw / MTD AC) x 100</p>
+                        </div>
                         <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg text-sm">
                           <p className="font-medium text-blue-700 dark:text-blue-300">{language === 'th' ? 'หมายเหตุ:' : 'Note:'}</p>
                           <p className="text-blue-600 dark:text-blue-400">Daily - Meal = Raw</p>
-                          <p className="text-xs text-muted-foreground mt-2">{language === 'th' ? '% คำนวณอัตโนมัติจาก AC' : '% is auto-calculated from AC'}</p>
+                          <p className="text-blue-600 dark:text-blue-400">MTD - Meal = Raw</p>
+                          <p className="text-xs text-muted-foreground mt-2">{language === 'th' ? '% คำนวณอัตโนมัติ' : '% is auto-calculated'}</p>
                         </div>
                       </div>
                     </DialogContent>

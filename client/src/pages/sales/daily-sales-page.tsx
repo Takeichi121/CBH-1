@@ -306,49 +306,52 @@ export default function DailySalesPage() {
       return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
     };
 
-    const reportText = `Daily Sales Report - Grand Diamond
+    const reportText = `💎 Daily Sales Report 💎
+Grand Diamond
 Date: ${formatDate(v.reportDate)}
-================================
+========================
 
-Daily
-TG (Target): ฿${parseFloat(v.dailyTarget).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-AC (Actual Sales): ฿${actualSalesVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-TC (Transaction Count): ${tcVal.toLocaleString()}
-TA (Average Transaction): ${taVal}
+📊 Daily
 
-MTD (Month To Day) 
-MTD TG: ฿${mtdTargetVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-MTD AC: ฿${mtdActualVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-Variance: ฿${mtdVariance >= 0 ? '+' : ''}${mtdVariance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-MTD TC: ${mtdTcVal.toLocaleString()}
-MTD TA: ${mtdTaVal}
+💰 TG: ${parseFloat(v.dailyTarget).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+💵 AC: ${actualSalesVal.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+👥 TC: ${tcVal.toLocaleString()}
+🧾 TA: ${taVal}
 
-In Store
-Dine In: ฿${dineInVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${dineInPercent}%
+📈 MTD 
+💰 MTD TG: ${mtdTargetVal.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+💵 MTD AC: ${mtdActualVal.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+📉 Variance: ${mtdVariance >= 0 ? '+' : '-'}฿${Math.abs(mtdVariance).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+👥 MTD TC: ${mtdTcVal.toLocaleString()}
+🧾 MTD TA: ${mtdTaVal}
+
+🏪 In Store
+🍽️ Dine In: ${dineInVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${dineInPercent}%
 TC: ${parseInt(v.dineInTc) || 0}
-Take Away: ฿${takeAwayVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${takeAwayPercent}%
+🥡 Take Away: ${takeAwayVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${takeAwayPercent}%
 TC: ${parseInt(v.takeAwayTc) || 0}
-In Store Total: ฿${inStoreTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${inStoreTotalPercent}%
+🏪 In Store Total: ${inStoreTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${inStoreTotalPercent}%
 
-DELIVERY
-Grab: ฿${grabVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${grabPercent}%
-LINE MAN: ฿${linemanVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${linemanPercent}%
-Shoppee Food: ฿${shopeeVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${shopeePercent}%
-BK App/Web: ฿${bkappVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${bkappPercent}%
-Delivery Total: ฿${deliveryTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${deliveryTotalPercent}%
-================================
+🛵 DELIVERY
+🛵 Grab: ${grabVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${grabPercent}%
+🛵 LINE MAN: ${linemanVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${linemanPercent}%
+🛵 Shoppee Food: ${shopeeVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${shopeePercent}%
+🛵 BK App/Web: ${bkappVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${bkappPercent}%
+📦 Delivery Total: ${deliveryTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${deliveryTotalPercent}%
+========================
 
-OSAT: ${v.osat}
-Survey count: ${v.surveyCount}
-Void: -฿${parseFloat(v.voidAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+⭐ OSAT: ${v.osat}
+📋 Survey count: ${v.surveyCount}
+❌ Void: -฿${parseFloat(v.voidAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
 count: ${v.voidCount || 0} Bill
 
-Add Cheese: ${v.addCheeseCount}/${v.addCheesePercent}%
-V-meal: ${v.vMealCount}/${v.vMealPercent}%
-Up Size: ${v.upSizeCount}/${v.upSizePercent}%
-================================
+🧀 Add Cheese: ${v.addCheeseCount}/${v.addCheesePercent}%
+🍔 V-meal: ${v.vMealCount}/${v.vMealPercent}%
+🥤 Up Size: ${v.upSizeCount}/${v.upSizePercent}%
+========================
 
-WASTE (Daily - Meal = Raw)
+🗑️ WASTE
+
 Daily
 Daily: ${wasteDailyTotalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${actualSalesVal > 0 ? ((wasteDailyTotalVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
 Meal: ${wasteMealDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${actualSalesVal > 0 ? ((wasteMealDailyVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
@@ -358,21 +361,22 @@ MTD
 MTD: ${wasteMtdTotalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${mtdActualVal > 0 ? ((wasteMtdTotalVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
 Meal: ${wasteMealMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${mtdActualVal > 0 ? ((wasteMealMtdVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
 Raw: ${wasteRawMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${mtdActualVal > 0 ? ((wasteRawMtdVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
-================================
+========================
 
-COL: ${v.colPercent}%
-Hour: ${v.laborHour}
-TCMH = ${v.tcmh}
-================================
+👷 COL: ${v.colPercent}%
+⏰ Hour: ${v.laborHour}
+📊 TCMH = ${v.tcmh}
+========================
 
-Manager Roster Date: ${formatDate(v.managerRosterDate)}
+📅 Manager Roster 
+Date: ${formatDate(v.managerRosterDate)}
 
 ${v.managerRosterText || 'Name:Group Shift | Time/OFF,COM,Vacation'}
 
-Roster Staff
+👥 Roster Staff
 ${v.staffRosterText || 'Group Shift | Time: Name'}
 
-Report by ${v.reportBy}`;
+📝 Report by ${v.reportBy}`;
 
     navigator.clipboard.writeText(reportText).then(() => {
       toast({

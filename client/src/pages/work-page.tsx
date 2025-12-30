@@ -628,6 +628,330 @@ function ManagerDashboard() {
   );
 }
 
+// Generate time options (00:00 - 23:00)
+const timeOptions = Array.from({ length: 24 }, (_, i) => {
+  const hour = i.toString().padStart(2, "0");
+  return `${hour}:00`;
+});
+
+function StaffCellBookDialog({ groups, day, username, staffName, children }: { groups: any; day: string; username: string; staffName: string; children: React.ReactNode }) {
+  const { language } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("");
+  const [customStartTime, setCustomStartTime] = useState("08:00");
+  const [customEndTime, setCustomEndTime] = useState("16:00");
+  const [note, setNote] = useState("");
+  const queryClient = useQueryClient();
+
+  const handleSubmit = async () => {
+    if (!selectedGroup) return;
+    const finalTime = useCustomTime ? `${customStartTime} - ${customEndTime}` : selectedTime;
+    if (!finalTime) return;
+    
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", api.shifts.setForUser.path, {
+        token,
+        username,
+        date: day,
+        shiftGroup: selectedGroup,
+        startTime: finalTime,
+        note,
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+      setOpen(false);
+      setSelectedGroup("");
+      setSelectedTime("");
+      setUseCustomTime(false);
+      setNote("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const isValid = selectedGroup && (useCustomTime ? (customStartTime && customEndTime) : selectedTime);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {language === "th" ? "สร้างตารางงาน" : "Create Schedule"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{staffName}</span> - {format(parseISO(day), "EEEE d MMM yyyy")}
+          </div>
+          <div className="space-y-2">
+            <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
+            <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกกะ..." : "Select shift..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {groups?.map((g: any) => (
+                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {selectedGroup && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="customTime" 
+                  checked={useCustomTime} 
+                  onChange={(e) => setUseCustomTime(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="customTime" className="cursor-pointer">
+                  {language === "th" ? "กำหนดเวลาเอง" : "Custom Time"}
+                </Label>
+              </div>
+              
+              {useCustomTime ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาเริ่ม" : "Start Time"}</Label>
+                    <Select value={customStartTime} onValueChange={setCustomStartTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาจบ" : "End Time"}</Label>
+                    <Select value={customEndTime} onValueChange={setCustomEndTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>{language === "th" ? "เวลา" : "Time"}</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
+          </div>
+          <Button onClick={handleSubmit} className="w-full" disabled={!isValid}>
+            {language === "th" ? "บันทึก" : "Save"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ManagerCreateCustomScheduleDialog({ groups, users, days, children }: { groups: any; users: any[]; days: string[]; children: React.ReactNode }) {
+  const { language } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("");
+  const [customStartTime, setCustomStartTime] = useState("08:00");
+  const [customEndTime, setCustomEndTime] = useState("16:00");
+  const [selectedUser, setSelectedUser] = useState("");
+  const [note, setNote] = useState("");
+  const queryClient = useQueryClient();
+
+  const handleSubmit = async () => {
+    if (!selectedUser || !selectedGroup || !selectedDay) return;
+    const finalTime = useCustomTime ? `${customStartTime} - ${customEndTime}` : selectedTime;
+    if (!finalTime) return;
+    
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", api.shifts.setForUser.path, {
+        token,
+        username: selectedUser,
+        date: selectedDay,
+        shiftGroup: selectedGroup,
+        startTime: finalTime,
+        note,
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+      setOpen(false);
+      setSelectedDay("");
+      setSelectedGroup("");
+      setSelectedTime("");
+      setUseCustomTime(false);
+      setSelectedUser("");
+      setNote("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const staffUsers = users?.filter((u: any) => u.role === "staff" && u.active === 1) || [];
+  const isValid = selectedUser && selectedGroup && selectedDay && (useCustomTime ? (customStartTime && customEndTime) : selectedTime);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {language === "th" ? "สร้างตารางงานกำหนดเอง" : "Create Custom Schedule"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>{language === "th" ? "เลือกวัน" : "Select Day"}</Label>
+            <Select value={selectedDay} onValueChange={setSelectedDay}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกวัน..." : "Select day..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {days.map((day: string) => (
+                  <SelectItem key={day} value={day}>
+                    {format(parseISO(day), "EEEE d MMM yyyy")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{language === "th" ? "เลือกพนักงาน" : "Select Staff"}</Label>
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกพนักงาน..." : "Select staff..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {staffUsers.map((u: any) => (
+                  <SelectItem key={u.username} value={u.username}>
+                    {u.nickName || u.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
+            <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกกะ..." : "Select shift..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {groups?.map((g: any) => (
+                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {selectedGroup && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="customTimeCreate" 
+                  checked={useCustomTime} 
+                  onChange={(e) => setUseCustomTime(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="customTimeCreate" className="cursor-pointer">
+                  {language === "th" ? "กำหนดเวลาเอง" : "Custom Time"}
+                </Label>
+              </div>
+              
+              {useCustomTime ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาเริ่ม" : "Start Time"}</Label>
+                    <Select value={customStartTime} onValueChange={setCustomStartTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาจบ" : "End Time"}</Label>
+                    <Select value={customEndTime} onValueChange={setCustomEndTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>{language === "th" ? "เวลา" : "Time"}</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
+          </div>
+          <Button onClick={handleSubmit} className="w-full" disabled={!isValid}>
+            {language === "th" ? "บันทึก" : "Save"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ManagerEmployeeRosterView() {
   const { language, t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -931,211 +1255,6 @@ function ManagerBookShiftDialog({ groups, day, children }: { groups: any; day: s
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
           </div>
           <Button onClick={handleSubmit} className="w-full" disabled={!selectedUser || !selectedGroup || !selectedTime}>
-            {language === "th" ? "บันทึก" : "Save"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function StaffCellBookDialog({ groups, day, username, staffName, children }: { groups: any; day: string; username: string; staffName: string; children: React.ReactNode }) {
-  const { language } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [note, setNote] = useState("");
-  const queryClient = useQueryClient();
-
-  const handleSubmit = async () => {
-    if (!selectedGroup || !selectedTime) return;
-    const token = localStorage.getItem("bk_token") || "";
-    try {
-      await apiRequest("POST", api.shifts.setForUser.path, {
-        token,
-        username,
-        date: day,
-        shiftGroup: selectedGroup,
-        startTime: selectedTime,
-        note,
-      });
-      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
-      setOpen(false);
-      setSelectedGroup("");
-      setSelectedTime("");
-      setNote("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {language === "th" ? "สร้างตารางงาน" : "Create Schedule"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-4">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{staffName}</span> - {format(parseISO(day), "EEEE d MMM yyyy")}
-          </div>
-          <div className="space-y-2">
-            <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
-            <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === "th" ? "เลือกกะ..." : "Select shift..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {groups?.map((g: any) => (
-                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {selectedGroup && (
-            <div className="space-y-2">
-              <Label>{language === "th" ? "เวลา" : "Time"}</Label>
-              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
-            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
-          </div>
-          <Button onClick={handleSubmit} className="w-full" disabled={!selectedGroup || !selectedTime}>
-            {language === "th" ? "บันทึก" : "Save"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ManagerCreateCustomScheduleDialog({ groups, users, days, children }: { groups: any; users: any[]; days: string[]; children: React.ReactNode }) {
-  const { language } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [selectedDay, setSelectedDay] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [selectedUser, setSelectedUser] = useState("");
-  const [note, setNote] = useState("");
-  const queryClient = useQueryClient();
-
-  const handleSubmit = async () => {
-    if (!selectedUser || !selectedGroup || !selectedTime || !selectedDay) return;
-    const token = localStorage.getItem("bk_token") || "";
-    try {
-      await apiRequest("POST", api.shifts.setForUser.path, {
-        token,
-        username: selectedUser,
-        date: selectedDay,
-        shiftGroup: selectedGroup,
-        startTime: selectedTime,
-        note,
-      });
-      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
-      setOpen(false);
-      setSelectedDay("");
-      setSelectedGroup("");
-      setSelectedTime("");
-      setSelectedUser("");
-      setNote("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const staffUsers = users?.filter((u: any) => u.role === "staff" && u.active === 1) || [];
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {language === "th" ? "สร้างตารางงานกำหนดเอง" : "Create Custom Schedule"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label>{language === "th" ? "เลือกวัน" : "Select Day"}</Label>
-            <Select value={selectedDay} onValueChange={setSelectedDay}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === "th" ? "เลือกวัน..." : "Select day..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day: string) => (
-                  <SelectItem key={day} value={day}>
-                    {format(parseISO(day), "EEEE d MMM yyyy")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>{language === "th" ? "เลือกพนักงาน" : "Select Staff"}</Label>
-            <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === "th" ? "เลือกพนักงาน..." : "Select staff..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {staffUsers.map((u: any) => (
-                  <SelectItem key={u.username} value={u.username}>
-                    {u.nickName || u.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
-            <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === "th" ? "เลือกกะ..." : "Select shift..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {groups?.map((g: any) => (
-                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {selectedGroup && (
-            <div className="space-y-2">
-              <Label>{language === "th" ? "เวลา" : "Time"}</Label>
-              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
-            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
-          </div>
-          <Button onClick={handleSubmit} className="w-full" disabled={!selectedUser || !selectedGroup || !selectedTime || !selectedDay}>
             {language === "th" ? "บันทึก" : "Save"}
           </Button>
         </div>

@@ -78,6 +78,13 @@ export default function RosterPage() {
     userShifts[shift.username].shifts[shift.date] = shift;
   });
 
+  // Custom staff order from management
+  const staffOrder = [
+    "athat", "arthit", "adisorn", "sunari", "sarawut", "wafah", "yossanun", 
+    "phusanisa", "paisit", "pitak", "pornnipa", "pongpun", "thepthakun", 
+    "nattarika", "kanapat", "kidsada"
+  ];
+
   const sortedUsers = Object.values(userShifts)
     .filter((u: any) => {
       if (u.role === "admin" || u.role === "manager") return false;
@@ -87,12 +94,12 @@ export default function RosterPage() {
       return hasShift;
     })
     .sort((a: any, b: any) => {
-      // Sort by earliest shift time
-      const aShift = days.map(d => a.shifts[d]).find((s: any) => s);
-      const bShift = days.map(d => b.shifts[d]).find((s: any) => s);
-      const aTime = aShift?.startTime?.split(" - ")[0] || "99:99";
-      const bTime = bShift?.startTime?.split(" - ")[0] || "99:99";
-      return aTime.localeCompare(bTime);
+      // Sort by custom staff order
+      const aIndex = staffOrder.findIndex(name => a.username.toLowerCase().includes(name));
+      const bIndex = staffOrder.findIndex(name => b.username.toLowerCase().includes(name));
+      const aOrder = aIndex === -1 ? 999 : aIndex;
+      const bOrder = bIndex === -1 ? 999 : bIndex;
+      return aOrder - bOrder;
     });
 
   const hiddenUsers = Object.values(userShifts)

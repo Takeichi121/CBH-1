@@ -175,13 +175,13 @@ export default function RosterPage() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-7 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
+                            className="h-7 px-2 text-[10px] text-muted-foreground hover:text-foreground justify-start"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleUpdateUserStatus(u.username, 0);
                             }}
                           >
-                            <Trash2 className="w-3 h-3 mr-1" />
+                            <EyeOff className="w-3 h-3 mr-1" />
                             Hide Staff
                           </Button>
                         </div>

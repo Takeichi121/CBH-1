@@ -690,7 +690,7 @@ function ShiftCellWithActions({ shift, groups, onRefresh }: { shift: any; groups
   return (
     <>
       <div 
-        className={`relative h-16 rounded-lg p-2 flex flex-col justify-center items-center cursor-pointer ${groupColors[shift.shiftGroup] || groupColors.late}`}
+        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-pointer ${groupColors[shift.shiftGroup] || groupColors.late}`}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
         onClick={() => setEditOpen(true)}
@@ -1259,7 +1259,7 @@ function ManagerEmployeeRosterView() {
                       <TableCell key={day} className="text-center p-2">
                         <ManagerBookShiftDialog groups={settings?.groups} day={day}>
                           <button 
-                            className="w-full h-16 border-2 border-dashed border-primary/30 rounded-lg flex items-center justify-center hover:bg-primary/5 transition-colors cursor-pointer"
+                            className="w-full h-10 border-2 border-dashed border-primary/30 rounded-lg flex items-center justify-center hover:bg-primary/5 transition-colors cursor-pointer"
                             data-testid={`button-book-shift-${day}`}
                           >
                             <Plus className="w-5 h-5 text-primary/50" />
@@ -1298,7 +1298,7 @@ function ManagerEmployeeRosterView() {
                                 />
                               ) : (
                                 <StaffCellBookDialog groups={settings?.groups} day={day} username={staff.username} staffName={staff.nickName || staff.fullName}>
-                                  <button className="w-full h-16 border border-dashed border-border/50 rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer">
+                                  <button className="w-full h-10 border border-dashed border-border/50 rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer">
                                     <Plus className="w-4 h-4 text-muted-foreground/30 mx-auto" />
                                   </button>
                                 </StaffCellBookDialog>
@@ -1322,7 +1322,7 @@ function ManagerEmployeeRosterView() {
                       {days.map((day: string) => (
                         <TableCell key={day} className="text-center p-2">
                           {shift.date === day ? (
-                            <div className={`h-16 rounded-lg p-2 flex flex-col justify-center items-center ${
+                            <div className={`h-10 rounded-lg p-1 flex flex-col justify-center items-center ${
                               shift.shiftGroup === "open" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
                               shift.shiftGroup === "lunch" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
                               shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :

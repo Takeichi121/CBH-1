@@ -7,6 +7,7 @@ import { useI18n } from "@/hooks/use-i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { FormattedInput } from "@/components/ui/formatted-input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -561,7 +562,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormControl>
                         <div className="relative">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
-                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} data-testid="input-daily-target" />
+                          <FormattedInput className="pl-6 text-sm" {...field} data-testid="input-daily-target" />
                         </div>
                       </FormControl>
                     </FormItem>
@@ -572,7 +573,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormControl>
                         <div className="relative">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
-                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} data-testid="input-actual-sales" />
+                          <FormattedInput className="pl-6 text-sm" {...field} data-testid="input-actual-sales" />
                         </div>
                       </FormControl>
                     </FormItem>
@@ -580,7 +581,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="transactionCount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.tc}</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} data-testid="input-tc" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} data-testid="input-tc" /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -599,7 +600,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormControl>
                         <div className="relative">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
-                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} data-testid="input-mtd-target" />
+                          <FormattedInput className="pl-6 text-sm" {...field} data-testid="input-mtd-target" />
                         </div>
                       </FormControl>
                     </FormItem>
@@ -610,7 +611,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormControl>
                         <div className="relative">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
-                          <Input type="number" step="0.01" className="pl-6 text-sm" {...field} data-testid="input-mtd-actual" />
+                          <FormattedInput className="pl-6 text-sm" {...field} data-testid="input-mtd-actual" />
                         </div>
                       </FormControl>
                     </FormItem>
@@ -622,7 +623,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="mtdTc" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.mtdTc}</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} data-testid="input-mtd-tc" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} data-testid="input-mtd-tc" /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -638,13 +639,13 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="dineIn" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.dineIn} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-dine-in" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-dine-in" /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="dineInTc" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.dineInTc}</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -659,13 +660,13 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="takeAway" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.takeAway} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-take-away" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-take-away" /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="takeAwayTc" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.takeAwayTc}</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -686,7 +687,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="grabfood" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.grabfood} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-grab" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-grab" /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -701,7 +702,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="lineman" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.lineman} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-lineman" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-lineman" /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -716,7 +717,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="shopee" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.shopee} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-shopee" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-shopee" /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -731,7 +732,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="bkapp" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.bkapp} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-bkapp" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-bkapp" /></FormControl>
                     </FormItem>
                   )} />
                   <div>
@@ -752,25 +753,25 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="osat" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.osat}</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-osat" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-osat" /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="surveyCount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.surveyCount}</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="voidAmount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.void} (฿)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-void" /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} data-testid="input-void" /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="voidCount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.voidCount}</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                 </div>
@@ -837,37 +838,37 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="addCheeseCount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.addCheese} #</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="addCheesePercent" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.addCheese} %</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
+                      <FormControl><Input className="text-sm bg-muted" readOnly {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="vMealCount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.vMeal} #</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="vMealPercent" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.vMeal} %</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
+                      <FormControl><Input className="text-sm bg-muted" readOnly {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="upSizeCount" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.upSize} #</FormLabel>
-                      <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="upSizePercent" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.upSize} %</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
+                      <FormControl><Input className="text-sm bg-muted" readOnly {...field} /></FormControl>
                     </FormItem>
                   )} />
                 </div>
@@ -917,7 +918,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormField control={form.control} name="wasteDailyTotal" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">Daily (฿)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                          <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <div>
@@ -931,7 +932,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormField control={form.control} name="wasteMealDaily" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">{t.meal} (฿)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                          <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <div>
@@ -966,7 +967,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormField control={form.control} name="wasteMtdTotal" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">MTD (฿)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                          <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <div>
@@ -980,7 +981,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       <FormField control={form.control} name="wasteMealMtd" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">{t.meal} (฿)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                          <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <div>
@@ -1018,19 +1019,19 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <FormField control={form.control} name="colPercent" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.col}</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="laborHour" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.hour}</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="tcmh" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.tcmh}</FormLabel>
-                      <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
+                      <FormControl><FormattedInput className="text-sm" {...field} /></FormControl>
                     </FormItem>
                   )} />
                 </div>

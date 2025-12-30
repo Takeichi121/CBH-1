@@ -81,7 +81,10 @@ export default function RosterPage() {
   const sortedUsers = Object.values(userShifts)
     .filter((u: any) => {
       if (u.role === "admin" || u.role === "manager") return false;
-      return u.active === 1 || u.active === undefined;
+      if (u.active === 0) return false;
+      // Only show users who have at least one shift this week
+      const hasShift = days.some(d => u.shifts[d]);
+      return hasShift;
     })
     .sort((a: any, b: any) => {
       // Sort by earliest shift time

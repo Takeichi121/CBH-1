@@ -891,6 +891,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Get MTD Summary
+  app.post(api.sales.getMtdSummary.path, async (req, res) => {
+    const { token, year, month, beforeDate } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const summary = await storage.getMtdSummary(year, month, beforeDate);
+      res.json({ ok: true, ...summary });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get MTD summary" });
+    }
+  });
+
   // Get Store Settings
   app.post(api.sales.getSettings.path, async (req, res) => {
     const { token } = req.body;

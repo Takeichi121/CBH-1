@@ -69,6 +69,12 @@ export interface IStorage {
   getDailySalesReports(date?: string, limit?: number): Promise<DailySalesReport[]>;
   updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport>;
   deleteDailySalesReport(id: number): Promise<boolean>;
+  getMtdSummary(year: number, month: number, beforeDate?: string): Promise<{
+    mtdActual: number;
+    mtdTc: number;
+    mtdTarget: number;
+    reportCount: number;
+  }>;
 
   // Store Settings
   getStoreSettings(): Promise<StoreSettings | undefined>;
@@ -262,6 +268,37 @@ export class DatabaseStorage implements IStorage {
   async deleteDailySalesReport(id: number): Promise<boolean> {
     const result = await db.delete(dailySalesReports).where(eq(dailySalesReports.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // MTD Summary - Calculate from saved reports
+  async getMtdSummary(year: number, month: number, beforeDate?: string): Promise<{
+    mtdActual: number;
+    mtdTc: number;
+    mtdTarget: number;
+    reportCount: number;
+  }> {
+    const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = beforeDate || `${year}-${String(month).padStart(2, '0')}-31`;
+    
+    const reports = await db.select().from(dailySalesReports)
+      .where(
+        and(
+          gte(dailySalesReports.reportDate, startOfMonth),
+          lte(dailySalesReports.reportDate, endDate)
+        )
+      );
+    
+    let mtdActual = 0;
+    let mtdTc = 0;
+    let mtdTarget = 0;
+    
+    for (const report of reports) {
+      mtdActual += parseFloat(report.actualSales || "0");
+      mtdTc += parseFloat(report.transactionCount || "0");
+      mtdTarget += parseFloat(report.dailyTarget || "0");
+    }
+    
+    return { mtdActual, mtdTc, mtdTarget, reportCount: reports.length };
   }
 
   // Store Settings

@@ -271,6 +271,14 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    getMtdSummary: {
+      method: "POST",
+      path: "/api/sales/getMtdSummary",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number(), beforeDate: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), mtdActual: z.number().optional(), mtdTc: z.number().optional(), mtdTarget: z.number().optional(), reportCount: z.number().optional(), message: z.string().optional() }),
+      },
+    },
     getSettings: {
       method: "POST",
       path: "/api/sales/getSettings",

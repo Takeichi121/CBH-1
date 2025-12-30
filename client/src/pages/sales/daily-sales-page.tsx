@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CheckCircle, Save, Trash2, Copy, Calculator, BarChart3 } from "lucide-react";
+import { CheckCircle, Save, Trash2, Copy, Calculator, BarChart3, Loader2 } from "lucide-react";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
+import { apiRequest } from "@/lib/queryClient";
 
 const formatNumber = (value: string | number): string => {
   const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value;
@@ -234,6 +235,56 @@ export default function DailySalesPage() {
       });
     }
   }, [form.setValue, restoreData]);
+
+  // Load store settings and MTD summary on mount
+  useEffect(() => {
+    const loadStoreSettings = async () => {
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/sales/getSettings", { token });
+        const data = await res.json();
+        if (data.ok && data.settings) {
+          form.setValue("dailyTarget", data.settings.dailyTarget || "250000");
+        }
+      } catch (error) {
+        console.error("Failed to load store settings:", error);
+      }
+    };
+    loadStoreSettings();
+  }, []);
+
+  // Load MTD summary when date changes
+  const reportDate = form.watch("reportDate");
+  useEffect(() => {
+    const loadMtdSummary = async () => {
+      if (!reportDate) return;
+      try {
+        const token = localStorage.getItem("bk_token");
+        const date = new Date(reportDate);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        
+        // Get MTD up to and including the current date
+        const res = await apiRequest("POST", "/api/sales/getMtdSummary", { 
+          token, 
+          year, 
+          month,
+          beforeDate: reportDate
+        });
+        const data = await res.json();
+        if (data.ok) {
+          // Set MTD values from accumulated previous reports
+          form.setValue("mtdActual", data.mtdActual.toString());
+          form.setValue("mtdTc", data.mtdTc.toString());
+          // MTD Target should be sum of daily targets accumulated
+          form.setValue("mtdTarget", data.mtdTarget.toString());
+        }
+      } catch (error) {
+        console.error("Failed to load MTD summary:", error);
+      }
+    };
+    loadMtdSummary();
+  }, [reportDate]);
 
   if (!isManager) {
     return (

@@ -663,7 +663,7 @@ Report by ${v.reportBy}`;
 
               <div className="bg-orange-50 dark:bg-orange-950/30 p-3 md:p-4 rounded-lg">
                 <h3 className="text-sm md:text-base font-medium mb-3">{t.inStore}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <FormField control={form.control} name="dineIn" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.dineIn} (฿)</FormLabel>
@@ -676,6 +676,15 @@ Report by ${v.reportBy}`;
                       <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
                     </FormItem>
                   )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.dineIn} %</FormLabel>
+                    <Input 
+                      value={actualSales > 0 ? ((parseFloat(form.watch("dineIn") || "0") / actualSales) * 100).toFixed(2) : "0.00"} 
+                      readOnly 
+                      className="bg-muted text-sm" 
+                      data-testid="display-dine-in-percent"
+                    />
+                  </div>
                   <FormField control={form.control} name="takeAway" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.takeAway} (฿)</FormLabel>
@@ -688,6 +697,15 @@ Report by ${v.reportBy}`;
                       <FormControl><Input type="number" className="text-sm" {...field} /></FormControl>
                     </FormItem>
                   )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.takeAway} %</FormLabel>
+                    <Input 
+                      value={actualSales > 0 ? ((parseFloat(form.watch("takeAway") || "0") / actualSales) * 100).toFixed(2) : "0.00"} 
+                      readOnly 
+                      className="bg-muted text-sm" 
+                      data-testid="display-take-away-percent"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -700,24 +718,60 @@ Report by ${v.reportBy}`;
                       <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-grab" /></FormControl>
                     </FormItem>
                   )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.grabfood} %</FormLabel>
+                    <Input 
+                      value={actualSales > 0 ? ((parseFloat(form.watch("grabfood") || "0") / actualSales) * 100).toFixed(2) : "0.00"} 
+                      readOnly 
+                      className="bg-muted text-sm" 
+                      data-testid="display-grab-percent"
+                    />
+                  </div>
                   <FormField control={form.control} name="lineman" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.lineman} (฿)</FormLabel>
                       <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-lineman" /></FormControl>
                     </FormItem>
                   )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.lineman} %</FormLabel>
+                    <Input 
+                      value={actualSales > 0 ? ((parseFloat(form.watch("lineman") || "0") / actualSales) * 100).toFixed(2) : "0.00"} 
+                      readOnly 
+                      className="bg-muted text-sm" 
+                      data-testid="display-lineman-percent"
+                    />
+                  </div>
                   <FormField control={form.control} name="shopee" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.shopee} (฿)</FormLabel>
                       <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-shopee" /></FormControl>
                     </FormItem>
                   )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.shopee} %</FormLabel>
+                    <Input 
+                      value={actualSales > 0 ? ((parseFloat(form.watch("shopee") || "0") / actualSales) * 100).toFixed(2) : "0.00"} 
+                      readOnly 
+                      className="bg-muted text-sm" 
+                      data-testid="display-shopee-percent"
+                    />
+                  </div>
                   <FormField control={form.control} name="bkapp" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.bkapp} (฿)</FormLabel>
                       <FormControl><Input type="number" step="0.01" className="text-sm" {...field} data-testid="input-bkapp" /></FormControl>
                     </FormItem>
                   )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.bkapp} %</FormLabel>
+                    <Input 
+                      value={actualSales > 0 ? ((parseFloat(form.watch("bkapp") || "0") / actualSales) * 100).toFixed(2) : "0.00"} 
+                      readOnly 
+                      className="bg-muted text-sm" 
+                      data-testid="display-bkapp-percent"
+                    />
+                  </div>
                 </div>
               </div>
 

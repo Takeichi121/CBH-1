@@ -47,9 +47,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Auth: Login
   app.post(api.auth.login.path, async (req, res) => {
-    if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
-    const { username, password } = req.body;
+    const { username, password, developerMode } = req.body;
     if (!username || !password) return res.json({ ok: false, message: "กรอกให้ครบ" });
+    
+    // Check if system is closed (allow developer mode for managers/admin)
+    if (isSystemClosed() && !developerMode) {
+      return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
+    }
 
     const u = await storage.getUser(username);
     if (!u || !u.active) return res.json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });

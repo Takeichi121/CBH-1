@@ -22,7 +22,7 @@ export const api = {
     login: {
       method: "POST",
       path: "/api/login",
-      input: z.object({ username: z.string(), password: z.string() }),
+      input: z.object({ username: z.string(), password: z.string(), developerMode: z.boolean().optional() }),
       responses: {
         200: z.object({ ok: z.boolean(), token: z.string().optional(), user: z.any().optional(), message: z.string().optional() }),
       },

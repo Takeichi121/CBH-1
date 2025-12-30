@@ -37,12 +37,12 @@ export default function AuthPage() {
     }
   }, [user, isLoading, setLocation]);
 
-  // Auto-login for developer mode
+  // Auto-login for developer mode (bypasses system closed check)
   useEffect(() => {
     if (developerRole && isCodeVerified && !loginAttemptedRef.current && !loginMutation.isPending) {
       loginAttemptedRef.current = true;
       const username = developerRole === "staff" ? "staff" : "manager";
-      loginMutation.mutate({ username, password: "1234" });
+      loginMutation.mutate({ username, password: "1234", developerMode: true });
     }
   }, [developerRole, isCodeVerified, loginMutation]);
 

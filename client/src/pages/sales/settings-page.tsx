@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
+import { apiRequest } from "@/lib/queryClient";
+import { Loader2, Save } from "lucide-react";
 
 export default function SalesSettingsPage() {
   const { language } = useI18n();
@@ -15,6 +17,8 @@ export default function SalesSettingsPage() {
   const [storeCode, setStoreCode] = useState("BK001GDP");
   const [dailyTarget, setDailyTarget] = useState("250000");
   const [mtdTarget, setMtdTarget] = useState("7500000");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const t = {
     title: language === "th" ? "ตั้งค่าร้านค้า" : "Store Settings",
@@ -26,16 +30,79 @@ export default function SalesSettingsPage() {
     dailyTarget: language === "th" ? "เป้ารายวัน" : "Daily Target",
     mtdTarget: language === "th" ? "เป้า MTD" : "MTD Target",
     save: language === "th" ? "บันทึก" : "Save",
+    saving: language === "th" ? "กำลังบันทึก..." : "Saving...",
     saved: language === "th" ? "บันทึกแล้ว" : "Saved",
     savedDesc: language === "th" ? "การตั้งค่าถูกบันทึกเรียบร้อยแล้ว" : "Settings have been saved successfully",
+    errorSave: language === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save",
   };
 
-  const handleSave = () => {
-    toast({
-      title: t.saved,
-      description: t.savedDesc,
-    });
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/sales/getSettings", { token });
+        const data = await res.json();
+        if (data.ok && data.settings) {
+          setStoreName(data.settings.storeName || "BK Grand Diamond");
+          setStoreCode(data.settings.storeCode || "BK001GDP");
+          setDailyTarget(data.settings.dailyTarget?.toString() || "250000");
+          setMtdTarget(data.settings.mtdTarget?.toString() || "7500000");
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/updateSettings", {
+        token,
+        settings: {
+          storeName,
+          storeCode,
+          dailyTarget: parseFloat(dailyTarget) || 250000,
+          mtdTarget: parseFloat(mtdTarget) || 7500000,
+        }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({
+          title: t.saved,
+          description: t.savedDesc,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: t.errorSave,
+          description: data.message || "Unknown error",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: t.errorSave,
+        description: error.message || "Unknown error",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <SalesLayout>
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </SalesLayout>
+    );
+  }
 
   return (
     <SalesLayout>
@@ -111,8 +178,18 @@ export default function SalesSettingsPage() {
               </div>
             </div>
             <div className="pt-4 flex justify-end">
-              <Button onClick={handleSave} data-testid="button-save-settings">
-                {t.save}
+              <Button onClick={handleSave} disabled={isSaving} data-testid="button-save-settings">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t.saving}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {t.save}
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>

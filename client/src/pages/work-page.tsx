@@ -696,7 +696,7 @@ function ShiftCellWithActions({ shift, groups, onRefresh }: { shift: any; groups
         onClick={() => setEditOpen(true)}
       >
         <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
-        <span className="text-xs">{shift.startTime?.split(" - ")[0]}</span>
+        <span className="text-xs">{shift.startTime}</span>
         {shift.note && <span className="text-[9px] opacity-70 truncate max-w-full">{shift.note}</span>}
         
         <div 
@@ -1324,7 +1324,7 @@ function ManagerEmployeeRosterView() {
                               "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
                             }`}>
                               <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
-                              <span className="text-xs">{shift.startTime?.split(" - ")[0]}</span>
+                              <span className="text-xs">{shift.startTime}</span>
                             </div>
                           ) : null}
                         </TableCell>
@@ -1548,7 +1548,7 @@ function ManagerMonthlyView() {
                 {shift && (
                   <div className="flex-1 flex flex-col justify-center items-center">
                     <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
-                    <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime?.split(' - ')[0]}</span>
+                    <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime}</span>
                   </div>
                 )}
               </div>

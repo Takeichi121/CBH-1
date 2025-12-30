@@ -119,14 +119,10 @@ const formSchema = z.object({
   vMealPercent: z.string().default("0"),
   upSizeCount: z.string().default("0"),
   upSizePercent: z.string().default("0"),
-  wasteRawDaily: z.string().default("0"),
-  wasteRawDailyPercent: z.string().default("0"),
+  wasteDailyTotal: z.string().default("0"),
   wasteMealDaily: z.string().default("0"),
-  wasteMealDailyPercent: z.string().default("0"),
-  wasteRawMtd: z.string().default("0"),
-  wasteRawMtdPercent: z.string().default("0"),
+  wasteMtdTotal: z.string().default("0"),
   wasteMealMtd: z.string().default("0"),
-  wasteMealMtdPercent: z.string().default("0"),
   colPercent: z.string().default("0"),
   laborHour: z.string().default("0"),
   tcmh: z.string().default("0"),
@@ -146,8 +142,6 @@ export default function DailySalesPage() {
   const [addonDialogOpen, setAddonDialogOpen] = useState(false);
   const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
   const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
-  const [customWasteDivisor, setCustomWasteDivisor] = useState<string>("");
-  const [customWasteMtdDivisor, setCustomWasteMtdDivisor] = useState<string>("");
 
   const isManager = user?.role === "manager" || user?.role === "admin";
 
@@ -181,14 +175,10 @@ export default function DailySalesPage() {
       vMealPercent: "0",
       upSizeCount: "0",
       upSizePercent: "0",
-      wasteRawDaily: "0",
-      wasteRawDailyPercent: "0",
+      wasteDailyTotal: "0",
       wasteMealDaily: "0",
-      wasteMealDailyPercent: "0",
-      wasteRawMtd: "0",
-      wasteRawMtdPercent: "0",
+      wasteMtdTotal: "0",
       wasteMealMtd: "0",
-      wasteMealMtdPercent: "0",
       colPercent: "0",
       laborHour: "0",
       tcmh: "0",
@@ -302,13 +292,13 @@ export default function DailySalesPage() {
     const bkappPercent = actualSalesVal > 0 ? ((bkappVal / actualSalesVal) * 100).toFixed(2) : "0.00";
     const deliveryTotalPercent = actualSalesVal > 0 ? ((deliveryTotal / actualSalesVal) * 100).toFixed(2) : "0.00";
     
-    const wasteRawDailyVal = parseFloat(v.wasteRawDaily) || 0;
+    const wasteDailyTotalVal = parseFloat(v.wasteDailyTotal) || 0;
     const wasteMealDailyVal = parseFloat(v.wasteMealDaily) || 0;
-    const wasteTotalDailyVal = wasteRawDailyVal + wasteMealDailyVal;
+    const wasteRawDailyVal = wasteDailyTotalVal - wasteMealDailyVal;
     
-    const wasteRawMtdVal = parseFloat(v.wasteRawMtd) || 0;
+    const wasteMtdTotalVal = parseFloat(v.wasteMtdTotal) || 0;
     const wasteMealMtdVal = parseFloat(v.wasteMealMtd) || 0;
-    const wasteTotalMtdVal = wasteRawMtdVal + wasteMealMtdVal;
+    const wasteRawMtdVal = wasteMtdTotalVal - wasteMealMtdVal;
 
     const formatDate = (dateStr: string) => {
       if (!dateStr) return '';
@@ -358,16 +348,16 @@ V-meal: ${v.vMealCount}/${v.vMealPercent}%
 Up Size: ${v.upSizeCount}/${v.upSizePercent}%
 ================================
 
-WASTE
+WASTE (Daily - Meal = Raw)
 Daily
-Raw: ${wasteRawDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteRawDailyPercent}%
-Meal: ${wasteMealDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteMealDailyPercent}%
-Daily: ${wasteTotalDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${((parseFloat(v.wasteRawDailyPercent) || 0) + (parseFloat(v.wasteMealDailyPercent) || 0)).toFixed(2)}%
+Daily: ${wasteDailyTotalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${actualSalesVal > 0 ? ((wasteDailyTotalVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
+Meal: ${wasteMealDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${actualSalesVal > 0 ? ((wasteMealDailyVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
+Raw: ${wasteRawDailyVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${actualSalesVal > 0 ? ((wasteRawDailyVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
 
 MTD 
-Raw: ${wasteRawMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteRawMtdPercent}%
-Meal: ${wasteMealMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${v.wasteMealMtdPercent}%
-MTD: ${wasteTotalMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${((parseFloat(v.wasteRawMtdPercent) || 0) + (parseFloat(v.wasteMealMtdPercent) || 0)).toFixed(2)}%
+MTD: ${wasteMtdTotalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${mtdActualVal > 0 ? ((wasteMtdTotalVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
+Meal: ${wasteMealMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${mtdActualVal > 0 ? ((wasteMealMtdVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
+Raw: ${wasteRawMtdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/${mtdActualVal > 0 ? ((wasteRawMtdVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
 ================================
 
 COL: ${v.colPercent}%
@@ -412,10 +402,12 @@ Report by ${v.reportBy}`;
   const vMealCount = parseInt(form.watch("vMealCount") || "0");
   const upSizeCount = parseInt(form.watch("upSizeCount") || "0");
 
-  const wasteRawDailyVal = parseFloat(form.watch("wasteRawDaily") || "0");
-  const wasteMealDailyVal = parseFloat(form.watch("wasteMealDaily") || "0");
-  const wasteRawMtdVal = parseFloat(form.watch("wasteRawMtd") || "0");
-  const wasteMealMtdVal = parseFloat(form.watch("wasteMealMtd") || "0");
+  const wasteDailyTotal = parseFloat(form.watch("wasteDailyTotal") || "0");
+  const wasteMealDaily = parseFloat(form.watch("wasteMealDaily") || "0");
+  const wasteRawDaily = wasteDailyTotal - wasteMealDaily;
+  const wasteMtdTotal = parseFloat(form.watch("wasteMtdTotal") || "0");
+  const wasteMealMtd = parseFloat(form.watch("wasteMealMtd") || "0");
+  const wasteRawMtd = wasteMtdTotal - wasteMealMtd;
 
   const handleAutoCalculateAddons = () => {
     const divisor = customAddonDivisor ? parseFloat(customAddonDivisor) : transactionCount;
@@ -437,32 +429,6 @@ Report by ${v.reportBy}`;
     setAddonDialogOpen(false);
   };
 
-  const handleAutoCalculateWaste = () => {
-    const dailyDivisor = customWasteDivisor ? parseFloat(customWasteDivisor) : actualSales;
-    const mtdDivisor = customWasteMtdDivisor ? parseFloat(customWasteMtdDivisor) : mtdActual;
-    
-    if (dailyDivisor > 0 || mtdDivisor > 0) {
-      if (dailyDivisor > 0) {
-        form.setValue("wasteRawDailyPercent", ((wasteRawDailyVal / dailyDivisor) * 100).toFixed(2));
-        form.setValue("wasteMealDailyPercent", ((wasteMealDailyVal / dailyDivisor) * 100).toFixed(2));
-      }
-      if (mtdDivisor > 0) {
-        form.setValue("wasteRawMtdPercent", ((wasteRawMtdVal / mtdDivisor) * 100).toFixed(2));
-        form.setValue("wasteMealMtdPercent", ((wasteMealMtdVal / mtdDivisor) * 100).toFixed(2));
-      }
-      toast({
-        title: language === 'th' ? "คำนวณสำเร็จ" : "Calculated",
-        description: language === 'th' ? "คำนวณเปอร์เซ็นต์ Waste แล้ว" : "Waste percentages calculated",
-      });
-    } else {
-      toast({
-        title: language === 'th' ? "ไม่สามารถคำนวณได้" : "Cannot calculate",
-        description: language === 'th' ? "กรุณากรอกตัวหารหรือยอดขาย (AC) ก่อน" : "Please enter divisor or Actual Sales (AC) first",
-        variant: "destructive",
-      });
-    }
-    setWasteDialogOpen(false);
-  };
 
   const t = {
     formTitle: language === 'th' ? "สรุปยอดรายวัน" : "Daily Sales Report",
@@ -919,43 +885,15 @@ Report by ${v.reportBy}`;
                       <div className="space-y-4 py-4">
                         <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
                           <p className="font-medium">{language === 'th' ? 'สูตรการคำนวณ:' : 'Calculation Formula:'}</p>
-                          <p className="text-muted-foreground">Raw % = (Raw / AC) x 100</p>
-                          <p className="text-muted-foreground">Meal % = (Meal / AC) x 100</p>
                           <p className="text-muted-foreground">Daily % = (Daily / AC) x 100</p>
+                          <p className="text-muted-foreground">Meal % = (Meal / AC) x 100</p>
+                          <p className="text-muted-foreground">Raw % = (Raw / AC) x 100</p>
                         </div>
                         <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg text-sm">
                           <p className="font-medium text-blue-700 dark:text-blue-300">{language === 'th' ? 'หมายเหตุ:' : 'Note:'}</p>
-                          <p className="text-blue-600 dark:text-blue-400">Daily waste - Meal = Raw</p>
+                          <p className="text-blue-600 dark:text-blue-400">Daily - Meal = Raw</p>
+                          <p className="text-xs text-muted-foreground mt-2">{language === 'th' ? '% คำนวณอัตโนมัติจาก AC' : '% is auto-calculated from AC'}</p>
                         </div>
-                        <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg space-y-3 text-sm">
-                          <p className="font-medium">{language === 'th' ? 'แก้ไขตัวหาร:' : 'Edit Divisor:'}</p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-16">Daily =</span>
-                            <Input 
-                              type="number" 
-                              value={customWasteDivisor || actualSales.toString()} 
-                              onChange={(e) => setCustomWasteDivisor(e.target.value)}
-                              className="w-28 text-sm"
-                              placeholder={actualSales.toString()}
-                            />
-                            <span className="text-xs text-muted-foreground">({language === 'th' ? 'ค่าเริ่มต้น: AC' : 'Default: AC'})</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-16">MTD =</span>
-                            <Input 
-                              type="number" 
-                              value={customWasteMtdDivisor || actualSales.toString()} 
-                              onChange={(e) => setCustomWasteMtdDivisor(e.target.value)}
-                              className="w-28 text-sm"
-                              placeholder={actualSales.toString()}
-                            />
-                            <span className="text-xs text-muted-foreground">({language === 'th' ? 'ค่าเริ่มต้น: AC' : 'Default: AC'})</span>
-                          </div>
-                        </div>
-                        <Button type="button" onClick={handleAutoCalculateWaste} className="w-full">
-                          <Calculator className="w-4 h-4 mr-2" />
-                          {t.autoCalculate}
-                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -964,42 +902,46 @@ Report by ${v.reportBy}`;
                   <div>
                     <h4 className="text-xs font-medium text-muted-foreground mb-2">{t.wasteDaily}</h4>
                     <div className="grid grid-cols-2 gap-2">
-                      <FormField control={form.control} name="wasteRawDaily" render={({ field }) => (
+                      <FormField control={form.control} name="wasteDailyTotal" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">{t.raw} (฿)</FormLabel>
+                          <FormLabel className="text-xs">Daily (฿)</FormLabel>
                           <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="wasteRawDailyPercent" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.raw} %</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
-                        </FormItem>
-                      )} />
+                      <div>
+                        <FormLabel className="text-xs">Daily %</FormLabel>
+                        <Input 
+                          value={actualSales > 0 ? ((wasteDailyTotal / actualSales) * 100).toFixed(2) : "0.00"} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
                       <FormField control={form.control} name="wasteMealDaily" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">{t.meal} (฿)</FormLabel>
                           <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="wasteMealDailyPercent" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.meal} %</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
-                        </FormItem>
-                      )} />
                       <div>
-                        <FormLabel className="text-xs">Daily (฿)</FormLabel>
+                        <FormLabel className="text-xs">{t.meal} %</FormLabel>
                         <Input 
-                          value={((parseFloat(form.watch("wasteRawDaily") || "0") + parseFloat(form.watch("wasteMealDaily") || "0"))).toFixed(2)} 
+                          value={actualSales > 0 ? ((wasteMealDaily / actualSales) * 100).toFixed(2) : "0.00"} 
                           readOnly 
                           className="bg-muted text-sm" 
                         />
                       </div>
                       <div>
-                        <FormLabel className="text-xs">Daily %</FormLabel>
+                        <FormLabel className="text-xs">{t.raw} (฿)</FormLabel>
                         <Input 
-                          value={actualSales > 0 ? (((parseFloat(form.watch("wasteRawDaily") || "0") + parseFloat(form.watch("wasteMealDaily") || "0")) / actualSales) * 100).toFixed(2) : "0.00"} 
+                          value={wasteRawDaily.toFixed(2)} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
+                      <div>
+                        <FormLabel className="text-xs">{t.raw} %</FormLabel>
+                        <Input 
+                          value={actualSales > 0 ? ((wasteRawDaily / actualSales) * 100).toFixed(2) : "0.00"} 
                           readOnly 
                           className="bg-muted text-sm" 
                         />
@@ -1009,42 +951,46 @@ Report by ${v.reportBy}`;
                   <div>
                     <h4 className="text-xs font-medium text-muted-foreground mb-2">{t.wasteMtd}</h4>
                     <div className="grid grid-cols-2 gap-2">
-                      <FormField control={form.control} name="wasteRawMtd" render={({ field }) => (
+                      <FormField control={form.control} name="wasteMtdTotal" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">{t.raw} (฿)</FormLabel>
+                          <FormLabel className="text-xs">MTD (฿)</FormLabel>
                           <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="wasteRawMtdPercent" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.raw} %</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
-                        </FormItem>
-                      )} />
+                      <div>
+                        <FormLabel className="text-xs">MTD %</FormLabel>
+                        <Input 
+                          value={mtdActual > 0 ? ((wasteMtdTotal / mtdActual) * 100).toFixed(2) : "0.00"} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
                       <FormField control={form.control} name="wasteMealMtd" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">{t.meal} (฿)</FormLabel>
                           <FormControl><Input type="number" step="0.01" className="text-sm" {...field} /></FormControl>
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="wasteMealMtdPercent" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.meal} %</FormLabel>
-                          <FormControl><Input type="number" step="0.01" className="text-sm bg-muted" readOnly {...field} /></FormControl>
-                        </FormItem>
-                      )} />
                       <div>
-                        <FormLabel className="text-xs">MTD (฿)</FormLabel>
+                        <FormLabel className="text-xs">{t.meal} %</FormLabel>
                         <Input 
-                          value={((parseFloat(form.watch("wasteRawMtd") || "0") + parseFloat(form.watch("wasteMealMtd") || "0"))).toFixed(2)} 
+                          value={mtdActual > 0 ? ((wasteMealMtd / mtdActual) * 100).toFixed(2) : "0.00"} 
                           readOnly 
                           className="bg-muted text-sm" 
                         />
                       </div>
                       <div>
-                        <FormLabel className="text-xs">MTD %</FormLabel>
+                        <FormLabel className="text-xs">{t.raw} (฿)</FormLabel>
                         <Input 
-                          value={mtdActual > 0 ? (((parseFloat(form.watch("wasteRawMtd") || "0") + parseFloat(form.watch("wasteMealMtd") || "0")) / mtdActual) * 100).toFixed(2) : "0.00"} 
+                          value={wasteRawMtd.toFixed(2)} 
+                          readOnly 
+                          className="bg-muted text-sm" 
+                        />
+                      </div>
+                      <div>
+                        <FormLabel className="text-xs">{t.raw} %</FormLabel>
+                        <Input 
+                          value={mtdActual > 0 ? ((wasteRawMtd / mtdActual) * 100).toFixed(2) : "0.00"} 
                           readOnly 
                           className="bg-muted text-sm" 
                         />

@@ -1268,14 +1268,20 @@ function ManagerEmployeeRosterView() {
                       </TableCell>
                     ))}
                   </TableRow>
-                  {rosterData?.users?.filter((u: any) => u.role === "staff" && u.active === 1).map((staff: any) => {
-                    const staffShifts: Record<string, any> = {};
-                    rosterData?.roster?.forEach((s: any) => {
-                      if (s.username === staff.username) {
-                        staffShifts[s.date] = s;
-                      }
-                    });
-                    return (
+                  {rosterData?.users?.filter((u: any) => u.role === "staff" && u.active === 1)
+                    .map((staff: any) => {
+                      const staffShifts: Record<string, any> = {};
+                      rosterData?.roster?.forEach((s: any) => {
+                        if (s.username === staff.username) {
+                          staffShifts[s.date] = s;
+                        }
+                      });
+                      const firstShift = days.map(d => staffShifts[d]).find(s => s);
+                      const sortTime = firstShift?.startTime?.split(" - ")[0] || "99:99";
+                      return { staff, staffShifts, sortTime };
+                    })
+                    .sort((a, b) => a.sortTime.localeCompare(b.sortTime))
+                    .map(({ staff, staffShifts }) => (
                       <TableRow key={staff.username} className="hover:bg-muted/30">
                         <TableCell className="sticky left-0 bg-card z-10 font-medium">
                           <span>{staff.nickName || staff.fullName}</span>
@@ -1301,8 +1307,7 @@ function ManagerEmployeeRosterView() {
                           );
                         })}
                       </TableRow>
-                    );
-                  })}
+                    ))}
                 </>
               ) : (
                 bookedShifts.length > 0 ? (

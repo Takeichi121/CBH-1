@@ -973,5 +973,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Get Daily Target for Specific Date
+  app.post(api.sales.getDailyTargetForDate.path, async (req, res) => {
+    const { token, date } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const target = await storage.getDailyTarget(date);
+      res.json({ ok: true, target });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get daily target" });
+    }
+  });
+
+  // Get MTD Target Sum up to a date
+  app.post(api.sales.getMtdTargetSum.path, async (req, res) => {
+    const { token, year, month, upToDate } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const mtdTargetSum = await storage.getMtdTargetSum(year, month, upToDate);
+      res.json({ ok: true, mtdTargetSum });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get MTD target sum" });
+    }
+  });
+
   return httpServer;
 }

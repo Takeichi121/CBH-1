@@ -311,5 +311,21 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    getDailyTargetForDate: {
+      method: "POST",
+      path: "/api/sales/getDailyTargetForDate",
+      input: z.object({ token: z.string(), date: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), target: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    getMtdTargetSum: {
+      method: "POST",
+      path: "/api/sales/getMtdTargetSum",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number(), upToDate: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), mtdTargetSum: z.number().optional(), message: z.string().optional() }),
+      },
+    },
   },
 };

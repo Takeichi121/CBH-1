@@ -236,7 +236,10 @@ export default function DailySalesPage() {
     }
   }, [form.setValue, restoreData]);
 
-  // Load store settings and MTD summary on mount
+  // State for default target from settings
+  const [defaultDailyTarget, setDefaultDailyTarget] = useState("250000");
+
+  // Load store settings on mount (for default target fallback)
   useEffect(() => {
     const loadStoreSettings = async () => {
       try {
@@ -244,7 +247,7 @@ export default function DailySalesPage() {
         const res = await apiRequest("POST", "/api/sales/getSettings", { token });
         const data = await res.json();
         if (data.ok && data.settings) {
-          form.setValue("dailyTarget", data.settings.dailyTarget || "250000");
+          setDefaultDailyTarget(data.settings.dailyTarget || "250000");
         }
       } catch (error) {
         console.error("Failed to load store settings:", error);
@@ -253,10 +256,10 @@ export default function DailySalesPage() {
     loadStoreSettings();
   }, []);
 
-  // Load MTD summary when date changes
+  // Load daily target and MTD summary when date changes
   const reportDate = form.watch("reportDate");
   useEffect(() => {
-    const loadMtdSummary = async () => {
+    const loadDailyTargetAndMtd = async () => {
       if (!reportDate) return;
       try {
         const token = localStorage.getItem("bk_token");
@@ -264,27 +267,48 @@ export default function DailySalesPage() {
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         
-        // Get MTD up to and including the current date
-        const res = await apiRequest("POST", "/api/sales/getMtdSummary", { 
+        // Load daily target for this specific date
+        const targetRes = await apiRequest("POST", "/api/sales/getDailyTargetForDate", {
+          token,
+          date: reportDate
+        });
+        const targetData = await targetRes.json();
+        if (targetData.ok && targetData.target) {
+          form.setValue("dailyTarget", targetData.target.targetSales || defaultDailyTarget);
+        } else {
+          form.setValue("dailyTarget", defaultDailyTarget);
+        }
+        
+        // Get MTD Actual from daily sales reports
+        const mtdRes = await apiRequest("POST", "/api/sales/getMtdSummary", { 
           token, 
           year, 
           month,
           beforeDate: reportDate
         });
-        const data = await res.json();
-        if (data.ok) {
-          // Set MTD values from accumulated previous reports
-          form.setValue("mtdActual", data.mtdActual.toString());
-          form.setValue("mtdTc", data.mtdTc.toString());
-          // MTD Target should be sum of daily targets accumulated
-          form.setValue("mtdTarget", data.mtdTarget.toString());
+        const mtdData = await mtdRes.json();
+        if (mtdData.ok) {
+          form.setValue("mtdActual", mtdData.mtdActual.toString());
+          form.setValue("mtdTc", mtdData.mtdTc.toString());
+        }
+        
+        // Get MTD Target from daily_targets table
+        const mtdTargetRes = await apiRequest("POST", "/api/sales/getMtdTargetSum", {
+          token,
+          year,
+          month,
+          upToDate: reportDate
+        });
+        const mtdTargetData = await mtdTargetRes.json();
+        if (mtdTargetData.ok) {
+          form.setValue("mtdTarget", (mtdTargetData.mtdTargetSum || 0).toString());
         }
       } catch (error) {
-        console.error("Failed to load MTD summary:", error);
+        console.error("Failed to load daily target and MTD:", error);
       }
     };
-    loadMtdSummary();
-  }, [reportDate]);
+    loadDailyTargetAndMtd();
+  }, [reportDate, defaultDailyTarget]);
 
   if (!isManager) {
     return (

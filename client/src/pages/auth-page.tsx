@@ -17,6 +17,7 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { managerPositions, type ManagerPosition } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
   const { user, isLoading, loginMutation } = useAuth();
@@ -29,6 +30,20 @@ export default function AuthPage() {
   const [isCodeVerified, setIsCodeVerified] = useState(false);
   const { theme, setTheme } = useTheme();
   const loginAttemptedRef = useRef(false);
+  const { toast } = useToast();
+  
+  const handleVerifyCode = () => {
+    if (verifyCode === "bk1040") {
+      setIsCodeVerified(true);
+    } else {
+      toast({
+        title: language === "th" ? "รหัสไม่ถูกต้อง" : "Invalid Code",
+        description: language === "th" ? "กรุณาใส่รหัสที่ถูกต้อง" : "Please enter the correct verification code",
+        variant: "destructive",
+      });
+      setVerifyCode("");
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -121,11 +136,7 @@ export default function AuthPage() {
                         onChange={(e) => setVerifyCode(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
-                            if (verifyCode === "bk1040") {
-                              setIsCodeVerified(true);
-                            } else {
-                              // Optional: clear code or show error if needed
-                            }
+                            handleVerifyCode();
                           }
                         }}
                         className="h-11 border-primary/20 focus-visible:ring-primary/20"
@@ -134,11 +145,8 @@ export default function AuthPage() {
                     </div>
                     <Button
                       className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"
-                      onClick={() => {
-                        if (verifyCode === "bk1040") {
-                          setIsCodeVerified(true);
-                        }
-                      }}
+                      onClick={handleVerifyCode}
+                      data-testid="button-verify-code"
                     >
                       Verify
                     </Button>

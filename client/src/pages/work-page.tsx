@@ -38,6 +38,24 @@ const getShiftDisplayName = (shiftGroup: string): string => {
   return shiftGroup;
 };
 
+// Shift order for filtering based on typical shift times
+// open (morning) -> lunch -> swing (afternoon) -> dinner (evening) -> close (night) -> late (late night)
+const SHIFT_ORDER: Record<string, number> = {
+  'open': 0,
+  'lunch': 1, 
+  'swing': 2,
+  'dinner': 3,
+  'close': 4,
+  'late': 5
+};
+
+const getShiftOrder = (shiftGroup: string | undefined): number => {
+  if (!shiftGroup) return -1;
+  const order = SHIFT_ORDER[shiftGroup.toLowerCase()];
+  // If shift is not in the map, return a fallback order based on alphabetical (still show the shift)
+  return order !== undefined ? order : 99;
+};
+
 export default function WorkPage() {
   const { user } = useAuth();
   const { t } = useI18n();
@@ -75,7 +93,18 @@ export default function WorkPage() {
 
   const weekStartStr = data?.weekRange?.start;
   const weekEndStr = data?.weekRange?.end;
-  const days = data?.weekRange?.days || [];
+  const allDays = data?.weekRange?.days || [];
+  
+  // For staff mobile view: only show today and tomorrow
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const tomorrowStr = format(addDays(new Date(), 1), "yyyy-MM-dd");
+  
+  // Always show today and tomorrow on mobile
+  // On week boundaries, tomorrow might not be in allDays but we still show it
+  const mobileDays: string[] = [todayStr, tomorrowStr];
+  
+  // Use all days for desktop, filtered days for mobile (will be handled in render)
+  const days = allDays;
   const displayRange = weekStartStr ? `${format(new Date(weekStartStr), "MMM d")} - ${format(new Date(weekEndStr), "MMM d, yyyy")}` : "";
 
   // My shifts for the week mapped by date
@@ -83,6 +112,71 @@ export default function WorkPage() {
   data?.items?.forEach((s: any) => {
     myShiftsByDate[s.date] = s;
   });
+  
+  // Get roster shifts by username and date
+  const getRosterShiftsByUser = (username: string): Record<string, any> => {
+    const shifts: Record<string, any> = {};
+    rosterData?.roster?.filter((s: any) => s.username === username).forEach((s: any) => {
+      shifts[s.date] = s;
+    });
+    return shifts;
+  };
+  
+  // Filter staff for mobile view based on shift groups
+  // For today: show before-shift members, same-shift members, next-shift members
+  // For tomorrow: show only same-shift members
+  const isKnownShift = (order: number): boolean => order >= 0 && order < 99;
+  
+  const filterStaffForDay = (day: string, allStaff: any[]): any[] => {
+    const myShift = myShiftsByDate[day];
+    const myShiftOrder = getShiftOrder(myShift?.shiftGroup);
+    
+    if (day === todayStr) {
+      // Today: show staff from shifts before, same as, and one after current user's shift
+      return allStaff.filter((u: any) => {
+        const staffShifts = getRosterShiftsByUser(u.username);
+        const staffShift = staffShifts[day];
+        const staffOrder = getShiftOrder(staffShift?.shiftGroup);
+        
+        // If user has no shift today (OFF), don't show any staff for today
+        if (myShiftOrder === -1) return false;
+        // If staff has no shift today, don't show (they're OFF)
+        if (staffOrder === -1) return false;
+        // If staff has unknown shift type, always show (could be any time)
+        if (!isKnownShift(staffOrder)) return true;
+        // If user has unknown shift type, show all working staff
+        if (!isKnownShift(myShiftOrder)) return true;
+        
+        // Show: before user's shift, same shift, or one shift after
+        return staffOrder <= myShiftOrder || staffOrder === myShiftOrder + 1;
+      });
+    } else if (day === tomorrowStr) {
+      // Tomorrow: show only same-shift colleagues
+      return allStaff.filter((u: any) => {
+        const staffShifts = getRosterShiftsByUser(u.username);
+        const staffShift = staffShifts[day];
+        const staffOrder = getShiftOrder(staffShift?.shiftGroup);
+        
+        // Get my shift for tomorrow
+        const myTomorrowShift = myShiftsByDate[tomorrowStr];
+        const myTomorrowOrder = getShiftOrder(myTomorrowShift?.shiftGroup);
+        
+        // If user has no shift tomorrow (OFF), don't show any staff for tomorrow
+        if (myTomorrowOrder === -1) return false;
+        // If staff has no shift, don't show
+        if (staffOrder === -1) return false;
+        // If staff has unknown shift type, always show
+        if (!isKnownShift(staffOrder)) return true;
+        // If user has unknown shift type, show all working staff
+        if (!isKnownShift(myTomorrowOrder)) return true;
+        // Show only same-shift colleagues
+        return staffOrder === myTomorrowOrder;
+      });
+    }
+    
+    // For other days, show all staff
+    return allStaff;
+  };
 
   return (
     <div className="space-y-6">
@@ -124,20 +218,23 @@ export default function WorkPage() {
         </Alert>
       )}
 
-      <Card className="glass-card overflow-hidden border-none shadow-xl">
-        <div className="overflow-x-auto -mx-4 md:mx-0">
-          <div className="min-w-[800px] md:min-w-0 p-4 md:p-0">
-            <Table>
-              <TableHeader>
+      {/* Mobile View: Only today and tomorrow with filtered staff */}
+      <Card className="glass-card overflow-hidden border-none shadow-xl md:hidden">
+        <div className="p-2">
+          <Table>
+            <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[80px] md:w-[150px] font-bold text-[10px] md:text-sm">Staff</TableHead>
-                {days.map((day: string) => (
-                  <TableHead key={day} className="text-center min-w-[45px] md:min-w-[120px] p-1 md:p-2">
-                    <div className="flex flex-col items-center py-0.5 md:py-2">
-                      <span className="text-[8px] md:text-sm uppercase text-destructive font-black tracking-tighter">
+                <TableHead className="w-[80px] font-bold text-[10px]">Staff</TableHead>
+                {mobileDays.map((day: string) => (
+                  <TableHead key={day} className="text-center min-w-[60px] p-1">
+                    <div className="flex flex-col items-center py-0.5">
+                      <span className="text-[8px] uppercase text-destructive font-black tracking-tighter">
+                        {day === todayStr ? "Today" : "Tomorrow"}
+                      </span>
+                      <span className="text-[7px] text-muted-foreground">
                         {t(format(parseISO(day), "EEEE").toLowerCase() as any).slice(0, 3)}
                       </span>
-                      <span className="text-lg md:text-3xl font-black text-foreground">
+                      <span className="text-lg font-black text-foreground">
                         {format(parseISO(day), "d")}
                       </span>
                     </div>
@@ -146,21 +243,21 @@ export default function WorkPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {/* Current user's shifts row */}
               {user?.role === "staff" && (
                 <TableRow className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-medium p-1 md:p-2">
+                  <TableCell className="font-medium p-1">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-primary text-[10px] md:text-sm">Your Shifts</span>
-                      <span className="text-[8px] md:text-xs text-muted-foreground hidden md:block">Select to book/cancel</span>
+                      <span className="font-semibold text-primary text-[10px]">Your Shifts</span>
                     </div>
                   </TableCell>
-                  {days.map((day: string) => {
+                  {mobileDays.map((day: string) => {
                     const shift = myShiftsByDate[day];
                     return (
-                      <TableCell key={day} className="p-1 md:p-2">
+                      <TableCell key={day} className="p-1">
                         {shift ? (
                           <div 
-                            className={`h-10 md:h-16 w-full rounded-lg md:rounded-xl p-1 md:p-2 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
+                            className={`h-10 w-full rounded-lg p-1 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
                               ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                                 shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                 shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
@@ -171,8 +268,8 @@ export default function WorkPage() {
                               }
                             }}
                           >
-                            <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
-                            <span className="text-[9px] md:text-xs font-semibold">{shift.startTime}</span>
+                            <span className="text-[8px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
+                            <span className="text-[9px] font-semibold">{shift.startTime}</span>
                           </div>
                         ) : (
                           <BookShiftDialog 
@@ -181,9 +278,9 @@ export default function WorkPage() {
                             disabled={data.closed}
                             settings={settings}
                           >
-                            <div className={`h-10 md:h-16 w-full rounded-lg md:rounded-xl border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <div className={`h-10 w-full rounded-lg border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
                               <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
-                              <Plus className="w-4 h-4 md:w-5 md:h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
+                              <Plus className="w-4 h-4 text-primary/50 group-hover:text-primary hidden group-hover:block" />
                             </div>
                           </BookShiftDialog>
                         )}
@@ -192,7 +289,140 @@ export default function WorkPage() {
                   })}
                 </TableRow>
               )}
-              {/* Other staff shifts for information */}
+              {/* Filtered staff for mobile - different per day */}
+              {(() => {
+                const allStaff = rosterData?.users?.filter((u: any) => u.username !== user?.username && u.active === 1 && u.role === "staff") || [];
+                
+                // Get unique staff that should be shown across both days
+                const staffToShow = new Set<string>();
+                mobileDays.forEach((day: string) => {
+                  const filtered = filterStaffForDay(day, allStaff);
+                  filtered.forEach((u: any) => staffToShow.add(u.username));
+                });
+                
+                return allStaff
+                  .filter((u: any) => staffToShow.has(u.username))
+                  .map((u: any) => {
+                    const staffShifts = getRosterShiftsByUser(u.username);
+                    
+                    return (
+                      <TableRow key={u.username} className="hover:bg-muted/10 transition-colors opacity-80">
+                        <TableCell className="font-medium text-[10px] py-0.5">
+                          <span className="font-medium text-muted-foreground truncate max-w-[80px] block">{u.nickName || u.fullName || u.username}</span>
+                        </TableCell>
+                        {mobileDays.map((day: string) => {
+                          const s = staffShifts[day];
+                          const filteredForDay = filterStaffForDay(day, allStaff);
+                          const showThisStaff = filteredForDay.some((f: any) => f.username === u.username);
+                          
+                          if (!showThisStaff) {
+                            // Don't show this staff for this day
+                            return (
+                              <TableCell key={day} className="p-0.5">
+                                <div className="h-8 w-full" />
+                              </TableCell>
+                            );
+                          }
+                          
+                          const content = s ? (
+                            <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center opacity-60
+                              ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                              <span className="text-[7px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
+                              <span className="text-[8px]">{s.startTime}</span>
+                            </div>
+                          ) : (
+                            <div className="h-8 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                              <span className="text-[8px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
+                            </div>
+                          );
+
+                          return (
+                            <TableCell key={day} className="p-0.5">
+                              {content}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  });
+              })()}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* Desktop View: Full week with all staff */}
+      <Card className="glass-card overflow-hidden border-none shadow-xl hidden md:block">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-[150px] font-bold text-sm">Staff</TableHead>
+                {days.map((day: string) => (
+                  <TableHead key={day} className="text-center min-w-[120px] p-2">
+                    <div className="flex flex-col items-center py-2">
+                      <span className="text-sm uppercase text-destructive font-black tracking-tighter">
+                        {t(format(parseISO(day), "EEEE").toLowerCase() as any).slice(0, 3)}
+                      </span>
+                      <span className="text-3xl font-black text-foreground">
+                        {format(parseISO(day), "d")}
+                      </span>
+                    </div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {user?.role === "staff" && (
+                <TableRow className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-medium p-2">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-primary text-sm">Your Shifts</span>
+                      <span className="text-xs text-muted-foreground">Select to book/cancel</span>
+                    </div>
+                  </TableCell>
+                  {days.map((day: string) => {
+                    const shift = myShiftsByDate[day];
+                    return (
+                      <TableCell key={day} className="p-2">
+                        {shift ? (
+                          <div 
+                            className={`h-16 w-full rounded-xl p-2 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
+                              ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                'bg-slate-100 text-slate-700 border-slate-200'}`}
+                            onClick={() => {
+                              if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
+                                cancelShift(day);
+                              }
+                            }}
+                          >
+                            <span className="text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
+                            <span className="text-xs font-semibold">{shift.startTime}</span>
+                          </div>
+                        ) : (
+                          <BookShiftDialog 
+                            groups={settings?.groups} 
+                            day={day} 
+                            disabled={data.closed}
+                            settings={settings}
+                          >
+                            <div className={`h-16 w-full rounded-xl border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
+                              <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
+                            </div>
+                          </BookShiftDialog>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              )}
+              {/* All staff for desktop view */}
               {rosterData?.roster && rosterData.users && rosterData.users
                 .filter((u: any) => u.username !== user?.username && u.active === 1 && u.role === "staff")
                 .map((u: any) => {
@@ -202,20 +432,20 @@ export default function WorkPage() {
                   });
                   return (
                     <TableRow key={u.username} className="hover:bg-muted/10 transition-colors opacity-80">
-                      <TableCell className="font-medium text-[10px] md:text-xs py-0.5 md:py-1">
+                      <TableCell className="font-medium text-xs py-1">
                         <div className="flex flex-col">
-                          <span className="font-medium text-muted-foreground truncate max-w-[80px] md:max-w-none">{u.nickName || u.fullName || u.username}</span>
+                          <span className="font-medium text-muted-foreground">{u.nickName || u.fullName || u.username}</span>
                           {isManager && (
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="h-5 md:h-6 px-1 text-[7px] md:text-[8px] text-destructive hover:text-destructive mt-0.5 justify-start w-fit"
+                              className="h-6 px-1 text-[8px] text-destructive hover:text-destructive mt-0.5 justify-start w-fit"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleUpdateUserStatus(u.username, 0);
                               }}
                             >
-                              <Trash2 className="w-2 h-2 md:w-2.5 md:h-2.5 mr-0.5" />
+                              <Trash2 className="w-2.5 h-2.5 mr-0.5" />
                               Hide
                             </Button>
                           )}
@@ -224,28 +454,28 @@ export default function WorkPage() {
                       {days.map((day: string) => {
                         const s = staffShifts[day];
                         const content = s ? (
-                          <div className={`h-8 md:h-10 w-full rounded p-0.5 md:p-1 border flex flex-col justify-center items-center opacity-60
+                          <div className={`h-10 w-full rounded p-1 border flex flex-col justify-center items-center opacity-60
                             ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                               s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                               s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                               'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                            <span className="text-[7px] md:text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
-                            <span className="text-[8px] md:text-[9px]">{s.startTime}</span>
+                            <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
+                            <span className="text-[9px]">{s.startTime}</span>
                           </div>
                         ) : (
-                          <div className="h-8 md:h-10 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
-                            <span className="text-[8px] md:text-[10px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
+                          <div className="h-10 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                            <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
                           </div>
                         );
 
                         return (
-                          <TableCell key={day} className="p-0.5 md:p-1">
+                          <TableCell key={day} className="p-1">
                             {isManager ? (
                               <ManageShiftDialogInWork username={u.username} date={day} existingShift={s} mode={s ? "edit" : "create"} groups={settings?.groups}>
                                 {s ? content : (
-                                  <div className="h-8 md:h-10 w-full rounded border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
-                                    <span className="text-[8px] md:text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
-                                    <Plus className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary/30 hidden group-hover:block" />
+                                  <div className="h-10 w-full rounded border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
+                                    <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
+                                    <Plus className="w-3 h-3 text-primary/30 hidden group-hover:block" />
                                   </div>
                                 )}
                               </ManageShiftDialogInWork>
@@ -266,7 +496,6 @@ export default function WorkPage() {
               </TableRow>
             </TableBody>
           </Table>
-          </div>
         </div>
       </Card>
     </div>

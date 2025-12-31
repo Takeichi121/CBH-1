@@ -60,6 +60,8 @@ export default function WorkPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [mobileDayPairIndex, setMobileDayPairIndex] = useState(0); // 0: Tue-Wed, 1: Thu-Fri, 2: Sat-Sun-Mon
+  const [showAll7Days, setShowAll7Days] = useState(false); // View All mode
   // Format date as YYYY-MM-DD for API
   const dateParam = format(currentDate, "yyyy-MM-dd");
   
@@ -95,12 +97,13 @@ export default function WorkPage() {
   const weekEndStr = data?.weekRange?.end;
   const allDays = data?.weekRange?.days || [];
   
-  // For staff mobile view: only show today and tomorrow
+  // For staff mobile view
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const tomorrowStr = format(addDays(new Date(), 1), "yyyy-MM-dd");
   
-  // Always show today and tomorrow on mobile
-  // On week boundaries, tomorrow might not be in allDays but we still show it
+  // Mobile day pair navigation state - will be managed via useState
+  // Day pairs: [Tue-Wed], [Thu-Fri], [Sat-Sun-Mon]
+  // We'll use the first pair as default
   const mobileDays: string[] = [todayStr, tomorrowStr];
   
   // Use all days for desktop, filtered days for mobile (will be handled in render)
@@ -218,139 +221,193 @@ export default function WorkPage() {
         </Alert>
       )}
 
-      {/* Mobile View: Only today and tomorrow with filtered staff */}
+      {/* Mobile View: Day-pair navigation with all users */}
       <Card className="glass-card overflow-hidden border-none shadow-xl md:hidden">
         <div className="p-2">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[80px] font-bold text-[10px]">Staff</TableHead>
-                {mobileDays.map((day: string) => (
-                  <TableHead key={day} className="text-center min-w-[60px] p-1">
-                    <div className="flex flex-col items-center py-0.5">
-                      <span className="text-[8px] uppercase text-destructive font-black tracking-tighter">
-                        {day === todayStr ? "Today" : "Tomorrow"}
-                      </span>
-                      <span className="text-[7px] text-muted-foreground">
-                        {t(format(parseISO(day), "EEEE").toLowerCase() as any).slice(0, 3)}
-                      </span>
-                      <span className="text-lg font-black text-foreground">
-                        {format(parseISO(day), "d")}
-                      </span>
-                    </div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {/* Current user's shifts row */}
-              {user?.role === "staff" && (
-                <TableRow className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-medium p-1">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-primary text-[10px]">Your Shifts</span>
-                    </div>
-                  </TableCell>
-                  {mobileDays.map((day: string) => {
-                    const shift = myShiftsByDate[day];
-                    return (
-                      <TableCell key={day} className="p-1">
-                        {shift ? (
-                          <div 
-                            className={`h-10 w-full rounded-lg p-1 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
-                              ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                                shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
-                                'bg-slate-100 text-slate-700 border-slate-200'}`}
-                            onClick={() => {
-                              if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
-                                cancelShift(day);
-                              }
-                            }}
-                          >
-                            <span className="text-[8px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
-                            <span className="text-[9px] font-semibold">{shift.startTime}</span>
+          {(() => {
+            // Day pairs: [Tue-Wed], [Thu-Fri], [Sat-Sun-Mon]
+            const dayPairs: string[][] = [];
+            if (days.length >= 7) {
+              dayPairs.push([days[0], days[1]]); // Tue-Wed
+              dayPairs.push([days[2], days[3]]); // Thu-Fri
+              dayPairs.push([days[4], days[5], days[6]]); // Sat-Sun-Mon
+            } else if (days.length >= 2) {
+              // Fallback for partial week
+              dayPairs.push(days.slice(0, 2));
+              if (days.length >= 4) dayPairs.push(days.slice(2, 4));
+              if (days.length >= 5) dayPairs.push(days.slice(4));
+            }
+            
+            const currentPair = showAll7Days ? days : (dayPairs[mobileDayPairIndex] || days.slice(0, 2));
+            const allStaff = rosterData?.users?.filter((u: any) => u.active === 1 && u.role === "staff") || [];
+            
+            // Navigation labels
+            const getPairLabel = (index: number): string => {
+              if (!dayPairs[index]) return "";
+              const pair = dayPairs[index];
+              const dayNames = pair.map(d => t(format(parseISO(d), "EEEE").toLowerCase() as any).slice(0, 3));
+              return dayNames.join(" - ");
+            };
+            
+            const prevIndex = mobileDayPairIndex > 0 ? mobileDayPairIndex - 1 : null;
+            const nextIndex = mobileDayPairIndex < dayPairs.length - 1 ? mobileDayPairIndex + 1 : null;
+            
+            return (
+              <>
+                {/* Navigation and View All buttons */}
+                <div className="flex items-center justify-between mb-2 gap-1">
+                  {/* Left: Prev button */}
+                  <div className="flex-1">
+                    {!showAll7Days && prevIndex !== null && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setMobileDayPairIndex(prevIndex)}
+                        className="text-[10px] px-1 h-7"
+                        data-testid="button-prev-days"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                        {getPairLabel(prevIndex)}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Center: View All button */}
+                  <Button 
+                    variant={showAll7Days ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setShowAll7Days(!showAll7Days)}
+                    className="text-[10px] gap-1 px-2 h-7"
+                    data-testid="button-toggle-view-all"
+                  >
+                    {showAll7Days ? <Eye className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                    {showAll7Days ? t("filtered") : t("viewAll")}
+                  </Button>
+                  
+                  {/* Right: Next button */}
+                  <div className="flex-1 flex justify-end">
+                    {!showAll7Days && nextIndex !== null && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setMobileDayPairIndex(nextIndex)}
+                        className="text-[10px] px-1 h-7"
+                        data-testid="button-next-days"
+                      >
+                        {getPairLabel(nextIndex)}
+                        <ChevronRight className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="w-[70px] font-bold text-[10px]">Staff</TableHead>
+                      {currentPair.map((day: string) => (
+                        <TableHead key={day} className="text-center min-w-[50px] p-0.5">
+                          <div className="flex flex-col items-center py-0.5">
+                            <span className="text-sm uppercase text-destructive font-black tracking-tighter">
+                              {t(format(parseISO(day), "EEEE").toLowerCase() as any).slice(0, 3)}
+                            </span>
+                            <span className="text-lg font-black text-foreground">
+                              {format(parseISO(day), "d")}
+                            </span>
                           </div>
-                        ) : (
-                          <BookShiftDialog 
-                            groups={settings?.groups} 
-                            day={day} 
-                            disabled={data.closed}
-                            settings={settings}
-                          >
-                            <div className={`h-10 w-full rounded-lg border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                              <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
-                              <Plus className="w-4 h-4 text-primary/50 group-hover:text-primary hidden group-hover:block" />
-                            </div>
-                          </BookShiftDialog>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              )}
-              {/* Filtered staff for mobile - different per day */}
-              {(() => {
-                const allStaff = rosterData?.users?.filter((u: any) => u.username !== user?.username && u.active === 1 && u.role === "staff") || [];
-                
-                // Get unique staff that should be shown across both days
-                const staffToShow = new Set<string>();
-                mobileDays.forEach((day: string) => {
-                  const filtered = filterStaffForDay(day, allStaff);
-                  filtered.forEach((u: any) => staffToShow.add(u.username));
-                });
-                
-                return allStaff
-                  .filter((u: any) => staffToShow.has(u.username))
-                  .map((u: any) => {
-                    const staffShifts = getRosterShiftsByUser(u.username);
-                    
-                    return (
-                      <TableRow key={u.username} className="hover:bg-muted/10 transition-colors opacity-80">
-                        <TableCell className="font-medium text-[10px] py-0.5">
-                          <span className="font-medium text-muted-foreground truncate max-w-[80px] block">{u.nickName || u.fullName || u.username}</span>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Current user's shifts row */}
+                    {user?.role === "staff" && (
+                      <TableRow className="hover:bg-muted/30 transition-colors bg-primary/5">
+                        <TableCell className="font-medium p-1">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-primary text-[10px]">ME</span>
+                          </div>
                         </TableCell>
-                        {mobileDays.map((day: string) => {
-                          const s = staffShifts[day];
-                          const filteredForDay = filterStaffForDay(day, allStaff);
-                          const showThisStaff = filteredForDay.some((f: any) => f.username === u.username);
-                          
-                          if (!showThisStaff) {
-                            // Don't show this staff for this day
-                            return (
-                              <TableCell key={day} className="p-0.5">
-                                <div className="h-8 w-full" />
-                              </TableCell>
-                            );
-                          }
-                          
-                          const content = s ? (
-                            <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center opacity-60
-                              ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                              <span className="text-[7px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
-                              <span className="text-[8px]">{s.startTime}</span>
-                            </div>
-                          ) : (
-                            <div className="h-8 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
-                              <span className="text-[8px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
-                            </div>
-                          );
-
+                        {currentPair.map((day: string) => {
+                          const shift = myShiftsByDate[day];
                           return (
                             <TableCell key={day} className="p-0.5">
-                              {content}
+                              {shift ? (
+                                <div 
+                                  className={`h-9 w-full rounded p-0.5 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
+                                    ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                      shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                      shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                      shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                      'bg-slate-100 text-slate-700 border-slate-200'}`}
+                                  onClick={() => {
+                                    if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
+                                      cancelShift(day);
+                                    }
+                                  }}
+                                >
+                                  <span className="text-[7px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup)}</span>
+                                  <span className="text-[8px]">{shift.startTime}</span>
+                                </div>
+                              ) : (
+                                <BookShiftDialog 
+                                  groups={settings?.groups} 
+                                  day={day} 
+                                  disabled={data.closed}
+                                  settings={settings}
+                                >
+                                  <div className={`h-9 w-full rounded border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    <span className="text-[9px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
+                                    <Plus className="w-3 h-3 text-primary/50 group-hover:text-primary hidden group-hover:block" />
+                                  </div>
+                                </BookShiftDialog>
+                              )}
                             </TableCell>
                           );
                         })}
                       </TableRow>
-                    );
-                  });
-              })()}
-            </TableBody>
-          </Table>
+                    )}
+                    {/* All staff */}
+                    {allStaff
+                      .filter((u: any) => u.username !== user?.username)
+                      .map((u: any) => {
+                        const staffShifts = getRosterShiftsByUser(u.username);
+                        
+                        return (
+                          <TableRow key={u.username} className="hover:bg-muted/10 transition-colors">
+                            <TableCell className="font-medium text-[9px] py-0.5 px-1">
+                              <span className="font-medium text-muted-foreground truncate max-w-[65px] block">{u.nickName || u.fullName || u.username}</span>
+                            </TableCell>
+                            {currentPair.map((day: string) => {
+                              const s = staffShifts[day];
+                              return (
+                                <TableCell key={day} className="p-0.5">
+                                  {s ? (
+                                    <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center
+                                      ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                        s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                        s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                        s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                        'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                                      <span className="text-[6px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
+                                      <span className="text-[7px]">{s.startTime}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="h-8 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                                      <span className="text-[7px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
+                                    </div>
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </>
+            );
+          })()}
         </div>
       </Card>
 

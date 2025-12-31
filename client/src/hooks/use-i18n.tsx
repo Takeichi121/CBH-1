@@ -91,6 +91,8 @@ const translations = {
     salesReport: "Sales Report",
     borrowTracker: "Borrow",
     manageTeam: "Manage Team",
+    viewAll: "View All",
+    filtered: "Filtered",
   },
   th: {
     appName: "Grand Diamond",
@@ -180,6 +182,8 @@ const translations = {
     salesReport: "สรุปยอดขาย",
     borrowTracker: "ยืม-คืน",
     manageTeam: "จัดการทีม",
+    viewAll: "ดูทั้งหมด",
+    filtered: "กรอง",
   },
 };
 

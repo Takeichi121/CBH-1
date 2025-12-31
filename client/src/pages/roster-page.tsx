@@ -214,14 +214,14 @@ export default function RosterPage() {
                           return (
                             <TableCell key={day} className="p-0.5">
                               {shift ? (
-                                <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center
+                                <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center gap-0
                                   ${shift.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                                     shift.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                     shift.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                     shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
                                     'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                  <span className="text-[7px] font-bold uppercase">{shift.shiftGroup}</span>
-                                  <span className="text-[8px]">{shift.startTime}</span>
+                                  <span className="text-[7px] font-bold uppercase leading-tight">{shift.shiftGroup}</span>
+                                  <span className="text-[8px] leading-tight">{shift.startTime}</span>
                                 </div>
                               ) : (
                                 <div className="h-8 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
@@ -353,9 +353,9 @@ function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolea
   const bgClass = groupColors[shift.shiftGroup.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200";
 
   const content = (
-    <div className={`h-full w-full rounded-xl p-2 border ${bgClass} shadow-sm flex flex-col justify-center items-center gap-1 cursor-pointer hover:brightness-95 transition-all`}>
-      <span className="text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
-      <span className="text-xs font-semibold">{shift.startTime}</span>
+    <div className={`h-full w-full rounded-xl p-2 border ${bgClass} shadow-sm flex flex-col justify-center items-center gap-0 cursor-pointer hover:brightness-95 transition-all`}>
+      <span className="text-[10px] font-bold uppercase tracking-wider leading-tight">{shift.shiftGroup}</span>
+      <span className="text-xs font-semibold leading-tight">{shift.startTime}</span>
     </div>
   );
 

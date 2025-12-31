@@ -176,7 +176,8 @@ export default function WorkPage() {
                             settings={settings}
                           >
                             <div className={`h-20 w-full rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                              <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
+                              <span className="text-xs font-medium text-muted-foreground/60 group-hover:hidden">OFF</span>
+                              <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
                             </div>
                           </BookShiftDialog>
                         )}
@@ -226,7 +227,9 @@ export default function WorkPage() {
                             <span className="text-[9px]">{s.startTime}</span>
                           </div>
                         ) : (
-                          <div className="h-12 w-full rounded-lg bg-muted/5"></div>
+                          <div className="h-12 w-full rounded-lg bg-muted/5 flex items-center justify-center">
+                            <span className="text-[10px] font-medium text-muted-foreground/50">OFF</span>
+                          </div>
                         );
 
                         return (
@@ -234,8 +237,9 @@ export default function WorkPage() {
                             {isManager ? (
                               <ManageShiftDialogInWork username={u.username} date={day} existingShift={s} mode={s ? "edit" : "create"} groups={settings?.groups}>
                                 {s ? content : (
-                                  <div className="h-12 w-full rounded-lg border border-dashed border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100">
-                                    <Plus className="w-3 h-3 text-primary/30" />
+                                  <div className="h-12 w-full rounded-lg border border-dashed border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
+                                    <span className="text-[10px] font-medium text-muted-foreground/50 group-hover:hidden">OFF</span>
+                                    <Plus className="w-3 h-3 text-primary/30 hidden group-hover:block" />
                                   </div>
                                 )}
                               </ManageShiftDialogInWork>

@@ -196,12 +196,15 @@ export default function RosterPage() {
                           ) : (
                             isManager ? (
                               <ManageShiftDialog username={u.username} date={day} mode="create" groups={settings?.groups}>
-                                <div className="h-10 w-full rounded-lg border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100 group">
-                                  <UserPlus className="w-5 h-5 text-primary/50 group-hover:text-primary" />
+                                <div className="h-10 w-full rounded-lg border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
+                                  <span className="text-xs font-medium text-muted-foreground/60 group-hover:hidden">OFF</span>
+                                  <UserPlus className="w-5 h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
                                 </div>
                               </ManageShiftDialog>
                             ) : (
-                              <div className="h-10 w-full rounded-lg bg-muted/10"></div>
+                              <div className="h-10 w-full rounded-lg bg-muted/10 flex items-center justify-center">
+                                <span className="text-xs font-medium text-muted-foreground/60">OFF</span>
+                              </div>
                             )
                           )}
                         </TableCell>

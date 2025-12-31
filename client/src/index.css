@@ -5,34 +5,34 @@
 @tailwind utilities;
 
 :root {
-  /* Green Theme Colors */
-  --primary: 142 70% 35%;      /* Forest Green */
+  /* Brown Theme Colors */
+  --primary: 30 60% 35%;      /* Rich Brown */
   --primary-foreground: 0 0% 100%;
   
-  --background: 140 20% 92%;   /* Light green-gray background */
-  --foreground: 140 30% 15%;
+  --background: 30 15% 92%;   /* Light brown-cream background */
+  --foreground: 30 30% 15%;
   
-  --card: 140 15% 96%;        /* Light card background */
-  --card-foreground: 140 30% 15%;
+  --card: 30 12% 96%;        /* Light card background */
+  --card-foreground: 30 30% 15%;
   
-  --popover: 140 15% 96%;
-  --popover-foreground: 140 30% 15%;
+  --popover: 30 12% 96%;
+  --popover-foreground: 30 30% 15%;
   
-  --secondary: 140 20% 85%;     /* Soft green secondary */
-  --secondary-foreground: 140 40% 20%;
+  --secondary: 30 18% 85%;     /* Soft brown secondary */
+  --secondary-foreground: 30 40% 20%;
   
-  --muted: 140 10% 88%;
-  --muted-foreground: 140 15% 40%;
+  --muted: 30 10% 88%;
+  --muted-foreground: 30 15% 40%;
   
-  --accent: 142 60% 40%;      /* Accent green */
+  --accent: 30 55% 45%;      /* Accent brown */
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 140 15% 82%;
-  --input: 140 15% 82%;
-  --ring: 142 70% 35%;        /* Green ring */
+  --border: 30 15% 80%;
+  --input: 30 15% 80%;
+  --ring: 30 60% 35%;        /* Brown ring */
   
   --radius: 0.75rem;
   
@@ -41,48 +41,48 @@
 }
 
 .dark {
-  --background: 150 30% 8%;   /* Deep green-black background */
-  --foreground: 140 20% 95%;
+  --background: 25 25% 8%;   /* Deep brown-black background */
+  --foreground: 30 15% 95%;
 
-  --card: 150 25% 12%;        /* Dark green card */
-  --card-foreground: 140 20% 95%;
+  --card: 25 20% 12%;        /* Dark brown card */
+  --card-foreground: 30 15% 95%;
 
-  --popover: 150 25% 12%;
-  --popover-foreground: 140 20% 95%;
+  --popover: 25 20% 12%;
+  --popover-foreground: 30 15% 95%;
 
-  --primary: 142 65% 45%;      /* Bright green for dark mode */
-  --primary-foreground: 140 20% 98%;
+  --primary: 30 55% 50%;      /* Warm brown for dark mode */
+  --primary-foreground: 30 15% 98%;
 
-  --secondary: 150 30% 18%;
-  --secondary-foreground: 140 20% 95%;
+  --secondary: 25 25% 18%;
+  --secondary-foreground: 30 15% 95%;
 
-  --muted: 150 25% 18%;
-  --muted-foreground: 140 15% 70%;
+  --muted: 25 20% 18%;
+  --muted-foreground: 30 12% 70%;
 
-  --accent: 142 70% 50%;        /* Bright green accent */
-  --accent-foreground: 150 30% 8%;
+  --accent: 30 60% 55%;        /* Warm brown accent */
+  --accent-foreground: 25 25% 8%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 150 25% 22%;
-  --input: 150 25% 22%;
-  --ring: 142 65% 45%;
+  --border: 25 20% 22%;
+  --input: 25 20% 22%;
+  --ring: 30 55% 50%;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground antialiased font-sans transition-colors duration-300;
     background-image: 
-      radial-gradient(at 0% 0%, hsla(142, 70%, 35%, 0.12) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(160, 60%, 40%, 0.08) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, hsla(30, 60%, 35%, 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(25, 50%, 40%, 0.08) 0px, transparent 50%);
     background-attachment: fixed;
   }
   
   .dark body {
     background-image: 
-      radial-gradient(at 0% 0%, hsla(142, 65%, 45%, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(160, 50%, 30%, 0.05) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, hsla(30, 55%, 50%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(25, 45%, 35%, 0.05) 0px, transparent 50%);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -102,7 +102,7 @@
   }
 
   .logo-glow {
-    filter: drop-shadow(0 0 15px hsla(151, 84%, 34%, 0.3));
+    filter: drop-shadow(0 0 15px hsla(30, 60%, 35%, 0.3));
   }
 }
 

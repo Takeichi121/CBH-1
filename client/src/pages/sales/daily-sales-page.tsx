@@ -669,38 +669,43 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
               <div className="bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg">
                 <h3 className="text-sm md:text-base font-medium mb-3">{t.mtd}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  <FormField control={form.control} name="mtdTarget" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{t.mtdTarget}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
-                          <FormattedInput className="pl-6 text-sm" {...field} data-testid="input-mtd-target" />
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="mtdActual" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{t.mtdActual}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
-                          <FormattedInput className="pl-6 text-sm" {...field} data-testid="input-mtd-actual" />
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.mtdTarget}</FormLabel>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
+                      <Input 
+                        value={mtdTarget.toLocaleString()} 
+                        readOnly 
+                        className="pl-6 text-sm bg-muted" 
+                        data-testid="display-mtd-target" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <FormLabel className="text-xs">{t.mtdActual}</FormLabel>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
+                      <Input 
+                        value={mtdActual.toLocaleString()} 
+                        readOnly 
+                        className="pl-6 text-sm bg-muted" 
+                        data-testid="display-mtd-actual" 
+                      />
+                    </div>
+                  </div>
                   <div>
                     <FormLabel className="text-xs">{t.variance}</FormLabel>
                     <Input value={`${mtdVariance >= 0 ? '+' : ''}${mtdVariance.toLocaleString()}`} readOnly className={`text-sm ${mtdVariance >= 0 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'}`} />
                   </div>
-                  <FormField control={form.control} name="mtdTc" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{t.mtdTc}</FormLabel>
-                      <FormControl><FormattedInput className="text-sm" allowDecimals={false} {...field} data-testid="input-mtd-tc" /></FormControl>
-                    </FormItem>
-                  )} />
+                  <div>
+                    <FormLabel className="text-xs">{t.mtdTc}</FormLabel>
+                    <Input 
+                      value={mtdTc.toLocaleString()} 
+                      readOnly 
+                      className="text-sm bg-muted" 
+                      data-testid="display-mtd-tc" 
+                    />
+                  </div>
                   <div>
                     <FormLabel className="text-xs">{t.mtdTa}</FormLabel>
                     <Input value={mtdTa} readOnly className="bg-muted text-sm" />

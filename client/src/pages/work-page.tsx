@@ -638,11 +638,12 @@ const timeOptions = Array.from({ length: 24 }, (_, i) => {
   return `${hour}:00`;
 });
 
-function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd }: { shift: any; groups: any; onRefresh: () => void; onDragStart?: (shift: any) => void; onDragEnd?: () => void }) {
+function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd }: { shift: any; groups: any; onRefresh: () => void; onDragStart?: (shift: any, isCopy: boolean) => void; onDragEnd?: () => void }) {
   const { language } = useI18n();
   const [showActions, setShowActions] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isCopyMode, setIsCopyMode] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(shift.shiftGroup);
   const [useCustomTime, setUseCustomTime] = useState(false);
   const [selectedTime, setSelectedTime] = useState(shift.startTime);
@@ -697,16 +698,20 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
   return (
     <>
       <div 
-        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-grab ${groupColors[shift.shiftGroup] || groupColors.late} ${isDragging ? 'opacity-50 ring-2 ring-primary' : ''}`}
+        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-grab ${groupColors[shift.shiftGroup] || groupColors.late} ${isDragging ? (isCopyMode ? 'opacity-50 ring-2 ring-green-500' : 'opacity-50 ring-2 ring-orange-500') : ''}`}
         draggable
         onDragStart={(e) => {
+          const copyMode = e.ctrlKey || e.metaKey;
           setIsDragging(true);
-          e.dataTransfer.setData('application/json', JSON.stringify(shift));
-          e.dataTransfer.effectAllowed = 'copy';
-          onDragStart?.(shift);
+          setIsCopyMode(copyMode);
+          const shiftData = { ...shift, _isCopy: copyMode };
+          e.dataTransfer.setData('application/json', JSON.stringify(shiftData));
+          e.dataTransfer.effectAllowed = copyMode ? 'copy' : 'move';
+          onDragStart?.(shift, copyMode);
         }}
         onDragEnd={() => {
           setIsDragging(false);
+          setIsCopyMode(false);
           onDragEnd?.();
         }}
         onMouseEnter={() => setShowActions(true)}
@@ -1167,7 +1172,8 @@ function DroppableEmptyCell({
   staffName, 
   groups, 
   onDrop, 
-  isDragging 
+  isDragging,
+  isCopyMode
 }: { 
   username: string; 
   day: string; 
@@ -1175,13 +1181,14 @@ function DroppableEmptyCell({
   groups: any; 
   onDrop: (username: string, day: string, shift: any) => void;
   isDragging: boolean;
+  isCopyMode: boolean;
 }) {
   const { language } = useI18n();
   const [isOver, setIsOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = e.ctrlKey || e.metaKey ? 'copy' : 'move';
     setIsOver(true);
   };
 
@@ -1200,18 +1207,20 @@ function DroppableEmptyCell({
     }
   };
 
+  const borderColor = isOver 
+    ? (isCopyMode ? 'border-green-500 bg-green-500/20 border-2' : 'border-orange-500 bg-orange-500/20 border-2')
+    : (isDragging ? (isCopyMode ? 'border-green-400/50 bg-green-500/5' : 'border-orange-400/50 bg-orange-500/5') : 'border-border/50 hover:bg-primary/5 hover:border-primary/30');
+
   return (
     <StaffCellBookDialog groups={groups} day={day} username={username} staffName={staffName}>
       <div
-        className={`w-full h-10 border border-dashed rounded-lg flex items-center justify-center transition-all cursor-pointer group
-          ${isOver ? 'border-primary bg-primary/20 border-2' : 'border-border/50 hover:bg-primary/5 hover:border-primary/30'}
-          ${isDragging ? 'border-primary/50 bg-primary/5' : ''}`}
+        className={`w-full h-10 border border-dashed rounded-lg flex items-center justify-center transition-all cursor-pointer group ${borderColor}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         <span className={`text-[10px] font-medium text-muted-foreground/50 ${isDragging || isOver ? 'hidden' : 'group-hover:hidden'}`}>OFF</span>
-        <Plus className={`w-4 h-4 text-muted-foreground/30 ${isDragging || isOver ? 'block text-primary' : 'hidden group-hover:block'}`} />
+        <Plus className={`w-4 h-4 ${isDragging || isOver ? (isCopyMode ? 'block text-green-500' : 'block text-orange-500') : 'hidden group-hover:block text-muted-foreground/30'}`} />
       </div>
     </StaffCellBookDialog>
   );
@@ -1222,14 +1231,18 @@ function ManagerEmployeeRosterView() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"roster" | "booked">("roster");
   const [draggedShift, setDraggedShift] = useState<any>(null);
+  const [isCopyMode, setIsCopyMode] = useState(false);
   const dateParam = format(currentDate, "yyyy-MM-dd");
   const { data: rosterData, isLoading } = useRoster(dateParam);
   const { data: settings } = useSettings();
   const queryClient = useQueryClient();
 
-  const handleCopyShift = async (targetUsername: string, targetDate: string, sourceShift: any) => {
+  const handleDropShift = async (targetUsername: string, targetDate: string, sourceShift: any) => {
     const token = localStorage.getItem("bk_token") || "";
+    const isCopy = sourceShift._isCopy;
+    
     try {
+      // Create new shift at target location
       await apiRequest("POST", api.shifts.setForUser.path, {
         token,
         username: targetUsername,
@@ -1238,6 +1251,12 @@ function ManagerEmployeeRosterView() {
         startTime: sourceShift.startTime,
         note: sourceShift.note || "",
       });
+      
+      // If moving (not copying), delete the original shift
+      if (!isCopy && sourceShift.id) {
+        await apiRequest("POST", "/api/deleteShift", { token, shiftId: sourceShift.id });
+      }
+      
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
     } catch (err) {
       console.error(err);
@@ -1387,8 +1406,8 @@ function ManagerEmployeeRosterView() {
                                   shift={shift} 
                                   groups={settings?.groups} 
                                   onRefresh={() => queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] })}
-                                  onDragStart={(s) => setDraggedShift(s)}
-                                  onDragEnd={() => setDraggedShift(null)}
+                                  onDragStart={(s, copy) => { setDraggedShift(s); setIsCopyMode(copy); }}
+                                  onDragEnd={() => { setDraggedShift(null); setIsCopyMode(false); }}
                                 />
                               ) : (
                                 <DroppableEmptyCell
@@ -1396,8 +1415,9 @@ function ManagerEmployeeRosterView() {
                                   day={day}
                                   staffName={staff.nickName || staff.fullName}
                                   groups={settings?.groups}
-                                  onDrop={handleCopyShift}
+                                  onDrop={handleDropShift}
                                   isDragging={!!draggedShift}
+                                  isCopyMode={isCopyMode}
                                 />
                               )}
                             </TableCell>

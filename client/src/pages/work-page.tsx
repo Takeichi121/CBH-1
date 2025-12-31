@@ -32,6 +32,12 @@ const bookSchema = z.object({
 
 type BookFormValues = z.infer<typeof bookSchema>;
 
+// Helper function to display shift group name
+const getShiftDisplayName = (shiftGroup: string): string => {
+  if (shiftGroup?.toLowerCase() === 'late') return 'Late Night';
+  return shiftGroup;
+};
+
 export default function WorkPage() {
   const { user } = useAuth();
   const { t } = useI18n();
@@ -165,7 +171,7 @@ export default function WorkPage() {
                               }
                             }}
                           >
-                            <span className="text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
                             <span className="text-xs font-semibold">{shift.startTime}</span>
                           </div>
                         ) : (
@@ -223,7 +229,7 @@ export default function WorkPage() {
                               s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                               s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                               'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                            <span className="text-[8px] font-bold uppercase">{s.shiftGroup}</span>
+                            <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
                             <span className="text-[9px]">{s.startTime}</span>
                           </div>
                         ) : (
@@ -692,7 +698,7 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
     lunch: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
     dinner: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
     close: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-    late: "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
+    late: "bg-[#1e1b4b] text-amber-400 dark:bg-[#0f0d29] dark:text-amber-300",
   };
 
   return (
@@ -718,7 +724,7 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
         onMouseLeave={() => setShowActions(false)}
         onClick={() => setEditOpen(true)}
       >
-        <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
+        <span className="text-[10px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup)}</span>
         <span className="text-xs">{shift.startTime}</span>
         {shift.note && <span className="text-[9px] opacity-70 truncate max-w-full">{shift.note}</span>}
         
@@ -1445,7 +1451,7 @@ function ManagerEmployeeRosterView() {
                               shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
                               "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
                             }`}>
-                              <span className="text-[10px] font-bold uppercase">{shift.shiftGroup}</span>
+                              <span className="text-[10px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup)}</span>
                               <span className="text-xs">{shift.startTime}</span>
                             </div>
                           ) : null}
@@ -1610,7 +1616,7 @@ function ManagerMonthlyView() {
     lunch: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
     dinner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
     close: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
-    late: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700",
+    late: "bg-[#1e1b4b] text-amber-400 border-[#312e81] dark:bg-[#0f0d29] dark:text-amber-300 dark:border-[#1e1b4b]",
   };
 
   return (
@@ -1671,7 +1677,7 @@ function ManagerMonthlyView() {
                 </span>
                 {shift && (
                   <div className="flex-1 flex flex-col justify-center items-center">
-                    <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{shift.shiftGroup}</span>
+                    <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
                     <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime}</span>
                   </div>
                 )}

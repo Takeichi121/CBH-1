@@ -40,6 +40,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await storage.createUser({ username: "staff", passhash: hashPass("1234"), role: "staff", fullName: "Staff", nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString() });
       await storage.log("setup_create_staff", "system", "staff created");
     }
+    if (!await storage.getUser("devstaff")) {
+      await storage.createUser({ username: "devstaff", passhash: hashPass("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: new Date().toISOString() });
+      await storage.log("setup_create_devstaff", "system", "developer staff created");
+    }
 
     await storage.log("setup_ok", "system", "setup completed");
     res.json({ ok: true, message: "setup ok" });

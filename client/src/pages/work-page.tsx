@@ -638,10 +638,11 @@ const timeOptions = Array.from({ length: 24 }, (_, i) => {
   return `${hour}:00`;
 });
 
-function ShiftCellWithActions({ shift, groups, onRefresh }: { shift: any; groups: any; onRefresh: () => void }) {
+function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd }: { shift: any; groups: any; onRefresh: () => void; onDragStart?: (shift: any) => void; onDragEnd?: () => void }) {
   const { language } = useI18n();
   const [showActions, setShowActions] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(shift.shiftGroup);
   const [useCustomTime, setUseCustomTime] = useState(false);
   const [selectedTime, setSelectedTime] = useState(shift.startTime);
@@ -696,7 +697,18 @@ function ShiftCellWithActions({ shift, groups, onRefresh }: { shift: any; groups
   return (
     <>
       <div 
-        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-pointer ${groupColors[shift.shiftGroup] || groupColors.late}`}
+        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-grab ${groupColors[shift.shiftGroup] || groupColors.late} ${isDragging ? 'opacity-50 ring-2 ring-primary' : ''}`}
+        draggable
+        onDragStart={(e) => {
+          setIsDragging(true);
+          e.dataTransfer.setData('application/json', JSON.stringify(shift));
+          e.dataTransfer.effectAllowed = 'copy';
+          onDragStart?.(shift);
+        }}
+        onDragEnd={() => {
+          setIsDragging(false);
+          onDragEnd?.();
+        }}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
         onClick={() => setEditOpen(true)}
@@ -1149,14 +1161,88 @@ function ManagerCreateCustomScheduleDialog({ groups, users, days, children }: { 
   );
 }
 
+function DroppableEmptyCell({ 
+  username, 
+  day, 
+  staffName, 
+  groups, 
+  onDrop, 
+  isDragging 
+}: { 
+  username: string; 
+  day: string; 
+  staffName: string; 
+  groups: any; 
+  onDrop: (username: string, day: string, shift: any) => void;
+  isDragging: boolean;
+}) {
+  const { language } = useI18n();
+  const [isOver, setIsOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsOver(false);
+    try {
+      const shiftData = JSON.parse(e.dataTransfer.getData('application/json'));
+      onDrop(username, day, shiftData);
+    } catch (err) {
+      console.error('Failed to parse dropped shift data:', err);
+    }
+  };
+
+  return (
+    <StaffCellBookDialog groups={groups} day={day} username={username} staffName={staffName}>
+      <div
+        className={`w-full h-10 border border-dashed rounded-lg flex items-center justify-center transition-all cursor-pointer group
+          ${isOver ? 'border-primary bg-primary/20 border-2' : 'border-border/50 hover:bg-primary/5 hover:border-primary/30'}
+          ${isDragging ? 'border-primary/50 bg-primary/5' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <span className={`text-[10px] font-medium text-muted-foreground/50 ${isDragging || isOver ? 'hidden' : 'group-hover:hidden'}`}>OFF</span>
+        <Plus className={`w-4 h-4 text-muted-foreground/30 ${isDragging || isOver ? 'block text-primary' : 'hidden group-hover:block'}`} />
+      </div>
+    </StaffCellBookDialog>
+  );
+}
+
 function ManagerEmployeeRosterView() {
   const { language, t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"roster" | "booked">("roster");
+  const [draggedShift, setDraggedShift] = useState<any>(null);
   const dateParam = format(currentDate, "yyyy-MM-dd");
   const { data: rosterData, isLoading } = useRoster(dateParam);
   const { data: settings } = useSettings();
   const queryClient = useQueryClient();
+
+  const handleCopyShift = async (targetUsername: string, targetDate: string, sourceShift: any) => {
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", api.shifts.setForUser.path, {
+        token,
+        username: targetUsername,
+        date: targetDate,
+        shiftGroup: sourceShift.shiftGroup,
+        startTime: sourceShift.startTime,
+        note: sourceShift.note || "",
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
@@ -1301,13 +1387,18 @@ function ManagerEmployeeRosterView() {
                                   shift={shift} 
                                   groups={settings?.groups} 
                                   onRefresh={() => queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] })}
+                                  onDragStart={(s) => setDraggedShift(s)}
+                                  onDragEnd={() => setDraggedShift(null)}
                                 />
                               ) : (
-                                <StaffCellBookDialog groups={settings?.groups} day={day} username={staff.username} staffName={staff.nickName || staff.fullName}>
-                                  <button className="w-full h-10 border border-dashed border-border/50 rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer">
-                                    <Plus className="w-4 h-4 text-muted-foreground/30 mx-auto" />
-                                  </button>
-                                </StaffCellBookDialog>
+                                <DroppableEmptyCell
+                                  username={staff.username}
+                                  day={day}
+                                  staffName={staff.nickName || staff.fullName}
+                                  groups={settings?.groups}
+                                  onDrop={handleCopyShift}
+                                  isDragging={!!draggedShift}
+                                />
                               )}
                             </TableCell>
                           );

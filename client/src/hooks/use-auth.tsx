@@ -28,7 +28,7 @@ type AuthContextType = {
   registerManagerMutation: ReturnType<typeof useRegisterManagerMutation>;
   completeProfileMutation: ReturnType<typeof useCompleteProfileMutation>;
   forceChangePasswordMutation: ReturnType<typeof useForceChangePasswordMutation>;
-  setUserProfileComplete: () => void;
+  setUserProfileComplete: (profileData?: { nickName?: string; phone?: string; email?: string }) => void;
   setUserPasswordChanged: () => void;
 };
 
@@ -85,8 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeProfileMutation = useCompleteProfileMutation(token, toast);
   const forceChangePasswordMutation = useForceChangePasswordMutation(token, toast);
 
-  const setUserProfileComplete = () => {
-    setUser((prev) => prev ? { ...prev, profileComplete: true } : null);
+  const setUserProfileComplete = (profileData?: { nickName?: string; phone?: string; email?: string }) => {
+    setUser((prev) => prev ? { 
+      ...prev, 
+      profileComplete: true,
+      ...(profileData || {})
+    } : null);
   };
 
   const setUserPasswordChanged = () => {

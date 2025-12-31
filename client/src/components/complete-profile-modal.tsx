@@ -35,7 +35,7 @@ export function CompleteProfileModal() {
     completeProfileMutation.mutate(formData, {
       onSuccess: (data) => {
         if (data.ok) {
-          setUserProfileComplete();
+          setUserProfileComplete(formData);
         }
       },
     });

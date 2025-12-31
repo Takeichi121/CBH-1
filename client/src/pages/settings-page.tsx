@@ -32,6 +32,17 @@ export default function SettingsPage() {
     }
   });
 
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        fullName: user.fullName || "",
+        nickName: user.nickName || "",
+        phone: user.phone || "",
+        email: user.email || "",
+      });
+    }
+  }, [user, profileForm]);
+
   const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
   const passwordForm = useForm({
     defaultValues: {

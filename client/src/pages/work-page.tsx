@@ -130,14 +130,14 @@ export default function WorkPage() {
             <Table>
               <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[150px] font-bold">Staff Member</TableHead>
+                <TableHead className="w-[80px] md:w-[150px] font-bold text-[10px] md:text-sm">Staff</TableHead>
                 {days.map((day: string) => (
-                  <TableHead key={day} className="text-center min-w-[120px]">
-                    <div className="flex flex-col items-center py-2">
-                      <span className="text-sm uppercase text-destructive font-black tracking-tighter">
-                        {t(format(parseISO(day), "EEEE").toLowerCase() as any)}
+                  <TableHead key={day} className="text-center min-w-[45px] md:min-w-[120px] p-1 md:p-2">
+                    <div className="flex flex-col items-center py-0.5 md:py-2">
+                      <span className="text-[8px] md:text-sm uppercase text-destructive font-black tracking-tighter">
+                        {t(format(parseISO(day), "EEEE").toLowerCase() as any).slice(0, 3)}
                       </span>
-                      <span className="text-3xl font-black text-foreground mt-1">
+                      <span className="text-lg md:text-3xl font-black text-foreground">
                         {format(parseISO(day), "d")}
                       </span>
                     </div>
@@ -148,19 +148,19 @@ export default function WorkPage() {
             <TableBody>
               {user?.role === "staff" && (
                 <TableRow className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium p-1 md:p-2">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-primary">Your Shifts</span>
-                      <span className="text-xs text-muted-foreground">Select to book/cancel</span>
+                      <span className="font-semibold text-primary text-[10px] md:text-sm">Your Shifts</span>
+                      <span className="text-[8px] md:text-xs text-muted-foreground hidden md:block">Select to book/cancel</span>
                     </div>
                   </TableCell>
                   {days.map((day: string) => {
                     const shift = myShiftsByDate[day];
                     return (
-                      <TableCell key={day} className="p-2">
+                      <TableCell key={day} className="p-1 md:p-2">
                         {shift ? (
                           <div 
-                            className={`h-20 w-full rounded-xl p-2 border shadow-sm flex flex-col justify-center items-center gap-1 cursor-pointer hover:brightness-95 transition-all
+                            className={`h-10 md:h-16 w-full rounded-lg md:rounded-xl p-1 md:p-2 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
                               ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                                 shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                 shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
@@ -171,8 +171,8 @@ export default function WorkPage() {
                               }
                             }}
                           >
-                            <span className="text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
-                            <span className="text-xs font-semibold">{shift.startTime}</span>
+                            <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
+                            <span className="text-[9px] md:text-xs font-semibold">{shift.startTime}</span>
                           </div>
                         ) : (
                           <BookShiftDialog 
@@ -181,9 +181,9 @@ export default function WorkPage() {
                             disabled={data.closed}
                             settings={settings}
                           >
-                            <div className={`h-20 w-full rounded-xl border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                              <span className="text-xs font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
-                              <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
+                            <div className={`h-10 md:h-16 w-full rounded-lg md:rounded-xl border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
+                              <Plus className="w-4 h-4 md:w-5 md:h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
                             </div>
                           </BookShiftDialog>
                         )}
@@ -202,20 +202,20 @@ export default function WorkPage() {
                   });
                   return (
                     <TableRow key={u.username} className="hover:bg-muted/10 transition-colors opacity-80">
-                      <TableCell className="font-medium text-xs py-1">
+                      <TableCell className="font-medium text-[10px] md:text-xs py-0.5 md:py-1">
                         <div className="flex flex-col">
-                          <span className="font-medium text-muted-foreground">{u.nickName || u.fullName || u.username}</span>
+                          <span className="font-medium text-muted-foreground truncate max-w-[80px] md:max-w-none">{u.nickName || u.fullName || u.username}</span>
                           {isManager && (
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="h-6 px-1 text-[8px] text-destructive hover:text-destructive mt-1 justify-start w-fit"
+                              className="h-5 md:h-6 px-1 text-[7px] md:text-[8px] text-destructive hover:text-destructive mt-0.5 justify-start w-fit"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleUpdateUserStatus(u.username, 0);
                               }}
                             >
-                              <Trash2 className="w-2.5 h-2.5 mr-1" />
+                              <Trash2 className="w-2 h-2 md:w-2.5 md:h-2.5 mr-0.5" />
                               Hide
                             </Button>
                           )}
@@ -224,28 +224,28 @@ export default function WorkPage() {
                       {days.map((day: string) => {
                         const s = staffShifts[day];
                         const content = s ? (
-                          <div className={`h-12 w-full rounded-lg p-1 border flex flex-col justify-center items-center opacity-60
+                          <div className={`h-8 md:h-10 w-full rounded p-0.5 md:p-1 border flex flex-col justify-center items-center opacity-60
                             ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                               s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                               s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                               'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                            <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
-                            <span className="text-[9px]">{s.startTime}</span>
+                            <span className="text-[7px] md:text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
+                            <span className="text-[8px] md:text-[9px]">{s.startTime}</span>
                           </div>
                         ) : (
-                          <div className="h-12 w-full rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
-                            <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
+                          <div className="h-8 md:h-10 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                            <span className="text-[8px] md:text-[10px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
                           </div>
                         );
 
                         return (
-                          <TableCell key={day} className="p-1">
+                          <TableCell key={day} className="p-0.5 md:p-1">
                             {isManager ? (
                               <ManageShiftDialogInWork username={u.username} date={day} existingShift={s} mode={s ? "edit" : "create"} groups={settings?.groups}>
                                 {s ? content : (
-                                  <div className="h-12 w-full rounded-lg border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
-                                    <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
-                                    <Plus className="w-3 h-3 text-primary/30 hidden group-hover:block" />
+                                  <div className="h-8 md:h-10 w-full rounded border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
+                                    <span className="text-[8px] md:text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
+                                    <Plus className="w-2.5 h-2.5 md:w-3 md:h-3 text-primary/30 hidden group-hover:block" />
                                   </div>
                                 )}
                               </ManageShiftDialogInWork>

@@ -327,5 +327,13 @@ export const api = {
         200: z.object({ ok: z.boolean(), mtdTargetSum: z.number().optional(), message: z.string().optional() }),
       },
     },
+    getMonthlyReports: {
+      method: "POST",
+      path: "/api/sales/getMonthlyReports",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), reports: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
   },
 };

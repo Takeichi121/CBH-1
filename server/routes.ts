@@ -1001,5 +1001,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Get Monthly Reports for Settings page
+  app.post(api.sales.getMonthlyReports.path, async (req, res) => {
+    const { token, year, month } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const reports = await storage.getDailySalesReportsForMonth(year, month);
+      res.json({ ok: true, reports });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get monthly reports" });
+    }
+  });
+
   return httpServer;
 }

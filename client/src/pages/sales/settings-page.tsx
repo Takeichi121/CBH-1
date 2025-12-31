@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,6 +15,12 @@ type DailyTarget = {
   targetSales: string;
 };
 
+type DailySalesData = {
+  date: string;
+  actualSales: number;
+  actualTc: number;
+};
+
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
@@ -24,12 +29,11 @@ function formatDate(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function getDayOfWeek(dateStr: string, lang: string) {
-  const date = new Date(dateStr);
-  const days = lang === "th" 
-    ? ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"]
-    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return days[date.getDay()];
+function formatDisplayDate(day: number, month: number, lang: string) {
+  const monthNames = lang === "th" 
+    ? ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+    : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${day}-${monthNames[month - 1]}`;
 }
 
 export default function SalesSettingsPage() {
@@ -46,7 +50,8 @@ export default function SalesSettingsPage() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [dailyTargets, setDailyTargets] = useState<Record<string, string>>({});
-  const [defaultTarget, setDefaultTarget] = useState("250000");
+  const [dailySalesData, setDailySalesData] = useState<Record<string, DailySalesData>>({});
+  const [defaultTarget, setDefaultTarget] = useState("130000");
 
   const t = {
     title: language === "th" ? "ตั้งค่าร้านค้า" : "Store Settings",
@@ -54,10 +59,13 @@ export default function SalesSettingsPage() {
     storeInfo: language === "th" ? "ข้อมูลร้านค้า" : "Store Information",
     storeName: language === "th" ? "ชื่อร้าน" : "Store Name",
     storeCode: language === "th" ? "รหัสร้าน" : "Store Code",
-    dailyTargets: language === "th" ? "เป้าหมายรายวัน" : "Daily Targets",
+    dailyTargets: language === "th" ? "เป้าหมายและยอดขายรายวัน" : "Daily Targets & Sales",
     date: language === "th" ? "วันที่" : "Date",
-    day: language === "th" ? "วัน" : "Day",
-    targetSales: language === "th" ? "เป้าหมาย (฿)" : "Target (฿)",
+    targetSales: language === "th" ? "เป้าหมาย (Daily)" : "Target Sales (Daily)",
+    actualSales: language === "th" ? "ยอดจริง (Daily)" : "Actual Sales (Daily)",
+    actualSalesMtd: language === "th" ? "ยอดจริง MTD" : "Actual Sales MTD",
+    actualTc: language === "th" ? "TC (Daily)" : "Actual TC (Daily)",
+    actualTcMtd: language === "th" ? "TC MTD" : "Actual TC MTD",
     save: language === "th" ? "บันทึก" : "Save",
     saving: language === "th" ? "กำลังบันทึก..." : "Saving...",
     saved: language === "th" ? "บันทึกแล้ว" : "Saved",
@@ -66,7 +74,7 @@ export default function SalesSettingsPage() {
     errorSave: language === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save",
     defaultTarget: language === "th" ? "เป้าเริ่มต้น" : "Default Target",
     applyAll: language === "th" ? "ใช้กับทุกวัน" : "Apply to All",
-    monthTotal: language === "th" ? "รวมเดือน" : "Month Total",
+    total: "Total",
     months: language === "th" 
       ? ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
       : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -83,16 +91,47 @@ export default function SalesSettingsPage() {
       return {
         date: dateStr,
         day,
-        dayOfWeek: getDayOfWeek(dateStr, language),
+        displayDate: formatDisplayDate(day, selectedMonth, language),
       };
     });
   }, [selectedYear, selectedMonth, daysInMonth, language]);
 
-  const monthTotal = useMemo(() => {
-    return monthDates.reduce((sum, { date }) => {
-      return sum + (parseFloat(dailyTargets[date]) || 0);
-    }, 0);
-  }, [monthDates, dailyTargets]);
+  const tableData = useMemo(() => {
+    let runningActualSales = 0;
+    let runningActualTc = 0;
+    
+    return monthDates.map(({ date, day, displayDate }) => {
+      const targetSales = parseFloat(dailyTargets[date]) || 0;
+      const salesData = dailySalesData[date];
+      const actualSales = salesData?.actualSales || 0;
+      const actualTc = salesData?.actualTc || 0;
+      
+      runningActualSales += actualSales;
+      runningActualTc += actualTc;
+      
+      return {
+        date,
+        day,
+        displayDate,
+        targetSales,
+        actualSales,
+        actualSalesMtd: runningActualSales,
+        actualTc,
+        actualTcMtd: runningActualTc,
+      };
+    });
+  }, [monthDates, dailyTargets, dailySalesData]);
+
+  const totals = useMemo(() => {
+    const lastRow = tableData[tableData.length - 1];
+    return {
+      targetSales: tableData.reduce((sum, row) => sum + row.targetSales, 0),
+      actualSales: tableData.reduce((sum, row) => sum + row.actualSales, 0),
+      actualSalesMtd: lastRow?.actualSalesMtd || 0,
+      actualTc: tableData.reduce((sum, row) => sum + row.actualTc, 0),
+      actualTcMtd: lastRow?.actualTcMtd || 0,
+    };
+  }, [tableData]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -103,7 +142,7 @@ export default function SalesSettingsPage() {
         if (data.ok && data.settings) {
           setStoreName(data.settings.storeName || "BK Grand Diamond");
           setStoreCode(data.settings.storeCode || "BK001GDP");
-          setDefaultTarget(data.settings.dailyTarget?.toString() || "250000");
+          setDefaultTarget(data.settings.dailyTarget?.toString() || "130000");
         }
       } catch (error) {
         console.error("Failed to load settings:", error);
@@ -155,8 +194,35 @@ export default function SalesSettingsPage() {
         console.error("Failed to load daily targets:", error);
       }
     };
+    
+    const loadDailySales = async () => {
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/sales/getMonthlyReports", { 
+          token, 
+          year: selectedYear, 
+          month: selectedMonth 
+        });
+        const data = await res.json();
+        if (data.ok && data.reports) {
+          const salesMap: Record<string, DailySalesData> = {};
+          data.reports.forEach((report: any) => {
+            salesMap[report.reportDate] = {
+              date: report.reportDate,
+              actualSales: parseFloat(report.actualSales) || 0,
+              actualTc: parseInt(report.transactionCount) || 0,
+            };
+          });
+          setDailySalesData(salesMap);
+        }
+      } catch (error) {
+        console.error("Failed to load daily sales:", error);
+      }
+    };
+    
     if (!isLoading) {
       loadDailyTargets();
+      loadDailySales();
     }
   }, [selectedYear, selectedMonth, isLoading, monthDates, defaultTarget]);
 
@@ -169,7 +235,7 @@ export default function SalesSettingsPage() {
         settings: {
           storeName,
           storeCode,
-          dailyTarget: parseFloat(defaultTarget) || 250000,
+          dailyTarget: parseFloat(defaultTarget) || 130000,
         }
       });
       const data = await res.json();
@@ -264,6 +330,8 @@ export default function SalesSettingsPage() {
       setSelectedMonth(selectedMonth + 1);
     }
   };
+
+  const formatNumber = (num: number) => num.toLocaleString('en-US');
 
   if (isLoading) {
     return (
@@ -369,55 +437,65 @@ export default function SalesSettingsPage() {
             </div>
 
             <div className="border rounded-md overflow-hidden">
-              <div className="max-h-[400px] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium w-[80px]">{t.date}</th>
-                      <th className="px-3 py-2 text-left font-medium w-[60px]">{t.day}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t.targetSales}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthDates.map(({ date, day, dayOfWeek }) => {
-                      const isWeekend = dayOfWeek === "Sat" || dayOfWeek === "Sun" || dayOfWeek === "ส" || dayOfWeek === "อา";
-                      return (
+              <div className="overflow-x-auto">
+                <div className="max-h-[500px] overflow-y-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-blue-100 dark:bg-blue-900/50">
+                        <th className="px-2 py-2 text-left font-semibold border border-slate-300 dark:border-slate-600 min-w-[70px]">{t.date}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-yellow-50 dark:bg-yellow-900/30">{t.targetSales}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-yellow-50 dark:bg-yellow-900/30">{t.actualSales}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-green-50 dark:bg-green-900/30">{t.actualSalesMtd}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-yellow-50 dark:bg-yellow-900/30">{t.actualTc}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-green-50 dark:bg-green-900/30">{t.actualTcMtd}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableData.map((row) => (
                         <tr 
-                          key={date} 
-                          className={isWeekend ? "bg-muted/30" : ""}
-                          data-testid={`row-target-${day}`}
+                          key={row.date}
+                          className="hover:bg-muted/30"
+                          data-testid={`row-target-${row.day}`}
                         >
-                          <td className="px-3 py-1.5 border-t">{day}</td>
-                          <td className={`px-3 py-1.5 border-t ${isWeekend ? "text-muted-foreground" : ""}`}>
-                            {dayOfWeek}
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 font-medium bg-blue-50 dark:bg-blue-900/20">
+                            {row.displayDate}
                           </td>
-                          <td className="px-3 py-1.5 border-t">
-                            <div className="relative">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">฿</span>
-                              <Input
-                                type="number"
-                                value={dailyTargets[date] || ""}
-                                onChange={(e) => handleTargetChange(date, e.target.value)}
-                                className="h-8 pl-5 text-right text-sm"
-                                data-testid={`input-target-${day}`}
-                              />
-                            </div>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-yellow-50 dark:bg-yellow-900/20">
+                            <Input
+                              type="number"
+                              value={dailyTargets[row.date] || ""}
+                              onChange={(e) => handleTargetChange(row.date, e.target.value)}
+                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-white dark:focus:bg-slate-800"
+                              data-testid={`input-target-${row.day}`}
+                            />
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-yellow-50 dark:bg-yellow-900/20">
+                            {row.actualSales > 0 ? formatNumber(row.actualSales) : ''}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-green-50 dark:bg-green-900/20">
+                            {row.actualSalesMtd > 0 ? formatNumber(row.actualSalesMtd) : ''}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-yellow-50 dark:bg-yellow-900/20">
+                            {row.actualTc > 0 ? formatNumber(row.actualTc) : ''}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-green-50 dark:bg-green-900/20">
+                            {row.actualTcMtd > 0 ? formatNumber(row.actualTcMtd) : ''}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-muted/50 sticky bottom-0">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2 font-medium border-t">
-                        {t.monthTotal}
-                      </td>
-                      <td className="px-3 py-2 text-right font-bold border-t">
-                        ฿{monthTotal.toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                      ))}
+                    </tbody>
+                    <tfoot className="sticky bottom-0">
+                      <tr className="bg-green-200 dark:bg-green-800/50 font-bold">
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600">{t.total}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.targetSales)}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSales)}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSalesMtd)}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTc)}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTcMtd)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             </div>
 

@@ -3,9 +3,9 @@ import { useI18n } from "@/hooks/use-i18n";
 import { useRoster, useSetShiftForUser, useDeleteShiftForUser } from "@/hooks/use-shifts";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
-import { format, addWeeks, subWeeks, parseISO } from "date-fns";
+import { format, addWeeks, subWeeks, parseISO, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, UserPlus, Trash2, EyeOff, Eye } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, UserPlus, Trash2, EyeOff, Eye, Users } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,9 +19,26 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 
+// Shift order for filtering based on typical shift times
+const SHIFT_ORDER: Record<string, number> = {
+  'open': 0,
+  'lunch': 1, 
+  'swing': 2,
+  'dinner': 3,
+  'close': 4,
+  'late': 5
+};
+
+const getShiftOrder = (shiftGroup: string | undefined): number => {
+  if (!shiftGroup) return -1;
+  const order = SHIFT_ORDER[shiftGroup.toLowerCase()];
+  return order !== undefined ? order : 99;
+};
+
 export default function RosterPage() {
   const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showAllStaff, setShowAllStaff] = useState(false);
   const dateParam = format(currentDate, "yyyy-MM-dd");
   
   const { data, isLoading, error } = useRoster(dateParam);
@@ -136,9 +153,104 @@ export default function RosterPage() {
         </div>
       </div>
 
-      <Card className="glass-card overflow-hidden border-none shadow-xl">
-        <div className="overflow-x-auto -mx-4 md:mx-0">
-          <div className="min-w-[800px] md:min-w-0 p-4 md:p-0">
+      {/* Mobile View: Today and Tomorrow with View All toggle */}
+      <Card className="glass-card overflow-hidden border-none shadow-xl md:hidden">
+        <div className="p-2">
+          {/* Toggle button for View All / Filtered view */}
+          <div className="flex justify-end mb-2">
+            <Button 
+              variant={showAllStaff ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setShowAllStaff(!showAllStaff)}
+              className="text-xs gap-1"
+              data-testid="button-toggle-view-all"
+            >
+              {showAllStaff ? <Eye className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+              {showAllStaff ? "Filtered" : "View All"}
+            </Button>
+          </div>
+          {(() => {
+            const todayStr = format(new Date(), "yyyy-MM-dd");
+            const tomorrowStr = format(addDays(new Date(), 1), "yyyy-MM-dd");
+            const mobileDays = [todayStr, tomorrowStr];
+            
+            // Filter users for mobile based on showAllStaff toggle
+            const mobileUsers = showAllStaff ? sortedUsers : sortedUsers.filter((u: any) => {
+              // Show users who have shifts on today or tomorrow
+              return mobileDays.some(day => u.shifts[day]);
+            });
+            
+            return (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="w-[80px] font-bold text-[10px]">Staff</TableHead>
+                    {mobileDays.map((day: string) => (
+                      <TableHead key={day} className="text-center min-w-[60px] p-1">
+                        <div className="flex flex-col items-center py-0.5">
+                          <span className="text-[8px] uppercase text-destructive font-black tracking-tighter">
+                            {day === todayStr ? "Today" : "Tomorrow"}
+                          </span>
+                          <span className="text-[7px] text-muted-foreground">
+                            {days.includes(day) ? t(format(parseISO(day), "EEEE").toLowerCase() as any).slice(0, 3) : format(new Date(day), "EEE").slice(0, 3)}
+                          </span>
+                          <span className="text-lg font-black text-foreground">
+                            {format(new Date(day), "d")}
+                          </span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mobileUsers.length > 0 ? (
+                    mobileUsers.map((u: any) => (
+                      <TableRow key={u.username} className="hover:bg-muted/10 transition-colors">
+                        <TableCell className="font-medium text-[10px] py-0.5">
+                          <span className="font-medium text-muted-foreground truncate max-w-[80px] block">{u.nickName || u.fullName || u.username}</span>
+                        </TableCell>
+                        {mobileDays.map((day: string) => {
+                          const shift = u.shifts[day];
+                          return (
+                            <TableCell key={day} className="p-0.5">
+                              {shift ? (
+                                <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center
+                                  ${shift.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    shift.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                    shift.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                    shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                    'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                                  <span className="text-[7px] font-bold uppercase">{shift.shiftGroup}</span>
+                                  <span className="text-[8px]">{shift.startTime}</span>
+                                </div>
+                              ) : (
+                                <div className="h-8 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                                  <span className="text-[8px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
+                                </div>
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-20 text-center text-muted-foreground text-xs">
+                        No shifts found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            );
+          })()}
+        </div>
+      </Card>
+
+      {/* Desktop View: Full week */}
+      <Card className="glass-card overflow-hidden border-none shadow-xl hidden md:block">
+        <div className="overflow-x-auto">
+          <div className="min-w-[800px] p-4 md:p-0">
             <Table>
               <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">

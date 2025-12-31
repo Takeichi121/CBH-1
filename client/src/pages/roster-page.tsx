@@ -235,7 +235,7 @@ function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolea
     lunch: "bg-orange-100 text-orange-700 border-orange-200",
     dinner: "bg-purple-100 text-purple-700 border-purple-200",
     close: "bg-pink-100 text-pink-700 border-pink-200",
-    late: "bg-[#1e1b4b] text-amber-400 border-[#312e81] dark:bg-[#0f0d29] dark:text-amber-300",
+    late: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200",
   };
   
   const bgClass = groupColors[shift.shiftGroup.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200";

@@ -698,7 +698,7 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
     lunch: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
     dinner: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
     close: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-    late: "bg-[#1e1b4b] text-amber-400 dark:bg-[#0f0d29] dark:text-amber-300",
+    late: "bg-slate-700 text-slate-100 dark:bg-slate-800 dark:text-slate-200",
   };
 
   return (
@@ -1616,7 +1616,7 @@ function ManagerMonthlyView() {
     lunch: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
     dinner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
     close: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
-    late: "bg-[#1e1b4b] text-amber-400 border-[#312e81] dark:bg-[#0f0d29] dark:text-amber-300 dark:border-[#1e1b4b]",
+    late: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
   };
 
   return (

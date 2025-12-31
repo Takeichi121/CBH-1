@@ -939,5 +939,39 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Get Daily Targets for Month
+  app.post(api.sales.getDailyTargets.path, async (req, res) => {
+    const { token, year, month } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const targets = await storage.getDailyTargetsForMonth(year, month);
+      res.json({ ok: true, targets });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get daily targets" });
+    }
+  });
+
+  // Save Daily Targets
+  app.post(api.sales.saveDailyTargets.path, async (req, res) => {
+    const { token, targets } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    try {
+      await storage.bulkUpsertDailyTargets(targets);
+      await storage.log("save_daily_targets", u.username, `count=${targets.length}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to save daily targets" });
+    }
+  });
+
   return httpServer;
 }

@@ -181,6 +181,18 @@ export const storeSettings = pgTable("store_settings", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Daily Targets (per day target values like Excel table)
+export const dailyTargets = pgTable("daily_targets", {
+  id: serial("id").primaryKey(),
+  targetDate: text("target_date").notNull(), // YYYY-MM-DD
+  targetSales: text("target_sales").notNull().default("130000"),
+  targetTc: text("target_tc").default("300"), // optional target transaction count
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => ({
+  uniqueDate: unique().on(t.targetDate),
+}));
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);
@@ -190,12 +202,14 @@ export const insertSessionSchema = createInsertSchema(sessions);
 export const insertSwapRequestSchema = createInsertSchema(swapRequests);
 export const insertDailySalesSchema = createInsertSchema(dailySalesReports).omit({ id: true });
 export const insertStoreSettingsSchema = createInsertSchema(storeSettings).omit({ id: true });
+export const insertDailyTargetSchema = createInsertSchema(dailyTargets).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type InsertSwapRequest = z.infer<typeof insertSwapRequestSchema>;
 export type InsertDailySales = z.infer<typeof insertDailySalesSchema>;
 export type InsertStoreSettings = z.infer<typeof insertStoreSettingsSchema>;
+export type InsertDailyTarget = z.infer<typeof insertDailyTargetSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Shift = typeof shifts.$inferSelect;
@@ -205,3 +219,4 @@ export type Session = typeof sessions.$inferSelect;
 export type SwapRequest = typeof swapRequests.$inferSelect;
 export type DailySalesReport = typeof dailySalesReports.$inferSelect;
 export type StoreSettings = typeof storeSettings.$inferSelect;
+export type DailyTarget = typeof dailyTargets.$inferSelect;

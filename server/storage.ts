@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -79,6 +79,13 @@ export interface IStorage {
   // Store Settings
   getStoreSettings(): Promise<StoreSettings | undefined>;
   updateStoreSettings(settings: InsertStoreSettings): Promise<StoreSettings>;
+
+  // Daily Targets
+  getDailyTargetsForMonth(year: number, month: number): Promise<DailyTarget[]>;
+  getDailyTarget(date: string): Promise<DailyTarget | undefined>;
+  upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget>;
+  bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void>;
+  getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -323,6 +330,51 @@ export class DatabaseStorage implements IStorage {
       }).returning();
       return created;
     }
+  }
+
+  // Daily Targets
+  async getDailyTargetsForMonth(year: number, month: number): Promise<DailyTarget[]> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+    return await db.select().from(dailyTargets)
+      .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, endDate)))
+      .orderBy(dailyTargets.targetDate);
+  }
+
+  async getDailyTarget(date: string): Promise<DailyTarget | undefined> {
+    const [target] = await db.select().from(dailyTargets).where(eq(dailyTargets.targetDate, date));
+    return target;
+  }
+
+  async upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget> {
+    const existing = await this.getDailyTarget(target.targetDate);
+    if (existing) {
+      const [updated] = await db.update(dailyTargets)
+        .set({ ...target, updatedAt: new Date().toISOString() })
+        .where(eq(dailyTargets.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(dailyTargets).values({
+        ...target,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).returning();
+      return created;
+    }
+  }
+
+  async bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void> {
+    for (const target of targets) {
+      await this.upsertDailyTarget(target);
+    }
+  }
+
+  async getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const targets = await db.select().from(dailyTargets)
+      .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate)));
+    return targets.reduce((sum, t) => sum + parseFloat(t.targetSales || "0"), 0);
   }
 }
 

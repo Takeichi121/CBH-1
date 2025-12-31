@@ -295,5 +295,21 @@ export const api = {
         200: z.object({ ok: z.boolean(), settings: z.any().optional(), message: z.string().optional() }),
       },
     },
+    getDailyTargets: {
+      method: "POST",
+      path: "/api/sales/getDailyTargets",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), targets: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    saveDailyTargets: {
+      method: "POST",
+      path: "/api/sales/saveDailyTargets",
+      input: z.object({ token: z.string(), targets: z.array(z.any()) }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
   },
 };

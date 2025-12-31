@@ -5,34 +5,34 @@
 @tailwind utilities;
 
 :root {
-  /* Burger King Brand Colors */
-  --primary: 0 78.5% 52%;      /* Burger King Red #ED1C24 */
+  /* Green Theme Colors */
+  --primary: 142 70% 35%;      /* Forest Green */
   --primary-foreground: 0 0% 100%;
   
-  --background: 30 20% 90%;   /* สีพื้นหลังโทนน้ำตาลอ่อน (Light Brown/Coffee) */
-  --foreground: 20 50% 15%;
+  --background: 140 20% 92%;   /* Light green-gray background */
+  --foreground: 140 30% 15%;
   
-  --card: 30 20% 94%;        /* สีการ์ดโทนน้ำตาลนวล */
-  --card-foreground: 20 50% 15%;
+  --card: 140 15% 96%;        /* Light card background */
+  --card-foreground: 140 30% 15%;
   
-  --popover: 30 20% 94%;
-  --popover-foreground: 20 50% 15%;
+  --popover: 140 15% 96%;
+  --popover-foreground: 140 30% 15%;
   
-  --secondary: 25 30% 80%;     /* สีรองโทนน้ำตาลนุ่มๆ */
-  --secondary-foreground: 20 60% 20%;
+  --secondary: 140 20% 85%;     /* Soft green secondary */
+  --secondary-foreground: 140 40% 20%;
   
-  --muted: 30 15% 85%;
-  --muted-foreground: 25 20% 40%;
+  --muted: 140 10% 88%;
+  --muted-foreground: 140 15% 40%;
   
-  --accent: 25 50% 45%;      /* สีเน้นโทนน้ำตาลเข้ม/สนิม */
+  --accent: 142 60% 40%;      /* Accent green */
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 30 15% 80%;
-  --input: 30 15% 80%;
-  --ring: 223 100% 31%;        /* Burger King Blue */
+  --border: 140 15% 82%;
+  --input: 140 15% 82%;
+  --ring: 142 70% 35%;        /* Green ring */
   
   --radius: 0.75rem;
   
@@ -41,48 +41,48 @@
 }
 
 .dark {
-  --background: 223 100% 7%;   /* Slightly lighter deep blue for better depth */
-  --foreground: 210 40% 98%;
+  --background: 150 30% 8%;   /* Deep green-black background */
+  --foreground: 140 20% 95%;
 
-  --card: 223 60% 12%;        /* More contrast for cards */
-  --card-foreground: 210 40% 98%;
+  --card: 150 25% 12%;        /* Dark green card */
+  --card-foreground: 140 20% 95%;
 
-  --popover: 223 60% 12%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 150 25% 12%;
+  --popover-foreground: 140 20% 95%;
 
-  --primary: 0 78.5% 60%;      /* Slightly brighter red for dark mode */
-  --primary-foreground: 210 40% 98%;
+  --primary: 142 65% 45%;      /* Bright green for dark mode */
+  --primary-foreground: 140 20% 98%;
 
-  --secondary: 223 40% 18%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 150 30% 18%;
+  --secondary-foreground: 140 20% 95%;
 
-  --muted: 223 40% 18%;
-  --muted-foreground: 215 20.2% 75%;
+  --muted: 150 25% 18%;
+  --muted-foreground: 140 15% 70%;
 
-  --accent: 48 91% 52%;        /* Keep BK Yellow as accent */
-  --accent-foreground: 223 100% 10%;
+  --accent: 142 70% 50%;        /* Bright green accent */
+  --accent-foreground: 150 30% 8%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 223 40% 22%;
-  --input: 223 40% 22%;
-  --ring: 0 78.5% 60%;
+  --border: 150 25% 22%;
+  --input: 150 25% 22%;
+  --ring: 142 65% 45%;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground antialiased font-sans transition-colors duration-300;
     background-image: 
-      radial-gradient(at 0% 0%, hsla(48, 91%, 52%, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(223, 100%, 31%, 0.1) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, hsla(142, 70%, 35%, 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(160, 60%, 40%, 0.08) 0px, transparent 50%);
     background-attachment: fixed;
   }
   
   .dark body {
     background-image: 
-      radial-gradient(at 0% 0%, hsla(0, 78.5%, 52%, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(223, 100%, 31%, 0.05) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, hsla(142, 65%, 45%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(160, 50%, 30%, 0.05) 0px, transparent 50%);
   }
 
   h1, h2, h3, h4, h5, h6 {

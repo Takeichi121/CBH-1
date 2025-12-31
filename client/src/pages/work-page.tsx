@@ -175,8 +175,8 @@ export default function WorkPage() {
                             disabled={data.closed}
                             settings={settings}
                           >
-                            <div className={`h-20 w-full rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                              <span className="text-xs font-medium text-muted-foreground/60 group-hover:hidden">OFF</span>
+                            <div className={`h-20 w-full rounded-xl border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group ${data.closed ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <span className="text-xs font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
                               <Plus className="w-5 h-5 text-primary/50 group-hover:text-primary hidden group-hover:block" />
                             </div>
                           </BookShiftDialog>
@@ -227,8 +227,8 @@ export default function WorkPage() {
                             <span className="text-[9px]">{s.startTime}</span>
                           </div>
                         ) : (
-                          <div className="h-12 w-full rounded-lg bg-muted/5 flex items-center justify-center">
-                            <span className="text-[10px] font-medium text-muted-foreground/50">OFF</span>
+                          <div className="h-12 w-full rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                            <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
                           </div>
                         );
 
@@ -237,8 +237,8 @@ export default function WorkPage() {
                             {isManager ? (
                               <ManageShiftDialogInWork username={u.username} date={day} existingShift={s} mode={s ? "edit" : "create"} groups={settings?.groups}>
                                 {s ? content : (
-                                  <div className="h-12 w-full rounded-lg border border-dashed border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
-                                    <span className="text-[10px] font-medium text-muted-foreground/50 group-hover:hidden">OFF</span>
+                                  <div className="h-12 w-full rounded-lg border border-dashed border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center group">
+                                    <span className="text-[10px] font-medium text-red-400/70 dark:text-red-400/50 group-hover:hidden">OFF</span>
                                     <Plus className="w-3 h-3 text-primary/30 hidden group-hover:block" />
                                   </div>
                                 )}
@@ -1209,7 +1209,7 @@ function DroppableEmptyCell({
 
   const borderColor = isOver 
     ? (isCopyMode ? 'border-green-500 bg-green-500/20 border-2' : 'border-orange-500 bg-orange-500/20 border-2')
-    : (isDragging ? (isCopyMode ? 'border-green-400/50 bg-green-500/5' : 'border-orange-400/50 bg-orange-500/5') : 'border-border/50 hover:bg-primary/5 hover:border-primary/30');
+    : (isDragging ? (isCopyMode ? 'border-green-400/50 bg-green-500/5' : 'border-orange-400/50 bg-orange-500/5') : 'border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 hover:bg-primary/5 hover:border-primary/30');
 
   return (
     <StaffCellBookDialog groups={groups} day={day} username={username} staffName={staffName}>
@@ -1219,7 +1219,7 @@ function DroppableEmptyCell({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <span className={`text-[10px] font-medium text-muted-foreground/50 ${isDragging || isOver ? 'hidden' : 'group-hover:hidden'}`}>OFF</span>
+        <span className={`text-[10px] font-medium text-red-400/70 dark:text-red-400/50 ${isDragging || isOver ? 'hidden' : 'group-hover:hidden'}`}>OFF</span>
         <Plus className={`w-4 h-4 ${isDragging || isOver ? (isCopyMode ? 'block text-green-500' : 'block text-orange-500') : 'hidden group-hover:block text-muted-foreground/30'}`} />
       </div>
     </StaffCellBookDialog>

@@ -61,7 +61,7 @@ export default function WorkPage() {
   const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mobileDayPairIndex, setMobileDayPairIndex] = useState(0); // 0: Tue-Wed, 1: Thu-Fri, 2: Sat-Sun-Mon
-  const [showAll7Days, setShowAll7Days] = useState(false); // View All mode
+  const [showAll7Days, setShowAll7Days] = useState(true); // View All mode - default to all 7 days
   // Format date as YYYY-MM-DD for API
   const dateParam = format(currentDate, "yyyy-MM-dd");
   

@@ -323,8 +323,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
+    // Only update fields that are provided (not empty/undefined)
+    const updateData: Record<string, string> = {};
+    if (fullName !== undefined && fullName !== "") updateData.fullName = fullName;
+    if (nickName !== undefined && nickName !== "") updateData.nickName = nickName;
+    if (phone !== undefined && phone !== "") updateData.phone = phone;
+    if (email !== undefined && email !== "") updateData.email = email;
+
+    // If no valid fields to update, return current user
+    if (Object.keys(updateData).length === 0) {
+      return res.json({ ok: true, user: u });
+    }
+
     const [updated] = await db.update(users)
-      .set({ fullName, nickName, phone, email })
+      .set(updateData)
       .where(eq(users.username, u.username))
       .returning();
 

@@ -384,7 +384,7 @@ export default function WorkPage() {
                                 <TableCell key={day} className="p-0.5">
                                   {s ? (() => {
                                     const [start, end] = s.startTime.split(' - ');
-                                    return showAllDays ? (
+                                    return showAll7Days ? (
                                       <div className={`h-14 w-full rounded p-0.5 border flex flex-col justify-center items-center gap-0
                                         ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                                           s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
@@ -407,7 +407,7 @@ export default function WorkPage() {
                                       </div>
                                     );
                                   })() : (
-                                    <div className={`${showAllDays ? 'h-14' : 'h-8'} w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center`}>
+                                    <div className={`${showAll7Days ? 'h-14' : 'h-8'} w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center`}>
                                       <span className="text-[7px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
                                     </div>
                                   )}

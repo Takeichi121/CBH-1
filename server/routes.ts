@@ -1238,5 +1238,216 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ==================== Developer Tools ====================
+  const DEV_CODE = "bk1040";
+  
+  const verifyDevAccess = async (token: string, devCode?: string): Promise<{ ok: boolean; user?: any; message?: string }> => {
+    const session = await storage.getSession(token);
+    if (!session) return { ok: false, message: "Session expired" };
+    
+    const u = await storage.getUser(session.username);
+    if (!u) return { ok: false, message: "User not found" };
+    
+    // Allow if admin or if correct dev code provided
+    if (u.role === "admin" || devCode === DEV_CODE) {
+      return { ok: true, user: u };
+    }
+    
+    return { ok: false, message: "Access denied - Admin or Dev Code required" };
+  };
+
+  // Get System Logs
+  app.post(api.devTools.getSystemLogs.path, async (req, res) => {
+    const { token, devCode, limit = 100, action } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      const logs = await storage.getSystemLogs(limit, action);
+      res.json({ ok: true, logs });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get logs" });
+    }
+  });
+
+  // Get Sessions
+  app.post(api.devTools.getSessions.path, async (req, res) => {
+    const { token, devCode } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      const sessions = await storage.getAllSessions();
+      res.json({ ok: true, sessions });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get sessions" });
+    }
+  });
+
+  // Clear Sessions
+  app.post(api.devTools.clearSessions.path, async (req, res) => {
+    const { token, devCode, username } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      const count = await storage.clearSessions(username);
+      await storage.log("dev_clear_sessions", access.user.username, username ? `user=${username}` : "all sessions");
+      res.json({ ok: true, count });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to clear sessions" });
+    }
+  });
+
+  // Get Config
+  app.post(api.devTools.getConfig.path, async (req, res) => {
+    const { token, devCode } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      const config = await storage.getConfig();
+      res.json({ ok: true, config });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get config" });
+    }
+  });
+
+  // Set Config
+  app.post(api.devTools.setConfig.path, async (req, res) => {
+    const { token, devCode, key, value } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      await storage.setConfig(key, value);
+      await storage.log("dev_set_config", access.user.username, `${key}=${value}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to set config" });
+    }
+  });
+
+  // Reset Password
+  app.post(api.devTools.resetPassword.path, async (req, res) => {
+    const { token, devCode, username, newPassword } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      const salt = process.env.SALT || "bk_salt";
+      const crypto = await import("crypto");
+      const passhash = crypto.createHash("sha256").update(newPassword + salt).digest("hex");
+      await storage.updateUserPassword(username, passhash);
+      await storage.log("dev_reset_password", access.user.username, `user=${username}`);
+      res.json({ ok: true, message: `Password reset for ${username}` });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to reset password" });
+    }
+  });
+
+  // Update User Role
+  app.post(api.devTools.updateUserRole.path, async (req, res) => {
+    const { token, devCode, username, role, position } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      await storage.updateUserRole(username, role, position);
+      await storage.log("dev_update_role", access.user.username, `user=${username} role=${role} position=${position || ""}`);
+      res.json({ ok: true, message: `Role updated for ${username}` });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to update role" });
+    }
+  });
+
+  // Get Table Info
+  app.post(api.devTools.getTableInfo.path, async (req, res) => {
+    const { token, devCode, tableName } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    try {
+      if (tableName) {
+        const rows = await storage.getTableRows(tableName, 100);
+        res.json({ ok: true, rows });
+      } else {
+        const tables = await storage.getTableList();
+        res.json({ ok: true, tables });
+      }
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get table info" });
+    }
+  });
+
+  // Clear Test Data
+  app.post(api.devTools.clearTestData.path, async (req, res) => {
+    const { token, devCode, tableName } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    // Only allow clearing certain tables
+    const allowedTables = ["shifts", "systemlog", "sessions", "swap_requests", "daily_sales_reports", "manager_requests"];
+    if (!allowedTables.includes(tableName)) {
+      return res.json({ ok: false, message: `Cannot clear table: ${tableName}. Allowed: ${allowedTables.join(", ")}` });
+    }
+
+    try {
+      const count = await storage.clearTable(tableName);
+      await storage.log("dev_clear_table", access.user.username, `table=${tableName} count=${count}`);
+      res.json({ ok: true, count, message: `Cleared ${count} rows from ${tableName}` });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to clear table" });
+    }
+  });
+
+  // Execute Query (READ ONLY - strict validation)
+  app.post(api.devTools.executeQuery.path, async (req, res) => {
+    const { token, devCode, query } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    // Strict validation: only allow simple SELECT queries
+    const cleanQuery = query.trim();
+    const upperQuery = cleanQuery.toUpperCase();
+    
+    // Remove leading comments and check for SELECT
+    const noComments = upperQuery.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--.*$/gm, "").trim();
+    
+    // Reject if not starting with SELECT
+    if (!noComments.startsWith("SELECT")) {
+      return res.json({ ok: false, message: "Only SELECT queries are allowed" });
+    }
+    
+    // Reject dangerous patterns (multiple statements, subquery manipulation)
+    const dangerousPatterns = [
+      /;.*\S/i, // Multiple statements  
+      /\bDROP\b/i,
+      /\bDELETE\b/i,
+      /\bINSERT\b/i,
+      /\bUPDATE\b/i,
+      /\bTRUNCATE\b/i,
+      /\bALTER\b/i,
+      /\bCREATE\b/i,
+      /\bGRANT\b/i,
+      /\bREVOKE\b/i,
+      /\bEXECUTE\b/i,
+    ];
+    
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(cleanQuery)) {
+        return res.json({ ok: false, message: "Query contains disallowed keywords" });
+      }
+    }
+
+    try {
+      const result = await storage.executeReadQuery(cleanQuery);
+      await storage.log("dev_execute_query", access.user.username, cleanQuery.substring(0, 100));
+      res.json({ ok: true, result });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Query failed" });
+    }
+  });
+
   return httpServer;
 }

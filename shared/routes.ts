@@ -402,4 +402,86 @@ export const api = {
       },
     },
   },
+  devTools: {
+    getSystemLogs: {
+      method: "POST",
+      path: "/api/devTools/logs",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), limit: z.number().optional(), action: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), logs: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    getSessions: {
+      method: "POST",
+      path: "/api/devTools/sessions",
+      input: z.object({ token: z.string(), devCode: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), sessions: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    clearSessions: {
+      method: "POST",
+      path: "/api/devTools/clearSessions",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), username: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), count: z.number().optional(), message: z.string().optional() }),
+      },
+    },
+    getConfig: {
+      method: "POST",
+      path: "/api/devTools/config",
+      input: z.object({ token: z.string(), devCode: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), config: z.record(z.string()).optional(), message: z.string().optional() }),
+      },
+    },
+    setConfig: {
+      method: "POST",
+      path: "/api/devTools/setConfig",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), key: z.string(), value: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    resetPassword: {
+      method: "POST",
+      path: "/api/devTools/resetPassword",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), username: z.string(), newPassword: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    updateUserRole: {
+      method: "POST",
+      path: "/api/devTools/updateUserRole",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), username: z.string(), role: z.string(), position: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    getTableInfo: {
+      method: "POST",
+      path: "/api/devTools/tableInfo",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), tableName: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), tables: z.array(z.any()).optional(), rows: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    clearTestData: {
+      method: "POST",
+      path: "/api/devTools/clearTestData",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), tableName: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), count: z.number().optional(), message: z.string().optional() }),
+      },
+    },
+    executeQuery: {
+      method: "POST",
+      path: "/api/devTools/executeQuery",
+      input: z.object({ token: z.string(), devCode: z.string().optional(), query: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), result: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+  },
 };

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera, Wrench } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState, useRef } from "react";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Link } from "wouter";
 
 export default function SettingsPage() {
   const { user, setUserProfilePicture } = useAuth();
@@ -423,9 +424,15 @@ export default function SettingsPage() {
       </div>
 
       {/* Footer */}
-      <div className="text-center text-sm text-muted-foreground pt-6 border-t border-border/50 space-y-1">
+      <div className="text-center text-sm text-muted-foreground pt-6 border-t border-border/50 space-y-2">
         <p>&copy; 2025 BK Grand Diamond. Developed by Chanon</p>
         <p>Version 1.0.0 | Last updated: 12/29/2025</p>
+        <Link href="/dev-toolbox">
+          <Button variant="ghost" size="sm" className="text-muted-foreground/50 hover:text-muted-foreground gap-1" data-testid="button-dev-toolbox">
+            <Wrench className="h-3 w-3" />
+            <span className="text-xs">Developer Tools</span>
+          </Button>
+        </Link>
       </div>
     </div>
   );

@@ -457,6 +457,85 @@ export class DatabaseStorage implements IStorage {
       ));
     return requests.length;
   }
+
+  // Developer Tools methods
+  async getSystemLogs(limit: number = 100, action?: string): Promise<SystemLog[]> {
+    if (action) {
+      return await db.select().from(systemlog)
+        .where(like(systemlog.action, `%${action}%`))
+        .orderBy(desc(systemlog.ts))
+        .limit(limit);
+    }
+    return await db.select().from(systemlog)
+      .orderBy(desc(systemlog.ts))
+      .limit(limit);
+  }
+
+  async getAllSessions(): Promise<Session[]> {
+    return await db.select().from(sessions);
+  }
+
+  async clearSessions(username?: string): Promise<number> {
+    if (username) {
+      const result = await db.delete(sessions).where(eq(sessions.username, username)).returning();
+      return result.length;
+    }
+    const result = await db.delete(sessions).returning();
+    return result.length;
+  }
+
+  async updateUserPassword(username: string, passhash: string): Promise<void> {
+    await db.update(users)
+      .set({ passhash })
+      .where(eq(users.username, username.toLowerCase()));
+  }
+
+  async getTableList(): Promise<{ name: string; count: number }[]> {
+    const tableNames = ["users", "shifts", "config", "systemlog", "sessions", "swap_requests", "daily_sales_reports", "store_settings", "daily_targets", "manager_requests"];
+    const result: { name: string; count: number }[] = [];
+    for (const name of tableNames) {
+      try {
+        const countResult = await db.execute(sql`SELECT COUNT(*) as count FROM ${sql.identifier(name)}`);
+        const count = Number((countResult.rows[0] as any)?.count || 0);
+        result.push({ name, count });
+      } catch {
+        result.push({ name, count: 0 });
+      }
+    }
+    return result;
+  }
+
+  async getTableRows(tableName: string, limit: number = 100): Promise<any[]> {
+    const allowedTables: Record<string, any> = {
+      users, shifts, config, systemlog, sessions, 
+      swap_requests: swapRequests, 
+      daily_sales_reports: dailySalesReports, 
+      store_settings: storeSettings, 
+      daily_targets: dailyTargets,
+      manager_requests: managerRequests
+    };
+    const table = allowedTables[tableName];
+    if (!table) throw new Error(`Unknown table: ${tableName}`);
+    return await db.select().from(table).limit(limit);
+  }
+
+  async clearTable(tableName: string): Promise<number> {
+    const allowedTables: Record<string, any> = {
+      shifts, systemlog, sessions, 
+      swap_requests: swapRequests, 
+      daily_sales_reports: dailySalesReports,
+      manager_requests: managerRequests
+    };
+    const table = allowedTables[tableName];
+    if (!table) throw new Error(`Cannot clear table: ${tableName}`);
+    const result = await db.delete(table).returning() as any[];
+    return result.length;
+  }
+
+  async executeReadQuery(query: string): Promise<any[]> {
+    const result = await db.execute(sql.raw(query));
+    return result.rows as any[];
+  }
 }
 
 export const storage = new DatabaseStorage();

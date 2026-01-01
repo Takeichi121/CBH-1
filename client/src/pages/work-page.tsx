@@ -382,18 +382,22 @@ export default function WorkPage() {
                               const s = staffShifts[day];
                               return (
                                 <TableCell key={day} className="p-0.5">
-                                  {s ? (
-                                    <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center gap-0
-                                      ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                        s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                        s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                        s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
-                                        'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                      <span className="text-[6px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
-                                      <span className="text-[7px] leading-tight">{s.startTime}</span>
-                                    </div>
-                                  ) : (
-                                    <div className="h-8 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
+                                  {s ? (() => {
+                                    const [start, end] = s.startTime.split(' - ');
+                                    return (
+                                      <div className={`h-12 w-full rounded p-0.5 border flex flex-col justify-center items-center gap-0
+                                        ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                          s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                          s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                          s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                          'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                                        <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
+                                        <span className="text-[6px] leading-tight">{start} -</span>
+                                        <span className="text-[6px] leading-tight">{end}</span>
+                                      </div>
+                                    );
+                                  })() : (
+                                    <div className="h-12 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
                                       <span className="text-[7px] font-medium text-red-400/70 dark:text-red-400/50">OFF</span>
                                     </div>
                                   )}

@@ -340,6 +340,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
+    // Validate profile picture
+    if (!profilePicture || typeof profilePicture !== "string") {
+      return res.json({ ok: false, message: "Invalid profile picture" });
+    }
+
+    // Must be a valid data URL with image mime type
+    const dataUrlRegex = /^data:image\/(jpeg|jpg|png|gif|webp);base64,[A-Za-z0-9+/]+=*$/;
+    if (!dataUrlRegex.test(profilePicture)) {
+      return res.json({ ok: false, message: "Invalid image format. Only JPEG, PNG, GIF, WEBP allowed." });
+    }
+
+    // Check base64 size (limit ~2MB - base64 is ~1.37x larger than binary)
+    const base64Data = profilePicture.split(",")[1] || "";
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (sizeInBytes > maxSize) {
+      return res.json({ ok: false, message: "File too large. Maximum size is 2MB." });
+    }
+
     const [updated] = await db.update(users)
       .set({ profilePicture })
       .where(eq(users.username, u.username))

@@ -19,7 +19,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 import { useI18n } from "@/hooks/use-i18n";
@@ -99,6 +99,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <div className="p-6 border-t space-y-4">
                 <div className="flex items-center gap-4 px-4">
                   <Avatar className="h-10 w-10 border-2 border-primary/10">
+                    <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
                     <AvatarFallback className="bg-primary/5 text-primary font-bold">
                       {user.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
@@ -183,6 +184,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10 border-2 border-primary/10">
+                  <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
                   <AvatarFallback className="bg-primary/5 text-primary font-bold">
                     {user.username.slice(0, 2).toUpperCase()}
                   </AvatarFallback>

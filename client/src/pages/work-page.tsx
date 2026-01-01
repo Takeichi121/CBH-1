@@ -1024,8 +1024,8 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
         onMouseLeave={() => setShowActions(false)}
         onClick={() => setEditOpen(true)}
       >
-        <span className="text-[10px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup)}</span>
-        <span className="text-xs">{shift.startTime}</span>
+        <span className="text-[10px] font-bold uppercase whitespace-nowrap">{getShiftDisplayName(shift.shiftGroup)}</span>
+        <span className="text-[10px] whitespace-nowrap">{shift.startTime}</span>
         {shift.note && <span className="text-[9px] opacity-70 truncate max-w-full">{shift.note}</span>}
         
         <div 
@@ -1751,8 +1751,8 @@ function ManagerEmployeeRosterView() {
                               shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
                               "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
                             }`}>
-                              <span className="text-[10px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup)}</span>
-                              <span className="text-xs">{shift.startTime}</span>
+                              <span className="text-[10px] font-bold uppercase whitespace-nowrap">{getShiftDisplayName(shift.shiftGroup)}</span>
+                              <span className="text-[10px] whitespace-nowrap">{shift.startTime}</span>
                             </div>
                           ) : null}
                         </TableCell>

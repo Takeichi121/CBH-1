@@ -45,6 +45,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   email: text("email"),
   position: text("position"),
+  profilePicture: text("profile_picture"),
   active: integer("active").notNull().default(1),
   mustChangePassword: integer("must_change_password").notNull().default(0),
   createdAt: text("created_at").notNull(),

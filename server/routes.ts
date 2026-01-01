@@ -331,6 +331,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, user: updated });
   });
 
+  // User: Update Profile Picture
+  app.post("/api/updateProfilePicture", async (req, res) => {
+    const { token, profilePicture } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    const [updated] = await db.update(users)
+      .set({ profilePicture })
+      .where(eq(users.username, u.username))
+      .returning();
+
+    await storage.log("update_profile_picture", u.username, "profile picture updated");
+    res.json({ ok: true, user: updated });
+  });
+
   // User: Change Password
   app.post("/api/changePassword", async (req, res) => {
     const { token, currentPassword, newPassword } = req.body;

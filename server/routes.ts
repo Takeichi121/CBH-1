@@ -345,9 +345,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.json({ ok: false, message: "Invalid profile picture" });
     }
 
-    // Must be a valid data URL with image mime type
-    const dataUrlRegex = /^data:image\/(jpeg|jpg|png|gif|webp);base64,[A-Za-z0-9+/]+=*$/;
-    if (!dataUrlRegex.test(profilePicture)) {
+    // Must be a valid data URL with image mime type (check header only)
+    const headerRegex = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/;
+    if (!headerRegex.test(profilePicture)) {
       return res.json({ ok: false, message: "Invalid image format. Only JPEG, PNG, GIF, WEBP allowed." });
     }
 

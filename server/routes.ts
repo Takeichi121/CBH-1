@@ -79,7 +79,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     await storage.log("login_ok", u.username, "role=" + u.role);
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
-    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, profileComplete, mustChangePassword } });
+    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
   });
 
   // Auth: Validate
@@ -99,7 +99,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
-    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, profileComplete, mustChangePassword } });
+    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
   });
 
   // Auth: Logout

@@ -14,6 +14,7 @@ type User = {
   email?: string;
   phone?: string;
   position?: string;
+  profilePicture?: string;
   profileComplete?: boolean;
   mustChangePassword?: boolean;
 };
@@ -30,6 +31,7 @@ type AuthContextType = {
   forceChangePasswordMutation: ReturnType<typeof useForceChangePasswordMutation>;
   setUserProfileComplete: (profileData?: { nickName?: string; phone?: string; email?: string }) => void;
   setUserPasswordChanged: () => void;
+  setUserProfilePicture: (profilePicture: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -97,6 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => prev ? { ...prev, mustChangePassword: false } : null);
   };
 
+  const setUserProfilePicture = (profilePicture: string) => {
+    setUser((prev) => prev ? { ...prev, profilePicture } : null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -111,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         forceChangePasswordMutation,
         setUserProfileComplete,
         setUserPasswordChanged,
+        setUserProfilePicture,
       }}
     >
       {children}

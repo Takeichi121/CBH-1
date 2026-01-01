@@ -4,18 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, setUserProfilePicture } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
@@ -23,6 +24,8 @@ export default function SettingsPage() {
   const { mutate: updateSettings, isPending: settingsUpdating } = useUpdateSettings();
 
   const [isProfileUpdating, setIsProfileUpdating] = useState(false);
+  const [isPictureUploading, setIsPictureUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const profileForm = useForm({
     defaultValues: {
       fullName: user?.fullName || "",
@@ -96,6 +99,40 @@ export default function SettingsPage() {
     }
   };
 
+  const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Error", description: t("fileTooLarge") || "File size must be less than 2MB" });
+      return;
+    }
+
+    setIsPictureUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const res = await apiRequest("POST", "/api/updateProfilePicture", {
+          token: localStorage.getItem("bk_token"),
+          profilePicture: base64
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setUserProfilePicture(base64);
+          toast({ title: "Success", description: t("profilePictureUpdated") || "Profile picture updated" });
+        } else {
+          toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update" });
+        }
+        setIsPictureUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+      setIsPictureUploading(false);
+    }
+  };
+
   const onPasswordSubmit = async (values: any) => {
     if (values.newPassword !== values.confirmPassword) {
       toast({ variant: "destructive", title: "Error", description: t("passwordsDoNotMatch") });
@@ -145,27 +182,57 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <div className="flex flex-col items-center mb-6">
+              <div className="relative">
+                <Avatar className="w-24 h-24 border-4 border-primary/20">
+                  <AvatarImage src={user?.profilePicture || ""} alt={user?.fullName || ""} />
+                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                    {user?.nickName?.charAt(0)?.toUpperCase() || user?.fullName?.charAt(0)?.toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfilePictureChange}
+                  data-testid="input-profile-picture"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className="absolute bottom-0 right-0 rounded-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isPictureUploading}
+                  data-testid="button-change-profile-picture"
+                >
+                  {isPictureUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">{t("clickToChangePhoto") || "Click to change photo"}</p>
+            </div>
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t("fullName")}</Label>
-                  <Input {...profileForm.register("fullName")} className="rounded-xl" />
+                  <Input {...profileForm.register("fullName")} className="rounded-xl" data-testid="input-fullname" />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("nickname")}</Label>
-                  <Input {...profileForm.register("nickName")} className="rounded-xl" />
+                  <Input {...profileForm.register("nickName")} className="rounded-xl" data-testid="input-nickname" />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("phone")}</Label>
-                  <Input {...profileForm.register("phone")} className="rounded-xl" />
+                  <Input {...profileForm.register("phone")} className="rounded-xl" data-testid="input-phone" />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("email")}</Label>
-                  <Input {...profileForm.register("email")} type="email" className="rounded-xl" />
+                  <Input {...profileForm.register("email")} type="email" className="rounded-xl" data-testid="input-email" />
                 </div>
               </div>
               <div className="flex justify-end pt-2">
-                <Button type="submit" disabled={isProfileUpdating} className="rounded-xl">
+                <Button type="submit" disabled={isProfileUpdating} className="rounded-xl" data-testid="button-update-profile">
                   {isProfileUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {t("updateProfile")}
                 </Button>

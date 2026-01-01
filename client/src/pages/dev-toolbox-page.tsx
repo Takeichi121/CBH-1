@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { api } from "@shared/routes";
@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Database, Users, FileText, Trash2, Settings, Terminal, 
   RefreshCw, Loader2, Lock, Key, UserCog, Table, Play,
-  ChevronLeft
+  ChevronLeft, Palette
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -57,6 +57,39 @@ export default function DevToolboxPage() {
   // Query executor state
   const [query, setQuery] = useState("SELECT * FROM users LIMIT 10");
   const [queryResult, setQueryResult] = useState<any[]>([]);
+  
+  // UI Builder state
+  const [uiBuilderLoaded, setUiBuilderLoaded] = useState(false);
+  
+  const loadUIBuilder = useCallback(() => {
+    if (uiBuilderLoaded) return;
+    
+    // Check if already loaded
+    if ((window as any).__WTB_LOADED__) {
+      setUiBuilderLoaded(true);
+      // Show the toolbox
+      const wtb = document.getElementById("wtb");
+      if (wtb) wtb.hidden = false;
+      return;
+    }
+    
+    // Load the script
+    const script = document.createElement("script");
+    script.src = "/dev-toolbox.js";
+    script.onload = () => {
+      setUiBuilderLoaded(true);
+      toast({ title: "UI Builder loaded", description: "Use Ctrl/Cmd+Shift+E to toggle" });
+    };
+    script.onerror = () => {
+      toast({ title: "Failed to load UI Builder", variant: "destructive" });
+    };
+    document.body.appendChild(script);
+  }, [uiBuilderLoaded, toast]);
+  
+  const toggleUIBuilder = () => {
+    const wtb = document.getElementById("wtb");
+    if (wtb) wtb.hidden = !wtb.hidden;
+  };
 
   const apiCall = async (endpoint: string, body: Record<string, any>) => {
     const response = await fetch(endpoint, {

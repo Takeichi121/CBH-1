@@ -1064,5 +1064,179 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ==================== Manager Requests ====================
+
+  // Create Manager Request
+  app.post(api.managerRequests.create.path, async (req, res) => {
+    const { token, requestType, requestDate, startTime, endTime, dayOffReason, note } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || (u.role !== "manager" && u.role !== "admin")) {
+      return res.json({ ok: false, message: "Only managers can create requests" });
+    }
+    
+    // Validate required fields
+    if (!requestType || !requestDate) {
+      return res.json({ ok: false, message: "Request type and date are required" });
+    }
+
+    // Check limit for select_work_time (2 per month)
+    if (requestType === "select_work_time") {
+      const dateParts = requestDate.split("-");
+      const year = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]);
+      const count = await storage.getSelectWorkTimeCountForMonth(u.username, year, month);
+      if (count >= 2) {
+        return res.json({ ok: false, message: "คุณเลือกเวลาเข้างานครบ 2 ครั้งแล้วในเดือนนี้" });
+      }
+    }
+
+    try {
+      const now = new Date().toISOString();
+      const request = await storage.createManagerRequest({
+        requestType,
+        requestDate,
+        requestedBy: u.username,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        dayOffReason: dayOffReason || null,
+        note: note || null,
+        status: "pending",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await storage.log("manager_request_create", u.username, `type=${requestType} date=${requestDate}`);
+      res.json({ ok: true, request });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to create request" });
+    }
+  });
+
+  // Get My Requests
+  app.post(api.managerRequests.getMyRequests.path, async (req, res) => {
+    const { token, year, month } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const requests = await storage.getManagerRequestsByUser(session.username, year, month);
+      res.json({ ok: true, requests });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get requests" });
+    }
+  });
+
+  // Get All Requests (Admin/Store Manager only)
+  app.post(api.managerRequests.getAllRequests.path, async (req, res) => {
+    const { token, status } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    // Check if user is Admin or Store Manager
+    const isAdmin = u.role === "admin";
+    const isStoreManager = u.role === "manager" && u.position === "store_manager";
+    if (!isAdmin && !isStoreManager) {
+      return res.json({ ok: false, message: "Only Admin or Store Manager can view all requests" });
+    }
+
+    try {
+      const requests = await storage.getAllManagerRequests(status);
+      res.json({ ok: true, requests });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get requests" });
+    }
+  });
+
+  // Approve Request
+  app.post(api.managerRequests.approve.path, async (req, res) => {
+    const { token, requestId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    const isAdmin = u.role === "admin";
+    const isStoreManager = u.role === "manager" && u.position === "store_manager";
+    if (!isAdmin && !isStoreManager) {
+      return res.json({ ok: false, message: "Only Admin or Store Manager can approve requests" });
+    }
+
+    try {
+      await storage.updateManagerRequestStatus(requestId, "approved", u.username);
+      await storage.log("manager_request_approve", u.username, `requestId=${requestId}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to approve request" });
+    }
+  });
+
+  // Reject Request
+  app.post(api.managerRequests.reject.path, async (req, res) => {
+    const { token, requestId, reason } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    const isAdmin = u.role === "admin";
+    const isStoreManager = u.role === "manager" && u.position === "store_manager";
+    if (!isAdmin && !isStoreManager) {
+      return res.json({ ok: false, message: "Only Admin or Store Manager can reject requests" });
+    }
+
+    try {
+      await storage.updateManagerRequestStatus(requestId, "rejected", u.username, reason);
+      await storage.log("manager_request_reject", u.username, `requestId=${requestId} reason=${reason}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to reject request" });
+    }
+  });
+
+  // Delete Request (own request only, if pending)
+  app.post(api.managerRequests.delete.path, async (req, res) => {
+    const { token, requestId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const request = await storage.getManagerRequest(requestId);
+    if (!request) return res.json({ ok: false, message: "Request not found" });
+    if (request.requestedBy !== session.username) {
+      return res.json({ ok: false, message: "You can only delete your own requests" });
+    }
+    if (request.status !== "pending") {
+      return res.json({ ok: false, message: "Can only delete pending requests" });
+    }
+
+    try {
+      await storage.deleteManagerRequest(requestId);
+      await storage.log("manager_request_delete", session.username, `requestId=${requestId}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to delete request" });
+    }
+  });
+
+  // Get Select Work Time Count for Month
+  app.post(api.managerRequests.getSelectWorkTimeCount.path, async (req, res) => {
+    const { token, year, month } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const count = await storage.getSelectWorkTimeCountForMonth(session.username, year, month);
+      res.json({ ok: true, count });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get count" });
+    }
+  });
+
   return httpServer;
 }

@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget } from "@shared/schema";
-import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, managerRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type ManagerRequest, type InsertManagerRequest } from "@shared/schema";
+import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
 
@@ -87,6 +87,15 @@ export interface IStorage {
   upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget>;
   bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void>;
   getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number>;
+
+  // Manager Requests
+  createManagerRequest(request: InsertManagerRequest): Promise<ManagerRequest>;
+  getManagerRequest(id: number): Promise<ManagerRequest | undefined>;
+  getManagerRequestsByUser(username: string, year?: number, month?: number): Promise<ManagerRequest[]>;
+  getAllManagerRequests(status?: string): Promise<ManagerRequest[]>;
+  updateManagerRequestStatus(id: number, status: string, approvedBy: string, reason?: string): Promise<void>;
+  deleteManagerRequest(id: number): Promise<void>;
+  getSelectWorkTimeCountForMonth(username: string, year: number, month: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -384,6 +393,69 @@ export class DatabaseStorage implements IStorage {
     const targets = await db.select().from(dailyTargets)
       .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate)));
     return targets.reduce((sum, t) => sum + parseFloat(t.targetSales || "0"), 0);
+  }
+
+  // Manager Requests
+  async createManagerRequest(request: InsertManagerRequest): Promise<ManagerRequest> {
+    const [created] = await db.insert(managerRequests).values(request).returning();
+    return created;
+  }
+
+  async getManagerRequest(id: number): Promise<ManagerRequest | undefined> {
+    const [request] = await db.select().from(managerRequests).where(eq(managerRequests.id, id));
+    return request;
+  }
+
+  async getManagerRequestsByUser(username: string, year?: number, month?: number): Promise<ManagerRequest[]> {
+    if (year && month) {
+      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+      return await db.select().from(managerRequests)
+        .where(and(
+          eq(managerRequests.requestedBy, username),
+          like(managerRequests.requestDate, `${monthStr}%`)
+        ))
+        .orderBy(desc(managerRequests.createdAt));
+    }
+    return await db.select().from(managerRequests)
+      .where(eq(managerRequests.requestedBy, username))
+      .orderBy(desc(managerRequests.createdAt));
+  }
+
+  async getAllManagerRequests(status?: string): Promise<ManagerRequest[]> {
+    if (status) {
+      return await db.select().from(managerRequests)
+        .where(eq(managerRequests.status, status))
+        .orderBy(desc(managerRequests.createdAt));
+    }
+    return await db.select().from(managerRequests)
+      .orderBy(desc(managerRequests.createdAt));
+  }
+
+  async updateManagerRequestStatus(id: number, status: string, approvedBy: string, reason?: string): Promise<void> {
+    await db.update(managerRequests)
+      .set({
+        status,
+        approvedBy,
+        approvedAt: new Date().toISOString(),
+        rejectionReason: reason || null,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(managerRequests.id, id));
+  }
+
+  async deleteManagerRequest(id: number): Promise<void> {
+    await db.delete(managerRequests).where(eq(managerRequests.id, id));
+  }
+
+  async getSelectWorkTimeCountForMonth(username: string, year: number, month: number): Promise<number> {
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    const requests = await db.select().from(managerRequests)
+      .where(and(
+        eq(managerRequests.requestedBy, username),
+        eq(managerRequests.requestType, "select_work_time"),
+        like(managerRequests.requestDate, `${monthStr}%`)
+      ));
+    return requests.length;
   }
 }
 

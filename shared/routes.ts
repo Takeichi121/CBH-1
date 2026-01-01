@@ -336,4 +336,70 @@ export const api = {
       },
     },
   },
+  managerRequests: {
+    create: {
+      method: "POST",
+      path: "/api/managerRequests/create",
+      input: z.object({
+        token: z.string(),
+        requestType: z.string(),
+        requestDate: z.string(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        dayOffReason: z.string().optional(),
+        note: z.string().optional(),
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), request: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    getMyRequests: {
+      method: "POST",
+      path: "/api/managerRequests/my",
+      input: z.object({ token: z.string(), year: z.number().optional(), month: z.number().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), requests: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    getAllRequests: {
+      method: "POST",
+      path: "/api/managerRequests/all",
+      input: z.object({ token: z.string(), status: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), requests: z.array(z.any()).optional(), message: z.string().optional() }),
+      },
+    },
+    approve: {
+      method: "POST",
+      path: "/api/managerRequests/approve",
+      input: z.object({ token: z.string(), requestId: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    reject: {
+      method: "POST",
+      path: "/api/managerRequests/reject",
+      input: z.object({ token: z.string(), requestId: z.number(), reason: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    delete: {
+      method: "POST",
+      path: "/api/managerRequests/delete",
+      input: z.object({ token: z.string(), requestId: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    getSelectWorkTimeCount: {
+      method: "POST",
+      path: "/api/managerRequests/selectWorkTimeCount",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), count: z.number().optional(), message: z.string().optional() }),
+      },
+    },
+  },
 };

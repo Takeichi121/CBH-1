@@ -3,6 +3,21 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 
+// Chat tables for OpenAI integration
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 // Manager position levels
 export const managerPositions = [
   "store_manager",
@@ -182,6 +197,69 @@ export const storeSettings = pgTable("store_settings", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Manager Request Types
+export const managerRequestTypes = [
+  "select_work_time",    // เลือกเวลาเข้างาน (จำกัด 2 ครั้ง/เดือน)
+  "day_off",             // ขอวันหยุด
+  "compensate_leave",    // ขอใช้วัน COM
+  "annual_leave",        // ลาพักร้อน
+  "without_pay",         // ลาไม่รับค่าจ้าง
+] as const;
+
+export type ManagerRequestType = typeof managerRequestTypes[number];
+
+export const managerRequestTypeLabels: Record<ManagerRequestType, { en: string; th: string }> = {
+  select_work_time: { en: "Select Work Time", th: "เลือกเวลาเข้างาน" },
+  day_off: { en: "Day Off", th: "ขอวันหยุด" },
+  compensate_leave: { en: "Compensate Leave (COM)", th: "ลาชดเชย (COM)" },
+  annual_leave: { en: "Annual Leave", th: "ลาพักร้อน" },
+  without_pay: { en: "Without Pay", th: "ลาไม่รับค่าจ้าง" },
+};
+
+// Day off reason options
+export const dayOffReasons = [
+  "doctor_appointment",  // ไปหาหมอ
+  "personal",            // ธุระส่วนตัว
+  "family",              // ธุระครอบครัว
+  "other",               // อื่นๆ
+] as const;
+
+export type DayOffReason = typeof dayOffReasons[number];
+
+export const dayOffReasonLabels: Record<DayOffReason, { en: string; th: string }> = {
+  doctor_appointment: { en: "Doctor Appointment", th: "ไปหาหมอ" },
+  personal: { en: "Personal Business", th: "ธุระส่วนตัว" },
+  family: { en: "Family Business", th: "ธุระครอบครัว" },
+  other: { en: "Other", th: "อื่นๆ" },
+};
+
+// Manager Requests Table
+export const managerRequests = pgTable("manager_requests", {
+  id: serial("id").primaryKey(),
+  requestType: text("request_type").notNull(), // select_work_time, day_off, compensate_leave, annual_leave, without_pay
+  requestDate: text("request_date").notNull(), // YYYY-MM-DD - วันที่ขอ
+  requestedBy: text("requested_by").notNull(), // username ของผู้ขอ
+  
+  // สำหรับ select_work_time
+  startTime: text("start_time"), // เวลาเริ่ม (HH:MM)
+  endTime: text("end_time"),     // เวลาเลิก (HH:MM)
+  
+  // สำหรับ day_off
+  dayOffReason: text("day_off_reason"), // doctor_appointment, personal, family, other
+  
+  // หมายเหตุทั่วไป
+  note: text("note"),
+  
+  // สถานะ
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  approvedBy: text("approved_by"),
+  approvedAt: text("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 // Daily Targets (per day target values like Excel table)
 export const dailyTargets = pgTable("daily_targets", {
   id: serial("id").primaryKey(),
@@ -204,6 +282,7 @@ export const insertSwapRequestSchema = createInsertSchema(swapRequests);
 export const insertDailySalesSchema = createInsertSchema(dailySalesReports).omit({ id: true });
 export const insertStoreSettingsSchema = createInsertSchema(storeSettings).omit({ id: true });
 export const insertDailyTargetSchema = createInsertSchema(dailyTargets).omit({ id: true });
+export const insertManagerRequestSchema = createInsertSchema(managerRequests).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
@@ -221,3 +300,5 @@ export type SwapRequest = typeof swapRequests.$inferSelect;
 export type DailySalesReport = typeof dailySalesReports.$inferSelect;
 export type StoreSettings = typeof storeSettings.$inferSelect;
 export type DailyTarget = typeof dailyTargets.$inferSelect;
+export type ManagerRequest = typeof managerRequests.$inferSelect;
+export type InsertManagerRequest = z.infer<typeof insertManagerRequestSchema>;

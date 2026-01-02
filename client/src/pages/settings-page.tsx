@@ -80,6 +80,10 @@ export default function SettingsPage() {
     updateSettings(payload);
   };
 
+  const handleRefreshConfig = () => {
+    window.location.reload();
+  };
+
   const onProfileSubmit = async (values: any) => {
     setIsProfileUpdating(true);
     try {
@@ -343,10 +347,20 @@ export default function SettingsPage() {
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Settings className="w-5 h-5 text-primary" />
               </div>
-              <div>
+              <div className="flex-1">
                 <CardTitle>Manager Settings</CardTitle>
                 <CardDescription>Configure shift capacity limits</CardDescription>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleRefreshConfig}
+                data-testid="button-load-config"
+              >
+                <Loader2 className={`h-4 w-4 ${settingsLoading ? "animate-spin" : ""}`} />
+                {language === "th" ? "โหลดการตั้งค่า" : "Load Config"}
+              </Button>
             </CardHeader>
             <CardContent>
               {settingsLoading ? (

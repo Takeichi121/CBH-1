@@ -1176,9 +1176,14 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <Trash2 className="w-4 h-4" />
                   {t.clearForm}
                 </Button>
-                <Button type="submit" variant="default" className="gap-2" data-testid="button-save-report">
+                <Button 
+                  type="button" 
+                  onClick={handleSaveReport} 
+                  className="gap-2 bg-green-600 hover:bg-green-700 text-white" 
+                  data-testid="button-save-report"
+                >
                   <Save className="w-4 h-4" />
-                  {t.saveReport}
+                  {language === 'th' ? "บันทึกลงฐานข้อมูล" : "Save to DB"}
                 </Button>
                 <Button type="button" onClick={handleCopyReport} className="gap-2 flex-1 sm:flex-none" data-testid="button-copy-report">
                   <Copy className="w-4 h-4" />

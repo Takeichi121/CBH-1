@@ -124,6 +124,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     variant="outline"
                     className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-destructive/10 hover:bg-destructive/5 text-destructive"
                     onClick={() => logoutMutation.mutate()}
+                    data-testid="button-logout-mobile"
                   >
                     <LogOut className="w-5 h-5" />
                     <span className="text-[10px] font-bold">{t("logout")}</span>
@@ -202,7 +203,11 @@ export function Layout({ children }: { children: ReactNode }) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive focus:text-destructive cursor-pointer">
+              <DropdownMenuItem 
+                onClick={() => logoutMutation.mutate()} 
+                className="text-destructive focus:text-destructive cursor-pointer"
+                data-testid="button-logout-desktop"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>{t("logout")}</span>
               </DropdownMenuItem>

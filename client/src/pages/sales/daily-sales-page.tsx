@@ -310,6 +310,24 @@ export default function DailySalesPage() {
     loadDailyTargetAndMtd();
   }, [reportDate, defaultDailyTarget]);
 
+  const handleSaveReport = async () => {
+    try {
+      const values = form.getValues();
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/createReport", { token, report: values });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: language === "th" ? "บันทึกสำเร็จ" : "Saved successfully" });
+        clearData();
+        markAsSaved();
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.message || "Failed to save" });
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
+  };
+
   if (!isManager) {
     return (
       <SalesLayout>

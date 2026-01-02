@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 
@@ -45,6 +45,10 @@ export default function AdminPage() {
     },
     enabled: user?.role !== "staff",
   });
+
+  const handleRefreshConfig = () => {
+    refetch();
+  };
 
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
@@ -247,10 +251,20 @@ export default function AdminPage() {
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
             <Shield className="w-6 h-6 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-2xl font-bold text-foreground">{labels.title}</h2>
             <p className="text-muted-foreground text-sm">{labels.subtitle}</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleRefreshConfig}
+            data-testid="button-load-config"
+          >
+            <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            {language === "th" ? "โหลดข้อมูล" : "Load Data"}
+          </Button>
         </div>
 
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

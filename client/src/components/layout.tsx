@@ -126,7 +126,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     onClick={() => logoutMutation.mutate()}
                   >
                     <LogOut className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">Log out</span>
+                    <span className="text-[10px] font-bold">{t("logout")}</span>
                   </Button>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive focus:text-destructive cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>{t("logout")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

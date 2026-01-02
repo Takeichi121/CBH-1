@@ -41,7 +41,9 @@ export default function AdminPage() {
     queryFn: async () => {
       const token = localStorage.getItem("bk_token") || "";
       const res = await apiRequest("POST", "/api/admin/getUsers", { token });
-      return res.json();
+      const json = await res.json();
+      console.log("Admin API response:", json);
+      return json;
     },
     enabled: user?.role !== "staff",
   });

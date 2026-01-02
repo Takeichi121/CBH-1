@@ -44,6 +44,7 @@ export default function AdminPage() {
       return res.json();
     },
     enabled: user?.role !== "staff",
+    staleTime: 0, // Ensure we always get fresh data
   });
 
   const handleRefreshConfig = () => {

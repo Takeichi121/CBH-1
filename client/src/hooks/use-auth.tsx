@@ -204,6 +204,7 @@ function useLogoutMutation(
 }
 
 function useRegisterStaffMutation(toast: any) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: z.infer<typeof api.auth.registerStaff.input>) => {
       const res = await fetch(api.auth.registerStaff.path, {
@@ -216,6 +217,7 @@ function useRegisterStaffMutation(toast: any) {
     onSuccess: (data) => {
       if (data.ok) {
         toast({ title: "Registration Successful", description: `Account created: ${data.username}` });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/getUsers"] });
       } else {
         toast({ variant: "destructive", title: "Registration Failed", description: data.message });
       }
@@ -224,6 +226,7 @@ function useRegisterStaffMutation(toast: any) {
 }
 
 function useRegisterManagerMutation(toast: any) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: z.infer<typeof api.auth.registerManager.input>) => {
       const res = await fetch(api.auth.registerManager.path, {
@@ -236,6 +239,7 @@ function useRegisterManagerMutation(toast: any) {
     onSuccess: (data) => {
       if (data.ok) {
         toast({ title: "Manager Account Created", description: `Welcome, ${data.username}!` });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/getUsers"] });
       } else {
         toast({ variant: "destructive", title: "Registration Failed", description: data.message });
       }

@@ -147,25 +147,26 @@ const MANAGER_NAMES = [
 ] as const;
 
 const SHIFT_OPTIONS = [
-  { value: "Open", label: "07:00-16:00" },
-  { value: "Swing", label: "09:00-18:00" },
-  { value: "Swing1", label: "10:00-19:00" },
-  { value: "Lunch", label: "13:00-22:00" },
-  { value: "Dinner", label: "15:00-00:00" },
-  { value: "Close", label: "19:00-04:00" },
-  { value: "Late Night", label: "22:00-07:00" },
+  { value: "07:00-16:00", label: "07:00-16:00" },
+  { value: "09:00-18:00", label: "09:00-18:00" },
+  { value: "10:00-19:00", label: "10:00-19:00" },
+  { value: "13:00-22:00", label: "13:00-22:00" },
+  { value: "15:00-00:00", label: "15:00-00:00" },
+  { value: "19:00-04:00", label: "19:00-04:00" },
+  { value: "22:00-07:00", label: "22:00-07:00" },
   { value: "OFF", label: "OFF" },
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
 ] as const;
 
 const STAFF_SHIFT_GROUPS = [
-  { value: "Open", label: "07:00-16:00" },
-  { value: "Swing", label: "09:00-18:00" },
-  { value: "Lunch", label: "13:00-22:00" },
-  { value: "Dinner", label: "15:00-00:00" },
-  { value: "Close", label: "19:00-04:00" },
-  { value: "Late Night", label: "22:00-07:00" },
+  { value: "07:00-16:00", label: "07:00-16:00" },
+  { value: "09:00-18:00", label: "09:00-18:00" },
+  { value: "10:00-19:00", label: "10:00-19:00" },
+  { value: "13:00-22:00", label: "13:00-22:00" },
+  { value: "15:00-00:00", label: "15:00-00:00" },
+  { value: "19:00-04:00", label: "19:00-04:00" },
+  { value: "22:00-07:00", label: "22:00-07:00" },
 ] as const;
 
 type FormData = z.infer<typeof formSchema>;

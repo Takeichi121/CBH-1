@@ -147,24 +147,24 @@ const MANAGER_NAMES = [
 ] as const;
 
 const SHIFT_OPTIONS = [
-  { value: "Open", label: "Open" },
-  { value: "Swing", label: "Swing" },
-  { value: "Lunch", label: "Lunch" },
-  { value: "Dinner", label: "Dinner" },
-  { value: "Close", label: "Close" },
-  { value: "Late Night", label: "Late Night" },
+  { value: "Open", label: "06:00-15:00" },
+  { value: "Swing", label: "09:00-18:00" },
+  { value: "Lunch", label: "10:00-14:00" },
+  { value: "Dinner", label: "14:00-23:00" },
+  { value: "Close", label: "15:00-24:00" },
+  { value: "Late Night", label: "18:00-03:00" },
   { value: "OFF", label: "OFF" },
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
 ] as const;
 
 const STAFF_SHIFT_GROUPS = [
-  { value: "Open", label: "Open" },
-  { value: "Swing", label: "Swing" },
-  { value: "Lunch", label: "Lunch" },
-  { value: "Dinner", label: "Dinner" },
-  { value: "Close", label: "Close" },
-  { value: "Late Night", label: "Late Night" },
+  { value: "Open", label: "06:00-15:00" },
+  { value: "Swing", label: "09:00-18:00" },
+  { value: "Lunch", label: "10:00-14:00" },
+  { value: "Dinner", label: "14:00-23:00" },
+  { value: "Close", label: "15:00-24:00" },
+  { value: "Late Night", label: "18:00-03:00" },
 ] as const;
 
 type FormData = z.infer<typeof formSchema>;

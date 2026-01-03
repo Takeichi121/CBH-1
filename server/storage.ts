@@ -362,8 +362,10 @@ export class DatabaseStorage implements IStorage {
       mtdActual += parseFloat(report.actualSales || "0");
       mtdTc += parseFloat(report.transactionCount || "0");
       mtdTarget += parseFloat(report.dailyTarget || "0");
-      wasteMtdTotal += parseFloat(report.wasteDailyTotal || "0");
-      wasteMealMtd += parseFloat(report.wasteMealDaily || "0");
+      const rawDaily = parseFloat(report.wasteRawDaily || "0");
+      const mealDaily = parseFloat(report.wasteMealDaily || "0");
+      wasteMtdTotal += rawDaily + mealDaily;
+      wasteMealMtd += mealDaily;
     }
     
     return { mtdActual, mtdTc, mtdTarget, reportCount: reports.length, wasteMtdTotal, wasteMealMtd };

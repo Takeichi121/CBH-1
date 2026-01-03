@@ -245,6 +245,10 @@ export default function DailySalesPage() {
   const saveToServer = useCallback(async (values: FormData) => {
     if (!values.reportDate || !values.reportBy) return;
     
+    const wasteDailyTotalNum = parseFloat(values.wasteDailyTotal?.replace(/,/g, '') || "0");
+    const wasteMealDailyNum = parseFloat(values.wasteMealDaily?.replace(/,/g, '') || "0");
+    const wasteRawDailyNum = wasteDailyTotalNum - wasteMealDailyNum;
+    
     const cleanedReport = {
       ...values,
       actualSales: values.actualSales?.replace(/,/g, '') || "0",
@@ -262,7 +266,7 @@ export default function DailySalesPage() {
       mtdActual: values.mtdActual?.replace(/,/g, '') || "0",
       mtdTc: values.mtdTc?.replace(/,/g, '') || "0",
       voidAmount: values.voidAmount?.replace(/,/g, '') || "0",
-      wasteDailyTotal: values.wasteDailyTotal?.replace(/,/g, '') || "0",
+      wasteRawDaily: wasteRawDailyNum.toString(),
       wasteMealDaily: values.wasteMealDaily?.replace(/,/g, '') || "0",
       wasteMtdTotal: values.wasteMtdTotal?.replace(/,/g, '') || "0",
       wasteMealMtd: values.wasteMealMtd?.replace(/,/g, '') || "0",
@@ -472,7 +476,11 @@ export default function DailySalesPage() {
           form.setValue("vMealPercent", r.vMealPercent || "0");
           form.setValue("upSizeCount", r.upSizeCount || "0");
           form.setValue("upSizePercent", r.upSizePercent || "0");
-          form.setValue("wasteDailyTotal", r.wasteDailyTotal || "0");
+          
+          const loadedWasteRawDaily = parseFloat(r.wasteRawDaily || "0");
+          const loadedWasteMealDaily = parseFloat(r.wasteMealDaily || "0");
+          const calculatedWasteDailyTotal = loadedWasteRawDaily + loadedWasteMealDaily;
+          form.setValue("wasteDailyTotal", calculatedWasteDailyTotal.toString());
           form.setValue("wasteMealDaily", r.wasteMealDaily || "0");
           form.setValue("wasteMtdTotal", r.wasteMtdTotal || "0");
           form.setValue("wasteMealMtd", r.wasteMealMtd || "0");
@@ -559,7 +567,17 @@ export default function DailySalesPage() {
     try {
       const values = form.getValues();
       const token = localStorage.getItem("bk_token");
-      const res = await apiRequest("POST", "/api/sales/createReport", { token, report: values });
+      
+      const wasteDailyTotalNum = parseFloat(values.wasteDailyTotal?.replace(/,/g, '') || "0");
+      const wasteMealDailyNum = parseFloat(values.wasteMealDaily?.replace(/,/g, '') || "0");
+      const wasteRawDailyNum = wasteDailyTotalNum - wasteMealDailyNum;
+      
+      const reportToSave = {
+        ...values,
+        wasteRawDaily: wasteRawDailyNum.toString(),
+      };
+      
+      const res = await apiRequest("POST", "/api/sales/createReport", { token, report: reportToSave });
       const result = await res.json();
       if (result.ok) {
         toast({ title: language === "th" ? "บันทึกสำเร็จ" : "Saved successfully" });

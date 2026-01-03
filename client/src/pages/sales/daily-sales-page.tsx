@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CheckCircle, Save, Trash2, Copy, Calculator, BarChart3, Loader2 } from "lucide-react";
+import { CheckCircle, Save, Trash2, Copy, Calculator, BarChart3, Loader2, Plus, X } from "lucide-react";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useToast } from "@/hooks/use-toast";
@@ -131,7 +131,41 @@ const formSchema = z.object({
   managerRosterDate: z.string().default(""),
   managerRosterText: z.string().default(""),
   staffRosterText: z.string().default(""),
+  managerPhongsathon: z.string().default(""),
+  managerNuttarika: z.string().default(""),
+  managerBoonyisa: z.string().default(""),
+  managerChanon: z.string().default(""),
+  managerWashiraphan: z.string().default(""),
 });
+
+const MANAGER_NAMES = [
+  { key: "managerPhongsathon", name: "Phongsathon" },
+  { key: "managerNuttarika", name: "Nuttarika" },
+  { key: "managerBoonyisa", name: "Boonyisa" },
+  { key: "managerChanon", name: "Chanon" },
+  { key: "managerWashiraphan", name: "Washiraphan" },
+] as const;
+
+const SHIFT_OPTIONS = [
+  { value: "Open", label: "Open" },
+  { value: "Swing", label: "Swing" },
+  { value: "Lunch", label: "Lunch" },
+  { value: "Dinner", label: "Dinner" },
+  { value: "Close", label: "Close" },
+  { value: "Late", label: "Late Night" },
+  { value: "OFF", label: "OFF" },
+  { value: "COM", label: "COM" },
+  { value: "Vacation", label: "Vacation" },
+] as const;
+
+const STAFF_SHIFT_GROUPS = [
+  { value: "Open", label: "Open" },
+  { value: "Swing", label: "Swing" },
+  { value: "Lunch", label: "Lunch" },
+  { value: "Dinner", label: "Dinner" },
+  { value: "Close", label: "Close" },
+  { value: "Late", label: "Late Night" },
+] as const;
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -187,8 +221,18 @@ export default function DailySalesPage() {
       managerRosterDate: "",
       managerRosterText: "",
       staffRosterText: "",
+      managerPhongsathon: "",
+      managerNuttarika: "",
+      managerBoonyisa: "",
+      managerChanon: "",
+      managerWashiraphan: "",
     }
   });
+
+  const [staffList, setStaffList] = useState<Array<{username: string, nickName?: string, fullName?: string}>>([]);
+  const [staffRosterEntries, setStaffRosterEntries] = useState<Array<{shiftGroup: string, staffName: string}>>([
+    { shiftGroup: "", staffName: "" }
+  ]);
 
   const { saveData, restoreData, clearData, hasDraft } = useFormPersistence<FormData>('daily-sales-form');
   const { hasUnsavedChanges, markAsChanged, markAsSaved } = useUnsavedChanges();
@@ -289,7 +333,7 @@ export default function DailySalesPage() {
   // State for default target from settings
   const [defaultDailyTarget, setDefaultDailyTarget] = useState("250000");
 
-  // Load store settings on mount (for default target fallback)
+  // Load store settings and staff list on mount
   useEffect(() => {
     const loadStoreSettings = async () => {
       try {
@@ -303,8 +347,62 @@ export default function DailySalesPage() {
         console.error("Failed to load store settings:", error);
       }
     };
+    const loadStaffList = async () => {
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/admin/getUsers", { token });
+        const data = await res.json();
+        if (data.ok && data.users) {
+          const activeStaff = data.users.filter((u: any) => u.active === 1 && u.role === "staff");
+          setStaffList(activeStaff);
+        }
+      } catch (error) {
+        console.error("Failed to load staff list:", error);
+      }
+    };
     loadStoreSettings();
+    loadStaffList();
   }, []);
+
+  // Update staffRosterText when entries change
+  useEffect(() => {
+    const text = staffRosterEntries
+      .filter(e => e.shiftGroup && e.staffName)
+      .map(e => `${e.shiftGroup} | ${e.staffName}`)
+      .join('\n');
+    form.setValue("staffRosterText", text);
+  }, [staffRosterEntries]);
+
+  // Update managerRosterText when manager shifts change
+  const managerPhongsathon = form.watch("managerPhongsathon");
+  const managerNuttarika = form.watch("managerNuttarika");
+  const managerBoonyisa = form.watch("managerBoonyisa");
+  const managerChanon = form.watch("managerChanon");
+  const managerWashiraphan = form.watch("managerWashiraphan");
+
+  useEffect(() => {
+    const lines = [];
+    if (managerPhongsathon) lines.push(`Phongsathon: ${managerPhongsathon}`);
+    if (managerNuttarika) lines.push(`Nuttarika: ${managerNuttarika}`);
+    if (managerBoonyisa) lines.push(`Boonyisa: ${managerBoonyisa}`);
+    if (managerChanon) lines.push(`Chanon: ${managerChanon}`);
+    if (managerWashiraphan) lines.push(`Washiraphan: ${managerWashiraphan}`);
+    form.setValue("managerRosterText", lines.join('\n'));
+  }, [managerPhongsathon, managerNuttarika, managerBoonyisa, managerChanon, managerWashiraphan]);
+
+  const addStaffEntry = () => {
+    setStaffRosterEntries([...staffRosterEntries, { shiftGroup: "", staffName: "" }]);
+  };
+
+  const removeStaffEntry = (index: number) => {
+    setStaffRosterEntries(staffRosterEntries.filter((_, i) => i !== index));
+  };
+
+  const updateStaffEntry = (index: number, field: "shiftGroup" | "staffName", value: string) => {
+    const updated = [...staffRosterEntries];
+    updated[index][field] = value;
+    setStaffRosterEntries(updated);
+  };
 
   // Load daily target, MTD summary, and existing report when date changes
   const reportDate = form.watch("reportDate");
@@ -1235,36 +1333,85 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
 
               <div className="bg-teal-50 dark:bg-teal-950/30 p-3 md:p-4 rounded-lg">
                 <h3 className="text-sm md:text-base font-medium mb-3">{t.roster}</h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <FormField control={form.control} name="managerRosterDate" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">{t.managerRosterDate}</FormLabel>
                       <FormControl><Input type="date" className="text-sm" {...field} /></FormControl>
                     </FormItem>
                   )} />
+                  
+                  <div>
+                    <FormLabel className="text-xs mb-2 block">{t.managerRoster}</FormLabel>
+                    <div className="space-y-2">
+                      {MANAGER_NAMES.map((manager) => (
+                        <div key={manager.key} className="flex items-center gap-2">
+                          <span className="text-sm min-w-[100px]">{manager.name}:</span>
+                          <FormField control={form.control} name={manager.key as keyof FormData} render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger className="flex-1 text-sm" data-testid={`select-${manager.key}`}>
+                                <SelectValue placeholder={language === 'th' ? "เลือกกะ" : "Select shift"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SHIFT_OPTIONS.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <FormLabel className="text-xs">{t.staffRoster}</FormLabel>
+                      <Button type="button" size="sm" variant="outline" onClick={addStaffEntry} className="gap-1" data-testid="button-add-staff-entry">
+                        <Plus className="w-3 h-3" />
+                        {language === 'th' ? "เพิ่ม" : "Add"}
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {staffRosterEntries.map((entry, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Select value={entry.shiftGroup} onValueChange={(v) => updateStaffEntry(index, "shiftGroup", v)}>
+                            <SelectTrigger className="w-[100px] text-sm" data-testid={`select-staff-shift-${index}`}>
+                              <SelectValue placeholder={language === 'th' ? "กลุ่มกะ" : "Shift"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STAFF_SHIFT_GROUPS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={entry.staffName} onValueChange={(v) => updateStaffEntry(index, "staffName", v)}>
+                            <SelectTrigger className="flex-1 text-sm" data-testid={`select-staff-name-${index}`}>
+                              <SelectValue placeholder={language === 'th' ? "เลือกพนักงาน" : "Select staff"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {staffList.map((staff) => (
+                                <SelectItem key={staff.username} value={staff.nickName || staff.fullName || staff.username}>
+                                  {staff.nickName || staff.fullName || staff.username}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {staffRosterEntries.length > 1 && (
+                            <Button type="button" size="icon" variant="ghost" onClick={() => removeStaffEntry(index)} data-testid={`button-remove-staff-${index}`}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <FormField control={form.control} name="managerRosterText" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{t.managerRoster} (Name:Group Shift | Time/OFF,COM,Vacation)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Name:Group Shift | Time/OFF,COM,Vacation" 
-                          className="text-sm min-h-[80px]" 
-                          {...field} 
-                        />
-                      </FormControl>
-                    </FormItem>
+                    <input type="hidden" {...field} />
                   )} />
                   <FormField control={form.control} name="staffRosterText" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{t.staffRoster} (Group Shift | Time: Name)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Group Shift | Time: Name" 
-                          className="text-sm min-h-[80px]" 
-                          {...field} 
-                        />
-                      </FormControl>
-                    </FormItem>
+                    <input type="hidden" {...field} />
                   )} />
                 </div>
               </div>

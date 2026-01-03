@@ -15,8 +15,9 @@ const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // Ping
-  app.post(api.system.ping.path, (req, res) => {
-    res.json({ ok: true, ts: new Date().toISOString(), closed: isSystemClosed(), branch: process.env.BRANCH_NAME || "Grand Diamond" });
+  app.post(api.system.ping.path, async (req, res) => {
+    const cfg = await storage.getConfig();
+    res.json({ ok: true, ts: new Date().toISOString(), closed: isSystemClosed(cfg), branch: process.env.BRANCH_NAME || "Grand Diamond" });
   });
 
   // Setup
@@ -244,8 +245,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false });
 
+    const cfg = await storage.getConfig();
     const isManager = u.role === "admin" || u.role === "manager";
-    if (!isManager && isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
+    if (!isManager && isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ (System maintenance in progress)" });
 
     // Validate
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.json({ ok: false, message: "Date invalid" });
@@ -261,7 +263,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     // Capacity check
     const shiftsOnDate = await storage.getShiftsInRange(date, date);
     const count = shiftsOnDate.filter(s => s.shiftGroup === shiftGroup).length;
-    const cfg = await storage.getConfig();
     const cap = Number(cfg["cap_" + shiftGroup] || DEFAULT_CAPACITY[shiftGroup as keyof typeof DEFAULT_CAPACITY]);
 
     // Check if user already has shift on this date
@@ -292,8 +293,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false });
 
+    const cfg = await storage.getConfig();
     const isManager = u.role === "admin" || u.role === "manager";
-    if (!isManager && isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
+    if (!isManager && isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ (System maintenance in progress)" });
 
     await storage.deleteShift(u.username, date);
     await storage.log("cancel_shift", u.username, date);

@@ -30,8 +30,95 @@ export async function allocateUsername(base6: string, checkExists: (u: string) =
   return "";
 }
 
-export function isSystemClosed(): boolean {
-  // System is now open 24/7 for all users
+// Maintenance window configuration
+export interface MaintenanceWindow {
+  enabled: boolean;
+  startDay: number;  // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  startTime: string; // HH:MM format
+  endDay: number;    // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  endTime: string;   // HH:MM format
+}
+
+export const DEFAULT_MAINTENANCE_WINDOW: MaintenanceWindow = {
+  enabled: false,
+  startDay: 2,      // Tuesday
+  startTime: "12:00",
+  endDay: 3,        // Wednesday
+  endTime: "00:00"
+};
+
+export function isSystemClosed(config?: Record<string, string>): boolean {
+  if (!config) return false;
+  
+  const enabled = config["maintenance_enabled"] === "true";
+  if (!enabled) return false;
+  
+  const startDay = Number(config["maintenance_start_day"] ?? DEFAULT_MAINTENANCE_WINDOW.startDay);
+  const startTime = config["maintenance_start_time"] ?? DEFAULT_MAINTENANCE_WINDOW.startTime;
+  const endDay = Number(config["maintenance_end_day"] ?? DEFAULT_MAINTENANCE_WINDOW.endDay);
+  const endTime = config["maintenance_end_time"] ?? DEFAULT_MAINTENANCE_WINDOW.endTime;
+  
+  return isInMaintenanceWindow(startDay, startTime, endDay, endTime);
+}
+
+function isInMaintenanceWindow(startDay: number, startTime: string, endDay: number, endTime: string): boolean {
+  // Get current time in Thailand timezone (UTC+7)
+  const now = new Date();
+  const thailandOffset = 7 * 60; // Thailand is UTC+7
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const thailandMinutes = utcMinutes + thailandOffset;
+  
+  // Calculate Thailand day/time
+  let thailandDay = now.getUTCDay();
+  let adjustedMinutes = thailandMinutes;
+  
+  if (thailandMinutes >= 24 * 60) {
+    adjustedMinutes = thailandMinutes - 24 * 60;
+    thailandDay = (thailandDay + 1) % 7;
+  } else if (thailandMinutes < 0) {
+    adjustedMinutes = thailandMinutes + 24 * 60;
+    thailandDay = (thailandDay + 6) % 7;
+  }
+  
+  const currentHour = Math.floor(adjustedMinutes / 60);
+  const currentMinute = adjustedMinutes % 60;
+  const currentTimeMinutes = currentHour * 60 + currentMinute;
+  
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  
+  // Check if current time is within maintenance window
+  if (startDay === endDay) {
+    // Same day maintenance
+    if (thailandDay === startDay && currentTimeMinutes >= startMinutes && currentTimeMinutes < endMinutes) {
+      return true;
+    }
+  } else if (startDay < endDay) {
+    // Multi-day within same week (e.g., Tue to Wed)
+    if (thailandDay === startDay && currentTimeMinutes >= startMinutes) {
+      return true;
+    }
+    if (thailandDay === endDay && currentTimeMinutes < endMinutes) {
+      return true;
+    }
+    if (thailandDay > startDay && thailandDay < endDay) {
+      return true;
+    }
+  } else {
+    // Spans week boundary (e.g., Sat to Mon)
+    if (thailandDay === startDay && currentTimeMinutes >= startMinutes) {
+      return true;
+    }
+    if (thailandDay === endDay && currentTimeMinutes < endMinutes) {
+      return true;
+    }
+    if (thailandDay > startDay || thailandDay < endDay) {
+      return true;
+    }
+  }
+  
   return false;
 }
 

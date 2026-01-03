@@ -336,8 +336,10 @@ export default function WorkPage() {
                                 <div 
                                   className={`h-9 w-full rounded p-0.5 border shadow-sm flex flex-col justify-center items-center cursor-pointer hover:brightness-95 transition-all
                                     ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                      shift.shiftGroup === 'swing' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
                                       shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                       shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                      shift.shiftGroup === 'close' ? 'bg-pink-100 text-pink-700 border-pink-200' :
                                       shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
                                       'bg-slate-100 text-slate-700 border-slate-200'}`}
                                   onClick={() => {
@@ -387,8 +389,10 @@ export default function WorkPage() {
                                     return showAll7Days ? (
                                       <div className={`h-14 w-full rounded p-0.5 border flex flex-col justify-center items-center gap-0
                                         ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                          s.shiftGroup === 'swing' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
                                           s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                           s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                          s.shiftGroup === 'close' ? 'bg-pink-50 text-pink-600 border-pink-100' :
                                           s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                         <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
@@ -398,8 +402,10 @@ export default function WorkPage() {
                                     ) : (
                                       <div className={`h-8 w-full rounded p-0.5 border flex flex-col justify-center items-center gap-0
                                         ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                          s.shiftGroup === 'swing' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
                                           s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                           s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                          s.shiftGroup === 'close' ? 'bg-pink-50 text-pink-600 border-pink-100' :
                                           s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                         <span className="text-[6px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>

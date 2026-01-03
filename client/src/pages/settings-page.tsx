@@ -368,7 +368,7 @@ export default function SettingsPage() {
               ) : (
                 <form onSubmit={capacityForm.handleSubmit(onCapacitySubmit)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    {["open", "lunch", "dinner", "late"].map((key) => (
+                    {["open", "swing", "lunch", "dinner", "close", "late"].map((key) => (
                       <div key={key} className="space-y-2">
                         <Label className="capitalize">{t(key as any) || key}</Label>
                         <Input

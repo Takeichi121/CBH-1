@@ -1508,5 +1508,112 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Bulk Import Users
+  app.post(api.devTools.bulkImportUsers.path, async (req, res) => {
+    const { token, devCode, users: inputUsers } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    if (!Array.isArray(inputUsers) || inputUsers.length === 0) {
+      return res.json({ ok: false, message: "No users provided" });
+    }
+
+    let imported = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    const validRoles = ["staff", "manager", "admin"];
+
+    for (const u of inputUsers) {
+      try {
+        if (!u.username || !u.password) {
+          errors.push(`Missing username or password for entry`);
+          failed++;
+          continue;
+        }
+        
+        const username = u.username.toLowerCase().trim();
+        if (!/^[a-z0-9._-]+$/.test(username)) {
+          errors.push(`Invalid username format: ${u.username}`);
+          failed++;
+          continue;
+        }
+        
+        // Check if user exists
+        const existing = await storage.getUser(username);
+        if (existing) {
+          errors.push(`User ${username} already exists`);
+          failed++;
+          continue;
+        }
+        
+        const role = validRoles.includes(u.role) ? u.role : "staff";
+        
+        await storage.createUser({
+          username,
+          passhash: hashPass(u.password),
+          role,
+          fullName: typeof u.fullName === "string" ? u.fullName.trim() : null,
+          nickName: typeof u.nickName === "string" ? u.nickName.trim() : null,
+          phone: typeof u.phone === "string" ? u.phone.trim() : null,
+          email: typeof u.email === "string" ? u.email.trim() : null,
+          active: 1,
+          mustChangePassword: 1,
+          createdAt: new Date().toISOString(),
+        });
+        imported++;
+      } catch (e: any) {
+        errors.push(`Failed to import ${u.username}: ${e?.message || "Unknown error"}`);
+        failed++;
+      }
+    }
+
+    await storage.log("dev_bulk_import", access.user.username, `imported=${imported} failed=${failed}`);
+    res.json({ ok: true, imported, failed, errors: errors.length > 0 ? errors : undefined, message: `Imported ${imported} users, ${failed} failed` });
+  });
+
+  // Update User Profile
+  app.post(api.devTools.updateUserProfile.path, async (req, res) => {
+    const { token, devCode, username, updates } = req.body;
+    const access = await verifyDevAccess(token, devCode);
+    if (!access.ok) return res.json(access);
+
+    if (!username || typeof username !== "string") {
+      return res.json({ ok: false, message: "Username is required" });
+    }
+
+    try {
+      const user = await storage.getUser(username);
+      if (!user) {
+        return res.json({ ok: false, message: `User ${username} not found` });
+      }
+
+      // Whitelist allowed fields for update
+      const allowedFields = ["fullName", "fullNameTh", "nickName", "phone", "email", "active"];
+      const sanitizedUpdates: Record<string, any> = {};
+      
+      for (const key of allowedFields) {
+        if (updates && key in updates) {
+          const value = updates[key];
+          if (key === "active") {
+            const numValue = typeof value === "string" ? Number(value) : value;
+            sanitizedUpdates[key] = numValue === 0 ? 0 : 1;
+          } else if (typeof value === "string") {
+            sanitizedUpdates[key] = value.trim();
+          }
+        }
+      }
+
+      if (Object.keys(sanitizedUpdates).length === 0) {
+        return res.json({ ok: false, message: "No valid updates provided" });
+      }
+
+      await storage.updateUser(username, sanitizedUpdates);
+      await storage.log("dev_update_profile", access.user.username, `user=${username} updates=${JSON.stringify(sanitizedUpdates)}`);
+      res.json({ ok: true, message: `Profile updated for ${username}` });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to update profile" });
+    }
+  });
+
   return httpServer;
 }

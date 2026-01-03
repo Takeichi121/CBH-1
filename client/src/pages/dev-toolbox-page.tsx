@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Database, Users, FileText, Trash2, Settings, Terminal, 
   RefreshCw, Loader2, Lock, Key, UserCog, Table, Play,
-  ChevronLeft, Palette
+  ChevronLeft, Palette, Upload, UserPen
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -57,6 +57,22 @@ export default function DevToolboxPage() {
   // Query executor state
   const [query, setQuery] = useState("SELECT * FROM users LIMIT 10");
   const [queryResult, setQueryResult] = useState<any[]>([]);
+  
+  // Bulk Import state
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [bulkImportResult, setBulkImportResult] = useState<{ imported: number; failed: number; errors?: string[] } | null>(null);
+  
+  // Edit Profile state
+  const [userList, setUserList] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [editProfile, setEditProfile] = useState({
+    fullName: "",
+    fullNameTh: "",
+    nickName: "",
+    phone: "",
+    email: "",
+    active: 1,
+  });
   
   // UI Builder state
   const [uiBuilderLoaded, setUiBuilderLoaded] = useState(false);
@@ -227,6 +243,85 @@ export default function DevToolboxPage() {
     setLoading({ query: false });
   };
 
+  // Bulk Import
+  const handleBulkImport = async () => {
+    if (!bulkImportText.trim()) return;
+    setLoading({ bulkImport: true });
+    setBulkImportResult(null);
+    
+    try {
+      // Parse CSV/text format: username,password,fullName,nickName,role,phone,email
+      const lines = bulkImportText.trim().split('\n').filter(l => l.trim());
+      const users = lines.map(line => {
+        const parts = line.split(',').map(p => p.trim());
+        return {
+          username: parts[0] || "",
+          password: parts[1] || "",
+          fullName: parts[2] || undefined,
+          nickName: parts[3] || undefined,
+          role: parts[4] || "staff",
+          phone: parts[5] || undefined,
+          email: parts[6] || undefined,
+        };
+      }).filter(u => u.username && u.password);
+      
+      if (users.length === 0) {
+        toast({ title: "No valid users found", variant: "destructive" });
+        setLoading({ bulkImport: false });
+        return;
+      }
+      
+      const result = await apiCall(api.devTools.bulkImportUsers.path, { users });
+      if (result.ok) {
+        setBulkImportResult({ imported: result.imported || 0, failed: result.failed || 0, errors: result.errors });
+        toast({ title: result.message || "Import completed" });
+      } else toast({ title: "Error", description: result.message, variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setLoading({ bulkImport: false });
+  };
+
+  // Fetch User List for Edit Profile
+  const fetchUserList = async () => {
+    setLoading({ userList: true });
+    const result = await apiCall("/api/admin/getUsers", {});
+    if (result.ok) setUserList(result.users || []);
+    else toast({ title: "Error", description: result.message, variant: "destructive" });
+    setLoading({ userList: false });
+  };
+
+  // Load selected user into edit form
+  const loadUserForEdit = (username: string) => {
+    const user = userList.find(u => u.username === username);
+    if (user) {
+      setSelectedUser(user);
+      setEditProfile({
+        fullName: user.fullName || "",
+        fullNameTh: user.fullNameTh || "",
+        nickName: user.nickName || "",
+        phone: user.phone || "",
+        email: user.email || "",
+        active: user.active ?? 1,
+      });
+    }
+  };
+
+  // Update User Profile
+  const handleUpdateProfile = async () => {
+    if (!selectedUser) return;
+    setLoading({ updateProfile: true });
+    const result = await apiCall(api.devTools.updateUserProfile.path, { 
+      username: selectedUser.username, 
+      updates: editProfile 
+    });
+    if (result.ok) {
+      toast({ title: result.message || "Profile updated" });
+      fetchUserList();
+    } else toast({ title: "Error", description: result.message, variant: "destructive" });
+    setLoading({ updateProfile: false });
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -286,7 +381,7 @@ export default function DevToolboxPage() {
 
       <main className="max-w-6xl mx-auto p-4">
         <Tabs defaultValue="logs" className="space-y-4">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 gap-1">
+          <TabsList className="grid grid-cols-4 lg:grid-cols-8 gap-1">
             <TabsTrigger value="logs" className="text-xs" data-testid="tab-logs">
               <FileText className="h-4 w-4 mr-1" /> Logs
             </TabsTrigger>
@@ -304,6 +399,12 @@ export default function DevToolboxPage() {
             </TabsTrigger>
             <TabsTrigger value="query" className="text-xs" data-testid="tab-query">
               <Terminal className="h-4 w-4 mr-1" /> Query
+            </TabsTrigger>
+            <TabsTrigger value="import" className="text-xs" data-testid="tab-import">
+              <Upload className="h-4 w-4 mr-1" /> Import
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="text-xs" data-testid="tab-profile">
+              <UserPen className="h-4 w-4 mr-1" /> Profile
             </TabsTrigger>
           </TabsList>
 
@@ -632,6 +733,149 @@ export default function DevToolboxPage() {
                         ))}
                       </div>
                     </ScrollArea>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bulk Import Tab */}
+          <TabsContent value="import" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Upload className="h-5 w-5" /> Bulk Import Users
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>CSV Format: username,password,fullName,nickName,role,phone,email</Label>
+                  <Textarea
+                    value={bulkImportText}
+                    onChange={(e) => setBulkImportText(e.target.value)}
+                    className="font-mono text-sm min-h-[150px]"
+                    placeholder="user001,pass123,John Doe,Johnny,staff,0812345678,john@example.com
+user002,pass456,Jane Smith,Jane,staff,0823456789,jane@example.com"
+                    data-testid="textarea-bulk-import"
+                  />
+                  <Button onClick={handleBulkImport} disabled={loading.bulkImport} data-testid="button-bulk-import">
+                    {loading.bulkImport ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                    Import Users
+                  </Button>
+                </div>
+                {bulkImportResult && (
+                  <div className="space-y-2 border-t pt-4">
+                    <div className="flex gap-4">
+                      <Badge variant="default">Imported: {bulkImportResult.imported}</Badge>
+                      <Badge variant="destructive">Failed: {bulkImportResult.failed}</Badge>
+                    </div>
+                    {bulkImportResult.errors && bulkImportResult.errors.length > 0 && (
+                      <ScrollArea className="h-[150px] border rounded-md">
+                        <div className="p-2 text-xs font-mono text-destructive">
+                          {bulkImportResult.errors.map((err, i) => (
+                            <div key={i} className="p-1">{err}</div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Edit Profile Tab */}
+          <TabsContent value="profile" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserPen className="h-5 w-5" /> Edit User Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2 flex-wrap">
+                  <Button onClick={fetchUserList} disabled={loading.userList} data-testid="button-load-users">
+                    {loading.userList ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                    Load Users
+                  </Button>
+                  <Select value={selectedUser?.username || ""} onValueChange={loadUserForEdit}>
+                    <SelectTrigger className="w-48" data-testid="select-user-edit">
+                      <SelectValue placeholder="Select user..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userList.map(u => (
+                        <SelectItem key={u.username} value={u.username}>
+                          {u.username} ({u.nickName || u.fullName || "-"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {selectedUser && (
+                  <div className="border rounded-md p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Badge>{selectedUser.username}</Badge>
+                      <Badge variant="outline">{selectedUser.role}</Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Full Name (EN)</Label>
+                        <Input
+                          value={editProfile.fullName}
+                          onChange={(e) => setEditProfile({ ...editProfile, fullName: e.target.value })}
+                          data-testid="input-edit-fullname"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Full Name (TH)</Label>
+                        <Input
+                          value={editProfile.fullNameTh}
+                          onChange={(e) => setEditProfile({ ...editProfile, fullNameTh: e.target.value })}
+                          data-testid="input-edit-fullname-th"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nickname</Label>
+                        <Input
+                          value={editProfile.nickName}
+                          onChange={(e) => setEditProfile({ ...editProfile, nickName: e.target.value })}
+                          data-testid="input-edit-nickname"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Phone</Label>
+                        <Input
+                          value={editProfile.phone}
+                          onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })}
+                          data-testid="input-edit-phone"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input
+                          value={editProfile.email}
+                          onChange={(e) => setEditProfile({ ...editProfile, email: e.target.value })}
+                          data-testid="input-edit-email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select value={String(editProfile.active)} onValueChange={(v) => setEditProfile({ ...editProfile, active: Number(v) })}>
+                          <SelectTrigger data-testid="select-edit-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Active</SelectItem>
+                            <SelectItem value="0">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button onClick={handleUpdateProfile} disabled={loading.updateProfile} data-testid="button-update-profile">
+                      {loading.updateProfile ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                      Update Profile
+                    </Button>
                   </div>
                 )}
               </CardContent>

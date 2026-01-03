@@ -499,5 +499,45 @@ export const api = {
         200: z.object({ ok: z.boolean(), result: z.any().optional(), message: z.string().optional() }),
       },
     },
+    bulkImportUsers: {
+      method: "POST",
+      path: "/api/devTools/bulkImportUsers",
+      input: z.object({ 
+        token: z.string(), 
+        devCode: z.string().optional(), 
+        users: z.array(z.object({
+          username: z.string(),
+          password: z.string(),
+          fullName: z.string().optional(),
+          nickName: z.string().optional(),
+          role: z.string().optional(),
+          phone: z.string().optional(),
+          email: z.string().optional(),
+        }))
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), imported: z.number().optional(), failed: z.number().optional(), errors: z.array(z.string()).optional(), message: z.string().optional() }),
+      },
+    },
+    updateUserProfile: {
+      method: "POST",
+      path: "/api/devTools/updateUserProfile",
+      input: z.object({ 
+        token: z.string(), 
+        devCode: z.string().optional(), 
+        username: z.string(),
+        updates: z.object({
+          fullName: z.string().optional(),
+          fullNameTh: z.string().optional(),
+          nickName: z.string().optional(),
+          phone: z.string().optional(),
+          email: z.string().optional(),
+          active: z.number().optional(),
+        })
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
   },
 };

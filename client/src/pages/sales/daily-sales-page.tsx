@@ -147,24 +147,25 @@ const MANAGER_NAMES = [
 ] as const;
 
 const SHIFT_OPTIONS = [
-  { value: "Open", label: "06:00-15:00" },
+  { value: "Open", label: "07:00-16:00" },
   { value: "Swing", label: "09:00-18:00" },
-  { value: "Lunch", label: "10:00-14:00" },
-  { value: "Dinner", label: "14:00-23:00" },
-  { value: "Close", label: "15:00-24:00" },
-  { value: "Late Night", label: "18:00-03:00" },
+  { value: "Swing", label: "10:00-19:00" },
+  { value: "Lunch", label: "13:00-22:00" },
+  { value: "Dinner", label: "15:00-00:00" },
+  { value: "Close", label: "19:00-04:00" },
+  { value: "Late Night", label: "22:00-07:00" },
   { value: "OFF", label: "OFF" },
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
 ] as const;
 
 const STAFF_SHIFT_GROUPS = [
-  { value: "Open", label: "06:00-15:00" },
+  { value: "Open", label: "07:00-16:00" },
   { value: "Swing", label: "09:00-18:00" },
-  { value: "Lunch", label: "10:00-14:00" },
-  { value: "Dinner", label: "14:00-23:00" },
-  { value: "Close", label: "15:00-24:00" },
-  { value: "Late Night", label: "18:00-03:00" },
+  { value: "Lunch", label: "13:00-22:00" },
+  { value: "Dinner", label: "15:00-00:00" },
+  { value: "Close", label: "19:00-04:00" },
+  { value: "Late Night", label: "22:00-07:00" },
 ] as const;
 
 type FormData = z.infer<typeof formSchema>;
@@ -1470,6 +1471,10 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   <Trash2 className="w-4 h-4" />
                   {t.clearForm}
                 </Button>
+                <Button type="button" onClick={handleCopyReport} className="gap-2" data-testid="button-copy-report">
+                  <Copy className="w-4 h-4" />
+                  {language === 'th' ? "คัดลอก (ไม่บันทึก DB)" : "Copy (No DB Save)"}
+                </Button>
                 <Button 
                   type="button" 
                   onClick={handleSaveReport} 
@@ -1478,10 +1483,6 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                 >
                   <Save className="w-4 h-4" />
                   {language === 'th' ? "บันทึกลงฐานข้อมูล" : "Save to DB"}
-                </Button>
-                <Button type="button" onClick={handleCopyReport} className="gap-2 flex-1 sm:flex-none" data-testid="button-copy-report">
-                  <Copy className="w-4 h-4" />
-                  {t.copyReport}
                 </Button>
               </div>
             </form>

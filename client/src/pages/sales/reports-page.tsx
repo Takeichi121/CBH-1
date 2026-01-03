@@ -4,16 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Calendar, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { FileText, Calendar, TrendingUp, TrendingDown, Loader2, Trash2 } from "lucide-react";
 import { SalesLayout } from "./sales-layout";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function SalesReportsPage() {
   const { language } = useI18n();
+  const { toast } = useToast();
   const [searchDate, setSearchDate] = useState("");
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<number | null>(null);
 
   const t = {
     title: language === "th" ? "รายงานย้อนหลัง" : "Reports History",
@@ -31,29 +45,55 @@ export default function SalesReportsPage() {
     transactions: language === "th" ? "รายการ" : "Transactions",
     ofTarget: language === "th" ? "ของเป้า" : "of target",
     loading: language === "th" ? "กำลังโหลด..." : "Loading...",
+    delete: language === "th" ? "ลบ" : "Delete",
+    deleteConfirm: language === "th" ? "ยืนยันการลบ" : "Confirm Delete",
+    deleteMessage: language === "th" ? "คุณต้องการลบรายงานนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้" : "Are you sure you want to delete this report? This action cannot be undone.",
+    cancel: language === "th" ? "ยกเลิก" : "Cancel",
+    deleted: language === "th" ? "ลบรายงานสำเร็จ" : "Report deleted successfully",
+    deleteFailed: language === "th" ? "ไม่สามารถลบรายงานได้" : "Failed to delete report",
+  };
+
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/getReports", { 
+        token, 
+        date: searchDate || undefined 
+      });
+      const data = await res.json();
+      if (data.ok && data.reports) {
+        setReports(data.reports);
+      }
+    } catch (error) {
+      console.error("Failed to fetch reports:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("bk_token");
-        const res = await apiRequest("POST", "/api/sales/getReports", { 
-          token, 
-          date: searchDate || undefined 
-        });
-        const data = await res.json();
-        if (data.ok && data.reports) {
-          setReports(data.reports);
-        }
-      } catch (error) {
-        console.error("Failed to fetch reports:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchReports();
   }, [searchDate]);
+
+  const handleDelete = async (id: number) => {
+    try {
+      setDeleting(id);
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/deleteReport", { token, id });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: t.deleted });
+        setReports(reports.filter(r => r.id !== id));
+      } else {
+        toast({ variant: "destructive", title: t.deleteFailed, description: data.message });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: t.deleteFailed });
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const filteredReports = searchDate 
     ? reports.filter(r => r.reportDate === searchDate)
@@ -140,18 +180,58 @@ export default function SalesReportsPage() {
                               </p>
                             </div>
                           </div>
-                          <Badge
-                            variant="secondary"
-                            className={
-                              achievement >= 100
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                : achievement >= 90
-                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                                  : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                            }
-                          >
-                            {achievement.toFixed(1)}% {t.ofTarget}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="secondary"
+                              className={
+                                achievement >= 100
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                  : achievement >= 90
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                              }
+                            >
+                              {achievement.toFixed(1)}% {t.ofTarget}
+                            </Badge>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="text-destructive hover:text-destructive"
+                                  disabled={deleting === report.id}
+                                  data-testid={`button-delete-report-${report.id}`}
+                                >
+                                  {deleting === report.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t.deleteConfirm}</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {t.deleteMessage}
+                                    <br />
+                                    <span className="font-medium">
+                                      {report.reportDate} - ฿{actual.toLocaleString()}
+                                    </span>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(report.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    {t.delete}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

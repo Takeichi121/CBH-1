@@ -916,7 +916,28 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
               </div>
 
               <div className="bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
-                <h3 className="text-sm md:text-base font-medium mb-3">{t.daily}</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm md:text-base font-medium">{t.daily}</h3>
+                  <Button 
+                    type="button" 
+                    variant="default" 
+                    size="sm" 
+                    className="h-6 text-xs px-2"
+                    onClick={() => {
+                      const values = form.getValues();
+                      if (!values.reportDate || !values.reportBy) {
+                        toast({ variant: "destructive", title: language === 'th' ? 'กรุณากรอกวันที่และผู้รายงาน' : 'Please fill date and reporter' });
+                        return;
+                      }
+                      saveToServer(values);
+                      toast({ title: language === 'th' ? 'บันทึก AC/TC สำเร็จ' : 'AC/TC saved successfully' });
+                    }}
+                    data-testid="button-save-daily"
+                  >
+                    <Save className="w-3 h-3 mr-1" />
+                    {language === 'th' ? 'บันทึก' : 'Save'}
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <FormField control={form.control} name="dailyTarget" render={({ field }) => (
                     <FormItem>

@@ -77,6 +77,8 @@ export interface IStorage {
     mtdTc: number;
     mtdTarget: number;
     reportCount: number;
+    wasteMtdTotal: number;
+    wasteMealMtd: number;
   }>;
 
   // Store Settings
@@ -336,6 +338,8 @@ export class DatabaseStorage implements IStorage {
     mtdTc: number;
     mtdTarget: number;
     reportCount: number;
+    wasteMtdTotal: number;
+    wasteMealMtd: number;
   }> {
     const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = beforeDate || `${year}-${String(month).padStart(2, '0')}-31`;
@@ -351,14 +355,18 @@ export class DatabaseStorage implements IStorage {
     let mtdActual = 0;
     let mtdTc = 0;
     let mtdTarget = 0;
+    let wasteMtdTotal = 0;
+    let wasteMealMtd = 0;
     
     for (const report of reports) {
       mtdActual += parseFloat(report.actualSales || "0");
       mtdTc += parseFloat(report.transactionCount || "0");
       mtdTarget += parseFloat(report.dailyTarget || "0");
+      wasteMtdTotal += parseFloat(report.wasteDailyTotal || "0");
+      wasteMealMtd += parseFloat(report.wasteMealDaily || "0");
     }
     
-    return { mtdActual, mtdTc, mtdTarget, reportCount: reports.length };
+    return { mtdActual, mtdTc, mtdTarget, reportCount: reports.length, wasteMtdTotal, wasteMealMtd };
   }
 
   // Store Settings

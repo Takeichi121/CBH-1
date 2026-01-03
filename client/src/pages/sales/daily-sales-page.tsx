@@ -532,6 +532,8 @@ export default function DailySalesPage() {
         if (mtdData.ok) {
           form.setValue("mtdActual", mtdData.mtdActual.toString());
           form.setValue("mtdTc", mtdData.mtdTc.toString());
+          form.setValue("wasteMtdTotal", mtdData.wasteMtdTotal?.toString() || "0");
+          form.setValue("wasteMealMtd", mtdData.wasteMealMtd?.toString() || "0");
         }
         
         // Get MTD Target from daily_targets table

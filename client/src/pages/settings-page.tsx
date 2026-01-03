@@ -8,7 +8,7 @@ import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Ca
 import { useForm } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState, useRef } from "react";
-import { useI18n } from "@/hooks/use-i18n";
+import { useI18n, languageLabels } from "@/hooks/use-i18n";
 import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
@@ -336,12 +336,13 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">Select your preferred language</p>
               </div>
               <Select value={language} onValueChange={(v: any) => setLanguage(v)}>
-                <SelectTrigger className="w-[140px] rounded-xl">
+                <SelectTrigger className="w-[160px] rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="th">ไทย</SelectItem>
+                  {Object.entries(languageLabels).map(([code, label]) => (
+                    <SelectItem key={code} value={code}>{label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

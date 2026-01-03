@@ -297,10 +297,30 @@ export const dailyTargets = pgTable("daily_targets", {
   targetDate: text("target_date").notNull(), // YYYY-MM-DD
   targetSales: text("target_sales").notNull().default("130000"),
   targetTc: text("target_tc").default("300"), // optional target transaction count
+  // Waste Daily targets (per day)
+  wasteRawDaily: text("waste_raw_daily").default("0"),
+  wasteMealDaily: text("waste_meal_daily").default("0"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
   uniqueDate: unique().on(t.targetDate),
+}));
+
+// Monthly Waste Targets (MTD targets for each month)
+export const wasteTargets = pgTable("waste_targets", {
+  id: serial("id").primaryKey(),
+  targetMonth: text("target_month").notNull(), // YYYY-MM
+  // MTD Targets
+  mtdAmount: text("mtd_amount").default("0"),
+  mtdPercent: text("mtd_percent").default("0"),
+  mealAmount: text("meal_amount").default("0"),
+  mealPercent: text("meal_percent").default("0"),
+  rawAmount: text("raw_amount").default("0"),
+  rawPercent: text("raw_percent").default("0"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => ({
+  uniqueMonth: unique().on(t.targetMonth),
 }));
 
 // Zod Schemas
@@ -313,6 +333,7 @@ export const insertSwapRequestSchema = createInsertSchema(swapRequests);
 export const insertDailySalesSchema = createInsertSchema(dailySalesReports).omit({ id: true });
 export const insertStoreSettingsSchema = createInsertSchema(storeSettings).omit({ id: true });
 export const insertDailyTargetSchema = createInsertSchema(dailyTargets).omit({ id: true });
+export const insertWasteTargetSchema = createInsertSchema(wasteTargets).omit({ id: true });
 export const insertManagerRequestSchema = createInsertSchema(managerRequests).omit({ id: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true });
@@ -333,6 +354,8 @@ export type SwapRequest = typeof swapRequests.$inferSelect;
 export type DailySalesReport = typeof dailySalesReports.$inferSelect;
 export type StoreSettings = typeof storeSettings.$inferSelect;
 export type DailyTarget = typeof dailyTargets.$inferSelect;
+export type WasteTarget = typeof wasteTargets.$inferSelect;
+export type InsertWasteTarget = z.infer<typeof insertWasteTargetSchema>;
 export type ManagerRequest = typeof managerRequests.$inferSelect;
 export type InsertManagerRequest = z.infer<typeof insertManagerRequestSchema>;
 export type Notification = typeof notifications.$inferSelect;

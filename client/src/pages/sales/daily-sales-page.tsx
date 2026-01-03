@@ -1244,27 +1244,7 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
               <div className="bg-red-50 dark:bg-red-950/30 p-3 md:p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm md:text-base font-medium">{t.waste}</h3>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      type="button" 
-                      variant="default" 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        const values = form.getValues();
-                        if (!values.reportDate || !values.reportBy) {
-                          toast({ variant: "destructive", title: language === 'th' ? 'กรุณากรอกวันที่และผู้รายงาน' : 'Please fill date and reporter' });
-                          return;
-                        }
-                        saveToServer(values);
-                        toast({ title: language === 'th' ? 'บันทึก Waste สำเร็จ' : 'Waste saved successfully' });
-                      }}
-                      data-testid="button-save-waste"
-                    >
-                      <Save className="w-3 h-3 mr-1" />
-                      {language === 'th' ? 'บันทึก' : 'Save'}
-                    </Button>
-                    <Dialog open={wasteDialogOpen} onOpenChange={setWasteDialogOpen}>
+                  <Dialog open={wasteDialogOpen} onOpenChange={setWasteDialogOpen}>
                       <DialogTrigger asChild>
                         <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
                           <Calculator className="w-3 h-3 mr-1" />
@@ -1297,11 +1277,31 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                       </div>
                     </DialogContent>
                   </Dialog>
-                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">{t.wasteDaily}</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-medium text-muted-foreground">{t.wasteDaily}</h4>
+                      <Button 
+                        type="button" 
+                        variant="default" 
+                        size="sm" 
+                        className="h-6 text-xs px-2"
+                        onClick={() => {
+                          const values = form.getValues();
+                          if (!values.reportDate || !values.reportBy) {
+                            toast({ variant: "destructive", title: language === 'th' ? 'กรุณากรอกวันที่และผู้รายงาน' : 'Please fill date and reporter' });
+                            return;
+                          }
+                          saveToServer(values);
+                          toast({ title: language === 'th' ? 'บันทึก Daily Waste สำเร็จ' : 'Daily Waste saved successfully' });
+                        }}
+                        data-testid="button-save-waste"
+                      >
+                        <Save className="w-3 h-3 mr-1" />
+                        {language === 'th' ? 'บันทึก' : 'Save'}
+                      </Button>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <FormField control={form.control} name="wasteDailyTotal" render={({ field }) => (
                         <FormItem>

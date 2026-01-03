@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Calendar, TrendingUp, TrendingDown, Loader2, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { FileText, Calendar, TrendingUp, TrendingDown, Loader2, Trash2, Pencil } from "lucide-react";
 import { SalesLayout } from "./sales-layout";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +21,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function SalesReportsPage() {
   const { language } = useI18n();
@@ -28,6 +37,13 @@ export default function SalesReportsPage() {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [editingReport, setEditingReport] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    actualSales: "",
+    transactionCount: "",
+    dailyTarget: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   const t = {
     title: language === "th" ? "รายงานย้อนหลัง" : "Reports History",
@@ -51,6 +67,12 @@ export default function SalesReportsPage() {
     cancel: language === "th" ? "ยกเลิก" : "Cancel",
     deleted: language === "th" ? "ลบรายงานสำเร็จ" : "Report deleted successfully",
     deleteFailed: language === "th" ? "ไม่สามารถลบรายงานได้" : "Failed to delete report",
+    edit: language === "th" ? "แก้ไข" : "Edit",
+    editReport: language === "th" ? "แก้ไขรายงาน" : "Edit Report",
+    editDescription: language === "th" ? "แก้ไขข้อมูลยอดขายประจำวัน" : "Edit daily sales data",
+    save: language === "th" ? "บันทึก" : "Save",
+    saved: language === "th" ? "บันทึกสำเร็จ" : "Saved successfully",
+    saveFailed: language === "th" ? "ไม่สามารถบันทึกได้" : "Failed to save",
   };
 
   const fetchReports = async () => {
@@ -92,6 +114,44 @@ export default function SalesReportsPage() {
       toast({ variant: "destructive", title: t.deleteFailed });
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const openEditDialog = (report: any) => {
+    setEditingReport(report);
+    setEditForm({
+      actualSales: report.actualSales || "",
+      transactionCount: report.transactionCount || "",
+      dailyTarget: report.dailyTarget || "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReport) return;
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/updateReport", {
+        token,
+        id: editingReport.id,
+        report: {
+          actualSales: editForm.actualSales,
+          transactionCount: editForm.transactionCount,
+          dailyTarget: editForm.dailyTarget,
+        }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: t.saved });
+        setReports(reports.map(r => r.id === editingReport.id ? { ...r, ...data.report } : r));
+        setEditingReport(null);
+      } else {
+        toast({ variant: "destructive", title: t.saveFailed, description: data.message });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: t.saveFailed });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -193,6 +253,14 @@ export default function SalesReportsPage() {
                             >
                               {achievement.toFixed(1)}% {t.ofTarget}
                             </Badge>
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              onClick={() => openEditDialog(report)}
+                              data-testid={`button-edit-report-${report.id}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button 
@@ -270,6 +338,58 @@ export default function SalesReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!editingReport} onOpenChange={(open) => !open && setEditingReport(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.editReport}</DialogTitle>
+            <DialogDescription>
+              {t.editDescription} - {editingReport?.reportDate}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-actualSales">{t.actualSales} (฿)</Label>
+              <Input
+                id="edit-actualSales"
+                type="number"
+                value={editForm.actualSales}
+                onChange={(e) => setEditForm({ ...editForm, actualSales: e.target.value })}
+                data-testid="input-edit-actual-sales"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-transactionCount">{t.transactions}</Label>
+              <Input
+                id="edit-transactionCount"
+                type="number"
+                value={editForm.transactionCount}
+                onChange={(e) => setEditForm({ ...editForm, transactionCount: e.target.value })}
+                data-testid="input-edit-transaction-count"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-dailyTarget">{t.target} (฿)</Label>
+              <Input
+                id="edit-dailyTarget"
+                type="number"
+                value={editForm.dailyTarget}
+                onChange={(e) => setEditForm({ ...editForm, dailyTarget: e.target.value })}
+                data-testid="input-edit-daily-target"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingReport(null)}>
+              {t.cancel}
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SalesLayout>
   );
 }

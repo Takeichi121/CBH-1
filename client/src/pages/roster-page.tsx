@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Mail, Briefcase as PositionIcon, User } from "lucide-react";
+import { Phone, Mail, Briefcase as PositionIcon, User, Clock } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -33,6 +33,12 @@ const getShiftOrder = (shiftGroup: string | undefined): number => {
   if (!shiftGroup) return -1;
   const order = SHIFT_ORDER[shiftGroup.toLowerCase()];
   return order !== undefined ? order : 99;
+};
+
+// Helper function to display shift group name
+const getShiftDisplayName = (shiftGroup: string): string => {
+  if (shiftGroup?.toLowerCase() === 'late') return 'Late Night';
+  return shiftGroup;
 };
 
 export default function RosterPage() {
@@ -220,7 +226,7 @@ export default function RosterPage() {
                                     shift.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                     shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
                                     'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                  <span className="text-[7px] font-bold uppercase leading-tight">{shift.shiftGroup}</span>
+                                  <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(shift.shiftGroup)}</span>
                                   <span className="text-[6px] leading-tight">{shift.startTime}</span>
                                 </div>
                               ) : (
@@ -354,7 +360,7 @@ function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolea
 
   const content = (
     <div className={`h-full w-full rounded-xl p-2 border ${bgClass} shadow-sm flex flex-col justify-center items-center gap-0 cursor-pointer hover:brightness-95 transition-all`}>
-      <span className="text-[10px] font-bold uppercase tracking-wider leading-tight">{shift.shiftGroup}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider leading-tight">{getShiftDisplayName(shift.shiftGroup)}</span>
       <span className="text-xs font-semibold leading-tight">{shift.startTime}</span>
     </div>
   );

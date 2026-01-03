@@ -1437,18 +1437,13 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                               ))}
                             </SelectContent>
                           </Select>
-                          <Select value={entry.staffName} onValueChange={(v) => updateStaffEntry(index, "staffName", v)}>
-                            <SelectTrigger className="flex-1 text-sm" data-testid={`select-staff-name-${index}`}>
-                              <SelectValue placeholder={language === 'th' ? "เลือกพนักงาน" : "Select staff"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {staffList.map((staff) => (
-                                <SelectItem key={staff.username} value={staff.nickName || staff.fullName || staff.username}>
-                                  {staff.nickName || staff.fullName || staff.username}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input 
+                            value={entry.staffName} 
+                            onChange={(e) => updateStaffEntry(index, "staffName", e.target.value)}
+                            placeholder={language === 'th' ? "ชื่อเล่น" : "Nickname"}
+                            className="flex-1 text-sm"
+                            data-testid={`input-staff-name-${index}`}
+                          />
                           {staffRosterEntries.length > 1 && (
                             <Button type="button" size="icon" variant="ghost" onClick={() => removeStaffEntry(index)} data-testid={`button-remove-staff-${index}`}>
                               <X className="w-4 h-4" />

@@ -452,13 +452,13 @@ export default function DailySalesPage() {
     const v = form.getValues();
     const actualSalesVal = parseFloat(v.actualSales) || 0;
     const tcVal = parseInt(v.transactionCount) || 0;
-    const taVal = tcVal > 0 ? (actualSalesVal / tcVal).toFixed(2) : "0";
+    const taVal = tcVal > 0 ? Math.round(actualSalesVal / tcVal).toString() : "0";
     
     const mtdActualVal = parseFloat(v.mtdActual) || 0;
     const mtdTargetVal = parseFloat(v.mtdTarget) || 0;
     const mtdVariance = mtdActualVal - mtdTargetVal;
     const mtdTcVal = parseInt(v.mtdTc) || 0;
-    const mtdTaVal = mtdTcVal > 0 ? (mtdActualVal / mtdTcVal).toFixed(2) : "0";
+    const mtdTaVal = mtdTcVal > 0 ? Math.round(mtdActualVal / mtdTcVal).toString() : "0";
     
     const dineInVal = parseFloat(v.dineIn) || 0;
     const takeAwayVal = parseFloat(v.takeAway) || 0;
@@ -580,11 +580,11 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
 
   const actualSales = parseFloat(form.watch("actualSales") || "0");
   const transactionCount = parseInt(form.watch("transactionCount") || "0");
-  const avgTransaction = transactionCount > 0 ? (actualSales / transactionCount).toFixed(2) : "0";
+  const avgTransaction = transactionCount > 0 ? Math.round(actualSales / transactionCount).toString() : "0";
   
   const mtdActual = parseFloat(form.watch("mtdActual") || "0");
   const mtdTc = parseInt(form.watch("mtdTc") || "0");
-  const mtdTa = mtdTc > 0 ? (mtdActual / mtdTc).toFixed(2) : "0";
+  const mtdTa = mtdTc > 0 ? Math.round(mtdActual / mtdTc).toString() : "0";
   const mtdTarget = parseFloat(form.watch("mtdTarget") || "0");
   const mtdVariance = mtdActual - mtdTarget;
 

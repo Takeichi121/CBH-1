@@ -57,6 +57,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     
     // Check user first to determine if they have 24/7 access
     const u = await storage.getUser(username);
+    const cfg = await storage.getConfig();
     
     // 24/7 access: admin, creator (Chan.J), or developer mode
     const isCreator = u && (
@@ -64,9 +65,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       (u.fullName && u.fullName.toLowerCase().includes("chanon"))
     );
     const isAdmin = u && u.role === "admin";
+    const isManager = u && (u.role === "manager" || u.role === "admin");
     
-    // Check if system is closed (allow admin, developer mode, or creator to bypass)
-    if (isSystemClosed() && !developerMode && !isCreator && !isAdmin) {
+    // Check if system is closed (allow admin, manager, developer mode, or creator to bypass)
+    if (isSystemClosed(cfg) && !developerMode && !isCreator && !isAdmin && !isManager) {
       return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     }
 
@@ -112,7 +114,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Register Staff
   app.post(api.auth.registerStaff.path, async (req, res) => {
-    if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
+    const cfg = await storage.getConfig();
+    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     const { fullName, password } = req.body;
     if (!fullName || !password) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Password" });
 
@@ -130,7 +133,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Register Manager
   app.post(api.auth.registerManager.path, async (req, res) => {
-    if (isSystemClosed()) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
+    const cfg = await storage.getConfig();
+    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     const { fullName, password, verifyCode } = req.body;
     if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก" });
     if (!fullName || !password) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Password" });
@@ -234,8 +238,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const range = getWeekRangeTuesday(anyDate);
     const shifts = await storage.getShiftsInRange(range.start, range.end);
     const myShifts = shifts.filter(s => s.username === u.username);
+    
+    const cfg = await storage.getConfig();
+    const isManager = u.role === "admin" || u.role === "manager";
+    const closed = !isManager && isSystemClosed(cfg);
 
-    res.json({ ok: true, weekRange: range, shifts: myShifts });
+    res.json({ ok: true, weekRange: range, shifts: myShifts, items: myShifts, closed });
   });
 
   // Shifts: Get My Month (for managers)

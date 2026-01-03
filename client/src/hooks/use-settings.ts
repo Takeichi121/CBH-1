@@ -29,11 +29,11 @@ export function useUpdateSettings() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (capacity: Record<string, any>) => {
+    mutationFn: async (payload: Record<string, any>) => {
       const res = await fetch(api.settings.update.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, capacity }),
+        body: JSON.stringify({ token, ...payload }),
       });
       const body = await res.json();
       if (!body.ok) throw new Error(body.message);
@@ -41,7 +41,7 @@ export function useUpdateSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.settings.get.path] });
-      toast({ title: "Settings Updated", description: "Capacity settings have been saved." });
+      toast({ title: "Settings Updated", description: "Settings have been saved." });
     },
     onError: (err: Error) => {
       toast({ variant: "destructive", title: "Update Failed", description: err.message });

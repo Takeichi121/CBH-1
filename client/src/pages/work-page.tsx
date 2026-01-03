@@ -212,11 +212,11 @@ export default function WorkPage() {
       </div>
 
       {data?.closed && (
-        <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
+        <Alert variant="destructive" className="bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-200">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>System Closed</AlertTitle>
+          <AlertTitle>{t("systemClosed")}</AlertTitle>
           <AlertDescription>
-            You cannot book or edit shifts at this time.
+            {t("systemClosed")}
           </AlertDescription>
         </Alert>
       )}

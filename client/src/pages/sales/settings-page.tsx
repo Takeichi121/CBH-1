@@ -19,6 +19,19 @@ type DailySalesData = {
   date: string;
   actualSales: number;
   actualTc: number;
+  wasteRawDaily: number;
+  wasteMealDaily: number;
+  wasteRawMtd: number;
+  wasteMealMtd: number;
+};
+
+type WasteTarget = {
+  mtdAmount: string;
+  mtdPercent: string;
+  mealAmount: string;
+  mealPercent: string;
+  rawAmount: string;
+  rawPercent: string;
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -52,6 +65,15 @@ export default function SalesSettingsPage() {
   const [dailyTargets, setDailyTargets] = useState<Record<string, string>>({});
   const [dailySalesData, setDailySalesData] = useState<Record<string, DailySalesData>>({});
   const [defaultTarget, setDefaultTarget] = useState("130000");
+  const [wasteTargets, setWasteTargets] = useState<WasteTarget>({
+    mtdAmount: "0",
+    mtdPercent: "0",
+    mealAmount: "0",
+    mealPercent: "0",
+    rawAmount: "0",
+    rawPercent: "0",
+  });
+  const [isSavingWaste, setIsSavingWaste] = useState(false);
 
   const t = {
     title: language === "th" ? "ตั้งค่าร้านค้า" : "Store Settings",
@@ -78,6 +100,18 @@ export default function SalesSettingsPage() {
     months: language === "th" 
       ? ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
       : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    wasteRawDaily: language === "th" ? "Waste Daily (Raw)" : "Waste Daily (Raw)",
+    wasteMealDaily: language === "th" ? "Meal Waste (Daily)" : "Meal Waste (Daily)",
+    wasteRawMtd: language === "th" ? "Waste MTD (Raw)" : "Waste MTD (Raw)",
+    wasteMealMtd: language === "th" ? "Meal Waste MTD" : "Meal Waste MTD",
+    wasteMtd: "MTD",
+    wasteMtdAmount: language === "th" ? "MTD (฿)" : "MTD (฿)",
+    wasteMtdPercent: language === "th" ? "MTD %" : "MTD %",
+    wasteMealAmount: language === "th" ? "Meal (฿)" : "Meal (฿)",
+    wasteMealPercent: language === "th" ? "Meal %" : "Meal %",
+    wasteRawAmount: language === "th" ? "Raw (฿)" : "Raw (฿)",
+    wasteRawPercent: language === "th" ? "Raw %" : "Raw %",
+    wasteTargets: language === "th" ? "เป้าหมาย Waste MTD" : "Waste MTD Targets",
   };
 
   const daysInMonth = useMemo(() => {
@@ -99,15 +133,21 @@ export default function SalesSettingsPage() {
   const tableData = useMemo(() => {
     let runningActualSales = 0;
     let runningActualTc = 0;
+    let runningWasteRaw = 0;
+    let runningWasteMeal = 0;
     
     return monthDates.map(({ date, day, displayDate }) => {
       const targetSales = parseFloat(dailyTargets[date]) || 0;
       const salesData = dailySalesData[date];
       const actualSales = salesData?.actualSales || 0;
       const actualTc = salesData?.actualTc || 0;
+      const wasteRawDaily = salesData?.wasteRawDaily || 0;
+      const wasteMealDaily = salesData?.wasteMealDaily || 0;
       
       runningActualSales += actualSales;
       runningActualTc += actualTc;
+      runningWasteRaw += wasteRawDaily;
+      runningWasteMeal += wasteMealDaily;
       
       return {
         date,
@@ -118,6 +158,10 @@ export default function SalesSettingsPage() {
         actualSalesMtd: runningActualSales,
         actualTc,
         actualTcMtd: runningActualTc,
+        wasteRawDaily,
+        wasteMealDaily,
+        wasteRawMtd: runningWasteRaw,
+        wasteMealMtd: runningWasteMeal,
       };
     });
   }, [monthDates, dailyTargets, dailySalesData]);
@@ -211,6 +255,10 @@ export default function SalesSettingsPage() {
               date: report.reportDate,
               actualSales: parseFloat(report.actualSales) || 0,
               actualTc: parseInt(report.transactionCount) || 0,
+              wasteRawDaily: parseFloat(report.wasteRawDaily) || 0,
+              wasteMealDaily: parseFloat(report.wasteMealDaily) || 0,
+              wasteRawMtd: parseFloat(report.wasteRawMtd) || 0,
+              wasteMealMtd: parseFloat(report.wasteMealMtd) || 0,
             };
           });
           setDailySalesData(salesMap);
@@ -219,10 +267,35 @@ export default function SalesSettingsPage() {
         console.error("Failed to load daily sales:", error);
       }
     };
+
+    const loadWasteTargets = async () => {
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/sales/getWasteTargets", { 
+          token, 
+          year: selectedYear, 
+          month: selectedMonth 
+        });
+        const data = await res.json();
+        if (data.ok && data.wasteTarget) {
+          setWasteTargets({
+            mtdAmount: data.wasteTarget.mtdAmount || "0",
+            mtdPercent: data.wasteTarget.mtdPercent || "0",
+            mealAmount: data.wasteTarget.mealAmount || "0",
+            mealPercent: data.wasteTarget.mealPercent || "0",
+            rawAmount: data.wasteTarget.rawAmount || "0",
+            rawPercent: data.wasteTarget.rawPercent || "0",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load waste targets:", error);
+      }
+    };
     
     if (!isLoading) {
       loadDailyTargets();
       loadDailySales();
+      loadWasteTargets();
     }
   }, [selectedYear, selectedMonth, isLoading, monthDates, defaultTarget]);
 
@@ -295,6 +368,40 @@ export default function SalesSettingsPage() {
       });
     } finally {
       setIsSavingTargets(false);
+    }
+  };
+
+  const handleSaveWasteTargets = async () => {
+    setIsSavingWaste(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/saveWasteTargets", {
+        token,
+        year: selectedYear,
+        month: selectedMonth,
+        wasteTarget: wasteTargets,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({
+          title: t.saved,
+          description: language === "th" ? "บันทึกเป้าหมาย Waste MTD เรียบร้อย" : "Waste MTD targets saved successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: t.errorSave,
+          description: data.message || "Unknown error",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: t.errorSave,
+        description: error.message || "Unknown error",
+      });
+    } finally {
+      setIsSavingWaste(false);
     }
   };
 
@@ -448,6 +555,10 @@ export default function SalesSettingsPage() {
                         <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-green-50 dark:bg-green-900/30">{t.actualSalesMtd}</th>
                         <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-yellow-50 dark:bg-yellow-900/30">{t.actualTc}</th>
                         <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-green-50 dark:bg-green-900/30">{t.actualTcMtd}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-50 dark:bg-purple-900/30">{t.wasteRawDaily}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-100 dark:bg-purple-900/40">{t.wasteRawMtd}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-50 dark:bg-purple-900/30">{t.wasteMealDaily}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-100 dark:bg-purple-900/40">{t.wasteMealMtd}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -481,6 +592,18 @@ export default function SalesSettingsPage() {
                           <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-green-50 dark:bg-green-900/20">
                             {row.actualTcMtd > 0 ? formatNumber(row.actualTcMtd) : ''}
                           </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-purple-50 dark:bg-purple-900/20">
+                            {row.wasteRawDaily > 0 ? formatNumber(row.wasteRawDaily) : '-'}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-purple-100 dark:bg-purple-900/30">
+                            {row.wasteRawMtd > 0 ? formatNumber(row.wasteRawMtd) : '-'}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-purple-50 dark:bg-purple-900/20">
+                            {row.wasteMealDaily > 0 ? formatNumber(row.wasteMealDaily) : '-'}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-purple-100 dark:bg-purple-900/30">
+                            {row.wasteMealMtd > 0 ? formatNumber(row.wasteMealMtd) : '-'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -492,6 +615,10 @@ export default function SalesSettingsPage() {
                         <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSalesMtd)}</td>
                         <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTc)}</td>
                         <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTcMtd)}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">-</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteRawMtd) : '-'}</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">-</td>
+                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteMealMtd) : '-'}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -513,6 +640,96 @@ export default function SalesSettingsPage() {
                   </>
                 )}
               </Button>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-semibold mb-3">{t.wasteTargets}</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="mtdAmount" className="text-xs">{t.wasteMtdAmount}</Label>
+                  <Input
+                    id="mtdAmount"
+                    type="number"
+                    value={wasteTargets.mtdAmount}
+                    onChange={(e) => setWasteTargets(prev => ({ ...prev, mtdAmount: e.target.value }))}
+                    className="h-8 text-sm"
+                    data-testid="input-waste-mtd-amount"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="mtdPercent" className="text-xs">{t.wasteMtdPercent}</Label>
+                  <Input
+                    id="mtdPercent"
+                    type="number"
+                    step="0.01"
+                    value={wasteTargets.mtdPercent}
+                    onChange={(e) => setWasteTargets(prev => ({ ...prev, mtdPercent: e.target.value }))}
+                    className="h-8 text-sm"
+                    data-testid="input-waste-mtd-percent"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="mealAmount" className="text-xs">{t.wasteMealAmount}</Label>
+                  <Input
+                    id="mealAmount"
+                    type="number"
+                    value={wasteTargets.mealAmount}
+                    onChange={(e) => setWasteTargets(prev => ({ ...prev, mealAmount: e.target.value }))}
+                    className="h-8 text-sm"
+                    data-testid="input-waste-meal-amount"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="mealPercent" className="text-xs">{t.wasteMealPercent}</Label>
+                  <Input
+                    id="mealPercent"
+                    type="number"
+                    step="0.01"
+                    value={wasteTargets.mealPercent}
+                    onChange={(e) => setWasteTargets(prev => ({ ...prev, mealPercent: e.target.value }))}
+                    className="h-8 text-sm"
+                    data-testid="input-waste-meal-percent"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="rawAmount" className="text-xs">{t.wasteRawAmount}</Label>
+                  <Input
+                    id="rawAmount"
+                    type="number"
+                    value={wasteTargets.rawAmount}
+                    onChange={(e) => setWasteTargets(prev => ({ ...prev, rawAmount: e.target.value }))}
+                    className="h-8 text-sm"
+                    data-testid="input-waste-raw-amount"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="rawPercent" className="text-xs">{t.wasteRawPercent}</Label>
+                  <Input
+                    id="rawPercent"
+                    type="number"
+                    step="0.01"
+                    value={wasteTargets.rawPercent}
+                    onChange={(e) => setWasteTargets(prev => ({ ...prev, rawPercent: e.target.value }))}
+                    className="h-8 text-sm"
+                    data-testid="input-waste-raw-percent"
+                  />
+                </div>
+              </div>
+              <div className="pt-3 flex justify-end">
+                <Button onClick={handleSaveWasteTargets} disabled={isSavingWaste} data-testid="button-save-waste-targets">
+                  {isSavingWaste ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {t.saving}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      {t.save}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

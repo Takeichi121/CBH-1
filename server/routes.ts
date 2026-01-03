@@ -1123,6 +1123,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Get Waste Targets for Month
+  app.post(api.sales.getWasteTargets.path, async (req, res) => {
+    const { token, year, month } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    try {
+      const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
+      const wasteTarget = await storage.getWasteTarget(targetMonth);
+      res.json({ ok: true, wasteTarget });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get waste targets" });
+    }
+  });
+
+  // Save Waste Targets
+  app.post(api.sales.saveWasteTargets.path, async (req, res) => {
+    const { token, year, month, wasteTarget } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    try {
+      const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
+      await storage.upsertWasteTarget(targetMonth, wasteTarget);
+      await storage.log("save_waste_targets", u.username, `month=${targetMonth}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to save waste targets" });
+    }
+  });
+
   // ==================== Manager Requests ====================
 
   // Create Manager Request

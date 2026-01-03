@@ -351,6 +351,22 @@ export const api = {
         200: z.object({ ok: z.boolean(), reports: z.array(z.any()).optional(), message: z.string().optional() }),
       },
     },
+    getWasteTargets: {
+      method: "POST",
+      path: "/api/sales/getWasteTargets",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), wasteTarget: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    saveWasteTargets: {
+      method: "POST",
+      path: "/api/sales/saveWasteTargets",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number(), wasteTarget: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
   },
   managerRequests: {
     create: {

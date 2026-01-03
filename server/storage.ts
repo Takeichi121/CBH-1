@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, managerRequests, notifications, announcements, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -89,6 +89,10 @@ export interface IStorage {
   upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget>;
   bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void>;
   getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number>;
+
+  // Waste Targets
+  getWasteTarget(targetMonth: string): Promise<WasteTarget | undefined>;
+  upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>): Promise<WasteTarget>;
 
   // Manager Requests
   createManagerRequest(request: InsertManagerRequest): Promise<ManagerRequest>;
@@ -424,6 +428,36 @@ export class DatabaseStorage implements IStorage {
     const targets = await db.select().from(dailyTargets)
       .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate)));
     return targets.reduce((sum, t) => sum + parseFloat(t.targetSales || "0"), 0);
+  }
+
+  // Waste Targets
+  async getWasteTarget(targetMonth: string): Promise<WasteTarget | undefined> {
+    const [target] = await db.select().from(wasteTargets).where(eq(wasteTargets.targetMonth, targetMonth));
+    return target;
+  }
+
+  async upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>): Promise<WasteTarget> {
+    const existing = await this.getWasteTarget(targetMonth);
+    if (existing) {
+      const [updated] = await db.update(wasteTargets)
+        .set({ ...data, updatedAt: new Date().toISOString() })
+        .where(eq(wasteTargets.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(wasteTargets).values({
+        targetMonth,
+        mtdAmount: data.mtdAmount || "0",
+        mtdPercent: data.mtdPercent || "0",
+        mealAmount: data.mealAmount || "0",
+        mealPercent: data.mealPercent || "0",
+        rawAmount: data.rawAmount || "0",
+        rawPercent: data.rawPercent || "0",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning();
+      return created;
+    }
   }
 
   // Manager Requests

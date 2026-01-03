@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, managerRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type ManagerRequest, type InsertManagerRequest } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, managerRequests, notifications, announcements, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -96,6 +96,22 @@ export interface IStorage {
   updateManagerRequestStatus(id: number, status: string, approvedBy: string, reason?: string): Promise<void>;
   deleteManagerRequest(id: number): Promise<void>;
   getSelectWorkTimeCountForMonth(username: string, year: number, month: number): Promise<number>;
+
+  // Notifications
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  createNotificationsForUsers(usernames: string[], notification: Omit<InsertNotification, 'recipientUsername'>): Promise<void>;
+  getNotificationsForUser(username: string, limit?: number): Promise<Notification[]>;
+  getUnreadCountForUser(username: string): Promise<number>;
+  markNotificationAsRead(id: number): Promise<void>;
+  markAllNotificationsAsRead(username: string): Promise<void>;
+  deleteNotification(id: number): Promise<void>;
+
+  // Announcements
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  getAnnouncements(limit?: number, includeExpired?: boolean): Promise<Announcement[]>;
+  getAnnouncement(id: number): Promise<Announcement | undefined>;
+  updateAnnouncement(id: number, data: Partial<InsertAnnouncement>): Promise<Announcement>;
+  deleteAnnouncement(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -535,6 +551,89 @@ export class DatabaseStorage implements IStorage {
   async executeReadQuery(query: string): Promise<any[]> {
     const result = await db.execute(sql.raw(query));
     return result.rows as any[];
+  }
+
+  // Notifications
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async createNotificationsForUsers(usernames: string[], notification: Omit<InsertNotification, 'recipientUsername'>): Promise<void> {
+    for (const username of usernames) {
+      await db.insert(notifications).values({
+        ...notification,
+        recipientUsername: username
+      });
+    }
+  }
+
+  async getNotificationsForUser(username: string, limit: number = 50): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(eq(notifications.recipientUsername, username))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadCountForUser(username: string): Promise<number> {
+    const result = await db.select().from(notifications)
+      .where(and(
+        eq(notifications.recipientUsername, username),
+        eq(notifications.isRead, 0)
+      ));
+    return result.length;
+  }
+
+  async markNotificationAsRead(id: number): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: 1 })
+      .where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsAsRead(username: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: 1 })
+      .where(eq(notifications.recipientUsername, username));
+  }
+
+  async deleteNotification(id: number): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, id));
+  }
+
+  // Announcements
+  async createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement> {
+    const [created] = await db.insert(announcements).values(announcement).returning();
+    return created;
+  }
+
+  async getAnnouncements(limit: number = 20, includeExpired: boolean = false): Promise<Announcement[]> {
+    const now = new Date().toISOString();
+    if (includeExpired) {
+      return await db.select().from(announcements)
+        .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
+        .limit(limit);
+    }
+    const results = await db.select().from(announcements)
+      .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
+      .limit(limit);
+    return results.filter(a => !a.expiresAt || a.expiresAt > now);
+  }
+
+  async getAnnouncement(id: number): Promise<Announcement | undefined> {
+    const [result] = await db.select().from(announcements).where(eq(announcements.id, id));
+    return result;
+  }
+
+  async updateAnnouncement(id: number, data: Partial<InsertAnnouncement>): Promise<Announcement> {
+    const [updated] = await db.update(announcements)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(announcements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAnnouncement(id: number): Promise<void> {
+    await db.delete(announcements).where(eq(announcements.id, id));
   }
 }
 

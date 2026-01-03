@@ -260,6 +260,37 @@ export const managerRequests = pgTable("manager_requests", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Notifications table for in-app notifications
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  recipientUsername: text("recipient_username").notNull(), // who receives the notification
+  type: text("type").notNull(), // shift_change, announcement, swap_request, approval, etc.
+  title: text("title").notNull(),
+  titleTh: text("title_th"), // Thai translation
+  message: text("message").notNull(),
+  messageTh: text("message_th"), // Thai translation
+  relatedId: text("related_id"), // ID of related record (shift id, announcement id, etc.)
+  isRead: integer("is_read").notNull().default(0), // 0 = unread, 1 = read
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"), // who triggered this notification
+});
+
+// Announcements table for branch-wide announcements
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  titleTh: text("title_th"), // Thai translation
+  content: text("content").notNull(),
+  contentTh: text("content_th"), // Thai translation
+  priority: text("priority").notNull().default("normal"), // normal, important, urgent
+  targetAudience: text("target_audience").notNull().default("all"), // all, staff, managers
+  isPinned: integer("is_pinned").notNull().default(0),
+  expiresAt: text("expires_at"), // optional expiration date
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 // Daily Targets (per day target values like Excel table)
 export const dailyTargets = pgTable("daily_targets", {
   id: serial("id").primaryKey(),
@@ -283,6 +314,8 @@ export const insertDailySalesSchema = createInsertSchema(dailySalesReports).omit
 export const insertStoreSettingsSchema = createInsertSchema(storeSettings).omit({ id: true });
 export const insertDailyTargetSchema = createInsertSchema(dailyTargets).omit({ id: true });
 export const insertManagerRequestSchema = createInsertSchema(managerRequests).omit({ id: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true });
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
@@ -302,3 +335,7 @@ export type StoreSettings = typeof storeSettings.$inferSelect;
 export type DailyTarget = typeof dailyTargets.$inferSelect;
 export type ManagerRequest = typeof managerRequests.$inferSelect;
 export type InsertManagerRequest = z.infer<typeof insertManagerRequestSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;

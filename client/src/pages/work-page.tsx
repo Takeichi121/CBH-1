@@ -633,7 +633,7 @@ function BookShiftDialog({ children, groups, day, disabled, settings }: { childr
               <SelectContent>
                 {groups?.map((g: any) => (
                   <SelectItem key={g.key} value={g.key}>
-                    {g.label} ({g.windowStart} - {g.windowEnd})
+                    {g.label}
                   </SelectItem>
                 ))}
               </SelectContent>

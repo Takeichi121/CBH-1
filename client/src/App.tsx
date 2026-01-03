@@ -14,6 +14,7 @@ import AuthPage from "@/pages/auth-page";
 import WorkIndexPage from "@/pages/work/index-page";
 import WorkEmployeePage from "@/pages/work/employee-page";
 import WorkManagerPage from "@/pages/work/manager-page";
+import ManagerSchedulePage from "@/pages/work/manager-schedule-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
@@ -64,6 +65,10 @@ function Router() {
           
           <Route path="/work/manager">
             <ProtectedRoute component={WorkManagerPage} path="/work/manager" />
+          </Route>
+          
+          <Route path="/work/manager-schedule">
+            <ProtectedRoute component={ManagerSchedulePage} path="/work/manager-schedule" />
           </Route>
           
           <Route path="/roster">

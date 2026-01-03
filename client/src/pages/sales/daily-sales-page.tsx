@@ -305,7 +305,7 @@ export default function DailySalesPage() {
 
   useEffect(() => {
     const subscription = form.watch((values) => {
-      if (Object.values(values).some(value => value && value !== "0" && value !== "")) {
+      if (values.reportDate && values.reportBy) {
         markAsChanged();
         debouncedSave(values as FormData);
         debouncedServerSave(values as FormData);

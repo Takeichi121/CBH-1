@@ -178,12 +178,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     for (const k of Object.keys(DEFAULT_CAPACITY)) capacity[k] = Number(cfg["cap_" + k] || DEFAULT_CAPACITY[k as keyof typeof DEFAULT_CAPACITY]);
 
     const lockTimePeriod = cfg.lock_time_period === "true";
+    
+    // Maintenance window settings
+    const maintenance = {
+      enabled: cfg.maintenance_enabled === "true",
+      startDay: Number(cfg.maintenance_start_day ?? 2),
+      startTime: cfg.maintenance_start_time ?? "12:00",
+      endDay: Number(cfg.maintenance_end_day ?? 3),
+      endTime: cfg.maintenance_end_time ?? "00:00"
+    };
+    
+    const systemClosed = isSystemClosed(cfg);
 
-    res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod });
+    res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod, maintenance, systemClosed });
   });
 
   app.post(api.settings.update.path, async (req, res) => {
-    const { token, capacity, lockTimePeriod } = req.body;
+    const { token, capacity, lockTimePeriod, maintenance } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
@@ -198,8 +209,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (lockTimePeriod !== undefined) {
       await storage.setConfig("lock_time_period", String(lockTimePeriod));
     }
+    
+    // Update maintenance window settings
+    if (maintenance) {
+      await storage.setConfig("maintenance_enabled", String(maintenance.enabled ?? false));
+      await storage.setConfig("maintenance_start_day", String(maintenance.startDay ?? 2));
+      await storage.setConfig("maintenance_start_time", String(maintenance.startTime ?? "12:00"));
+      await storage.setConfig("maintenance_end_day", String(maintenance.endDay ?? 3));
+      await storage.setConfig("maintenance_end_time", String(maintenance.endTime ?? "00:00"));
+    }
 
-    await storage.log("update_settings", u.username, JSON.stringify({ capacity, lockTimePeriod }));
+    await storage.log("update_settings", u.username, JSON.stringify({ capacity, lockTimePeriod, maintenance }));
     res.json({ ok: true });
   });
 

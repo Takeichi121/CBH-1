@@ -149,7 +149,7 @@ const MANAGER_NAMES = [
 const SHIFT_OPTIONS = [
   { value: "Open", label: "07:00-16:00" },
   { value: "Swing", label: "09:00-18:00" },
-  { value: "Swing", label: "10:00-19:00" },
+  { value: "Swing1", label: "10:00-19:00" },
   { value: "Lunch", label: "13:00-22:00" },
   { value: "Dinner", label: "15:00-00:00" },
   { value: "Close", label: "19:00-04:00" },

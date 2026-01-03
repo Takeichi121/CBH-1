@@ -521,28 +521,6 @@ export default function SalesSettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="defaultTarget">{t.defaultTarget}</Label>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">฿</span>
-                    <Input
-                      id="defaultTarget"
-                      type="number"
-                      value={defaultTarget}
-                      onChange={(e) => setDefaultTarget(e.target.value)}
-                      className="pl-7 w-[150px]"
-                      data-testid="input-default-target"
-                    />
-                  </div>
-                  <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
-                    {t.applyAll}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto">
                 <div className="max-h-[500px] overflow-y-auto">

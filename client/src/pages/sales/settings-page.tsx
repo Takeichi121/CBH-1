@@ -526,17 +526,17 @@ export default function SalesSettingsPage() {
                 <div className="max-h-[500px] overflow-y-auto">
                   <table className="w-full text-sm border-collapse">
                     <thead className="sticky top-0 z-10">
-                      <tr className="bg-blue-100 dark:bg-blue-900/50">
-                        <th className="px-2 py-2 text-left font-semibold border border-slate-300 dark:border-slate-600 min-w-[70px]">{t.date}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-yellow-50 dark:bg-yellow-900/30">{t.targetSales}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-yellow-50 dark:bg-yellow-900/30">{t.actualSales}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px] bg-green-50 dark:bg-green-900/30">{t.actualSalesMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-yellow-50 dark:bg-yellow-900/30">{t.actualTc}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-green-50 dark:bg-green-900/30">{t.actualTcMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-50 dark:bg-purple-900/30">{t.wasteRawDaily}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-100 dark:bg-purple-900/40">{t.wasteRawMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-50 dark:bg-purple-900/30">{t.wasteMealDaily}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-purple-100 dark:bg-purple-900/40">{t.wasteMealMtd}</th>
+                      <tr className="bg-muted">
+                        <th className="px-2 py-2 text-left font-semibold border border-border min-w-[70px]">{t.date}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[100px]">{t.targetSales}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[100px]">{t.actualSales}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[100px]">{t.actualSalesMtd}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[80px]">{t.actualTc}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[80px]">{t.actualTcMtd}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[80px]">{t.wasteRawDaily}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[80px]">{t.wasteRawMtd}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[80px]">{t.wasteMealDaily}</th>
+                        <th className="px-2 py-2 text-right font-semibold border border-border min-w-[80px]">{t.wasteMealMtd}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -546,57 +546,57 @@ export default function SalesSettingsPage() {
                           className="hover:bg-muted/30"
                           data-testid={`row-target-${row.day}`}
                         >
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 font-medium bg-blue-50 dark:bg-blue-900/20">
+                          <td className="px-2 py-1 border border-border font-medium bg-muted/50">
                             {row.displayDate}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-yellow-50 dark:bg-yellow-900/20">
+                          <td className="px-2 py-1 border border-border">
                             <Input
                               type="number"
                               value={dailyTargets[row.date] || ""}
                               onChange={(e) => handleTargetChange(row.date, e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-white dark:focus:bg-slate-800"
+                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-background"
                               data-testid={`input-target-${row.day}`}
                             />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-yellow-50 dark:bg-yellow-900/20">
+                          <td className="px-2 py-1 border border-border text-right">
                             {row.actualSales > 0 ? formatNumber(row.actualSales) : ''}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-green-50 dark:bg-green-900/20">
+                          <td className="px-2 py-1 border border-border text-right font-medium bg-muted/30">
                             {row.actualSalesMtd > 0 ? formatNumber(row.actualSalesMtd) : ''}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-yellow-50 dark:bg-yellow-900/20">
+                          <td className="px-2 py-1 border border-border text-right">
                             {row.actualTc > 0 ? formatNumber(row.actualTc) : ''}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-green-50 dark:bg-green-900/20">
+                          <td className="px-2 py-1 border border-border text-right font-medium bg-muted/30">
                             {row.actualTcMtd > 0 ? formatNumber(row.actualTcMtd) : ''}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-purple-50 dark:bg-purple-900/20">
+                          <td className="px-2 py-1 border border-border text-right">
                             {row.wasteRawDaily > 0 ? formatNumber(row.wasteRawDaily) : '-'}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-purple-100 dark:bg-purple-900/30">
+                          <td className="px-2 py-1 border border-border text-right font-medium bg-muted/30">
                             {row.wasteRawMtd > 0 ? formatNumber(row.wasteRawMtd) : '-'}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-purple-50 dark:bg-purple-900/20">
+                          <td className="px-2 py-1 border border-border text-right">
                             {row.wasteMealDaily > 0 ? formatNumber(row.wasteMealDaily) : '-'}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-purple-100 dark:bg-purple-900/30">
+                          <td className="px-2 py-1 border border-border text-right font-medium bg-muted/30">
                             {row.wasteMealMtd > 0 ? formatNumber(row.wasteMealMtd) : '-'}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="sticky bottom-0">
-                      <tr className="bg-green-200 dark:bg-green-800/50 font-bold">
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600">{t.total}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.targetSales)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSales)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSalesMtd)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTc)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTcMtd)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">-</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteRawMtd) : '-'}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">-</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-purple-100 dark:bg-purple-900/40">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteMealMtd) : '-'}</td>
+                      <tr className="bg-muted font-bold">
+                        <td className="px-2 py-2 border border-border">{t.total}</td>
+                        <td className="px-2 py-2 border border-border text-right">{formatNumber(totals.targetSales)}</td>
+                        <td className="px-2 py-2 border border-border text-right">{formatNumber(totals.actualSales)}</td>
+                        <td className="px-2 py-2 border border-border text-right">{formatNumber(totals.actualSalesMtd)}</td>
+                        <td className="px-2 py-2 border border-border text-right">{formatNumber(totals.actualTc)}</td>
+                        <td className="px-2 py-2 border border-border text-right">{formatNumber(totals.actualTcMtd)}</td>
+                        <td className="px-2 py-2 border border-border text-right">-</td>
+                        <td className="px-2 py-2 border border-border text-right">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteRawMtd) : '-'}</td>
+                        <td className="px-2 py-2 border border-border text-right">-</td>
+                        <td className="px-2 py-2 border border-border text-right">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteMealMtd) : '-'}</td>
                       </tr>
                     </tfoot>
                   </table>

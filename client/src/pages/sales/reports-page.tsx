@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Calendar, TrendingUp, TrendingDown } from "lucide-react";
+import { FileText, Calendar, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { SalesLayout } from "./sales-layout";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function SalesReportsPage() {
   const { language } = useI18n();
   const [searchDate, setSearchDate] = useState("");
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const t = {
     title: language === "th" ? "รายงานย้อนหลัง" : "Reports History",
@@ -27,9 +30,34 @@ export default function SalesReportsPage() {
     variance: language === "th" ? "ส่วนต่าง" : "Variance",
     transactions: language === "th" ? "รายการ" : "Transactions",
     ofTarget: language === "th" ? "ของเป้า" : "of target",
+    loading: language === "th" ? "กำลังโหลด..." : "Loading...",
   };
 
-  const reports: any[] = [];
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/sales/getReports", { 
+          token, 
+          date: searchDate || undefined 
+        });
+        const data = await res.json();
+        if (data.ok && data.reports) {
+          setReports(data.reports);
+        }
+      } catch (error) {
+        console.error("Failed to fetch reports:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReports();
+  }, [searchDate]);
+
+  const filteredReports = searchDate 
+    ? reports.filter(r => r.reportDate === searchDate)
+    : reports;
 
   return (
     <SalesLayout>
@@ -70,12 +98,17 @@ export default function SalesReportsPage() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">{t.title}</CardTitle>
               <Badge variant="secondary">
-                {reports.length} {t.items}
+                {filteredReports.length} {t.items}
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            {reports.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" />
+                <p className="text-sm">{t.loading}</p>
+              </div>
+            ) : filteredReports.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium mb-2">{t.noReports}</p>
@@ -88,9 +121,9 @@ export default function SalesReportsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {reports.map((report: any) => {
-                  const actual = parseFloat(report.actualSales);
-                  const target = parseFloat(report.dailyTarget);
+                {filteredReports.map((report: any) => {
+                  const actual = parseFloat(report.actualSales) || 0;
+                  const target = parseFloat(report.dailyTarget) || 0;
                   const achievement = target > 0 ? (actual / target) * 100 : 0;
                   const variance = actual - target;
 
@@ -103,7 +136,7 @@ export default function SalesReportsPage() {
                             <div>
                               <h3 className="font-semibold">{report.reportDate}</h3>
                               <p className="text-sm text-muted-foreground">
-                                {t.shift}: {report.workShift}
+                                {t.shift}: {report.workShift} | {report.reportBy}
                               </p>
                             </div>
                           </div>
@@ -145,7 +178,7 @@ export default function SalesReportsPage() {
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">{t.transactions}</p>
-                            <p className="text-lg font-medium">{report.transactionCount?.toLocaleString() || 0}</p>
+                            <p className="text-lg font-medium">{parseInt(report.transactionCount || "0").toLocaleString()}</p>
                           </div>
                         </div>
                       </CardContent>

@@ -152,7 +152,7 @@ const SHIFT_OPTIONS = [
   { value: "Lunch", label: "Lunch" },
   { value: "Dinner", label: "Dinner" },
   { value: "Close", label: "Close" },
-  { value: "Late", label: "Late Night" },
+  { value: "Late Night", label: "Late Night" },
   { value: "OFF", label: "OFF" },
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
@@ -164,7 +164,7 @@ const STAFF_SHIFT_GROUPS = [
   { value: "Lunch", label: "Lunch" },
   { value: "Dinner", label: "Dinner" },
   { value: "Close", label: "Close" },
-  { value: "Late", label: "Late Night" },
+  { value: "Late Night", label: "Late Night" },
 ] as const;
 
 type FormData = z.infer<typeof formSchema>;
@@ -327,6 +327,33 @@ export default function DailySalesPage() {
           form.setValue(key, restored[key]);
         }
       });
+      
+      // Hydrate manager roster dropdowns from saved text
+      if (restored.managerRosterText) {
+        const lines = restored.managerRosterText.split('\n');
+        lines.forEach((line) => {
+          const match = line.match(/^(\w+):\s*(.+)$/);
+          if (match) {
+            const [, name, shift] = match;
+            const managerKey = `manager${name}` as keyof FormData;
+            if (["managerPhongsathon", "managerNuttarika", "managerBoonyisa", "managerChanon", "managerWashiraphan"].includes(managerKey)) {
+              form.setValue(managerKey, shift.trim());
+            }
+          }
+        });
+      }
+      
+      // Hydrate staff roster entries from saved text
+      if (restored.staffRosterText) {
+        const lines = restored.staffRosterText.split('\n').filter((l) => l.trim());
+        const entries = lines.map((line) => {
+          const parts = line.split('|').map((p) => p.trim());
+          return { shiftGroup: parts[0] || "", staffName: parts[1] || "" };
+        });
+        if (entries.length > 0) {
+          setStaffRosterEntries(entries);
+        }
+      }
     }
   }, [form.setValue, restoreData]);
 
@@ -452,9 +479,34 @@ export default function DailySalesPage() {
           form.setValue("laborHour", r.laborHour || "0");
           form.setValue("tcmh", r.tcmh || "0");
           if (r.managerRosterDate) form.setValue("managerRosterDate", r.managerRosterDate);
-          if (r.managerRosterText) form.setValue("managerRosterText", r.managerRosterText);
-          if (r.staffRosterText) form.setValue("staffRosterText", r.staffRosterText);
           if (r.workShift) form.setValue("workShift", r.workShift);
+          
+          // Hydrate manager roster dropdowns from saved text
+          if (r.managerRosterText) {
+            const lines = r.managerRosterText.split('\n');
+            lines.forEach((line: string) => {
+              const match = line.match(/^(\w+):\s*(.+)$/);
+              if (match) {
+                const [, name, shift] = match;
+                const managerKey = `manager${name}` as keyof FormData;
+                if (["managerPhongsathon", "managerNuttarika", "managerBoonyisa", "managerChanon", "managerWashiraphan"].includes(managerKey)) {
+                  form.setValue(managerKey, shift.trim());
+                }
+              }
+            });
+          }
+          
+          // Hydrate staff roster entries from saved text
+          if (r.staffRosterText) {
+            const lines = r.staffRosterText.split('\n').filter((l: string) => l.trim());
+            const entries = lines.map((line: string) => {
+              const parts = line.split('|').map((p: string) => p.trim());
+              return { shiftGroup: parts[0] || "", staffName: parts[1] || "" };
+            });
+            if (entries.length > 0) {
+              setStaffRosterEntries(entries);
+            }
+          }
         }
         
         // Load daily target for this specific date

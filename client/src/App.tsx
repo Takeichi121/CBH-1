@@ -11,7 +11,9 @@ import { ChangePasswordModal } from "@/components/change-password-modal";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
-import WorkPage from "@/pages/work-page";
+import WorkIndexPage from "@/pages/work/index-page";
+import WorkEmployeePage from "@/pages/work/employee-page";
+import WorkManagerPage from "@/pages/work/manager-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
@@ -53,7 +55,15 @@ function Router() {
           <Route path="/" component={AuthPage} />
           
           <Route path="/work">
-            <ProtectedRoute component={WorkPage} path="/work" />
+            <ProtectedRoute component={WorkIndexPage} path="/work" />
+          </Route>
+          
+          <Route path="/work/employee">
+            <ProtectedRoute component={WorkEmployeePage} path="/work/employee" />
+          </Route>
+          
+          <Route path="/work/manager">
+            <ProtectedRoute component={WorkManagerPage} path="/work/manager" />
           </Route>
           
           <Route path="/roster">

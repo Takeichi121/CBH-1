@@ -66,9 +66,11 @@ export interface IStorage {
   // Daily Sales Reports
   createDailySalesReport(report: InsertDailySales): Promise<DailySalesReport>;
   getDailySalesReport(id: number): Promise<DailySalesReport | undefined>;
+  getDailySalesReportByDate(date: string): Promise<DailySalesReport | undefined>;
   getDailySalesReports(date?: string, limit?: number): Promise<DailySalesReport[]>;
   getDailySalesReportsForMonth(year: number, month: number): Promise<DailySalesReport[]>;
   updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport>;
+  upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport>;
   deleteDailySalesReport(id: number): Promise<boolean>;
   getMtdSummary(year: number, month: number, beforeDate?: string): Promise<{
     mtdActual: number;
@@ -277,6 +279,11 @@ export class DatabaseStorage implements IStorage {
     return report;
   }
 
+  async getDailySalesReportByDate(date: string): Promise<DailySalesReport | undefined> {
+    const [report] = await db.select().from(dailySalesReports).where(eq(dailySalesReports.reportDate, date));
+    return report;
+  }
+
   async getDailySalesReports(date?: string, limit: number = 30): Promise<DailySalesReport[]> {
     if (date) {
       return await db.select().from(dailySalesReports)
@@ -304,6 +311,14 @@ export class DatabaseStorage implements IStorage {
       .returning();
     if (!updated) throw new Error("Report not found");
     return updated;
+  }
+
+  async upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport> {
+    const existing = await this.getDailySalesReportByDate(report.reportDate);
+    if (existing) {
+      return await this.updateDailySalesReport(existing.id, report);
+    }
+    return await this.createDailySalesReport(report);
   }
 
   async deleteDailySalesReport(id: number): Promise<boolean> {

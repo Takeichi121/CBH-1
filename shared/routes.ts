@@ -271,6 +271,22 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    upsertReportByDate: {
+      method: "POST",
+      path: "/api/sales/upsertReportByDate",
+      input: z.object({ token: z.string(), report: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    getReportByDate: {
+      method: "POST",
+      path: "/api/sales/getReportByDate",
+      input: z.object({ token: z.string(), date: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional(), message: z.string().optional() }),
+      },
+    },
     getMtdSummary: {
       method: "POST",
       path: "/api/sales/getMtdSummary",

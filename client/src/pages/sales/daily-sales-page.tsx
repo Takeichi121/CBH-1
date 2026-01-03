@@ -194,6 +194,51 @@ export default function DailySalesPage() {
   const { hasUnsavedChanges, markAsChanged, markAsSaved } = useUnsavedChanges();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSavingToServer, setIsSavingToServer] = useState(false);
+
+  const saveToServer = useCallback(async (values: FormData) => {
+    if (!values.reportDate || !values.reportBy) return;
+    
+    const cleanedReport = {
+      ...values,
+      actualSales: values.actualSales?.replace(/,/g, '') || "0",
+      transactionCount: values.transactionCount?.replace(/,/g, '') || "0",
+      dineIn: values.dineIn?.replace(/,/g, '') || "0",
+      dineInTc: values.dineInTc?.replace(/,/g, '') || "0",
+      takeAway: values.takeAway?.replace(/,/g, '') || "0",
+      takeAwayTc: values.takeAwayTc?.replace(/,/g, '') || "0",
+      grabfood: values.grabfood?.replace(/,/g, '') || "0",
+      lineman: values.lineman?.replace(/,/g, '') || "0",
+      shopee: values.shopee?.replace(/,/g, '') || "0",
+      bkapp: values.bkapp?.replace(/,/g, '') || "0",
+      dailyTarget: values.dailyTarget?.replace(/,/g, '') || "0",
+      mtdTarget: values.mtdTarget?.replace(/,/g, '') || "0",
+      mtdActual: values.mtdActual?.replace(/,/g, '') || "0",
+      mtdTc: values.mtdTc?.replace(/,/g, '') || "0",
+      voidAmount: values.voidAmount?.replace(/,/g, '') || "0",
+      wasteDailyTotal: values.wasteDailyTotal?.replace(/,/g, '') || "0",
+      wasteMealDaily: values.wasteMealDaily?.replace(/,/g, '') || "0",
+      wasteMtdTotal: values.wasteMtdTotal?.replace(/,/g, '') || "0",
+      wasteMealMtd: values.wasteMealMtd?.replace(/,/g, '') || "0",
+    };
+    
+    try {
+      setIsSavingToServer(true);
+      const token = localStorage.getItem("bk_token");
+      await apiRequest("POST", "/api/sales/upsertReportByDate", { token, report: cleanedReport });
+      setLastSaved(new Date());
+      setShowAutoSave(true);
+      if (hideAutoSaveTimerRef.current) {
+        clearTimeout(hideAutoSaveTimerRef.current);
+      }
+      hideAutoSaveTimerRef.current = setTimeout(() => setShowAutoSave(false), 3000);
+    } catch (error) {
+      console.error("Failed to auto-save to server:", error);
+    } finally {
+      setIsSavingToServer(false);
+    }
+  }, []);
 
   const debouncedSave = useCallback((values: FormData) => {
     if (saveTimerRef.current) {
@@ -201,29 +246,34 @@ export default function DailySalesPage() {
     }
     saveTimerRef.current = setTimeout(() => {
       saveData(values);
-      setLastSaved(new Date());
-      setShowAutoSave(true);
       markAsSaved();
-      if (hideAutoSaveTimerRef.current) {
-        clearTimeout(hideAutoSaveTimerRef.current);
-      }
-      hideAutoSaveTimerRef.current = setTimeout(() => setShowAutoSave(false), 3000);
     }, 1000);
   }, [saveData, markAsSaved]);
+
+  const debouncedServerSave = useCallback((values: FormData) => {
+    if (serverSaveTimerRef.current) {
+      clearTimeout(serverSaveTimerRef.current);
+    }
+    serverSaveTimerRef.current = setTimeout(() => {
+      saveToServer(values);
+    }, 1500);
+  }, [saveToServer]);
 
   useEffect(() => {
     const subscription = form.watch((values) => {
       if (Object.values(values).some(value => value && value !== "0" && value !== "")) {
         markAsChanged();
         debouncedSave(values as FormData);
+        debouncedServerSave(values as FormData);
       }
     });
     return () => {
       subscription.unsubscribe();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       if (hideAutoSaveTimerRef.current) clearTimeout(hideAutoSaveTimerRef.current);
+      if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
     };
-  }, [debouncedSave, markAsChanged]);
+  }, [debouncedSave, debouncedServerSave, markAsChanged]);
 
   useEffect(() => {
     const restored = restoreData();
@@ -256,7 +306,7 @@ export default function DailySalesPage() {
     loadStoreSettings();
   }, []);
 
-  // Load daily target and MTD summary when date changes
+  // Load daily target, MTD summary, and existing report when date changes
   const reportDate = form.watch("reportDate");
   useEffect(() => {
     const loadDailyTargetAndMtd = async () => {
@@ -266,6 +316,48 @@ export default function DailySalesPage() {
         const date = new Date(reportDate);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
+        
+        // Load existing report for this date
+        const existingRes = await apiRequest("POST", "/api/sales/getReportByDate", {
+          token,
+          date: reportDate
+        });
+        const existingData = await existingRes.json();
+        if (existingData.ok && existingData.report) {
+          const r = existingData.report;
+          if (r.reportBy) form.setValue("reportBy", r.reportBy);
+          form.setValue("actualSales", r.actualSales || "0");
+          form.setValue("transactionCount", r.transactionCount || "0");
+          form.setValue("dineIn", r.dineIn || "0");
+          form.setValue("dineInTc", r.dineInTc || "0");
+          form.setValue("takeAway", r.takeAway || "0");
+          form.setValue("takeAwayTc", r.takeAwayTc || "0");
+          form.setValue("grabfood", r.grabfood || "0");
+          form.setValue("lineman", r.lineman || "0");
+          form.setValue("shopee", r.shopee || "0");
+          form.setValue("bkapp", r.bkapp || "0");
+          form.setValue("osat", r.osat || "0");
+          form.setValue("surveyCount", r.surveyCount || "0");
+          form.setValue("voidAmount", r.voidAmount || "0");
+          form.setValue("voidCount", r.voidCount || "0");
+          form.setValue("addCheeseCount", r.addCheeseCount || "0");
+          form.setValue("addCheesePercent", r.addCheesePercent || "0");
+          form.setValue("vMealCount", r.vMealCount || "0");
+          form.setValue("vMealPercent", r.vMealPercent || "0");
+          form.setValue("upSizeCount", r.upSizeCount || "0");
+          form.setValue("upSizePercent", r.upSizePercent || "0");
+          form.setValue("wasteDailyTotal", r.wasteDailyTotal || "0");
+          form.setValue("wasteMealDaily", r.wasteMealDaily || "0");
+          form.setValue("wasteMtdTotal", r.wasteMtdTotal || "0");
+          form.setValue("wasteMealMtd", r.wasteMealMtd || "0");
+          form.setValue("colPercent", r.colPercent || "0");
+          form.setValue("laborHour", r.laborHour || "0");
+          form.setValue("tcmh", r.tcmh || "0");
+          if (r.managerRosterDate) form.setValue("managerRosterDate", r.managerRosterDate);
+          if (r.managerRosterText) form.setValue("managerRosterText", r.managerRosterText);
+          if (r.staffRosterText) form.setValue("staffRosterText", r.staffRosterText);
+          if (r.workShift) form.setValue("workShift", r.workShift);
+        }
         
         // Load daily target for this specific date
         const targetRes = await apiRequest("POST", "/api/sales/getDailyTargetForDate", {
@@ -614,7 +706,13 @@ ${v.staffRosterText || 'Group Shift | Time: Name'}
                   {t.unsavedDraft}
                 </Badge>
               )}
-              {showAutoSave && (
+              {isSavingToServer && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>{language === 'th' ? 'กำลังบันทึก...' : 'Saving...'}</span>
+                </div>
+              )}
+              {showAutoSave && !isSavingToServer && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CheckCircle className="w-3 h-3 text-green-500" />
                   <span>{t.autoSaved}</span>

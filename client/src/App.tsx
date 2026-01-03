@@ -17,6 +17,7 @@ import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
 import BorrowTrackerPage from "@/pages/borrow-tracker-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
+import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
 import NotFound from "@/pages/not-found";
 
@@ -90,6 +91,10 @@ function Router() {
           
           <Route path="/requests">
             <ProtectedRoute component={ManagerRequestsPage} path="/requests" />
+          </Route>
+          
+          <Route path="/handbook">
+            <ProtectedRoute component={HandbookPage} path="/handbook" />
           </Route>
           
           <Route path="/dev-toolbox">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
-import { useMyWeek, useMyMonth, useBookShift, useCancelShift, useRoster } from "@/hooks/use-shifts";
+import { useMyWeek, useMyMonth, useManagerTeamMonth, useBookShift, useCancelShift, useRoster } from "@/hooks/use-shifts";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from "date-fns";
@@ -1886,14 +1886,24 @@ function ManagerBookShiftDialog({ groups, day, children }: { groups: any; day: s
 
 function ManagerMonthlyView() {
   const { language } = useI18n();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<"my" | "team">("my");
+  const [selectedCell, setSelectedCell] = useState<{ date: string; manager?: any } | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const month = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();
   
-  const { data, isLoading } = useMyMonth(month, year);
+  const { data: myData, isLoading: isLoadingMy } = useMyMonth(month, year);
+  const { data: teamData, isLoading: isLoadingTeam } = useManagerTeamMonth(month, year);
+  const { data: settings } = useSettings();
   
   const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+
+  const isLoading = viewMode === "my" ? isLoadingMy : isLoadingTeam;
+  const data = viewMode === "my" ? myData : teamData;
 
   if (isLoading) return <WorkPageSkeleton />;
 
@@ -1904,9 +1914,21 @@ function ManagerMonthlyView() {
   const startDayOfWeek = getDay(monthStart);
   
   const shiftsByDate: Record<string, any> = {};
-  data?.shifts?.forEach((s: any) => {
-    shiftsByDate[s.date] = s;
-  });
+  if (viewMode === "my") {
+    data?.shifts?.forEach((s: any) => {
+      shiftsByDate[s.date] = s;
+    });
+  }
+
+  const teamShiftsByDateAndUser: Record<string, Record<string, any>> = {};
+  if (viewMode === "team" && teamData?.shifts) {
+    teamData.shifts.forEach((s: any) => {
+      if (!teamShiftsByDateAndUser[s.date]) {
+        teamShiftsByDateAndUser[s.date] = {};
+      }
+      teamShiftsByDateAndUser[s.date][s.username] = s;
+    });
+  }
 
   const weekDays = language === "th" 
     ? ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"]
@@ -1925,12 +1947,69 @@ function ManagerMonthlyView() {
     late: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
   };
 
+  const groupColorsBadge: Record<string, string> = {
+    open: "bg-blue-500",
+    swing: "bg-cyan-500",
+    lunch: "bg-orange-500",
+    dinner: "bg-purple-500",
+    close: "bg-pink-500",
+    late: "bg-slate-600",
+  };
+
+  const managers = teamData?.managers || [];
+
+  const handleCellClick = (dateStr: string, manager?: any) => {
+    if (viewMode === "team") {
+      setSelectedCell({ date: dateStr, manager });
+      setEditDialogOpen(true);
+    }
+  };
+
+  const handleSaveShift = async (shiftGroup: string, startTime: string, note: string) => {
+    if (!selectedCell) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", api.shifts.setForUser.path, {
+        token,
+        username: selectedCell.manager?.username,
+        date: selectedCell.date,
+        shiftGroup,
+        startTime,
+        note,
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getManagerTeamMonth.path] });
+      setEditDialogOpen(false);
+      setSelectedCell(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteShift = async () => {
+    if (!selectedCell?.manager) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      await apiRequest("POST", api.shifts.deleteForUser.path, {
+        token,
+        username: selectedCell.manager.username,
+        date: selectedCell.date,
+      });
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getManagerTeamMonth.path] });
+      setEditDialogOpen(false);
+      setSelectedCell(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-display font-bold text-foreground">
-            {language === "th" ? "ตารางงานของฉัน" : "My Schedule"}
+            {viewMode === "my" 
+              ? (language === "th" ? "ตารางงานของฉัน" : "My Schedule")
+              : (language === "th" ? "ตารางงานทีมผู้จัดการ" : "Manager Team Schedule")}
           </h2>
           <p className="text-muted-foreground flex items-center gap-2 mt-1">
             <CalendarIcon className="w-4 h-4" />
@@ -1938,7 +2017,29 @@ function ManagerMonthlyView() {
           </p>
         </div>
         
-        <div className="flex items-center gap-1.5 md:gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
+            <Button 
+              variant={viewMode === "my" ? "default" : "ghost"} 
+              size="sm"
+              onClick={() => setViewMode("my")}
+              className="rounded-full text-xs"
+              data-testid="button-view-my-schedule"
+            >
+              <UserCog className="w-4 h-4 mr-1" />
+              {language === "th" ? "ของฉัน" : "My"}
+            </Button>
+            <Button 
+              variant={viewMode === "team" ? "default" : "ghost"} 
+              size="sm"
+              onClick={() => setViewMode("team")}
+              className="rounded-full text-xs"
+              data-testid="button-view-team-schedule"
+            >
+              <Users className="w-4 h-4 mr-1" />
+              {language === "th" ? "ทีม" : "Team"}
+            </Button>
+          </div>
           <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
             <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 rounded-full" data-testid="button-prev-month">
               <ChevronLeft className="w-4 h-4" />
@@ -1950,6 +2051,23 @@ function ManagerMonthlyView() {
           </div>
         </div>
       </div>
+
+      {viewMode === "team" && managers.length > 0 && (
+        <Card className="glass-card border-none shadow-lg p-3">
+          <div className="flex flex-wrap gap-2">
+            {managers.map((m: any, idx: number) => {
+              const colors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-teal-500"];
+              const color = colors[idx % colors.length];
+              return (
+                <div key={m.username} className="flex items-center gap-1.5 text-xs">
+                  <div className={`w-3 h-3 rounded-full ${color}`} />
+                  <span className="text-muted-foreground">{m.nickName || m.fullName || m.username}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       <Card className="glass-card overflow-hidden border-none shadow-xl p-4">
         <div className="grid grid-cols-7 gap-1 md:gap-2">
@@ -1965,56 +2083,320 @@ function ManagerMonthlyView() {
           
           {days.map((day) => {
             const dateStr = format(day, "yyyy-MM-dd");
-            const shift = shiftsByDate[dateStr];
             const isToday = format(new Date(), "yyyy-MM-dd") === dateStr;
             const isSunday = getDay(day) === 0;
             
-            return (
-              <div 
-                key={dateStr} 
-                className={`aspect-square rounded-xl border p-1 md:p-2 flex flex-col transition-all
-                  ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-                  ${shift ? groupColors[shift.shiftGroup?.toLowerCase()] || 'bg-muted/30 border-border/50' : 'bg-muted/10 border-border/30'}
-                `}
-                data-testid={`day-cell-${dateStr}`}
-              >
-                <span className={`text-xs md:text-sm font-bold ${isSunday ? 'text-destructive' : ''} ${isToday ? 'text-primary' : ''}`}>
-                  {format(day, "d")}
-                </span>
-                {shift && (
-                  <div className="flex-1 flex flex-col justify-center items-center">
-                    <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
-                    <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime}</span>
+            if (viewMode === "my") {
+              const shift = shiftsByDate[dateStr];
+              return (
+                <div 
+                  key={dateStr} 
+                  className={`aspect-square rounded-xl border p-1 md:p-2 flex flex-col transition-all
+                    ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                    ${shift ? groupColors[shift.shiftGroup?.toLowerCase()] || 'bg-muted/30 border-border/50' : 'bg-muted/10 border-border/30'}
+                  `}
+                  data-testid={`day-cell-${dateStr}`}
+                >
+                  <span className={`text-xs md:text-sm font-bold ${isSunday ? 'text-destructive' : ''} ${isToday ? 'text-primary' : ''}`}>
+                    {format(day, "d")}
+                  </span>
+                  {shift && (
+                    <div className="flex-1 flex flex-col justify-center items-center">
+                      <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
+                      <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
+              const dayShifts = teamShiftsByDateAndUser[dateStr] || {};
+              const managersWithShifts = managers.filter((m: any) => dayShifts[m.username]);
+              const managersWithoutShifts = managers.filter((m: any) => !dayShifts[m.username]);
+              const colors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-teal-500"];
+              
+              return (
+                <div 
+                  key={dateStr} 
+                  className={`min-h-[80px] md:min-h-[100px] rounded-xl border p-1 md:p-2 flex flex-col transition-all bg-muted/10 border-border/30
+                    ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                  `}
+                  data-testid={`day-cell-${dateStr}`}
+                >
+                  <span className={`text-xs md:text-sm font-bold mb-1 ${isSunday ? 'text-destructive' : ''} ${isToday ? 'text-primary' : ''}`}>
+                    {format(day, "d")}
+                  </span>
+                  <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
+                    {managersWithShifts.map((m: any) => {
+                      const shift = dayShifts[m.username];
+                      const idx = managers.findIndex((mgr: any) => mgr.username === m.username);
+                      const color = colors[idx % colors.length];
+                      return (
+                        <div
+                          key={m.username}
+                          className={`flex items-center gap-1 px-1 py-0.5 rounded text-[7px] md:text-[8px] cursor-pointer hover:opacity-80 transition-opacity ${groupColors[shift.shiftGroup?.toLowerCase()] || 'bg-muted'}`}
+                          onClick={() => handleCellClick(dateStr, m)}
+                          data-testid={`shift-${dateStr}-${m.username}`}
+                        >
+                          <div className={`w-2 h-2 rounded-full ${color} shrink-0`} />
+                          <span className="truncate font-medium">{getShiftDisplayName(shift.shiftGroup)}</span>
+                        </div>
+                      );
+                    })}
+                    {managersWithoutShifts.length > 0 && (
+                      <div className="flex flex-wrap gap-0.5 mt-auto">
+                        {managersWithoutShifts.map((m: any) => {
+                          const idx = managers.findIndex((mgr: any) => mgr.username === m.username);
+                          const color = colors[idx % colors.length];
+                          return (
+                            <div
+                              key={m.username}
+                              className={`w-2 h-2 rounded-full ${color} opacity-30 cursor-pointer hover:opacity-60 transition-opacity`}
+                              onClick={() => handleCellClick(dateStr, m)}
+                              title={`${m.nickName || m.fullName}: OFF - Click to add`}
+                              data-testid={`add-shift-${dateStr}-${m.username}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
+                </div>
+              );
+            }
           })}
         </div>
       </Card>
 
       <Card className="glass-card border-none shadow-lg p-4">
-        <h3 className="font-bold text-foreground mb-3">{language === "th" ? "สรุปประจำเดือน" : "Monthly Summary"}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Object.entries(groupColors).map(([key, colorClass]) => {
-            const count = data?.shifts?.filter((s: any) => s.shiftGroup?.toLowerCase() === key).length || 0;
-            return (
-              <div key={key} className={`rounded-xl border p-3 ${colorClass}`}>
-                <span className="text-[10px] font-bold uppercase tracking-wider block">{key}</span>
-                <span className="text-2xl font-black">{count}</span>
-                <span className="text-[10px] ml-1">{language === "th" ? "กะ" : "shifts"}</span>
+        <h3 className="font-bold text-foreground mb-3">
+          {viewMode === "my" 
+            ? (language === "th" ? "สรุปประจำเดือน" : "Monthly Summary")
+            : (language === "th" ? "สรุปตารางทีม" : "Team Summary")}
+        </h3>
+        {viewMode === "my" ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Object.entries(groupColors).map(([key, colorClass]) => {
+                const count = data?.shifts?.filter((s: any) => s.shiftGroup?.toLowerCase() === key).length || 0;
+                return (
+                  <div key={key} className={`rounded-xl border p-3 ${colorClass}`}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider block">{key}</span>
+                    <span className="text-2xl font-black">{count}</span>
+                    <span className="text-[10px] ml-1">{language === "th" ? "กะ" : "shifts"}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{language === "th" ? "รวมทั้งหมด" : "Total Shifts"}</span>
+                <span className="text-xl font-bold text-primary">{data?.shifts?.length || 0}</span>
               </div>
-            );
-          })}
-        </div>
-        <div className="mt-4 pt-4 border-t border-border/50">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{language === "th" ? "รวมทั้งหมด" : "Total Shifts"}</span>
-            <span className="text-xl font-bold text-primary">{data?.shifts?.length || 0}</span>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            {managers.map((m: any, idx: number) => {
+              const managerShifts = teamData?.shifts?.filter((s: any) => s.username === m.username) || [];
+              const colors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-teal-500"];
+              const color = colors[idx % colors.length];
+              return (
+                <div key={m.username} className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${color}`} />
+                    <span className="font-medium text-sm">{m.nickName || m.fullName || m.username}</span>
+                    <span className="text-xs text-muted-foreground">({m.position || m.role})</span>
+                  </div>
+                  <span className="text-lg font-bold text-primary">{managerShifts.length} {language === "th" ? "กะ" : "shifts"}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      <ManagerShiftEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        selectedCell={selectedCell}
+        teamShiftsByDateAndUser={teamShiftsByDateAndUser}
+        groups={settings?.groups}
+        onSave={handleSaveShift}
+        onDelete={handleDeleteShift}
+        language={language}
+      />
+    </div>
+  );
+}
+
+function ManagerShiftEditDialog({
+  open,
+  onOpenChange,
+  selectedCell,
+  teamShiftsByDateAndUser,
+  groups,
+  onSave,
+  onDelete,
+  language,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedCell: { date: string; manager?: any } | null;
+  teamShiftsByDateAndUser: Record<string, Record<string, any>>;
+  groups: any;
+  onSave: (shiftGroup: string, startTime: string, note: string) => void;
+  onDelete: () => void;
+  language: string;
+}) {
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [customStartTime, setCustomStartTime] = useState("08:00");
+  const [customEndTime, setCustomEndTime] = useState("16:00");
+  const [note, setNote] = useState("");
+
+  const existingShift = selectedCell?.manager && teamShiftsByDateAndUser[selectedCell.date]?.[selectedCell.manager.username];
+
+  const timeOptions = Array.from({ length: 24 }, (_, i) => {
+    const hour = i.toString().padStart(2, "0");
+    return `${hour}:00`;
+  });
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen && existingShift) {
+      setSelectedGroup(existingShift.shiftGroup);
+      setSelectedTime(existingShift.startTime);
+      setNote(existingShift.note || "");
+    } else if (isOpen) {
+      setSelectedGroup("");
+      setSelectedTime("");
+      setNote("");
+    }
+    onOpenChange(isOpen);
+  };
+
+  const handleSubmit = () => {
+    if (!selectedGroup) return;
+    const finalTime = useCustomTime ? `${customStartTime} - ${customEndTime}` : selectedTime;
+    if (!finalTime) return;
+    onSave(selectedGroup, finalTime, note);
+  };
+
+  if (!selectedCell) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {existingShift 
+              ? (language === "th" ? "แก้ไขตารางงาน" : "Edit Schedule")
+              : (language === "th" ? "เพิ่มตารางงาน" : "Add Schedule")}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {selectedCell.manager?.nickName || selectedCell.manager?.fullName || selectedCell.manager?.username}
+            </span>
+            {" - "}
+            {format(parseISO(selectedCell.date), "EEEE d MMM yyyy")}
+          </div>
+          
+          <div className="space-y-2">
+            <Label>{language === "th" ? "กะงาน" : "Shift Group"}</Label>
+            <Select value={selectedGroup} onValueChange={(v) => { setSelectedGroup(v); setSelectedTime(""); }}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "th" ? "เลือกกะ..." : "Select shift..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {groups?.map((g: any) => (
+                  <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedGroup && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="customTimeTeam" 
+                  checked={useCustomTime} 
+                  onChange={(e) => setUseCustomTime(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="customTimeTeam" className="cursor-pointer">
+                  {language === "th" ? "กำหนดเวลาเอง" : "Custom Time"}
+                </Label>
+              </div>
+              
+              {useCustomTime ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาเริ่ม" : "Start Time"}</Label>
+                    <Select value={customStartTime} onValueChange={setCustomStartTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาจบ" : "End Time"}</Label>
+                    <Select value={customEndTime} onValueChange={setCustomEndTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>{language === "th" ? "เวลา" : "Time"}</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === "th" ? "เลือกเวลา..." : "Select time..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups?.find((g: any) => g.key === selectedGroup)?.times?.map((time: string) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>{language === "th" ? "หมายเหตุ" : "Note"}</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional..." />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSubmit} className="flex-1" disabled={!selectedGroup || (!useCustomTime && !selectedTime)}>
+              {language === "th" ? "บันทึก" : "Save"}
+            </Button>
+            {existingShift && (
+              <Button variant="destructive" onClick={onDelete}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

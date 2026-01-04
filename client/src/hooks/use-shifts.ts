@@ -43,6 +43,26 @@ export function useMyMonth(month: number, year: number) {
   });
 }
 
+export function useManagerTeamMonth(month: number, year: number) {
+  const { token } = useAuth();
+  
+  return useQuery({
+    queryKey: [api.shifts.getManagerTeamMonth.path, token, month, year],
+    enabled: !!token,
+    queryFn: async () => {
+      const res = await fetch(api.shifts.getManagerTeamMonth.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, month, year }),
+      });
+      if (!res.ok) throw new Error("Failed to fetch manager team month");
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.message || "Failed to fetch manager team month");
+      return data;
+    },
+  });
+}
+
 export function useBookShift() {
   const { token } = useAuth();
   const queryClient = useQueryClient();

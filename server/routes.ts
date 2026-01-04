@@ -265,6 +265,49 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, month, year, shifts: myShifts });
   });
 
+  // Shifts: Get Manager Team Month (all managers' schedules for a month)
+  app.post(api.shifts.getManagerTeamMonth.path, async (req, res) => {
+    const { token, month, year } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+
+    // Only managers and admins can view manager team schedule
+    if (u.role !== "manager" && u.role !== "admin") {
+      return res.json({ ok: false, message: "Permission denied" });
+    }
+
+    // Get first and last day of the month
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    // Get all managers (role = manager or admin)
+    const allUsers = await storage.getAllUsers();
+    const managers = allUsers.filter(user => (user.role === "manager" || user.role === "admin") && user.active === 1);
+
+    // Get shifts for all managers in this month
+    const shifts = await storage.getShiftsInRange(startDate, endDate);
+    const managerUsernames = managers.map(m => m.username);
+    const managerShifts = shifts.filter(s => managerUsernames.includes(s.username));
+
+    res.json({ 
+      ok: true, 
+      month, 
+      year, 
+      managers: managers.map(m => ({
+        username: m.username,
+        fullName: m.fullName,
+        fullNameTh: m.fullNameTh,
+        nickName: m.nickName,
+        position: m.position,
+        role: m.role
+      })),
+      shifts: managerShifts 
+    });
+  });
+
   // Shifts: Book
   app.post(api.shifts.book.path, async (req, res) => {
     const { token, date, shiftGroup, startTime, note } = req.body;

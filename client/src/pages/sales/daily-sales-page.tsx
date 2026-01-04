@@ -268,7 +268,7 @@ export default function DailySalesPage() {
       voidAmount: values.voidAmount?.replace(/,/g, '') || "0",
       wasteRawDaily: wasteRawDailyNum.toString(),
       wasteMealDaily: values.wasteMealDaily?.replace(/,/g, '') || "0",
-      wasteMtdTotal: values.wasteMtdTotal?.replace(/,/g, '') || "0",
+      wasteRawMtd: (parseFloat(values.wasteMtdTotal?.replace(/,/g, '') || "0") - parseFloat(values.wasteMealMtd?.replace(/,/g, '') || "0")).toString(),
       wasteMealMtd: values.wasteMealMtd?.replace(/,/g, '') || "0",
     };
     
@@ -482,7 +482,11 @@ export default function DailySalesPage() {
           const calculatedWasteDailyTotal = loadedWasteRawDaily + loadedWasteMealDaily;
           form.setValue("wasteDailyTotal", calculatedWasteDailyTotal.toString());
           form.setValue("wasteMealDaily", r.wasteMealDaily || "0");
-          form.setValue("wasteMtdTotal", r.wasteMtdTotal || "0");
+          
+          const loadedWasteRawMtd = parseFloat(r.wasteRawMtd || "0");
+          const loadedWasteMealMtd = parseFloat(r.wasteMealMtd || "0");
+          const calculatedWasteMtdTotal = loadedWasteRawMtd + loadedWasteMealMtd;
+          form.setValue("wasteMtdTotal", calculatedWasteMtdTotal.toString());
           form.setValue("wasteMealMtd", r.wasteMealMtd || "0");
           form.setValue("colPercent", r.colPercent || "0");
           form.setValue("laborHour", r.laborHour || "0");
@@ -572,9 +576,14 @@ export default function DailySalesPage() {
       const wasteMealDailyNum = parseFloat(values.wasteMealDaily?.replace(/,/g, '') || "0");
       const wasteRawDailyNum = wasteDailyTotalNum - wasteMealDailyNum;
       
+      const wasteMtdTotalNum = parseFloat(values.wasteMtdTotal?.replace(/,/g, '') || "0");
+      const wasteMealMtdNum = parseFloat(values.wasteMealMtd?.replace(/,/g, '') || "0");
+      const wasteRawMtdNum = wasteMtdTotalNum - wasteMealMtdNum;
+      
       const reportToSave = {
         ...values,
         wasteRawDaily: wasteRawDailyNum.toString(),
+        wasteRawMtd: wasteRawMtdNum.toString(),
       };
       
       const res = await apiRequest("POST", "/api/sales/createReport", { token, report: reportToSave });

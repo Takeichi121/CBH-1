@@ -284,7 +284,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     // Get all managers (role = manager or admin)
-    const allUsers = await storage.getAllUsers();
+    const allUsers = await storage.getUsers();
     const managers = allUsers.filter(user => (user.role === "manager" || user.role === "admin") && user.active === 1);
 
     // Get shifts for all managers in this month

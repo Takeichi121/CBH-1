@@ -156,6 +156,8 @@ const formSchema = z.object({
   surveyCount: z.string().default("0"),
   voidAmount: z.string().default("0"),
   voidCount: z.string().default("0"),
+  sosDaily: z.string().default("0"),
+  sosMtd: z.string().default("0"),
   addCheeseCount: z.string().default("0"),
   addCheesePercent: z.string().default("0"),
   vMealCount: z.string().default("0"),
@@ -251,6 +253,8 @@ export default function DailySalesPage() {
       surveyCount: "0",
       voidAmount: "0",
       voidCount: "0",
+      sosDaily: "0",
+      sosMtd: "0",
       addCheeseCount: "0",
       addCheesePercent: "0",
       vMealCount: "0",
@@ -320,6 +324,8 @@ export default function DailySalesPage() {
       mtdActual: values.mtdActual?.replace(/,/g, "") || "0",
       mtdTc: values.mtdTc?.replace(/,/g, "") || "0",
       voidAmount: values.voidAmount?.replace(/,/g, "") || "0",
+      sosDaily: values.sosDaily?.replace(/,/g, "") || "0",
+      sosMtd: values.sosMtd?.replace(/,/g, "") || "0",
       wasteRawDaily: wasteRawDailyNum.toString(),
       wasteMealDaily: values.wasteMealDaily?.replace(/,/g, "") || "0",
       wasteRawMtd: (
@@ -571,6 +577,8 @@ export default function DailySalesPage() {
           form.setValue("surveyCount", r.surveyCount || "0");
           form.setValue("voidAmount", r.voidAmount || "0");
           form.setValue("voidCount", r.voidCount || "0");
+          form.setValue("sosDaily", r.sosDaily || "0");
+          form.setValue("sosMtd", r.sosMtd || "0");
           form.setValue("addCheeseCount", r.addCheeseCount || "0");
           form.setValue("addCheesePercent", r.addCheesePercent || "0");
           form.setValue("vMealCount", r.vMealCount || "0");
@@ -1047,6 +1055,9 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
     surveyCount: language === "th" ? "จำนวน Survey" : "Survey Count",
     void: "Void",
     voidCount: language === "th" ? "Void (Bill)" : "Void Count",
+    sos: "SOS",
+    sosDaily: "Daily SOS",
+    sosMtd: "MTD SOS",
     addons: "Add-ons",
     addCheese: "Add Cheese",
     vMeal: "V-meal",
@@ -1673,6 +1684,42 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                               className="text-sm"
                               allowDecimals={false}
                               {...field}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="sosDaily"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {t.sosDaily}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput
+                              className="text-sm"
+                              {...field}
+                              data-testid="input-sos-daily"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="sosMtd"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {t.sosMtd}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput
+                              className="text-sm"
+                              {...field}
+                              data-testid="input-sos-mtd"
                             />
                           </FormControl>
                         </FormItem>

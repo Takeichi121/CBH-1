@@ -152,6 +152,10 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   voidAmount: text("void_amount").default("0"),
   voidCount: text("void_count").default("0"),
   
+  // Speed of Service (SOS)
+  sosDaily: text("sos_daily").default("0"),
+  sosMtd: text("sos_mtd").default("0"),
+  
   // Add-ons
   addCheeseCount: text("add_cheese_count").default("0"),
   addCheesePercent: text("add_cheese_percent").default("0"),

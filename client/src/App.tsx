@@ -8,6 +8,7 @@ import { Layout } from "@/components/layout";
 import { LoadingScreen } from "@/components/loading-screen";
 import { CompleteProfileModal } from "@/components/complete-profile-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
@@ -120,6 +121,7 @@ function App() {
         <I18nProvider>
           <AuthProvider>
             <Router />
+            <PWAInstallPrompt />
             <Toaster />
           </AuthProvider>
         </I18nProvider>

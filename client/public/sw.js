@@ -1,8 +1,12 @@
 const CACHE_NAME = 'bk-schedule-v1';
+const OFFLINE_URL = '/';
+
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/favicon.png'
+  '/favicon.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,48 +32,83 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  
-  const url = new URL(event.request.url);
-  
+  const { request } = event;
+  const url = new URL(request.url);
+
+  if (request.method !== 'GET') return;
+
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          return response;
-        })
+      fetch(request)
+        .then((response) => response)
         .catch(() => {
           return new Response(
             JSON.stringify({ ok: false, message: 'Offline - please check your connection' }),
-            { headers: { 'Content-Type': 'application/json' } }
+            { 
+              status: 503,
+              headers: { 'Content-Type': 'application/json' } 
+            }
           );
         })
     );
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(event.request).then((response) => {
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
           if (response.ok) {
+            const responseToCache = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, response.clone());
+              cache.put(OFFLINE_URL, responseToCache);
             });
           }
-        });
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((response) => {
-        if (response.ok && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+          return response;
+        })
+        .catch(() => {
+          return caches.match(OFFLINE_URL).then((cachedResponse) => {
+            return cachedResponse || new Response(
+              '<html><body><h1>Offline</h1><p>Please check your internet connection.</p></body></html>',
+              { headers: { 'Content-Type': 'text/html' } }
+            );
           });
+        })
+    );
+    return;
+  }
+
+  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff|woff2|ttf|eot)$/)) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          fetch(request).then((response) => {
+            if (response.ok) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(request, response.clone());
+              });
+            }
+          }).catch(() => {});
+          return cachedResponse;
         }
-        return response;
-      });
+
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      return cachedResponse || fetch(request);
     })
   );
 });

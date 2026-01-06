@@ -595,16 +595,16 @@ export default function DailySalesPage() {
             loadedWasteRawDaily + loadedWasteMealDaily;
           form.setValue(
             "wasteDailyTotal",
-            calculatedWasteDailyTotal.toString(),
+            calculatedWasteDailyTotal.toFixed(2),
           );
-          form.setValue("wasteMealDaily", r.wasteMealDaily || "0");
+          form.setValue("wasteMealDaily", parseFloat(r.wasteMealDaily || "0").toFixed(2));
 
           const loadedWasteRawMtd = parseFloat(r.wasteRawMtd || "0");
           const loadedWasteMealMtd = parseFloat(r.wasteMealMtd || "0");
           const calculatedWasteMtdTotal =
             loadedWasteRawMtd + loadedWasteMealMtd;
-          form.setValue("wasteMtdTotal", calculatedWasteMtdTotal.toString());
-          form.setValue("wasteMealMtd", r.wasteMealMtd || "0");
+          form.setValue("wasteMtdTotal", calculatedWasteMtdTotal.toFixed(2));
+          form.setValue("wasteMealMtd", loadedWasteMealMtd.toFixed(2));
           form.setValue("colPercent", r.colPercent || "0");
           form.setValue("laborHour", r.laborHour || "0");
           form.setValue("tcmh", r.tcmh || "0");
@@ -682,11 +682,11 @@ export default function DailySalesPage() {
           form.setValue("mtdTc", mtdData.mtdTc.toString());
           form.setValue(
             "wasteMtdTotal",
-            mtdData.wasteMtdTotal?.toString() || "0",
+            parseFloat(mtdData.wasteMtdTotal || 0).toFixed(2),
           );
           form.setValue(
             "wasteMealMtd",
-            mtdData.wasteMealMtd?.toString() || "0",
+            parseFloat(mtdData.wasteMealMtd || 0).toFixed(2),
           );
         }
 

@@ -992,6 +992,15 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   const wasteMealMtd = parseFloat(form.watch("wasteMealMtd") || "0");
   const wasteRawMtd = wasteMtdTotal - wasteMealMtd;
 
+  const laborHour = parseFloat(form.watch("laborHour") || "0");
+
+  useEffect(() => {
+    if (transactionCount > 0 && laborHour > 0) {
+      const tcmhValue = (transactionCount / laborHour).toFixed(2);
+      form.setValue("tcmh", tcmhValue);
+    }
+  }, [transactionCount, laborHour]);
+
   const handleAutoCalculateAddons = () => {
     const divisor = customAddonDivisor
       ? parseFloat(customAddonDivisor)

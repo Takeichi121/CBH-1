@@ -933,6 +933,8 @@ Raw: ${wasteRawMtdVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximu
 👷 COL: ${v.colPercent}%
 ⏰ Hour: ${v.laborHour}
 📊 TCMH = ${v.tcmh}
+🚀 SOS Daily: ${v.sosDaily || "0"}
+📈 SOS MTD: ${v.sosMtd || "0"}
 ========================
 
 📅 Manager Roster 

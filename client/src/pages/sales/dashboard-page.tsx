@@ -22,6 +22,8 @@ export default function SalesDashboardPage() {
     monthToDate: language === "th" ? "ยอดสะสม (MTD)" : "Month to Date",
     transactions: language === "th" ? "จำนวนรายการ" : "Transactions",
     avgTicket: language === "th" ? "ยอดเฉลี่ย/บิล" : "Avg Ticket",
+    deliveryTotal: language === "th" ? "ยอด Delivery รวม" : "Delivery Total",
+    deliveryPercent: language === "th" ? "% Delivery" : "Delivery %",
     noData: language === "th" ? "ยังไม่มีข้อมูล" : "No data yet",
     startRecording: language === "th" ? "เริ่มบันทึกยอดขาย" : "Start recording sales",
     goToForm: language === "th" ? "ไปกรอกข้อมูล" : "Go to form",
@@ -89,6 +91,14 @@ export default function SalesDashboardPage() {
   const todayTc = todayReport ? parseInt(todayReport.transactionCount) || 0 : null;
   const avgTicket = todaySales && todayTc && todayTc > 0 ? Math.round(todaySales / todayTc) : null;
 
+  const deliverySales = todayReport ? (
+    (parseFloat(todayReport.grabfood) || 0) +
+    (parseFloat(todayReport.lineman) || 0) +
+    (parseFloat(todayReport.shopee) || 0) +
+    (parseFloat(todayReport.bkapp) || 0)
+  ) : null;
+  const deliveryPercent = todaySales && deliverySales !== null && todaySales > 0 ? (deliverySales / todaySales) * 100 : null;
+
   const kpiCards = [
     {
       title: t.todaySales,
@@ -118,6 +128,20 @@ export default function SalesDashboardPage() {
       color: "text-orange-600",
       bgColor: "bg-orange-50 dark:bg-orange-950/30",
     },
+    {
+      title: t.deliveryTotal,
+      value: loading ? "-" : (deliverySales !== null ? `฿${deliverySales.toLocaleString()}` : "-"),
+      icon: TrendingUp,
+      color: "text-red-600",
+      bgColor: "bg-red-50 dark:bg-red-950/30",
+    },
+    {
+      title: t.deliveryPercent,
+      value: loading ? "-" : (deliveryPercent !== null ? `${deliveryPercent.toFixed(1)}%` : "-"),
+      icon: BarChart3,
+      color: "text-cyan-600",
+      bgColor: "bg-cyan-50 dark:bg-cyan-950/30",
+    },
   ];
 
   return (
@@ -130,7 +154,7 @@ export default function SalesDashboardPage() {
           <p className="text-muted-foreground text-sm">{t.subtitle}</p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {kpiCards.map((card, index) => {
             const cardId = card.title.toLowerCase().replace(/[^a-z0-9]/g, "-");
             return (

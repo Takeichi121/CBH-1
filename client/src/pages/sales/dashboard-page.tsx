@@ -44,19 +44,22 @@ export default function SalesDashboardPage() {
 
         const todayRes = await apiRequest("POST", "/api/sales/getReportByDate", { token, date: today });
         const todayData = await todayRes.json();
+        
+        let reportForToday = null;
         if (todayData.ok && todayData.report) {
-          setTodayReport(todayData.report);
+          reportForToday = todayData.report;
         } else {
-          // If no report for today, check the most recent one to see if it's today's
+          // Fallback: check reports list for today's date
           const reportsRes = await apiRequest("POST", "/api/sales/getReports", { token });
           const reportsData = await reportsRes.json();
           if (reportsData.ok && reportsData.reports && reportsData.reports.length > 0) {
             const latest = reportsData.reports[0];
             if (latest.reportDate === today) {
-              setTodayReport(latest);
+              reportForToday = latest;
             }
           }
         }
+        setTodayReport(reportForToday);
 
         const mtdRes = await apiRequest("POST", "/api/sales/getMtdSummary", { token, year: parseInt(year), month: parseInt(month) });
         const mtdDataRes = await mtdRes.json();

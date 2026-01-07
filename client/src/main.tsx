@@ -6,9 +6,24 @@ import "./index.css";
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { scope: "/" })
       .then((registration) => {
         console.log("SW registered: ", registration);
+        
+        // Handle updates
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          if (installingWorker) {
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === "installed") {
+                if (navigator.serviceWorker.controller) {
+                  // New content is available; please refresh.
+                  console.log("New content available, please refresh.");
+                }
+              }
+            };
+          }
+        };
       })
       .catch((registrationError) => {
         console.log("SW registration failed: ", registrationError);

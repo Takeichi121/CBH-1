@@ -969,6 +969,15 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   };
 
   const actualSales = parseFloat(form.watch("actualSales") || "0");
+  const grabSales = parseFloat(form.watch("grabfood") || "0");
+  const linemanSales = parseFloat(form.watch("lineman") || "0");
+  const shopeeSales = parseFloat(form.watch("shopee") || "0");
+  const bkappSales = parseFloat(form.watch("bkapp") || "0");
+
+  const deliveryTotal = grabSales + linemanSales + shopeeSales + bkappSales;
+  const deliveryPercent =
+    actualSales > 0 ? (deliveryTotal / actualSales) * 100 : 0;
+
   const transactionCount = parseInt(form.watch("transactionCount") || "0");
   const avgTransaction =
     transactionCount > 0
@@ -1480,10 +1489,22 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                   </div>
                 </div>
 
-                <div className="bg-purple-50 dark:bg-purple-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.delivery}
-                  </h3>
+                <div className="bg-purple-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.delivery}
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold leading-none">Total</p>
+                        <p className="text-sm font-bold text-primary">฿{deliveryTotal.toLocaleString()}</p>
+                      </div>
+                      <div className="text-right border-l pl-3">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold leading-none">%</p>
+                        <p className="text-sm font-bold text-primary">{deliveryPercent.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <FormField
                       control={form.control}

@@ -2,11 +2,13 @@
   "name": "BK Work Schedule - Grand Diamond",
   "short_name": "BK Schedule",
   "description": "Staff roster and shift scheduling management for Burger King Grand Diamond",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
   "background_color": "#1a1a2e",
   "theme_color": "#ff5722",
   "orientation": "portrait-primary",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/favicon.png",

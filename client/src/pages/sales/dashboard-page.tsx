@@ -42,17 +42,23 @@ export default function SalesDashboardPage() {
         const today = new Date().toISOString().split('T')[0];
         const [year, month] = today.split('-');
 
-        const [todayRes, mtdRes, reportsRes] = await Promise.all([
-          apiRequest("POST", "/api/sales/getReportByDate", { token, date: today }),
-          apiRequest("POST", "/api/sales/getMtdSummary", { token, year: parseInt(year), month: parseInt(month) }),
-          apiRequest("POST", "/api/sales/getReports", { token })
-        ]);
-
+        const todayRes = await apiRequest("POST", "/api/sales/getReportByDate", { token, date: today });
         const todayData = await todayRes.json();
         if (todayData.ok && todayData.report) {
           setTodayReport(todayData.report);
+        } else {
+          // If no report for today, check the most recent one to see if it's today's
+          const reportsRes = await apiRequest("POST", "/api/sales/getReports", { token });
+          const reportsData = await reportsRes.json();
+          if (reportsData.ok && reportsData.reports && reportsData.reports.length > 0) {
+            const latest = reportsData.reports[0];
+            if (latest.reportDate === today) {
+              setTodayReport(latest);
+            }
+          }
         }
 
+        const mtdRes = await apiRequest("POST", "/api/sales/getMtdSummary", { token, year: parseInt(year), month: parseInt(month) });
         const mtdDataRes = await mtdRes.json();
         if (mtdDataRes.ok) {
           setMtdData({
@@ -62,6 +68,7 @@ export default function SalesDashboardPage() {
           });
         }
 
+        const reportsRes = await apiRequest("POST", "/api/sales/getReports", { token });
         const reportsData = await reportsRes.json();
         if (reportsData.ok && reportsData.reports) {
           setRecentReports(reportsData.reports.slice(0, 5));

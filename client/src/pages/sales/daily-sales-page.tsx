@@ -168,9 +168,13 @@ const formSchema = z.object({
   wasteMealDaily: z.string().default("0"),
   wasteMtdTotal: z.string().default("0"),
   wasteMealMtd: z.string().default("0"),
+
+  // --- เพิ่ม laborCost เข้าไปใน Schema ---
+  laborCost: z.string().default("0"),
   colPercent: z.string().default("0"),
   laborHour: z.string().default("0"),
   tcmh: z.string().default("0"),
+
   managerRosterDate: z.string().default(""),
   managerRosterText: z.string().default(""),
   staffRosterText: z.string().default(""),
@@ -203,6 +207,7 @@ const SHIFT_OPTIONS = [
   { value: "OFF", label: "OFF" },
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
+  { value: "QSNCC", label: "QSNCC" },
 ] as const;
 
 const STAFF_SHIFT_GROUPS = [
@@ -268,9 +273,13 @@ export default function DailySalesPage() {
       wasteMealDaily: "0",
       wasteMtdTotal: "0",
       wasteMealMtd: "0",
+
+      // --- เพิ่ม laborCost ใน defaultValues ---
+      laborCost: "0",
       colPercent: "0",
       laborHour: "0",
       tcmh: "0",
+
       managerRosterDate: "",
       managerRosterText: "",
       staffRosterText: "",
@@ -336,6 +345,9 @@ export default function DailySalesPage() {
         parseFloat(values.wasteMealMtd?.replace(/,/g, "") || "0")
       ).toString(),
       wasteMealMtd: values.wasteMealMtd?.replace(/,/g, "") || "0",
+
+      // --- ส่งค่า laborCost ไปบันทึกด้วย (ถ้า Backend รองรับ) ---
+      laborCost: values.laborCost?.replace(/,/g, "") || "0",
     };
 
     try {
@@ -605,9 +617,14 @@ export default function DailySalesPage() {
             loadedWasteRawMtd + loadedWasteMealMtd;
           form.setValue("wasteMtdTotal", calculatedWasteMtdTotal.toFixed(2));
           form.setValue("wasteMealMtd", loadedWasteMealMtd.toFixed(2));
+
           form.setValue("colPercent", r.colPercent || "0");
           form.setValue("laborHour", r.laborHour || "0");
           form.setValue("tcmh", r.tcmh || "0");
+
+          // --- Load laborCost if exists ---
+          form.setValue("laborCost", r.laborCost || "0");
+
           if (r.managerRosterDate)
             form.setValue("managerRosterDate", r.managerRosterDate);
           if (r.workShift) form.setValue("workShift", r.workShift);
@@ -1003,12 +1020,27 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
 
   const laborHour = parseFloat(form.watch("laborHour") || "0");
 
+  // --- ดึงค่า Labor Cost มาเพื่อใช้ในสูตร ---
+  const laborCost = parseFloat(form.watch("laborCost") || "0");
+
   useEffect(() => {
     if (transactionCount > 0 && laborHour > 0) {
       const tcmhValue = (transactionCount / laborHour).toFixed(2);
-      form.setValue("tcmh", tcmhValue);
+      form.setValue("tcmh", tcmhValue, { shouldDirty: true });
     }
-  }, [transactionCount, laborHour]);
+  }, [transactionCount, laborHour, form.setValue]);
+
+  useEffect(() => {
+    if (actualSales > 0) {
+      // สูตร: (ค่าแรงรวม / ยอดขาย) * 100
+      const calculatedCol = (laborCost / actualSales) * 100;
+      form.setValue("colPercent", calculatedCol.toFixed(2), {
+        shouldDirty: true,
+      });
+    } else {
+      form.setValue("colPercent", "0.00", { shouldDirty: true });
+    }
+  }, [actualSales, laborCost, form.setValue]);
 
   const handleAutoCalculateAddons = () => {
     const divisor = customAddonDivisor
@@ -2297,7 +2329,27 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                   <h3 className="text-sm md:text-base font-medium mb-3">
                     {t.labor}
                   </h3>
-                  <div className="grid grid-cols-3 gap-3">
+                  {/* ปรับ Grid เป็น 4 ช่องเพื่อรองรับช่องกรอกค่าแรง */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+                    {/* --- ช่องกรอก Labor Cost --- */}
+                    <FormField
+                      control={form.control}
+                      name="laborCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Labor Cost (฿)</FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm" 
+                              {...field} 
+                              placeholder="0.00"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="colPercent"
@@ -2305,7 +2357,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         <FormItem>
                           <FormLabel className="text-xs">{t.col}</FormLabel>
                           <FormControl>
-                            <FormattedInput className="text-sm" {...field} />
+                             {/* ปรับเป็น ReadOnly */}
+                            <FormattedInput className="text-sm bg-muted" readOnly {...field} />
                           </FormControl>
                         </FormItem>
                       )}
@@ -2329,7 +2382,7 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         <FormItem>
                           <FormLabel className="text-xs">{t.tcmh}</FormLabel>
                           <FormControl>
-                            <FormattedInput className="text-sm" {...field} />
+                            <FormattedInput className="text-sm bg-muted" readOnly {...field} />
                           </FormControl>
                         </FormItem>
                       )}

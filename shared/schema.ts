@@ -177,6 +177,7 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   wasteMealMtdPercent: text("waste_meal_mtd_percent").default("0"),
   
   // Labor
+  laborCost: text("labor_cost").default("0"),
   colPercent: text("col_percent").default("0"),
   laborHour: text("labor_hour").default("0"),
   tcmh: text("tcmh").default("0"),

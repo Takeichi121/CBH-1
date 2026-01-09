@@ -1202,6 +1202,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Save Daily Sales Data
+  app.post(api.sales.saveDailySalesData.path, async (req, res) => {
+    const { token, salesData } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    try {
+      for (const data of salesData) {
+        await storage.upsertDailySalesReportByDate({
+          reportDate: data.reportDate,
+          reportBy: u.nickName || u.fullName || u.username,
+          workShift: "full",
+          actualSales: data.actualSales?.toString() || "0",
+          transactionCount: data.transactionCount?.toString() || "0",
+          laborHour: data.laborHour?.toString() || "0",
+          wasteRawDaily: data.wasteRawDaily?.toString() || "0",
+          wasteMealDaily: data.wasteMealDaily?.toString() || "0",
+        });
+      }
+      await storage.log("save_daily_sales_data", u.username, `count=${salesData.length}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to save daily sales data" });
+    }
+  });
+
   // ==================== Manager Requests ====================
 
   // Create Manager Request

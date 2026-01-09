@@ -65,7 +65,15 @@ export default function SalesSettingsPage() {
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [dailyTargets, setDailyTargets] = useState<Record<string, string>>({});
   const [dailySalesData, setDailySalesData] = useState<Record<string, DailySalesData>>({});
+  const [editableSalesData, setEditableSalesData] = useState<Record<string, {
+    actualSales: string;
+    actualTc: string;
+    laborHour: string;
+    wasteRawDaily: string;
+    wasteMealDaily: string;
+  }>>({});
   const [defaultTarget, setDefaultTarget] = useState("130000");
+  const [isSavingSales, setIsSavingSales] = useState(false);
   const [wasteTargets, setWasteTargets] = useState<WasteTarget>({
     mtdAmount: "0",
     mtdPercent: "0",
@@ -142,12 +150,12 @@ export default function SalesSettingsPage() {
     
     return monthDates.map(({ date, day, displayDate }) => {
       const targetSales = parseFloat(dailyTargets[date]) || 0;
-      const salesData = dailySalesData[date];
-      const actualSales = salesData?.actualSales || 0;
-      const actualTc = salesData?.actualTc || 0;
-      const laborHour = salesData?.laborHour || 0;
-      const wasteRawDaily = salesData?.wasteRawDaily || 0;
-      const wasteMealDaily = salesData?.wasteMealDaily || 0;
+      const editable = editableSalesData[date];
+      const actualSales = editable ? parseFloat(editable.actualSales) || 0 : 0;
+      const actualTc = editable ? parseFloat(editable.actualTc) || 0 : 0;
+      const laborHour = editable ? parseFloat(editable.laborHour) || 0 : 0;
+      const wasteRawDaily = editable ? parseFloat(editable.wasteRawDaily) || 0 : 0;
+      const wasteMealDaily = editable ? parseFloat(editable.wasteMealDaily) || 0 : 0;
       
       runningActualSales += actualSales;
       runningActualTc += actualTc;
@@ -172,7 +180,7 @@ export default function SalesSettingsPage() {
         wasteMealMtd: runningWasteMeal,
       };
     });
-  }, [monthDates, dailyTargets, dailySalesData]);
+  }, [monthDates, dailyTargets, editableSalesData]);
 
   const totals = useMemo(() => {
     const lastRow = tableData[tableData.length - 1];
@@ -259,6 +267,7 @@ export default function SalesSettingsPage() {
         const data = await res.json();
         if (data.ok && data.reports) {
           const salesMap: Record<string, DailySalesData> = {};
+          const editableMap: Record<string, any> = {};
           data.reports.forEach((report: any) => {
             salesMap[report.reportDate] = {
               date: report.reportDate,
@@ -270,8 +279,36 @@ export default function SalesSettingsPage() {
               wasteRawMtd: parseFloat(report.wasteRawMtd) || 0,
               wasteMealMtd: parseFloat(report.wasteMealMtd) || 0,
             };
+            editableMap[report.reportDate] = {
+              actualSales: (parseFloat(report.actualSales) || 0).toString(),
+              actualTc: (parseInt(report.transactionCount) || 0).toString(),
+              laborHour: (parseFloat(report.laborHour) || 0).toString(),
+              wasteRawDaily: (parseFloat(report.wasteRawDaily) || 0).toString(),
+              wasteMealDaily: (parseFloat(report.wasteMealDaily) || 0).toString(),
+            };
           });
           setDailySalesData(salesMap);
+          setEditableSalesData(prev => {
+            const newMap = { ...prev };
+            monthDates.forEach(({ date }) => {
+              if (editableMap[date]) {
+                newMap[date] = editableMap[date];
+              } else if (!newMap[date]) {
+                newMap[date] = { actualSales: "", actualTc: "", laborHour: "", wasteRawDaily: "", wasteMealDaily: "" };
+              }
+            });
+            return newMap;
+          });
+        } else {
+          setEditableSalesData(prev => {
+            const newMap = { ...prev };
+            monthDates.forEach(({ date }) => {
+              if (!newMap[date]) {
+                newMap[date] = { actualSales: "", actualTc: "", laborHour: "", wasteRawDaily: "", wasteMealDaily: "" };
+              }
+            });
+            return newMap;
+          });
         }
       } catch (error) {
         console.error("Failed to load daily sales:", error);
@@ -430,6 +467,62 @@ export default function SalesSettingsPage() {
     }));
   };
 
+  const handleSalesDataChange = (date: string, field: string, value: string) => {
+    setEditableSalesData(prev => ({
+      ...prev,
+      [date]: {
+        ...prev[date],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveSalesData = async () => {
+    setIsSavingSales(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const salesData = monthDates.map(({ date }) => {
+        const editable = editableSalesData[date] || {};
+        return {
+          reportDate: date,
+          actualSales: parseFloat(editable.actualSales) || 0,
+          transactionCount: parseInt(editable.actualTc) || 0,
+          laborHour: parseFloat(editable.laborHour) || 0,
+          wasteRawDaily: parseFloat(editable.wasteRawDaily) || 0,
+          wasteMealDaily: parseFloat(editable.wasteMealDaily) || 0,
+        };
+      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.laborHour > 0 || d.wasteRawDaily > 0 || d.wasteMealDaily > 0);
+      
+      const res = await apiRequest("POST", "/api/sales/saveDailySalesData", {
+        token,
+        year: selectedYear,
+        month: selectedMonth,
+        salesData,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({
+          title: t.saved,
+          description: language === "th" ? "บันทึกข้อมูลยอดขายรายวันเรียบร้อย" : "Daily sales data saved successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: t.errorSave,
+          description: data.message || "Unknown error",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: t.errorSave,
+        description: error.message || "Unknown error",
+      });
+    } finally {
+      setIsSavingSales(false);
+    }
+  };
+
   const handlePrevMonth = () => {
     if (selectedMonth === 1) {
       setSelectedYear(selectedYear - 1);
@@ -570,32 +663,62 @@ export default function SalesSettingsPage() {
                               data-testid={`input-target-${row.day}`}
                             />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-white dark:bg-slate-900">
-                            {row.actualSales > 0 ? formatNumber(row.actualSales) : ''}
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
+                            <Input
+                              type="number"
+                              value={editableSalesData[row.date]?.actualSales || ""}
+                              onChange={(e) => handleSalesDataChange(row.date, "actualSales", e.target.value)}
+                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
+                              data-testid={`input-actual-sales-${row.day}`}
+                            />
                           </td>
                           <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
                             {row.actualSalesMtd > 0 ? formatNumber(row.actualSalesMtd) : ''}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-white dark:bg-slate-900">
-                            {row.actualTc > 0 ? formatNumber(row.actualTc) : ''}
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
+                            <Input
+                              type="number"
+                              value={editableSalesData[row.date]?.actualTc || ""}
+                              onChange={(e) => handleSalesDataChange(row.date, "actualTc", e.target.value)}
+                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
+                              data-testid={`input-actual-tc-${row.day}`}
+                            />
                           </td>
                           <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
                             {row.actualTcMtd > 0 ? formatNumber(row.actualTcMtd) : ''}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-                            {row.laborHour > 0 ? formatNumber(row.laborHour) : '-'}
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-indigo-50 dark:bg-indigo-900/50">
+                            <Input
+                              type="number"
+                              value={editableSalesData[row.date]?.laborHour || ""}
+                              onChange={(e) => handleSalesDataChange(row.date, "laborHour", e.target.value)}
+                              className="h-7 text-right text-sm border-0 bg-transparent text-indigo-700 dark:text-indigo-300 focus:bg-indigo-100 dark:focus:bg-indigo-800"
+                              data-testid={`input-labor-hour-${row.day}`}
+                            />
                           </td>
                           <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-indigo-100 dark:bg-indigo-800/50 text-indigo-800 dark:text-indigo-200">
                             {row.laborHourMtd > 0 ? formatNumber(row.laborHourMtd) : '-'}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-white dark:bg-slate-900">
-                            {row.wasteRawDaily > 0 ? formatNumber(row.wasteRawDaily) : '-'}
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
+                            <Input
+                              type="number"
+                              value={editableSalesData[row.date]?.wasteRawDaily || ""}
+                              onChange={(e) => handleSalesDataChange(row.date, "wasteRawDaily", e.target.value)}
+                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
+                              data-testid={`input-waste-raw-${row.day}`}
+                            />
                           </td>
                           <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
                             {row.wasteRawMtd > 0 ? formatNumber(row.wasteRawMtd) : '-'}
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right bg-white dark:bg-slate-900">
-                            {row.wasteMealDaily > 0 ? formatNumber(row.wasteMealDaily) : '-'}
+                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
+                            <Input
+                              type="number"
+                              value={editableSalesData[row.date]?.wasteMealDaily || ""}
+                              onChange={(e) => handleSalesDataChange(row.date, "wasteMealDaily", e.target.value)}
+                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
+                              data-testid={`input-waste-meal-${row.day}`}
+                            />
                           </td>
                           <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
                             {row.wasteMealMtd > 0 ? formatNumber(row.wasteMealMtd) : '-'}
@@ -624,8 +747,13 @@ export default function SalesSettingsPage() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
-              <Button onClick={handleSaveTargets} disabled={isSavingTargets} data-testid="button-save-targets">
+            <div className="pt-2 flex justify-end gap-2">
+              <Button 
+                variant="outline"
+                onClick={handleSaveTargets} 
+                disabled={isSavingTargets} 
+                data-testid="button-save-targets"
+              >
                 {isSavingTargets ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -634,7 +762,24 @@ export default function SalesSettingsPage() {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {t.save}
+                    {language === "th" ? "บันทึกเป้าหมาย" : "Save Targets"}
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={handleSaveSalesData} 
+                disabled={isSavingSales} 
+                data-testid="button-save-sales"
+              >
+                {isSavingSales ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t.saving}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {language === "th" ? "บันทึกยอดขาย" : "Save Sales Data"}
                   </>
                 )}
               </Button>

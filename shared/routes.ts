@@ -382,6 +382,14 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    saveDailySalesData: {
+      method: "POST",
+      path: "/api/sales/saveDailySalesData",
+      input: z.object({ token: z.string(), year: z.number(), month: z.number(), salesData: z.array(z.any()) }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
   },
   managerRequests: {
     create: {

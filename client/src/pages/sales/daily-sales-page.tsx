@@ -1043,6 +1043,27 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
     }
   }, [actualSales, laborCost, form.setValue]);
 
+  // Auto-calculate Add-on percentages when count values change
+  useEffect(() => {
+    if (transactionCount > 0) {
+      form.setValue(
+        "addCheesePercent",
+        ((addCheeseCount / transactionCount) * 100).toFixed(2),
+        { shouldDirty: true }
+      );
+      form.setValue(
+        "vMealPercent",
+        ((vMealCount / transactionCount) * 100).toFixed(2),
+        { shouldDirty: true }
+      );
+      form.setValue(
+        "upSizePercent",
+        ((upSizeCount / transactionCount) * 100).toFixed(2),
+        { shouldDirty: true }
+      );
+    }
+  }, [addCheeseCount, vMealCount, upSizeCount, transactionCount, form.setValue]);
+
   const handleAutoCalculateAddons = () => {
     const divisor = customAddonDivisor
       ? parseFloat(customAddonDivisor)

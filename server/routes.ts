@@ -4,6 +4,8 @@ import { storage, transaction, updateShiftById } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import crypto from "crypto";
+import multer from "multer";
+import * as XLSX from "xlsx";
 import { hashPass, generateUsernameBase, allocateUsername, isSystemClosed, getWeekRangeTuesday, DEFAULT_CAPACITY, SHIFT_GROUPS } from "./utils";
 import { db } from "./db";
 import { users, shifts } from "@shared/schema";
@@ -11,6 +13,8 @@ import { eq, and } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
@@ -1848,6 +1852,75 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const metrics = await storage.getBorrowDashboardMetrics();
     const overdue = await storage.getOverdueBorrowTransactions();
     res.json({ ok: true, ...metrics, overdueCount: overdue.length, overdueTransactions: overdue });
+  });
+
+  // Excel Import - Branches
+  app.post("/api/borrow/branches/import", upload.single("file"), async (req, res) => {
+    try {
+      const token = req.body.token;
+      if (!token) return res.json({ ok: false, message: "Token required" });
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.json(access);
+
+      if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json<{ name?: string; code?: string; Name?: string; Code?: string }>(sheet);
+
+      let imported = 0;
+      let skipped = 0;
+      for (const row of data) {
+        const name = row.name || row.Name || "";
+        const code = row.code || row.Code || "";
+        if (!name.trim()) {
+          skipped++;
+          continue;
+        }
+        await storage.addBorrowBranch(name.trim(), code.trim());
+        imported++;
+      }
+
+      res.json({ ok: true, imported, skipped, total: data.length });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Import failed" });
+    }
+  });
+
+  // Excel Import - Items
+  app.post("/api/borrow/items/import", upload.single("file"), async (req, res) => {
+    try {
+      const token = req.body.token;
+      if (!token) return res.json({ ok: false, message: "Token required" });
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.json(access);
+
+      if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json<{ name?: string; code?: string; unit?: string; Name?: string; Code?: string; Unit?: string }>(sheet);
+
+      let imported = 0;
+      let skipped = 0;
+      for (const row of data) {
+        const name = row.name || row.Name || "";
+        const code = row.code || row.Code || "";
+        const unit = row.unit || row.Unit || "";
+        if (!name.trim()) {
+          skipped++;
+          continue;
+        }
+        await storage.addBorrowItem(name.trim(), code.trim(), unit.trim());
+        imported++;
+      }
+
+      res.json({ ok: true, imported, skipped, total: data.length });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Import failed" });
+    }
   });
 
   return httpServer;

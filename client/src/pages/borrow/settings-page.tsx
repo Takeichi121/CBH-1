@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Building, Package, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Building, Package, Trash2, RefreshCw, Upload, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BorrowLayout } from "./borrow-layout";
 import type { BorrowBranch, BorrowItem } from "@shared/schema";
@@ -26,6 +26,10 @@ export default function BorrowSettingsPage() {
   const [showItemDialog, setShowItemDialog] = useState(false);
   const [newBranch, setNewBranch] = useState({ name: "", code: "" });
   const [newItem, setNewItem] = useState({ name: "", code: "", unit: "" });
+  const [importingBranches, setImportingBranches] = useState(false);
+  const [importingItems, setImportingItems] = useState(false);
+  const branchFileRef = useRef<HTMLInputElement>(null);
+  const itemFileRef = useRef<HTMLInputElement>(null);
 
   const isManager = user?.role === "manager" || user?.role === "admin";
 
@@ -45,6 +49,72 @@ export default function BorrowSettingsPage() {
     noBranches: language === "th" ? "ยังไม่มีสาขา" : "No branches yet",
     noItems: language === "th" ? "ยังไม่มีรายการ" : "No items yet",
     refresh: language === "th" ? "รีเฟรช" : "Refresh",
+    importExcel: language === "th" ? "Import Excel" : "Import Excel",
+    importSuccess: language === "th" ? "นำเข้าสำเร็จ" : "Import successful",
+    importFailed: language === "th" ? "นำเข้าไม่สำเร็จ" : "Import failed",
+    importing: language === "th" ? "กำลังนำเข้า..." : "Importing...",
+    rowsImported: language === "th" ? "รายการที่นำเข้า" : "rows imported",
+    rowsSkipped: language === "th" ? "รายการที่ข้าม" : "rows skipped",
+  };
+
+  const handleImportBranches = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    setImportingBranches(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token);
+      const res = await fetch("/api/borrow/branches/import", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ 
+          title: labels.importSuccess, 
+          description: `${data.imported} ${labels.rowsImported}, ${data.skipped} ${labels.rowsSkipped}` 
+        });
+        fetchData();
+      } else {
+        toast({ title: labels.importFailed, description: data.message, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: labels.importFailed, variant: "destructive" });
+    } finally {
+      setImportingBranches(false);
+      if (branchFileRef.current) branchFileRef.current.value = "";
+    }
+  };
+
+  const handleImportItems = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    setImportingItems(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token);
+      const res = await fetch("/api/borrow/items/import", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ 
+          title: labels.importSuccess, 
+          description: `${data.imported} ${labels.rowsImported}, ${data.skipped} ${labels.rowsSkipped}` 
+        });
+        fetchData();
+      } else {
+        toast({ title: labels.importFailed, description: data.message, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: labels.importFailed, variant: "destructive" });
+    } finally {
+      setImportingItems(false);
+      if (itemFileRef.current) itemFileRef.current.value = "";
+    }
   };
 
   const fetchData = async () => {
@@ -184,7 +254,25 @@ export default function BorrowSettingsPage() {
           </TabsList>
 
           <TabsContent value="branches" className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <input
+                ref={branchFileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportBranches}
+                data-testid="input-import-branches"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => branchFileRef.current?.click()}
+                disabled={importingBranches}
+                data-testid="button-import-branches"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-1" />
+                {importingBranches ? labels.importing : labels.importExcel}
+              </Button>
               <Dialog open={showBranchDialog} onOpenChange={setShowBranchDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-add-branch">
@@ -270,7 +358,25 @@ export default function BorrowSettingsPage() {
           </TabsContent>
 
           <TabsContent value="items" className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <input
+                ref={itemFileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportItems}
+                data-testid="input-import-items"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => itemFileRef.current?.click()}
+                disabled={importingItems}
+                data-testid="button-import-items"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-1" />
+                {importingItems ? labels.importing : labels.importExcel}
+              </Button>
               <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-add-item">

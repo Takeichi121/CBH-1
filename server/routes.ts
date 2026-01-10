@@ -1504,9 +1504,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!access.ok) return res.json(access);
 
     try {
-      const salt = process.env.SALT || "bk_salt";
-      const crypto = await import("crypto");
-      const passhash = crypto.createHash("sha256").update(newPassword + salt).digest("hex");
+      const { hashPassword } = await import("./utils");
+      const passhash = hashPassword(newPassword);
       await storage.updateUserPassword(username, passhash);
       await storage.log("dev_reset_password", access.user.username, `user=${username}`);
       res.json({ ok: true, message: `Password reset for ${username}` });

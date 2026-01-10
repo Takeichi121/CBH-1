@@ -1,5 +1,5 @@
 import React from "react";
-import { useLanguage } from "@/lib/i18n";
+import { useI18n } from "@/hooks/use-i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,80 +9,76 @@ import {
   FileStack,
   Database,
   Lightbulb,
-  CalendarDays,
 } from "lucide-react";
-import type { DashboardMetrics } from "@shared/schema";
+import { BorrowLayout } from "./borrow-layout";
 
-export default function Dashboard() {
-  const { t } = useLanguage();
+interface DashboardMetrics {
+  totalTransactions: number;
+  totalBorrowIn: number;
+  totalBorrowOut: number;
+  overdueCount: number;
+}
+
+export default function BorrowDashboardPage() {
+  const { language } = useI18n();
 
   const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
-    queryKey: ["/api/dashboard/metrics"],
+    queryKey: ["/api/borrow/dashboard"],
   });
 
-  // ✅ TH/EN locale (ไม่เดา t.lang แล้ว)
-  const isThai =
-    (typeof document !== "undefined" &&
-      document.documentElement?.lang?.toLowerCase().startsWith("th")) ||
-    (typeof navigator !== "undefined" &&
-      navigator.language?.toLowerCase().startsWith("th"));
-
-  const locale = isThai ? "th-TH" : "en-US";
-
-  const now = new Date();
-  const dayName = now.toLocaleDateString(locale, { weekday: "long" });
-  const fullDate = now.toLocaleDateString(locale, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  const todayLabel = isThai ? "วันนี้" : "Today";
+  const labels = {
+    totalTransactions: language === "th" ? "รายการทั้งหมด" : "Total Transactions",
+    totalBorrowIn: language === "th" ? "ยืมเข้า" : "Borrow In",
+    totalBorrowOut: language === "th" ? "ให้ยืม" : "Borrow Out",
+    overview: language === "th" ? "ภาพรวม" : "Overview",
+    dbMode: language === "th" ? "ระบบพร้อมใช้งาน" : "System is ready",
+    tip: language === "th" ? "ใช้แท็บด้านบนเพื่อดูรายการและตั้งค่า" : "Use the tabs above to view transactions and settings",
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard
-          label={t.dashboard.totalTransactions}
-          value={metrics?.totalTransactions ?? 0}
-          icon={FileStack}
-          isLoading={isLoading}
-          variant="default"
-        />
-        <MetricCard
-          label={t.dashboard.totalBorrowIn}
-          value={metrics?.totalBorrowIn ?? 0}
-          icon={ArrowDownLeft}
-          isLoading={isLoading}
-          variant="success"
-        />
-        <MetricCard
-          label={t.dashboard.totalBorrowOut}
-          value={metrics?.totalBorrowOut ?? 0}
-          icon={ArrowUpRight}
-          isLoading={isLoading}
-          variant="danger"
-        />
-      </div>
+    <BorrowLayout>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <MetricCard
+            label={labels.totalTransactions}
+            value={metrics?.totalTransactions ?? 0}
+            icon={FileStack}
+            isLoading={isLoading}
+            variant="default"
+          />
+          <MetricCard
+            label={labels.totalBorrowIn}
+            value={metrics?.totalBorrowIn ?? 0}
+            icon={ArrowDownLeft}
+            isLoading={isLoading}
+            variant="success"
+          />
+          <MetricCard
+            label={labels.totalBorrowOut}
+            value={metrics?.totalBorrowOut ?? 0}
+            icon={ArrowUpRight}
+            isLoading={isLoading}
+            variant="danger"
+          />
+        </div>
 
-      {/* Overview Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            {t.dashboard.overview}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">{t.dashboard.dbMode}</p>
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Lightbulb className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-            <span>{t.dashboard.tip}</span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              {labels.overview}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">{labels.dbMode}</p>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Lightbulb className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+              <span>{labels.tip}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </BorrowLayout>
   );
 }
 

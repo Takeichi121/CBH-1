@@ -16,7 +16,9 @@ import WorkPage from "@/pages/work-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
-import BorrowTrackerPage from "@/pages/borrow/borrow-tracker-page";
+import BorrowDashboardPage from "@/pages/borrow/dashboard-page";
+import BorrowTransactionsPage from "@/pages/borrow/transactions-page";
+import BorrowSettingsPage from "@/pages/borrow/settings-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
@@ -86,8 +88,17 @@ function Router() {
             <ProtectedRoute component={SalesSettingsPage} path="/sales/settings" />
           </Route>
           
+          {/* Borrow Routes */}
           <Route path="/borrow">
-            <ProtectedRoute component={BorrowTrackerPage} path="/borrow" />
+            <ProtectedRoute component={BorrowDashboardPage} path="/borrow" />
+          </Route>
+          
+          <Route path="/borrow/transactions">
+            <ProtectedRoute component={BorrowTransactionsPage} path="/borrow/transactions" />
+          </Route>
+          
+          <Route path="/borrow/settings">
+            <ProtectedRoute component={BorrowSettingsPage} path="/borrow/settings" />
           </Route>
           
           <Route path="/requests">

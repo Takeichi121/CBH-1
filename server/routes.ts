@@ -1726,27 +1726,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ===================== BORROW TRACKER ROUTES =====================
 
+  const verifyManagerAccess = async (token: string) => {
+    const session = await storage.getSession(token);
+    if (!session) return { ok: false as const, message: "Session expired" };
+    const user = await storage.getUser(session.username);
+    if (!user) return { ok: false as const, message: "User not found" };
+    if (user.role !== "admin" && user.role !== "manager") {
+      return { ok: false as const, message: "No permission" };
+    }
+    return { ok: true as const, user };
+  };
+
   // Branches
   app.post("/api/borrow/branches", async (req, res) => {
     const { token } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
     const branches = await storage.getBorrowBranches();
     res.json({ ok: true, branches });
   });
 
   app.post("/api/borrow/branches/add", async (req, res) => {
     const { token, name, code } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!name || typeof name !== "string") return res.json({ ok: false, message: "Name is required" });
     const result = await storage.addBorrowBranch(name, code);
     res.json(result);
   });
 
   app.post("/api/borrow/branches/delete", async (req, res) => {
     const { token, id } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
     await storage.deleteBorrowBranch(id);
     res.json({ ok: true });
   });
@@ -1754,24 +1767,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Items
   app.post("/api/borrow/items", async (req, res) => {
     const { token } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
     const items = await storage.getBorrowItems();
     res.json({ ok: true, items });
   });
 
   app.post("/api/borrow/items/add", async (req, res) => {
     const { token, name, code, unit } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!name || typeof name !== "string") return res.json({ ok: false, message: "Name is required" });
     const result = await storage.addBorrowItem(name, code, unit);
     res.json(result);
   });
 
   app.post("/api/borrow/items/delete", async (req, res) => {
     const { token, id } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
     await storage.deleteBorrowItem(id);
     res.json({ ok: true });
   });
@@ -1779,32 +1794,48 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Transactions
   app.post("/api/borrow/transactions", async (req, res) => {
     const { token, limit } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
     const transactions = await storage.getBorrowTransactions(limit);
     res.json({ ok: true, transactions });
   });
 
   app.post("/api/borrow/transactions/add", async (req, res) => {
-    const { token, ...data } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
-    const result = await storage.addBorrowTransaction(data);
+    const { token, txDate, dueDate, txType, branch, item, qty, unit, borrower, lender, note } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!txDate || !txType || !branch || !item || typeof qty !== "number") {
+      return res.json({ ok: false, message: "Missing required fields" });
+    }
+    const result = await storage.addBorrowTransaction({
+      txDate,
+      dueDate: dueDate || undefined,
+      txType,
+      branch,
+      item,
+      qty,
+      unit: unit || "",
+      borrower: borrower || "",
+      lender: lender || "",
+      note: note || "",
+    });
     res.json(result);
   });
 
   app.post("/api/borrow/transactions/toggle", async (req, res) => {
     const { token, id } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
     const result = await storage.toggleBorrowTransaction(id);
     res.json(result);
   });
 
   app.post("/api/borrow/transactions/delete", async (req, res) => {
     const { token, id } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
     await storage.deleteBorrowTransaction(id);
     res.json({ ok: true });
   });
@@ -1812,8 +1843,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Dashboard
   app.post("/api/borrow/dashboard", async (req, res) => {
     const { token } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
     const metrics = await storage.getBorrowDashboardMetrics();
     const overdue = await storage.getOverdueBorrowTransactions();
     res.json({ ok: true, ...metrics, overdueCount: overdue.length, overdueTransactions: overdue });

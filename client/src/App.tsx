@@ -16,7 +16,7 @@ import WorkPage from "@/pages/work-page";
 import RosterPage from "@/pages/roster-page";
 import SettingsPage from "@/pages/settings-page";
 import AdminPage from "@/pages/admin-page";
-import BorrowTrackerPage from "@/pages/borrow-tracker-page";
+import BorrowTrackerPage from "@/pages/borrow/borrow-tracker-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";

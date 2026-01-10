@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -120,6 +120,24 @@ export interface IStorage {
   getAnnouncement(id: number): Promise<Announcement | undefined>;
   updateAnnouncement(id: number, data: Partial<InsertAnnouncement>): Promise<Announcement>;
   deleteAnnouncement(id: number): Promise<void>;
+
+  // Borrow Tracker - Branches
+  getBorrowBranches(): Promise<BorrowBranch[]>;
+  addBorrowBranch(name: string, code?: string | null): Promise<{ ok: boolean; message?: string }>;
+  deleteBorrowBranch(id: string): Promise<void>;
+
+  // Borrow Tracker - Items
+  getBorrowItems(): Promise<BorrowItem[]>;
+  addBorrowItem(name: string, code?: string | null, unit?: string | null): Promise<{ ok: boolean; message?: string }>;
+  deleteBorrowItem(id: string): Promise<void>;
+
+  // Borrow Tracker - Transactions
+  getBorrowTransactions(limit?: number): Promise<BorrowTransaction[]>;
+  addBorrowTransaction(data: { txDate: string; dueDate?: string; txType: string; branch: string; item: string; qty: number; unit: string; borrower: string; lender: string; note: string }): Promise<{ ok: boolean; message?: string }>;
+  toggleBorrowTransaction(id: string): Promise<{ ok: boolean; status?: string; message?: string }>;
+  deleteBorrowTransaction(id: string): Promise<void>;
+  getOverdueBorrowTransactions(): Promise<BorrowTransaction[]>;
+  getBorrowDashboardMetrics(): Promise<{ totalTransactions: number; totalBorrowIn: number; totalBorrowOut: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -693,6 +711,93 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
+  }
+
+  // Borrow Tracker - Branches
+  async getBorrowBranches(): Promise<BorrowBranch[]> {
+    return await db.select().from(borrowBranches);
+  }
+
+  async addBorrowBranch(name: string, code?: string | null): Promise<{ ok: boolean; message?: string }> {
+    if (!name.trim()) return { ok: false, message: "Name is required" };
+    const id = `br_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await db.insert(borrowBranches).values({ id, name: name.trim(), code: code?.trim() || null, isActive: 1 });
+    return { ok: true };
+  }
+
+  async deleteBorrowBranch(id: string): Promise<void> {
+    await db.delete(borrowBranches).where(eq(borrowBranches.id, id));
+  }
+
+  // Borrow Tracker - Items
+  async getBorrowItems(): Promise<BorrowItem[]> {
+    return await db.select().from(borrowItems);
+  }
+
+  async addBorrowItem(name: string, code?: string | null, unit?: string | null): Promise<{ ok: boolean; message?: string }> {
+    if (!name.trim()) return { ok: false, message: "Name is required" };
+    const id = `it_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await db.insert(borrowItems).values({ id, name: name.trim(), code: code?.trim() || null, unit: unit?.trim() || null, isActive: 1 });
+    return { ok: true };
+  }
+
+  async deleteBorrowItem(id: string): Promise<void> {
+    await db.delete(borrowItems).where(eq(borrowItems.id, id));
+  }
+
+  // Borrow Tracker - Transactions
+  async getBorrowTransactions(limit?: number): Promise<BorrowTransaction[]> {
+    const query = db.select().from(borrowTransactions).orderBy(desc(borrowTransactions.createdAt));
+    if (limit) {
+      return await query.limit(limit);
+    }
+    return await query;
+  }
+
+  async addBorrowTransaction(data: { txDate: string; dueDate?: string; txType: string; branch: string; item: string; qty: number; unit: string; borrower: string; lender: string; note: string }): Promise<{ ok: boolean; message?: string }> {
+    const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await db.insert(borrowTransactions).values({
+      id,
+      txDate: data.txDate,
+      dueDate: data.dueDate || null,
+      txType: data.txType,
+      branch: data.branch,
+      item: data.item,
+      qty: data.qty,
+      unit: data.unit,
+      borrower: data.borrower,
+      lender: data.lender,
+      note: data.note,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    });
+    return { ok: true };
+  }
+
+  async toggleBorrowTransaction(id: string): Promise<{ ok: boolean; status?: string; message?: string }> {
+    const [tx] = await db.select().from(borrowTransactions).where(eq(borrowTransactions.id, id));
+    if (!tx) return { ok: false, message: "Transaction not found" };
+    const newStatus = tx.status === "pending" ? "done" : "pending";
+    await db.update(borrowTransactions).set({ status: newStatus }).where(eq(borrowTransactions.id, id));
+    return { ok: true, status: newStatus };
+  }
+
+  async deleteBorrowTransaction(id: string): Promise<void> {
+    await db.delete(borrowTransactions).where(eq(borrowTransactions.id, id));
+  }
+
+  async getOverdueBorrowTransactions(): Promise<BorrowTransaction[]> {
+    const today = new Date().toISOString().split("T")[0];
+    const all = await db.select().from(borrowTransactions)
+      .where(and(eq(borrowTransactions.status, "pending")));
+    return all.filter(t => t.dueDate && t.dueDate < today);
+  }
+
+  async getBorrowDashboardMetrics(): Promise<{ totalTransactions: number; totalBorrowIn: number; totalBorrowOut: number }> {
+    const all = await db.select().from(borrowTransactions);
+    const borrowIn = all.filter(t => t.txType === "borrow_in").length;
+    const borrowOut = all.filter(t => t.txType === "borrow_out").length;
+    return { totalTransactions: all.length, totalBorrowIn: borrowIn, totalBorrowOut: borrowOut };
   }
 }
 

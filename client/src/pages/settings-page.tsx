@@ -224,8 +224,8 @@ export default function SettingsPage() {
           <CardContent>
             <div className="flex flex-col items-center mb-6">
               <div className="relative">
-                <Avatar className="w-24 h-24 border-4 border-primary/20">
-                  <AvatarImage src={user?.profilePicture || ""} alt={user?.fullName || ""} />
+                <Avatar className="w-24 h-24 border-4 border-primary/30 shadow-lg ring-2 ring-primary/10 ring-offset-2 ring-offset-background">
+                  <AvatarImage src={user?.profilePicture || ""} alt={user?.fullName || ""} className="object-cover" />
                   <AvatarFallback className="text-2xl bg-primary/10 text-primary">
                     {user?.nickName?.charAt(0)?.toUpperCase() || user?.fullName?.charAt(0)?.toUpperCase() || "?"}
                   </AvatarFallback>

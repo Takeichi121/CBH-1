@@ -1,0 +1,43 @@
+import { useState } from "react";
+import { useLanguage } from "@/lib/i18n";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Settings as SettingsIcon, Building2, ShoppingBag } from "lucide-react";
+import Branches from "./Branches";
+import Items from "./Items";
+
+export default function Settings() {
+  const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState("branches");
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <SettingsIcon className="h-6 w-6 text-primary" />
+        <h1 className="text-2xl font-bold" data-testid="text-settings-title">
+          {t.nav.settings}
+        </h1>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="branches" className="flex items-center gap-2" data-testid="tab-branches">
+            <Building2 className="h-4 w-4" />
+            {t.nav.branches}
+          </TabsTrigger>
+          <TabsTrigger value="items" className="flex items-center gap-2" data-testid="tab-items">
+            <ShoppingBag className="h-4 w-4" />
+            {t.nav.items}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="branches" className="mt-6">
+          <Branches />
+        </TabsContent>
+
+        <TabsContent value="items" className="mt-6">
+          <Items />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

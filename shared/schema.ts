@@ -328,6 +328,40 @@ export const wasteTargets = pgTable("waste_targets", {
   uniqueMonth: unique().on(t.targetMonth),
 }));
 
+// Borrow Tracker - Branches
+export const borrowBranches = pgTable("borrow_branches", {
+  id: text("id").primaryKey(),
+  code: text("code"),
+  name: text("name").notNull(),
+  isActive: integer("is_active").notNull().default(1),
+});
+
+// Borrow Tracker - Items
+export const borrowItems = pgTable("borrow_items", {
+  id: text("id").primaryKey(),
+  code: text("code"),
+  name: text("name").notNull(),
+  unit: text("unit"),
+  isActive: integer("is_active").notNull().default(1),
+});
+
+// Borrow Tracker - Transactions
+export const borrowTransactions = pgTable("borrow_transactions", {
+  id: text("id").primaryKey(),
+  txDate: text("tx_date").notNull(),
+  dueDate: text("due_date"),
+  txType: text("tx_type").notNull(), // 'borrow_in' | 'borrow_out'
+  branch: text("branch").notNull(),
+  item: text("item").notNull(),
+  qty: integer("qty").notNull().default(0),
+  unit: text("unit"),
+  borrower: text("borrower"),
+  lender: text("lender"),
+  note: text("note"),
+  status: text("status").notNull().default("pending"), // 'pending' | 'done'
+  createdAt: text("created_at").notNull(),
+});
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);
@@ -342,6 +376,9 @@ export const insertWasteTargetSchema = createInsertSchema(wasteTargets).omit({ i
 export const insertManagerRequestSchema = createInsertSchema(managerRequests).omit({ id: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true });
+export const insertBorrowBranchSchema = createInsertSchema(borrowBranches).omit({ id: true });
+export const insertBorrowItemSchema = createInsertSchema(borrowItems).omit({ id: true });
+export const insertBorrowTransactionSchema = createInsertSchema(borrowTransactions).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
@@ -367,3 +404,17 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type BorrowBranch = typeof borrowBranches.$inferSelect;
+export type InsertBorrowBranch = z.infer<typeof insertBorrowBranchSchema>;
+export type BorrowItem = typeof borrowItems.$inferSelect;
+export type InsertBorrowItem = z.infer<typeof insertBorrowItemSchema>;
+export type BorrowTransaction = typeof borrowTransactions.$inferSelect;
+export type InsertBorrowTransaction = z.infer<typeof insertBorrowTransactionSchema>;
+
+// Cart item type for borrow tracker (client-side)
+export interface BorrowCartItem {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+}

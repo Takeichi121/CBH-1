@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useI18n } from "@/hooks/use-i18n";
+import { useLanguage } from "@/lib/i18n";
 
 type ImportExcelButtonProps = {
-  endpoint: string;
-  label?: string;
-  accept?: string;
-  onDone?: (result: any) => void;
+  endpoint: string;               // e.g. "/api/import/branches"
+  label?: string;                 // button label
+  accept?: string;                // file accept
+  onDone?: (result: any) => void; // callback after success (json)
 };
 
 export default function ImportExcelButton({
@@ -17,19 +17,26 @@ export default function ImportExcelButton({
   onDone,
 }: ImportExcelButtonProps) {
   const { toast } = useToast();
-  const { language } = useI18n();
+  const { t } = useLanguage();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const pickFileText = language === "th" ? "เลือกไฟล์" : "Choose file";
-  const noFileText = language === "th" ? "ยังไม่ได้เลือกไฟล์" : "No file selected";
-  const uploadingText = language === "th" ? "กำลังอัปโหลด..." : "Uploading...";
-  const importSuccessText = language === "th" ? "นำเข้าสำเร็จ" : "Import successful";
-  const chooseFirstText = language === "th" ? "กรุณาเลือกไฟล์ก่อน" : "Please choose a file first";
-  const defaultLabel = language === "th" ? "นำเข้า" : "Import";
+  const pickFileText =
+    (t as any)?.common?.chooseFile || "Choose file";
+  const noFileText =
+    (t as any)?.common?.noFileSelected || "No file selected";
+  const uploadingText =
+    (t as any)?.common?.uploading || "Uploading...";
+  const importSuccessText =
+    (t as any)?.common?.importSuccess || "Import successful";
+  const chooseFirstText =
+    (t as any)?.common?.pleaseChooseFile || "Please choose a file first";
+
+  const defaultLabel =
+    (t as any)?.common?.import || "Import";
   const buttonLabel = label ?? defaultLabel;
 
   const pickFile = () => inputRef.current?.click();

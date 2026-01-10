@@ -71,6 +71,20 @@
 }
 
 @layer base {
+  * {
+    cursor: default;
+  }
+  
+  a, button, [role="button"], label[for], select, 
+  [type="button"], [type="submit"], [type="reset"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  
+  input, textarea, [contenteditable="true"] {
+    cursor: text;
+  }
+
   body {
     @apply bg-background text-foreground antialiased font-sans transition-colors duration-300;
     background-image: 

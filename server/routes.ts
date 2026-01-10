@@ -1724,5 +1724,100 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ===================== BORROW TRACKER ROUTES =====================
+
+  // Branches
+  app.post("/api/borrow/branches", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const branches = await storage.getBorrowBranches();
+    res.json({ ok: true, branches });
+  });
+
+  app.post("/api/borrow/branches/add", async (req, res) => {
+    const { token, name, code } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const result = await storage.addBorrowBranch(name, code);
+    res.json(result);
+  });
+
+  app.post("/api/borrow/branches/delete", async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    await storage.deleteBorrowBranch(id);
+    res.json({ ok: true });
+  });
+
+  // Items
+  app.post("/api/borrow/items", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const items = await storage.getBorrowItems();
+    res.json({ ok: true, items });
+  });
+
+  app.post("/api/borrow/items/add", async (req, res) => {
+    const { token, name, code, unit } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const result = await storage.addBorrowItem(name, code, unit);
+    res.json(result);
+  });
+
+  app.post("/api/borrow/items/delete", async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    await storage.deleteBorrowItem(id);
+    res.json({ ok: true });
+  });
+
+  // Transactions
+  app.post("/api/borrow/transactions", async (req, res) => {
+    const { token, limit } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const transactions = await storage.getBorrowTransactions(limit);
+    res.json({ ok: true, transactions });
+  });
+
+  app.post("/api/borrow/transactions/add", async (req, res) => {
+    const { token, ...data } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const result = await storage.addBorrowTransaction(data);
+    res.json(result);
+  });
+
+  app.post("/api/borrow/transactions/toggle", async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const result = await storage.toggleBorrowTransaction(id);
+    res.json(result);
+  });
+
+  app.post("/api/borrow/transactions/delete", async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    await storage.deleteBorrowTransaction(id);
+    res.json({ ok: true });
+  });
+
+  // Dashboard
+  app.post("/api/borrow/dashboard", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const metrics = await storage.getBorrowDashboardMetrics();
+    const overdue = await storage.getOverdueBorrowTransactions();
+    res.json({ ok: true, ...metrics, overdueCount: overdue.length, overdueTransactions: overdue });
+  });
+
   return httpServer;
 }

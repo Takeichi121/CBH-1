@@ -179,6 +179,7 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   // Labor
   actualHours: text("actual_hours").default("0"),
   otHours: text("ot_hours").default("0"),
+  otMtd: text("ot_mtd").default("0"),
   laborCost: text("labor_cost").default("0"),
   colPercent: text("col_percent").default("0"),
   laborHour: text("labor_hour").default("0"),

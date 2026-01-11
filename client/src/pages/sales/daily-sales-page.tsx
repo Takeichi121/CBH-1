@@ -47,7 +47,9 @@ import {
   Loader2,
   Plus,
   X,
+  Settings,
 } from "lucide-react";
+import { Link } from "wouter";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useToast } from "@/hooks/use-toast";
@@ -172,6 +174,7 @@ const formSchema = z.object({
   // --- Labor section ---
   actualHours: z.string().default("0"),
   otHours: z.string().default("0"),
+  otMtd: z.string().default("0"),
   summaryHours: z.string().default("0"),
   varianceHours: z.string().default("0"),
   laborCost: z.string().default("0"),
@@ -282,6 +285,7 @@ export default function DailySalesPage() {
       // --- Labor section defaultValues ---
       actualHours: "0",
       otHours: "0",
+      otMtd: "0",
       summaryHours: "0",
       varianceHours: "0",
       laborCost: "0",
@@ -358,6 +362,7 @@ export default function DailySalesPage() {
       // --- Labor fields ---
       actualHours: values.actualHours?.replace(/,/g, "") || "0",
       otHours: values.otHours?.replace(/,/g, "") || "0",
+      otMtd: values.otMtd?.replace(/,/g, "") || "0",
       laborCost: values.laborCost?.replace(/,/g, "") || "0",
       laborHour: values.laborHour?.replace(/,/g, "") || "0",
       colPercent: values.colPercent?.replace(/,/g, "") || "0",
@@ -663,6 +668,7 @@ export default function DailySalesPage() {
           // --- Load labor fields ---
           form.setValue("actualHours", r.actualHours || "0");
           form.setValue("otHours", r.otHours || "0");
+          form.setValue("otMtd", r.otMtd || "0");
           form.setValue("laborCost", r.laborCost || "0");
           form.setValue("colPercent", r.colPercent || "0");
           form.setValue("laborHour", r.laborHour || "0");
@@ -2404,10 +2410,24 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                 </div>
 
                 <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.labor}
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.labor}
+                    </h3>
+                    <Link href="/sales/labor-settings">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        data-testid="button-labor-settings"
+                      >
+                        <Settings className="w-3 h-3 mr-1" />
+                        {language === "th" ? "ตั้งค่า" : "Settings"}
+                      </Button>
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <FormField
                       control={form.control}
                       name="actualHours"
@@ -2441,6 +2461,25 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                               {...field} 
                               placeholder="0"
                               data-testid="input-ot-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="otMtd"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "OT MTD" : "OT MTD"}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm" 
+                              {...field} 
+                              placeholder="0"
+                              data-testid="input-ot-mtd"
                             />
                           </FormControl>
                         </FormItem>

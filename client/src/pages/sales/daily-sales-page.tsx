@@ -1065,37 +1065,33 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   const actualHoursInput = parseFloat(form.watch("actualHours") || "0");
   const otHoursInput = parseFloat(form.watch("otHours") || "0");
 
-  // --- Auto-calculate labor metrics when hours change ---
+  // --- Compute labor metrics directly (for instant display) ---
+  const { rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
+  
+  // Summary Hours = Duty + Actual + OT (Total hours worked)
+  const computedSummaryHours = dutyDailyHours + actualHoursInput + otHoursInput;
+  
+  // PT hours (Actual + OT) for cost calculation
+  const ptHours = actualHoursInput + otHoursInput;
+  
+  // Labor Cost Total = Fixed + Close + (Actual+OT) * PT Rate
+  const computedLaborCost = fixedCostDaily + closeShiftDailyCost + (ptHours * ptWageRate);
+  
+  // COL% = Labor Cost / Sales * 100
+  const computedColPercent = actualSales > 0 ? (computedLaborCost / actualSales) * 100 : 0;
+  
+  // TCMH = TC / Summary Hours (transactions per total hour worked)
+  const computedTcmh = computedSummaryHours > 0 ? transactionCount / computedSummaryHours : 0;
+
+  // --- Sync computed values to form for saving ---
   useEffect(() => {
-    const { rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
-    
-    // Summary Hours = Duty + Actual + OT (Total hours worked)
-    const summaryHrs = dutyDailyHours + actualHoursInput + otHoursInput;
-    
-    // Variance Hours = Roster - Summary (negative means over budget)
-    const varianceHrs = rosterHours - summaryHrs;
-    
-    // PT hours (Actual + OT) for cost calculation
-    const ptHours = actualHoursInput + otHoursInput;
-    
-    // Labor Cost Total = Fixed + Close + (Actual+OT) * PT Rate
-    // Fixed cost includes duty team salaries, so we only multiply PT hours by PT rate
-    const laborCostTotal = fixedCostDaily + closeShiftDailyCost + (ptHours * ptWageRate);
-    
-    // COL% = Labor Cost / Sales * 100
-    const colPct = actualSales > 0 ? (laborCostTotal / actualSales) * 100 : 0;
-    
-    // TCMH = TC / Summary Hours (transactions per total hour worked)
-    const tcmhValue = summaryHrs > 0 ? transactionCount / summaryHrs : 0;
-    
-    // Set calculated values
-    form.setValue("summaryHours", summaryHrs.toFixed(2), { shouldDirty: true });
-    form.setValue("varianceHours", varianceHrs.toFixed(2), { shouldDirty: true });
-    form.setValue("laborCost", laborCostTotal.toFixed(2), { shouldDirty: true });
-    form.setValue("laborHour", summaryHrs.toFixed(2), { shouldDirty: true }); // Total labor hours
-    form.setValue("colPercent", colPct.toFixed(2), { shouldDirty: true });
-    form.setValue("tcmh", tcmhValue.toFixed(2), { shouldDirty: true });
-  }, [actualHoursInput, otHoursInput, actualSales, transactionCount, laborSettings, form.setValue]);
+    form.setValue("summaryHours", computedSummaryHours.toFixed(2), { shouldDirty: false });
+    form.setValue("varianceHours", (rosterHours - computedSummaryHours).toFixed(2), { shouldDirty: false });
+    form.setValue("laborCost", computedLaborCost.toFixed(2), { shouldDirty: false });
+    form.setValue("laborHour", computedSummaryHours.toFixed(2), { shouldDirty: false });
+    form.setValue("colPercent", computedColPercent.toFixed(2), { shouldDirty: false });
+    form.setValue("tcmh", computedTcmh.toFixed(2), { shouldDirty: false });
+  }, [computedSummaryHours, computedLaborCost, computedColPercent, computedTcmh, rosterHours, form]);
 
   // Auto-calculate Add-on percentages when count values change
   useEffect(() => {
@@ -2450,42 +2446,30 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="colPercent"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.col}</FormLabel>
-                          <FormControl>
-                            <Input 
-                              className="text-sm bg-muted font-medium pointer-events-none focus-visible:ring-0 focus-visible:ring-offset-0" 
-                              readOnly 
-                              tabIndex={-1}
-                              value={field.value}
-                              data-testid="display-col-percent"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="tcmh"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.tcmh}</FormLabel>
-                          <FormControl>
-                            <Input 
-                              className="text-sm bg-muted font-medium pointer-events-none focus-visible:ring-0 focus-visible:ring-offset-0" 
-                              readOnly 
-                              tabIndex={-1}
-                              value={field.value}
-                              data-testid="display-tcmh"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.col}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          className="text-sm bg-muted font-medium pointer-events-none focus-visible:ring-0 focus-visible:ring-offset-0" 
+                          readOnly 
+                          tabIndex={-1}
+                          value={computedColPercent.toFixed(2)}
+                          data-testid="display-col-percent"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel className="text-xs">{t.tcmh}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          className="text-sm bg-muted font-medium pointer-events-none focus-visible:ring-0 focus-visible:ring-offset-0" 
+                          readOnly 
+                          tabIndex={-1}
+                          value={computedTcmh.toFixed(2)}
+                          data-testid="display-tcmh"
+                        />
+                      </FormControl>
+                    </FormItem>
                   </div>
                 </div>
 

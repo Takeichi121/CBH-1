@@ -2451,10 +2451,11 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         <FormItem>
                           <FormLabel className="text-xs">{t.col}</FormLabel>
                           <FormControl>
-                            <FormattedInput 
-                              className="text-sm bg-muted font-medium" 
+                            <Input 
+                              className="text-sm bg-muted font-medium pointer-events-none focus-visible:ring-0 focus-visible:ring-offset-0" 
                               readOnly 
-                              {...field} 
+                              tabIndex={-1}
+                              value={field.value}
                               data-testid="display-col-percent"
                             />
                           </FormControl>
@@ -2468,10 +2469,11 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         <FormItem>
                           <FormLabel className="text-xs">{t.tcmh}</FormLabel>
                           <FormControl>
-                            <FormattedInput 
-                              className="text-sm bg-muted font-medium" 
+                            <Input 
+                              className="text-sm bg-muted font-medium pointer-events-none focus-visible:ring-0 focus-visible:ring-offset-0" 
                               readOnly 
-                              {...field} 
+                              tabIndex={-1}
+                              value={field.value}
                               data-testid="display-tcmh"
                             />
                           </FormControl>

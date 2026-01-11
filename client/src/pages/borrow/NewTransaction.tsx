@@ -107,7 +107,7 @@ export default function NewTransaction() {
     } else {
       setCart([
         ...cart,
-        { id: item.id, name: item.name, qty, unit: selectedUnit || item.unit || "" },
+        { id: item.id, name: item.name, qty, unit: selectedUnit || item.units?.[0] || "" },
       ]);
     }
 
@@ -261,7 +261,7 @@ export default function NewTransaction() {
                         setSelectedItem(id);
                         const item = activeItems.find((i) => i.id === id);
                         if (item) {
-                          setSelectedUnit(item.unit || "");
+                          setSelectedUnit(item.units?.[0] || "");
                         }
                       }}>
                         <SelectTrigger>
@@ -407,11 +407,16 @@ export default function NewTransaction() {
                               <SelectValue placeholder="Unit" />
                             </SelectTrigger>
                             <SelectContent>
-                              {PREDEFINED_UNITS.map((u) => (
-                                <SelectItem key={u} value={u}>
-                                  {u}
-                                </SelectItem>
-                              ))}
+                              {(() => {
+                                const sourceItem = activeItems.find(i => i.id === item.id);
+                                const itemUnits = sourceItem?.units || [];
+                                const allUnits = [...new Set([...itemUnits, ...PREDEFINED_UNITS])];
+                                return allUnits.map((u) => (
+                                  <SelectItem key={u} value={u}>
+                                    {u}
+                                  </SelectItem>
+                                ));
+                              })()}
                             </SelectContent>
                           </Select>
                         </div>

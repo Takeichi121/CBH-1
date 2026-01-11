@@ -25,10 +25,10 @@ export default function BorrowSettingsPage() {
   const [showBranchDialog, setShowBranchDialog] = useState(false);
   const [showItemDialog, setShowItemDialog] = useState(false);
   const [newBranch, setNewBranch] = useState({ name: "", code: "" });
-  const [newItem, setNewItem] = useState({ name: "", code: "", unit: "" });
+  const [newItem, setNewItem] = useState({ name: "", code: "", units: "" });
   const [importingBranches, setImportingBranches] = useState(false);
   const [importingItems, setImportingItems] = useState(false);
-  const [editingUnit, setEditingUnit] = useState<{ id: string; unit: string } | null>(null);
+  const [editingUnits, setEditingUnits] = useState<{ id: string; units: string } | null>(null);
   const branchFileRef = useRef<HTMLInputElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
 
@@ -174,16 +174,17 @@ export default function BorrowSettingsPage() {
   const handleAddItem = async () => {
     if (!token || !newItem.name || !newItem.code) return;
     try {
+      const unitsArray = newItem.units.split(",").map(u => u.trim()).filter(u => u.length > 0);
       const res = await fetch("/api/borrow/items/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, name: newItem.name, code: newItem.code, unit: newItem.unit }),
+        body: JSON.stringify({ token, name: newItem.name, code: newItem.code, units: unitsArray }),
       });
       const data = await res.json();
       if (data.ok) {
         toast({ title: language === "th" ? "เพิ่มรายการสำเร็จ" : "Item added" });
         setShowItemDialog(false);
-        setNewItem({ name: "", code: "", unit: "" });
+        setNewItem({ name: "", code: "", units: "" });
         fetchData();
       } else {
         toast({ title: data.message || "Error", variant: "destructive" });
@@ -229,18 +230,19 @@ export default function BorrowSettingsPage() {
     }
   };
 
-  const handleUpdateUnit = async (itemId: string, unit: string) => {
+  const handleUpdateUnits = async (itemId: string, unitsStr: string) => {
     if (!token) return;
     try {
+      const unitsArray = unitsStr.split(",").map(u => u.trim()).filter(u => u.length > 0);
       const res = await fetch("/api/borrow/items/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, id: itemId, unit }),
+        body: JSON.stringify({ token, id: itemId, units: unitsArray }),
       });
       const data = await res.json();
       if (data.ok) {
         toast({ title: language === "th" ? "บันทึกสำเร็จ" : "Saved" });
-        setEditingUnit(null);
+        setEditingUnits(null);
         fetchData();
       } else {
         toast({ title: data.message || "Error", variant: "destructive" });
@@ -440,12 +442,12 @@ export default function BorrowSettingsPage() {
                       />
                     </div>
                     <div>
-                      <Label>{labels.unit}</Label>
+                      <Label>{labels.unit} (comma-separated)</Label>
                       <Input
-                        value={newItem.unit}
-                        onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                        placeholder="pcs"
-                        data-testid="input-item-unit"
+                        value={newItem.units}
+                        onChange={(e) => setNewItem({ ...newItem, units: e.target.value })}
+                        placeholder="BOX, CASE, PACK"
+                        data-testid="input-item-units"
                       />
                     </div>
                   </div>
@@ -485,20 +487,21 @@ export default function BorrowSettingsPage() {
                           </TableCell>
                           <TableCell>{item.name}</TableCell>
                           <TableCell>
-                            {editingUnit?.id === item.id ? (
+                            {editingUnits?.id === item.id ? (
                               <div className="flex items-center gap-1">
                                 <Input
-                                  className="h-8 w-24"
-                                  value={editingUnit.unit}
-                                  onChange={(e) => setEditingUnit({ ...editingUnit, unit: e.target.value })}
-                                  data-testid={`input-unit-${item.id}`}
+                                  className="h-8 w-40"
+                                  value={editingUnits.units}
+                                  onChange={(e) => setEditingUnits({ ...editingUnits, units: e.target.value })}
+                                  placeholder="BOX, CASE, PACK"
+                                  data-testid={`input-units-${item.id}`}
                                 />
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => handleUpdateUnit(item.id, editingUnit.unit)}
-                                  data-testid={`button-save-unit-${item.id}`}
+                                  onClick={() => handleUpdateUnits(item.id, editingUnits.units)}
+                                  data-testid={`button-save-units-${item.id}`}
                                 >
                                   <Check className="w-4 h-4 text-green-600" />
                                 </Button>
@@ -506,8 +509,8 @@ export default function BorrowSettingsPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => setEditingUnit(null)}
-                                  data-testid={`button-cancel-unit-${item.id}`}
+                                  onClick={() => setEditingUnits(null)}
+                                  data-testid={`button-cancel-units-${item.id}`}
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -515,10 +518,10 @@ export default function BorrowSettingsPage() {
                             ) : (
                               <span 
                                 className="cursor-pointer hover:underline"
-                                onClick={() => setEditingUnit({ id: item.id, unit: item.unit || "" })}
-                                data-testid={`text-unit-${item.id}`}
+                                onClick={() => setEditingUnits({ id: item.id, units: item.units?.join(", ") || "" })}
+                                data-testid={`text-units-${item.id}`}
                               >
-                                {item.unit || "-"}
+                                {item.units && item.units.length > 0 ? item.units.join(", ") : "-"}
                               </span>
                             )}
                           </TableCell>

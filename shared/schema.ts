@@ -343,7 +343,7 @@ export const borrowItems = pgTable("borrow_items", {
   id: text("id").primaryKey(),
   code: text("code"),
   name: text("name").notNull(),
-  unit: text("unit"),
+  units: text("units").array(),
   isActive: integer("is_active").notNull().default(1),
 });
 

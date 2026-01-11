@@ -1778,20 +1778,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/borrow/items/add", async (req, res) => {
-    const { token, name, code, unit } = req.body;
+    const { token, name, code, units } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
     if (!name || typeof name !== "string") return res.json({ ok: false, message: "Name is required" });
-    const result = await storage.addBorrowItem(name, code, unit);
+    const result = await storage.addBorrowItem(name, code, units);
     res.json(result);
   });
 
   app.post("/api/borrow/items/update", async (req, res) => {
-    const { token, id, unit } = req.body;
+    const { token, id, units } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
     if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    const result = await storage.updateBorrowItem(id, { unit });
+    const result = await storage.updateBorrowItem(id, { units });
     res.json(result);
   });
 

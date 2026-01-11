@@ -72,9 +72,9 @@ export default function BorrowTransactionsPage() {
     setLoading(true);
     try {
       const [branchesRes, itemsRes, txRes] = await Promise.all([
-        fetch("/api/borrow/branches", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/borrow/items", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/borrow/transactions", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/borrow/branches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
+        fetch("/api/borrow/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
+        fetch("/api/borrow/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
       ]);
       const branchesData = await branchesRes.json();
       const itemsData = await itemsRes.json();
@@ -96,10 +96,10 @@ export default function BorrowTransactionsPage() {
   const handleAddTransaction = async () => {
     if (!token || !newTx.branch || !newTx.item) return;
     try {
-      const res = await fetch("/api/borrow/transactions", {
+      const res = await fetch("/api/borrow/transactions/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(newTx),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, ...newTx }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -119,7 +119,7 @@ export default function BorrowTransactionsPage() {
         });
         fetchData();
       } else {
-        toast({ title: data.error || "Error", variant: "destructive" });
+        toast({ title: data.message || "Error", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Network error", variant: "destructive" });
@@ -129,9 +129,10 @@ export default function BorrowTransactionsPage() {
   const handleMarkReturned = async (txId: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/borrow/transactions/${txId}/return`, {
+      const res = await fetch("/api/borrow/transactions/return", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: txId }),
       });
       const data = await res.json();
       if (data.ok) {

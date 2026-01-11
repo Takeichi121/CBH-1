@@ -122,8 +122,16 @@ export default function BorrowSettingsPage() {
     setLoading(true);
     try {
       const [branchesRes, itemsRes] = await Promise.all([
-        fetch("/api/borrow/branches", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/borrow/items", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/borrow/branches", { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify({ token }) 
+        }),
+        fetch("/api/borrow/items", { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify({ token }) 
+        }),
       ]);
       const branchesData = await branchesRes.json();
       const itemsData = await itemsRes.json();
@@ -143,10 +151,10 @@ export default function BorrowSettingsPage() {
   const handleAddBranch = async () => {
     if (!token || !newBranch.name || !newBranch.code) return;
     try {
-      const res = await fetch("/api/borrow/branches", {
+      const res = await fetch("/api/borrow/branches/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(newBranch),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, name: newBranch.name, code: newBranch.code }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -155,7 +163,7 @@ export default function BorrowSettingsPage() {
         setNewBranch({ name: "", code: "" });
         fetchData();
       } else {
-        toast({ title: data.error || "Error", variant: "destructive" });
+        toast({ title: data.message || "Error", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Network error", variant: "destructive" });
@@ -165,10 +173,10 @@ export default function BorrowSettingsPage() {
   const handleAddItem = async () => {
     if (!token || !newItem.name || !newItem.code) return;
     try {
-      const res = await fetch("/api/borrow/items", {
+      const res = await fetch("/api/borrow/items/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(newItem),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, name: newItem.name, code: newItem.code, unit: newItem.unit }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -177,7 +185,7 @@ export default function BorrowSettingsPage() {
         setNewItem({ name: "", code: "", unit: "" });
         fetchData();
       } else {
-        toast({ title: data.error || "Error", variant: "destructive" });
+        toast({ title: data.message || "Error", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Network error", variant: "destructive" });
@@ -187,9 +195,10 @@ export default function BorrowSettingsPage() {
   const handleDeleteBranch = async (branchId: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/borrow/branches/${branchId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch("/api/borrow/branches/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: branchId }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -204,9 +213,10 @@ export default function BorrowSettingsPage() {
   const handleDeleteItem = async (itemId: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/borrow/items/${itemId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch("/api/borrow/items/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: itemId }),
       });
       const data = await res.json();
       if (data.ok) {

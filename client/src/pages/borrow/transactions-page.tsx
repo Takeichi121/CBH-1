@@ -65,6 +65,7 @@ export default function BorrowTransactionsPage() {
     noData: language === "th" ? "ยังไม่มีรายการ" : "No transactions yet",
     refresh: language === "th" ? "รีเฟรช" : "Refresh",
     markReturned: language === "th" ? "คืนแล้ว" : "Mark Returned",
+    delete: language === "th" ? "ลบ" : "Delete",
   };
 
   const fetchData = async () => {
@@ -138,6 +139,27 @@ export default function BorrowTransactionsPage() {
       if (data.ok) {
         toast({ title: language === "th" ? "บันทึกการคืนสำเร็จ" : "Marked as returned" });
         fetchData();
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (txId: string) => {
+    if (!token) return;
+    if (!confirm(language === "th" ? "ต้องการลบรายการนี้?" : "Delete this transaction?")) return;
+    try {
+      const res = await fetch("/api/borrow/transactions/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: txId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "ลบสำเร็จ" : "Deleted" });
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Error", variant: "destructive" });
@@ -339,17 +361,30 @@ export default function BorrowTransactionsPage() {
                           <TableCell className="text-right">{tx.qty} {tx.unit}</TableCell>
                           <TableCell>{getStatusBadge(tx)}</TableCell>
                           <TableCell>
-                            {tx.status === "pending" && isManager && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMarkReturned(tx.id)}
-                                data-testid={`button-return-${tx.id}`}
-                              >
-                                <Check className="w-4 h-4 mr-1" />
-                                {labels.markReturned}
-                              </Button>
-                            )}
+                            <div className="flex gap-1">
+                              {tx.status === "pending" && isManager && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleMarkReturned(tx.id)}
+                                  data-testid={`button-return-${tx.id}`}
+                                >
+                                  <Check className="w-4 h-4 mr-1" />
+                                  {labels.markReturned}
+                                </Button>
+                              )}
+                              {isManager && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(tx.id)}
+                                  data-testid={`button-delete-${tx.id}`}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

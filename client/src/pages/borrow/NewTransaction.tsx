@@ -154,7 +154,7 @@ export default function NewTransaction() {
 
   const pickItem = (it: Item) => {
     setSelectedItem(it.id);
-    setSelectedUnit(it.unit || "");
+    setSelectedUnit(it.units?.[0] || "");
     setItemSearchQuery(it.code ? `${it.code} - ${it.name}` : it.name);
     setShowItemDropdown(false);
     setHighlightIndex(0);
@@ -252,29 +252,56 @@ export default function NewTransaction() {
               {/* Add Item Section */}
               <div className="pt-2 pb-2 border-t border-b border-border">
                 <div className="flex flex-wrap gap-4 items-end">
-                  <div className="flex-1 min-w-48 space-y-2">
+                  <div className="flex-1 min-w-48 space-y-2" ref={itemWrapRef}>
                     <Label>{t.newTx.selectItem}</Label>
                     {itemsLoading ? (
                       <Skeleton className="h-10 w-full" />
                     ) : (
-                      <Select value={selectedItem} onValueChange={(id) => {
-                        setSelectedItem(id);
-                        const item = activeItems.find((i) => i.id === id);
-                        if (item) {
-                          setSelectedUnit(item.units?.[0] || "");
-                        }
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t.newTx.selectItem} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeItems.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          <Input
+                            ref={itemInputRef}
+                            placeholder={searchPlaceholder}
+                            value={itemSearchQuery}
+                            onChange={(e) => {
+                              setItemSearchQuery(e.target.value);
+                              setShowItemDropdown(true);
+                              setSelectedItem("");
+                              setHighlightIndex(0);
+                            }}
+                            onFocus={() => setShowItemDropdown(true)}
+                            onKeyDown={onItemInputKeyDown}
+                            className="pl-9"
+                            data-testid="input-item-search"
+                          />
+                        </div>
+                        {showItemDropdown && (
+                          <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+                            {filteredItems.length === 0 ? (
+                              <div className="p-3 text-center text-muted-foreground text-sm">
+                                {noResultsText}
+                              </div>
+                            ) : (
+                              filteredItems.map((it, idx) => (
+                                <div
+                                  key={it.id}
+                                  onClick={() => pickItem(it)}
+                                  className={`px-3 py-2 cursor-pointer flex items-center gap-2 ${
+                                    idx === highlightIndex ? "bg-accent" : "hover:bg-muted"
+                                  } ${selectedItem === it.id ? "font-medium" : ""}`}
+                                  data-testid={`dropdown-item-${it.id}`}
+                                >
+                                  {selectedItem === it.id && <Check className="h-4 w-4 text-primary" />}
+                                  <span className={selectedItem === it.id ? "" : "ml-6"}>
+                                    {it.code ? `${it.code} - ${it.name}` : it.name}
+                                  </span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 

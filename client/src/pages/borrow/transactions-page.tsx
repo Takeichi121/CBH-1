@@ -129,7 +129,7 @@ export default function BorrowTransactionsPage() {
   const handleMarkReturned = async (txId: string) => {
     if (!token) return;
     try {
-      const res = await fetch("/api/borrow/transactions/return", {
+      const res = await fetch("/api/borrow/transactions/toggle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, id: txId }),
@@ -145,7 +145,7 @@ export default function BorrowTransactionsPage() {
   };
 
   const getStatusBadge = (tx: BorrowTransaction) => {
-    if (tx.status === "returned") {
+    if (tx.status === "done") {
       return <Badge variant="outline" className="text-green-600" data-testid={`badge-status-${tx.id}`}>{labels.returned}</Badge>;
     }
     if (tx.dueDate && new Date(tx.dueDate) < new Date()) {

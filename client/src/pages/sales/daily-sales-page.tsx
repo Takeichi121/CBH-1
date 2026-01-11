@@ -169,7 +169,11 @@ const formSchema = z.object({
   wasteMtdTotal: z.string().default("0"),
   wasteMealMtd: z.string().default("0"),
 
-  // --- เพิ่ม laborCost เข้าไปใน Schema ---
+  // --- Labor section ---
+  actualHours: z.string().default("0"),
+  otHours: z.string().default("0"),
+  summaryHours: z.string().default("0"),
+  varianceHours: z.string().default("0"),
   laborCost: z.string().default("0"),
   colPercent: z.string().default("0"),
   laborHour: z.string().default("0"),
@@ -275,7 +279,11 @@ export default function DailySalesPage() {
       wasteMtdTotal: "0",
       wasteMealMtd: "0",
 
-      // --- เพิ่ม laborCost ใน defaultValues ---
+      // --- Labor section defaultValues ---
+      actualHours: "0",
+      otHours: "0",
+      summaryHours: "0",
+      varianceHours: "0",
       laborCost: "0",
       colPercent: "0",
       laborHour: "0",
@@ -347,8 +355,13 @@ export default function DailySalesPage() {
       ).toString(),
       wasteMealMtd: values.wasteMealMtd?.replace(/,/g, "") || "0",
 
-      // --- ส่งค่า laborCost ไปบันทึกด้วย (ถ้า Backend รองรับ) ---
+      // --- Labor fields ---
+      actualHours: values.actualHours?.replace(/,/g, "") || "0",
+      otHours: values.otHours?.replace(/,/g, "") || "0",
       laborCost: values.laborCost?.replace(/,/g, "") || "0",
+      laborHour: values.laborHour?.replace(/,/g, "") || "0",
+      colPercent: values.colPercent?.replace(/,/g, "") || "0",
+      tcmh: values.tcmh?.replace(/,/g, "") || "0",
     };
 
     try {
@@ -467,7 +480,16 @@ export default function DailySalesPage() {
   // State for default target from settings
   const [defaultDailyTarget, setDefaultDailyTarget] = useState("250000");
 
-  // Load store settings and staff list on mount
+  // State for labor settings (constants)
+  const [laborSettings, setLaborSettings] = useState({
+    rosterHours: 88,
+    dutyDailyHours: 40,
+    ptWageRate: 45,
+    fixedCostDaily: 0,
+    closeShiftDailyCost: 0,
+  });
+
+  // Load store settings, labor settings, and staff list on mount
   useEffect(() => {
     const loadStoreSettings = async () => {
       try {
@@ -481,6 +503,24 @@ export default function DailySalesPage() {
         }
       } catch (error) {
         console.error("Failed to load store settings:", error);
+      }
+    };
+    const loadLaborSettings = async () => {
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/settings/get-labor", { token });
+        const data = await res.json();
+        if (data.ok && data.settings) {
+          setLaborSettings({
+            rosterHours: Number(data.settings.rosterHours) || 88,
+            dutyDailyHours: Number(data.settings.dutyDailyHours) || 40,
+            ptWageRate: Number(data.settings.ptWageRate) || 45,
+            fixedCostDaily: Number(data.settings.fixedCostDaily) || 0,
+            closeShiftDailyCost: Number(data.settings.closeShiftDailyCost) || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load labor settings:", error);
       }
     };
     const loadStaffList = async () => {
@@ -499,6 +539,7 @@ export default function DailySalesPage() {
       }
     };
     loadStoreSettings();
+    loadLaborSettings();
     loadStaffList();
   }, []);
 
@@ -619,12 +660,13 @@ export default function DailySalesPage() {
           form.setValue("wasteMtdTotal", calculatedWasteMtdTotal.toFixed(2));
           form.setValue("wasteMealMtd", loadedWasteMealMtd.toFixed(2));
 
+          // --- Load labor fields ---
+          form.setValue("actualHours", r.actualHours || "0");
+          form.setValue("otHours", r.otHours || "0");
+          form.setValue("laborCost", r.laborCost || "0");
           form.setValue("colPercent", r.colPercent || "0");
           form.setValue("laborHour", r.laborHour || "0");
           form.setValue("tcmh", r.tcmh || "0");
-
-          // --- Load laborCost if exists ---
-          form.setValue("laborCost", r.laborCost || "0");
 
           if (r.managerRosterDate)
             form.setValue("managerRosterDate", r.managerRosterDate);
@@ -1019,29 +1061,41 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   const wasteMealMtd = parseFloat(form.watch("wasteMealMtd") || "0");
   const wasteRawMtd = wasteMtdTotal - wasteMealMtd;
 
-  const laborHour = parseFloat(form.watch("laborHour") || "0");
+  // --- Watch labor input fields ---
+  const actualHoursInput = parseFloat(form.watch("actualHours") || "0");
+  const otHoursInput = parseFloat(form.watch("otHours") || "0");
 
-  // --- ดึงค่า Labor Cost มาเพื่อใช้ในสูตร ---
-  const laborCost = parseFloat(form.watch("laborCost") || "0");
-
+  // --- Auto-calculate labor metrics when hours change ---
   useEffect(() => {
-    if (transactionCount > 0 && laborHour > 0) {
-      const tcmhValue = (transactionCount / laborHour).toFixed(2);
-      form.setValue("tcmh", tcmhValue, { shouldDirty: true });
-    }
-  }, [transactionCount, laborHour, form.setValue]);
-
-  useEffect(() => {
-    if (actualSales > 0) {
-      // สูตร: (ค่าแรงรวม / ยอดขาย) * 100
-      const calculatedCol = (laborCost / actualSales) * 100;
-      form.setValue("colPercent", calculatedCol.toFixed(2), {
-        shouldDirty: true,
-      });
-    } else {
-      form.setValue("colPercent", "0.00", { shouldDirty: true });
-    }
-  }, [actualSales, laborCost, form.setValue]);
+    const { rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
+    
+    // Summary Hours = Duty + Actual + OT (Total hours worked)
+    const summaryHrs = dutyDailyHours + actualHoursInput + otHoursInput;
+    
+    // Variance Hours = Roster - Summary (negative means over budget)
+    const varianceHrs = rosterHours - summaryHrs;
+    
+    // PT hours (Actual + OT) for cost calculation
+    const ptHours = actualHoursInput + otHoursInput;
+    
+    // Labor Cost Total = Fixed + Close + (Actual+OT) * PT Rate
+    // Fixed cost includes duty team salaries, so we only multiply PT hours by PT rate
+    const laborCostTotal = fixedCostDaily + closeShiftDailyCost + (ptHours * ptWageRate);
+    
+    // COL% = Labor Cost / Sales * 100
+    const colPct = actualSales > 0 ? (laborCostTotal / actualSales) * 100 : 0;
+    
+    // TCMH = TC / Summary Hours (transactions per total hour worked)
+    const tcmhValue = summaryHrs > 0 ? transactionCount / summaryHrs : 0;
+    
+    // Set calculated values
+    form.setValue("summaryHours", summaryHrs.toFixed(2), { shouldDirty: true });
+    form.setValue("varianceHours", varianceHrs.toFixed(2), { shouldDirty: true });
+    form.setValue("laborCost", laborCostTotal.toFixed(2), { shouldDirty: true });
+    form.setValue("laborHour", summaryHrs.toFixed(2), { shouldDirty: true }); // Total labor hours
+    form.setValue("colPercent", colPct.toFixed(2), { shouldDirty: true });
+    form.setValue("tcmh", tcmhValue.toFixed(2), { shouldDirty: true });
+  }, [actualHoursInput, otHoursInput, actualSales, transactionCount, laborSettings, form.setValue]);
 
   // Auto-calculate Add-on percentages when count values change
   useEffect(() => {
@@ -2351,64 +2405,163 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                   <h3 className="text-sm md:text-base font-medium mb-3">
                     {t.labor}
                   </h3>
-                  {/* ปรับ Grid เป็น 4 ช่องเพื่อรองรับช่องกรอกค่าแรง */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                    {/* --- ช่องกรอก Labor Cost --- */}
-                    <FormField
-                      control={form.control}
-                      name="laborCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Labor Cost (฿)</FormLabel>
-                          <FormControl>
-                            <FormattedInput 
-                              className="text-sm" 
-                              {...field} 
-                              placeholder="0.00"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="colPercent"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.col}</FormLabel>
-                          <FormControl>
-                             {/* ปรับเป็น ReadOnly */}
-                            <FormattedInput className="text-sm bg-muted" readOnly {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="laborHour"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.hour}</FormLabel>
-                          <FormControl>
-                            <FormattedInput className="text-sm" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="tcmh"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.tcmh}</FormLabel>
-                          <FormControl>
-                            <FormattedInput className="text-sm bg-muted" readOnly {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                  <div className="space-y-3">
+                    {/* Input row: Actual Hours & OT Hours */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="actualHours"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {language === "th" ? "ชม.จริง (PT)" : "Actual Hrs"}
+                            </FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm" 
+                                {...field} 
+                                placeholder="0"
+                                data-testid="input-actual-hours"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="otHours"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {language === "th" ? "ชม. OT" : "OT Hours"}
+                            </FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm" 
+                                {...field} 
+                                placeholder="0"
+                                data-testid="input-ot-hours"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="summaryHours"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {language === "th" ? "ชม.รวม" : "Summary Hrs"}
+                            </FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm bg-muted" 
+                                readOnly 
+                                {...field} 
+                                data-testid="display-summary-hours"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="varianceHours"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {language === "th" ? "ต่างจาก Roster" : "Variance"}
+                            </FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className={`text-sm bg-muted ${parseFloat(field.value || "0") < 0 ? "text-red-500" : "text-green-600"}`}
+                                readOnly 
+                                {...field} 
+                                data-testid="display-variance-hours"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    {/* Calculated row: Labor Cost, COL%, Hour, TCMH */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="laborCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Labor Cost (฿)</FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm bg-muted" 
+                                readOnly
+                                {...field} 
+                                data-testid="display-labor-cost"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="colPercent"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">{t.col}</FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm bg-muted" 
+                                readOnly 
+                                {...field} 
+                                data-testid="display-col-percent"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="laborHour"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">{t.hour}</FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm bg-muted" 
+                                readOnly 
+                                {...field} 
+                                data-testid="display-labor-hour"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="tcmh"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">{t.tcmh}</FormLabel>
+                            <FormControl>
+                              <FormattedInput 
+                                className="text-sm bg-muted" 
+                                readOnly 
+                                {...field} 
+                                data-testid="display-tcmh"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    {/* Labor settings info */}
+                    <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-4">
+                      <span>Roster: {laborSettings.rosterHours}h</span>
+                      <span>Duty: {laborSettings.dutyDailyHours}h</span>
+                      <span>PT Rate: ฿{laborSettings.ptWageRate}/h</span>
+                    </div>
                   </div>
                 </div>
 

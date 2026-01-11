@@ -1923,5 +1923,121 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ==================== LABOR SETTINGS ====================
+  
+  // Get Labor Settings
+  app.post("/api/settings/get-labor", async (req, res) => {
+    try {
+      const settings = await storage.getLaborSettings();
+      res.json({ 
+        ok: true, 
+        settings: settings || { 
+          rosterHours: "88", 
+          dutyDailyHours: "40", 
+          ptWageRate: "45", 
+          fixedCostDaily: "0", 
+          closeShiftDailyCost: "0" 
+        } 
+      });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Save Labor Settings
+  app.post("/api/settings/save-labor", async (req, res) => {
+    const { token, rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    
+    try {
+      await storage.saveLaborSettings({
+        rosterHours: String(rosterHours || 88),
+        dutyDailyHours: String(dutyDailyHours || 40),
+        ptWageRate: String(ptWageRate || 45),
+        fixedCostDaily: String(fixedCostDaily || 0),
+        closeShiftDailyCost: String(closeShiftDailyCost || 0),
+      });
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Calculate Labor Logic (utility function)
+  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }) {
+    // 1. Get Settings
+    const cfg = await storage.getLaborSettings() || { 
+      rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", 
+      fixedCostDaily: "0", closeShiftDailyCost: "0" 
+    };
+    
+    // 2. Get Sales data for that date
+    const salesData = await storage.getDailySalesReportByDate(date);
+    const sales = Number(salesData?.actualSales || 0);
+    const tc = Number(salesData?.transactionCount || 0);
+
+    // 3. Daily inputs
+    const actual = Number(inputs.actualHours || 0);
+    const ot = Number(inputs.otHours || 0);
+
+    // --- Calculate ---
+    // A. Summary Hours = Duty (Fix) + Actual + OT
+    const dutyHours = Number(cfg.dutyDailyHours) || 40;
+    const summaryHours = dutyHours + actual + ot;
+
+    // B. Variance = Summary - Roster
+    const rosterHours = Number(cfg.rosterHours) || 88;
+    const varianceHours = summaryHours - rosterHours;
+
+    // C. Labor Cost (Baht)
+    // Formula: (Fix Cost Daily + Close Shift Cost) + ((Actual + OT) * PT Rate)
+    const variableCost = (actual + ot) * (Number(cfg.ptWageRate) || 0);
+    const fixedCost = (Number(cfg.fixedCostDaily) || 0) + (Number(cfg.closeShiftDailyCost) || 0);
+    const laborCostTotal = fixedCost + variableCost;
+
+    // D. % COL = Cost / Sales * 100
+    const colPercent = sales > 0 ? (laborCostTotal / sales) * 100 : 0;
+
+    // E. TCMH = TC / Summary Hours
+    const tcmh = summaryHours > 0 ? (tc / summaryHours) : 0;
+
+    return {
+      actualHours: String(actual),
+      otHours: String(ot),
+      summaryHours: String(summaryHours.toFixed(2)),
+      varianceHours: String(varianceHours.toFixed(2)),
+      laborCostTotal: String(laborCostTotal.toFixed(2)),
+      colPercent: String(colPercent.toFixed(2)),
+      tcmh: String(tcmh.toFixed(2))
+    };
+  }
+
+  // Save Daily Labor
+  app.post("/api/sales/save-daily-labor", async (req, res) => {
+    const { token, date, actualHours, otHours } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    
+    try {
+      const result = await calculateLaborLogic(date, { actualHours, otHours });
+      await storage.saveDailyLabor(date, result);
+      res.json({ ok: true, data: result });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Get Daily Labor
+  app.post("/api/sales/get-daily-labor", async (req, res) => {
+    const { date } = req.body;
+    try {
+      const labor = await storage.getDailyLabor(date);
+      res.json({ ok: true, data: labor || null });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
   return httpServer;
 }

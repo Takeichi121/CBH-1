@@ -64,6 +64,31 @@ Key tables:
 - Capacity limits per shift group stored in config
 - System closes Tuesday 12:00 to Wednesday (Thailand timezone)
 
+## Labor Cost Management
+
+The system includes labor cost tracking and productivity metrics:
+
+### Labor Settings (/sales/labor-settings)
+Configure store-wide labor cost constants:
+- **Roster Hours**: Target hours per day from Area management (default: 88)
+- **Duty Team Hours**: Fixed manager hours per day (e.g., 5 managers × 8 hrs = 40)
+- **PT Wage Rate**: Part-time hourly rate in Baht (default: 45)
+- **Fixed Cost Daily**: Daily fixed salary costs (FT/Manager average)
+- **Close Shift Cost**: Daily closing shift transportation cost
+
+### Labor Calculations in Daily Sales Form
+Auto-calculated fields based on input Actual Hours and OT Hours:
+- **Summary Hours** = Duty + Actual + OT (total hours worked)
+- **Variance Hours** = Roster - Summary (negative = over budget)
+- **Labor Cost** = Fixed + Close Shift + (Actual+OT) × PT Rate
+- **COL%** = Labor Cost ÷ Sales × 100
+- **TCMH** = Transaction Count ÷ Summary Hours
+
+### Database Tables
+- `labor_settings`: Stores configuration constants
+- `daily_labor`: Tracks daily labor metrics (actualHours, otHours, calculated fields)
+- `daily_sales_reports`: Extended with actualHours, otHours columns for persistence
+
 ## External Dependencies
 
 ### Database

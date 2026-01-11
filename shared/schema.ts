@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -177,6 +177,8 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   wasteMealMtdPercent: text("waste_meal_mtd_percent").default("0"),
   
   // Labor
+  actualHours: text("actual_hours").default("0"),
+  otHours: text("ot_hours").default("0"),
   laborCost: text("labor_cost").default("0"),
   colPercent: text("col_percent").default("0"),
   laborHour: text("labor_hour").default("0"),
@@ -418,3 +420,41 @@ export interface BorrowCartItem {
   qty: number;
   unit: string;
 }
+
+// Labor Settings - Constants for COL calculation
+export const laborSettings = pgTable("labor_settings", {
+  id: serial("id").primaryKey(),
+  rosterHours: decimal("roster_hours", { precision: 10, scale: 2 }).default("88"),        // Roster Commit Area (เช่น 88, 96)
+  dutyDailyHours: decimal("duty_daily_hours", { precision: 10, scale: 2 }).default("40"), // ชั่วโมง Duty Team (Fix 40 ชม./วัน)
+  fixedCostDaily: decimal("fixed_cost_daily", { precision: 10, scale: 2 }).default("0"),  // เงินเดือน FT/Manager เฉลี่ยต่อวัน
+  closeShiftDailyCost: decimal("close_shift_daily_cost", { precision: 10, scale: 2 }).default("0"), // ค่ารถปิดร้าน (บาท/วัน)
+  ptWageRate: decimal("pt_wage_rate", { precision: 10, scale: 2 }).default("45"),         // ค่าแรง PT (บาท/ชม.)
+  updatedAt: text("updated_at"),
+});
+
+// Daily Labor - Daily input for labor tracking
+export const dailyLabor = pgTable("daily_labor", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull().unique(), // YYYY-MM-DD
+  
+  // Input: กรอกทุกวัน
+  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }).default("0"), // ชั่วโมงจริง (PT+FT)
+  otHours: decimal("ot_hours", { precision: 10, scale: 2 }).default("0"),         // ชั่วโมง OT
+  
+  // Calculated: ระบบคำนวณ (Read Only)
+  summaryHours: decimal("summary_hours", { precision: 10, scale: 2 }).default("0"),     // Duty + Actual + OT
+  varianceHours: decimal("variance_hours", { precision: 10, scale: 2 }).default("0"),   // Summary - Roster
+  laborCostTotal: decimal("labor_cost_total", { precision: 10, scale: 2 }).default("0"),// ต้นทุนแรงงานรวม
+  colPercent: decimal("col_percent", { precision: 10, scale: 2 }).default("0"),         // % COL
+  tcmh: decimal("tcmh", { precision: 10, scale: 2 }).default("0"),                      // Productivity
+  
+  updatedAt: text("updated_at"),
+});
+
+export const insertLaborSettingsSchema = createInsertSchema(laborSettings).omit({ id: true });
+export const insertDailyLaborSchema = createInsertSchema(dailyLabor).omit({ id: true });
+
+export type LaborSettings = typeof laborSettings.$inferSelect;
+export type InsertLaborSettings = z.infer<typeof insertLaborSettingsSchema>;
+export type DailyLabor = typeof dailyLabor.$inferSelect;
+export type InsertDailyLabor = z.infer<typeof insertDailyLaborSchema>;

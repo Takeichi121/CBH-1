@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -138,6 +138,14 @@ export interface IStorage {
   deleteBorrowTransaction(id: string): Promise<void>;
   getOverdueBorrowTransactions(): Promise<BorrowTransaction[]>;
   getBorrowDashboardMetrics(): Promise<{ totalTransactions: number; totalBorrowIn: number; totalBorrowOut: number }>;
+
+  // Labor Settings
+  getLaborSettings(): Promise<LaborSettings | undefined>;
+  saveLaborSettings(data: Partial<InsertLaborSettings>): Promise<LaborSettings>;
+  
+  // Daily Labor
+  getDailyLabor(date: string): Promise<DailyLabor | undefined>;
+  saveDailyLabor(date: string, data: Partial<InsertDailyLabor>): Promise<DailyLabor>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -798,6 +806,50 @@ export class DatabaseStorage implements IStorage {
     const borrowIn = all.filter(t => t.txType === "borrow_in").length;
     const borrowOut = all.filter(t => t.txType === "borrow_out").length;
     return { totalTransactions: all.length, totalBorrowIn: borrowIn, totalBorrowOut: borrowOut };
+  }
+
+  // Labor Settings
+  async getLaborSettings(): Promise<LaborSettings | undefined> {
+    const [settings] = await db.select().from(laborSettings).limit(1);
+    return settings;
+  }
+
+  async saveLaborSettings(data: Partial<InsertLaborSettings>): Promise<LaborSettings> {
+    const existing = await this.getLaborSettings();
+    if (existing) {
+      const [updated] = await db.update(laborSettings)
+        .set({ ...data, updatedAt: new Date().toISOString() })
+        .where(eq(laborSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [inserted] = await db.insert(laborSettings)
+        .values({ ...data, updatedAt: new Date().toISOString() })
+        .returning();
+      return inserted;
+    }
+  }
+
+  // Daily Labor
+  async getDailyLabor(date: string): Promise<DailyLabor | undefined> {
+    const [labor] = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date));
+    return labor;
+  }
+
+  async saveDailyLabor(date: string, data: Partial<InsertDailyLabor>): Promise<DailyLabor> {
+    const existing = await this.getDailyLabor(date);
+    if (existing) {
+      const [updated] = await db.update(dailyLabor)
+        .set({ ...data, updatedAt: new Date().toISOString() })
+        .where(eq(dailyLabor.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [inserted] = await db.insert(dailyLabor)
+        .values({ date, ...data, updatedAt: new Date().toISOString() })
+        .returning();
+      return inserted;
+    }
   }
 }
 

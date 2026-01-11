@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Building, Package, Trash2, RefreshCw, Upload, FileSpreadsheet } from "lucide-react";
+import { Plus, Building, Package, Trash2, RefreshCw, Upload, FileSpreadsheet, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BorrowLayout } from "./borrow-layout";
 import type { BorrowBranch, BorrowItem } from "@shared/schema";
@@ -28,6 +28,7 @@ export default function BorrowSettingsPage() {
   const [newItem, setNewItem] = useState({ name: "", code: "", unit: "" });
   const [importingBranches, setImportingBranches] = useState(false);
   const [importingItems, setImportingItems] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<{ id: string; unit: string } | null>(null);
   const branchFileRef = useRef<HTMLInputElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
 
@@ -222,6 +223,27 @@ export default function BorrowSettingsPage() {
       if (data.ok) {
         toast({ title: language === "th" ? "ลบรายการสำเร็จ" : "Item deleted" });
         fetchData();
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateUnit = async (itemId: string, unit: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/borrow/items/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: itemId, unit }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "บันทึกสำเร็จ" : "Saved" });
+        setEditingUnit(null);
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Error", variant: "destructive" });
@@ -462,7 +484,44 @@ export default function BorrowSettingsPage() {
                             <Badge variant="outline">{item.code}</Badge>
                           </TableCell>
                           <TableCell>{item.name}</TableCell>
-                          <TableCell>{item.unit}</TableCell>
+                          <TableCell>
+                            {editingUnit?.id === item.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  className="h-8 w-24"
+                                  value={editingUnit.unit}
+                                  onChange={(e) => setEditingUnit({ ...editingUnit, unit: e.target.value })}
+                                  data-testid={`input-unit-${item.id}`}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleUpdateUnit(item.id, editingUnit.unit)}
+                                  data-testid={`button-save-unit-${item.id}`}
+                                >
+                                  <Check className="w-4 h-4 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setEditingUnit(null)}
+                                  data-testid={`button-cancel-unit-${item.id}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span 
+                                className="cursor-pointer hover:underline"
+                                onClick={() => setEditingUnit({ id: item.id, unit: item.unit || "" })}
+                                data-testid={`text-unit-${item.id}`}
+                              >
+                                {item.unit || "-"}
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"

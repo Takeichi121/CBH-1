@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import type { Branch, Item, CartItem } from "@shared/schema";
 
-const PREDEFINED_UNITS = ["CASE", "PACK", "PCS", "BAG", "TRAY", "CAN", "TANK", "ROLL", "BOX", "GAL", "BTL"];
+const PREDEFINED_UNITS = ["CASE", "PACK", "CASE PACK", "PCS", "BAG", "TRAY", "CAN", "TANK", "ROLL", "BOX", "GAL", "BTL"];
 
 function norm(v: unknown) {
   return String(v ?? "").trim().toLowerCase();

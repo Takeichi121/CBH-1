@@ -129,6 +129,7 @@ export interface IStorage {
   // Borrow Tracker - Items
   getBorrowItems(): Promise<BorrowItem[]>;
   addBorrowItem(name: string, code?: string | null, unit?: string | null): Promise<{ ok: boolean; message?: string }>;
+  updateBorrowItem(id: string, data: { unit?: string | null }): Promise<{ ok: boolean; message?: string }>;
   deleteBorrowItem(id: string): Promise<void>;
 
   // Borrow Tracker - Transactions
@@ -746,6 +747,13 @@ export class DatabaseStorage implements IStorage {
     if (!name.trim()) return { ok: false, message: "Name is required" };
     const id = `it_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     await db.insert(borrowItems).values({ id, name: name.trim(), code: code?.trim() || null, unit: unit?.trim() || null, isActive: 1 });
+    return { ok: true };
+  }
+
+  async updateBorrowItem(id: string, data: { unit?: string | null }): Promise<{ ok: boolean; message?: string }> {
+    const [existing] = await db.select().from(borrowItems).where(eq(borrowItems.id, id));
+    if (!existing) return { ok: false, message: "Item not found" };
+    await db.update(borrowItems).set({ unit: data.unit?.trim() || null }).where(eq(borrowItems.id, id));
     return { ok: true };
   }
 

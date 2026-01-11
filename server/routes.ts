@@ -1786,6 +1786,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(result);
   });
 
+  app.post("/api/borrow/items/update", async (req, res) => {
+    const { token, id, unit } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
+    const result = await storage.updateBorrowItem(id, { unit });
+    res.json(result);
+  });
+
   app.post("/api/borrow/items/delete", async (req, res) => {
     const { token, id } = req.body;
     const access = await verifyManagerAccess(token);

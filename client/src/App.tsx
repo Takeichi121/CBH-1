@@ -19,6 +19,7 @@ import AdminPage from "@/pages/admin-page";
 import BorrowDashboardPage from "@/pages/borrow/dashboard-page";
 import BorrowTransactionsPage from "@/pages/borrow/transactions-page";
 import BorrowSettingsPage from "@/pages/borrow/settings-page";
+import BorrowHelpPage from "@/pages/borrow/help-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
@@ -109,6 +110,10 @@ function Router() {
           
           <Route path="/borrow/settings">
             <ProtectedRoute component={BorrowSettingsPage} path="/borrow/settings" />
+          </Route>
+          
+          <Route path="/borrow/help">
+            <ProtectedRoute component={BorrowHelpPage} path="/borrow/help" />
           </Route>
           
           <Route path="/requests">

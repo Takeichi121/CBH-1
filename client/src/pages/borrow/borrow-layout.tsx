@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
-import { LayoutDashboard, FileText, Settings } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BorrowLayoutProps {
@@ -27,6 +27,11 @@ export function BorrowLayout({ children }: BorrowLayoutProps) {
       href: "/borrow/settings",
       label: language === "th" ? "ตั้งค่า" : "Settings",
       icon: Settings,
+    },
+    {
+      href: "/borrow/help",
+      label: language === "th" ? "คู่มือ" : "Help",
+      icon: HelpCircle,
     },
   ];
 

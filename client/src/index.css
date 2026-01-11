@@ -92,6 +92,12 @@
   }
 }
 
+/* Hide caret for readonly inputs */
+input[readonly],
+textarea[readonly] {
+  caret-color: transparent !important;
+}
+
 /* Glassmorphism utilities */
 @layer utilities {
   .glass {

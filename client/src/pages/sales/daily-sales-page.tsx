@@ -1415,7 +1415,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       <Input
                         value={avgTransaction}
                         readOnly
-                        className="bg-muted text-sm"
+                        tabIndex={-1}
+                        className="bg-muted text-sm pointer-events-none focus-visible:ring-0"
                         data-testid="input-ta"
                       />
                     </div>
@@ -1436,7 +1437,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         <Input
                           value={mtdTarget.toLocaleString()}
                           readOnly
-                          className="pl-6 text-sm bg-muted"
+                          tabIndex={-1}
+                          className="pl-6 text-sm bg-muted pointer-events-none focus-visible:ring-0"
                           data-testid="display-mtd-target"
                         />
                       </div>
@@ -1450,7 +1452,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         <Input
                           value={mtdActual.toLocaleString()}
                           readOnly
-                          className="pl-6 text-sm bg-muted"
+                          tabIndex={-1}
+                          className="pl-6 text-sm bg-muted pointer-events-none focus-visible:ring-0"
                           data-testid="display-mtd-actual"
                         />
                       </div>
@@ -1460,7 +1463,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       <Input
                         value={`${mtdVariance >= 0 ? "+" : ""}${mtdVariance.toLocaleString()}`}
                         readOnly
-                        className={`text-sm ${mtdVariance >= 0 ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"}`}
+                        tabIndex={-1}
+                        className={`text-sm pointer-events-none focus-visible:ring-0 ${mtdVariance >= 0 ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"}`}
                       />
                     </div>
                     <div>
@@ -1468,7 +1472,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       <Input
                         value={mtdTc.toLocaleString()}
                         readOnly
-                        className="text-sm bg-muted"
+                        tabIndex={-1}
+                        className="text-sm bg-muted pointer-events-none focus-visible:ring-0"
                         data-testid="display-mtd-tc"
                       />
                     </div>
@@ -1477,7 +1482,8 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       <Input
                         value={mtdTa}
                         readOnly
-                        className="bg-muted text-sm"
+                        tabIndex={-1}
+                        className="bg-muted text-sm pointer-events-none focus-visible:ring-0"
                       />
                     </div>
                   </div>

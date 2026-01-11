@@ -128,6 +128,12 @@ export default function NewTransaction() {
   const removeFromCart = (id: string) => setCart(cart.filter((c) => c.id !== id));
   const clearCart = () => setCart([]);
 
+  const updateCartUnit = (id: string, newUnit: string) => {
+    setCart(prev => prev.map(item => 
+      item.id === id ? { ...item, unit: newUnit } : item
+    ));
+  };
+
   const handleSubmit = () => {
     if (!branch || cart.length === 0) return;
     submitMutation.mutate({ txDate, dueDate: dueDate || undefined, txType, branch, borrower, lender, note, items: cart });
@@ -377,20 +383,37 @@ export default function NewTransaction() {
                 <div className="space-y-4">
                   <div className="space-y-3">
                     {cart.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div key={item.id} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{item.name}</p>
-                          {item.unit && <p className="text-xs text-muted-foreground">{item.unit}</p>}
                         </div>
 
                         <div className="flex items-center gap-1">
                           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateCartQty(item.id, -1)}>
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-10 text-center font-mono font-medium">{item.qty}</span>
+                          <span className="w-8 text-center font-mono font-medium">{item.qty}</span>
                           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateCartQty(item.id, 1)}>
                             <Plus className="h-3 w-3" />
                           </Button>
+                        </div>
+
+                        <div className="w-[80px]">
+                          <Select 
+                            value={item.unit || ""} 
+                            onValueChange={(value) => updateCartUnit(item.id, value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PREDEFINED_UNITS.map((u) => (
+                                <SelectItem key={u} value={u}>
+                                  {u}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeFromCart(item.id)}>

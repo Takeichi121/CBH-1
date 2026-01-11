@@ -2405,163 +2405,79 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                   <h3 className="text-sm md:text-base font-medium mb-3">
                     {t.labor}
                   </h3>
-                  <div className="space-y-3">
-                    {/* Input row: Actual Hours & OT Hours */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="actualHours"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              {language === "th" ? "ชม.จริง (PT)" : "Actual Hrs"}
-                            </FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm" 
-                                {...field} 
-                                placeholder="0"
-                                data-testid="input-actual-hours"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="otHours"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              {language === "th" ? "ชม. OT" : "OT Hours"}
-                            </FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm" 
-                                {...field} 
-                                placeholder="0"
-                                data-testid="input-ot-hours"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="summaryHours"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              {language === "th" ? "ชม.รวม" : "Summary Hrs"}
-                            </FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm bg-muted" 
-                                readOnly 
-                                {...field} 
-                                data-testid="display-summary-hours"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="varianceHours"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              {language === "th" ? "ต่างจาก Roster" : "Variance"}
-                            </FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className={`text-sm bg-muted ${parseFloat(field.value || "0") < 0 ? "text-red-500" : "text-green-600"}`}
-                                readOnly 
-                                {...field} 
-                                data-testid="display-variance-hours"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    {/* Calculated row: Labor Cost, COL%, Hour, TCMH */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="laborCost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Labor Cost (฿)</FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm bg-muted" 
-                                readOnly
-                                {...field} 
-                                data-testid="display-labor-cost"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="colPercent"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">{t.col}</FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm bg-muted" 
-                                readOnly 
-                                {...field} 
-                                data-testid="display-col-percent"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="laborHour"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">{t.hour}</FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm bg-muted" 
-                                readOnly 
-                                {...field} 
-                                data-testid="display-labor-hour"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="tcmh"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">{t.tcmh}</FormLabel>
-                            <FormControl>
-                              <FormattedInput 
-                                className="text-sm bg-muted" 
-                                readOnly 
-                                {...field} 
-                                data-testid="display-tcmh"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    {/* Labor settings info */}
-                    <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-4">
-                      <span>Roster: {laborSettings.rosterHours}h</span>
-                      <span>Duty: {laborSettings.dutyDailyHours}h</span>
-                      <span>PT Rate: ฿{laborSettings.ptWageRate}/h</span>
-                    </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="actualHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "ชม.จริง (PT)" : "Actual Hrs"}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm" 
+                              {...field} 
+                              placeholder="0"
+                              data-testid="input-actual-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="otHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "ชม. OT" : "OT Hours"}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm" 
+                              {...field} 
+                              placeholder="0"
+                              data-testid="input-ot-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="colPercent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{t.col}</FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm bg-muted font-medium" 
+                              readOnly 
+                              {...field} 
+                              data-testid="display-col-percent"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tcmh"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{t.tcmh}</FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm bg-muted font-medium" 
+                              readOnly 
+                              {...field} 
+                              data-testid="display-tcmh"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 

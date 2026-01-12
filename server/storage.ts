@@ -131,6 +131,7 @@ export interface IStorage {
   addBorrowItem(name: string, code?: string | null, units?: string[] | null, category?: string | null): Promise<{ ok: boolean; message?: string }>;
   updateBorrowItem(id: string, data: { units?: string[] | null; category?: string | null }): Promise<{ ok: boolean; message?: string }>;
   deleteBorrowItem(id: string): Promise<void>;
+  deleteAllBorrowItems(): Promise<void>;
 
   // Borrow Tracker - Transactions
   getBorrowTransactions(limit?: number): Promise<BorrowTransaction[]>;
@@ -765,6 +766,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBorrowItem(id: string): Promise<void> {
     await db.delete(borrowItems).where(eq(borrowItems.id, id));
+  }
+
+  async deleteAllBorrowItems(): Promise<void> {
+    await db.delete(borrowItems);
   }
 
   // Borrow Tracker - Transactions

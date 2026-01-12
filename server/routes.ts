@@ -1806,6 +1806,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  app.post("/api/borrow/items/delete-all", async (req, res) => {
+    const { token } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    await storage.deleteAllBorrowItems();
+    res.json({ ok: true });
+  });
+
   // Transactions
   app.post("/api/borrow/transactions", async (req, res) => {
     const { token, limit } = req.body;

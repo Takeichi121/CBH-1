@@ -48,6 +48,7 @@ export default function Items() {
   const [category, setCategory] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
   // ✅ Autocomplete
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,6 +94,16 @@ export default function Items() {
       setDeleteId(null);
       toast({ title: t.common.success });
     },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => apiRequest("POST", "/api/borrow/items/delete-all", { token: localStorage.getItem("bk_token") }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      setShowDeleteAllDialog(false);
+      toast({ title: t.common.success });
+    },
+    onError: () => toast({ title: t.common.error, variant: "destructive" }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -241,8 +252,8 @@ export default function Items() {
             </Button>
           </form>
 
-          {/* ✅ Import Items */}
-          <div className="pt-4 border-t border-border">
+          {/* ✅ Import Items & Delete All */}
+          <div className="pt-4 border-t border-border flex flex-wrap gap-2 items-center">
             <ImportExcelButton
               endpoint="/api/import/items"
               label={importItemsLabel}
@@ -251,6 +262,16 @@ export default function Items() {
                 toast({ title: t.common.success });
               }}
             />
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteAllDialog(true)}
+              disabled={!items || items.length === 0}
+              data-testid="button-delete-all-items"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {(t as any).items?.deleteAll || "Delete All"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -411,6 +432,27 @@ export default function Items() {
             <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
               {(t as any).items?.delete || t.items.deleteItem}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{(t as any).items?.deleteAllConfirm || "Delete All Items?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(t as any).items?.deleteAllWarning || `This will permanently delete all ${items?.length || 0} items. This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAllMutation.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {(t as any).items?.deleteAll || "Delete All"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -372,7 +372,16 @@ export default function BorrowTrackerPage() {
                     <Label>{labels.qty}</Label>
                     <div className="flex gap-2">
                       <Input type="number" min={1} value={newTx.qty} onChange={(e) => setNewTx(p => ({ ...p, qty: parseInt(e.target.value) || 1 }))} data-testid="input-qty" />
-                      <Input value={newTx.unit} onChange={(e) => setNewTx(p => ({ ...p, unit: e.target.value }))} placeholder={labels.unit} className="w-20" data-testid="input-unit" />
+                      <Select value={newTx.unit} onValueChange={(v) => setNewTx(p => ({ ...p, unit: v }))}>
+                        <SelectTrigger className="w-24" data-testid="select-unit">
+                          <SelectValue placeholder={labels.unit} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {items.find(i => i.name === newTx.item)?.units?.map(u => (
+                            <SelectItem key={u} value={u}>{u}</SelectItem>
+                          )) || <SelectItem value="PCS">PCS</SelectItem>}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>

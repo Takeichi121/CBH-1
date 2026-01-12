@@ -86,13 +86,12 @@
 
     // ✅ Logic to get available units
     const availableUnits = useMemo(() => {
-      if (!selectedItem) return PREDEFINED_UNITS;
-      // Compare String(i.id) with selectedItem
+      if (!selectedItem) return ["PCS"];
       const item = activeItems.find(i => String(i.id) === selectedItem);
-      if (!item || !item.units || item.units.length === 0) return PREDEFINED_UNITS;
+      if (!item || !item.units || item.units.length === 0) return ["PCS"];
 
       const parsed = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
-      return [...new Set([...parsed, ...PREDEFINED_UNITS])]; 
+      return [...new Set(parsed)]; 
     }, [selectedItem, activeItems]);
 
     // ✅ Submit Mutation (Fixed: Branch Type)
@@ -452,7 +451,9 @@
                                   <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                  {PREDEFINED_UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                  {activeItems.find(i => String(i.id) === item.id)?.units?.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean).map(u => (
+                                      <SelectItem key={u} value={u}>{u}</SelectItem>
+                                  )) || <SelectItem value={item.unit}>{item.unit}</SelectItem>}
                               </SelectContent>
                           </Select>
                       </div>

@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw, Search, CaretSortIcon } from "lucide-react";
+import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw, Search } from "lucide-react";
+import { CaretSortIcon } from "@radix-ui/react-icons";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";

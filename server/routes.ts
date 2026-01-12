@@ -1225,9 +1225,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           workShift: "full",
           actualSales: data.actualSales?.toString() || "0",
           transactionCount: data.transactionCount?.toString() || "0",
-          laborHour: data.laborHour?.toString() || "0",
-          wasteRawDaily: data.wasteRawDaily?.toString() || "0",
-          wasteMealDaily: data.wasteMealDaily?.toString() || "0",
+          recommendHours: data.recommendHours?.toString() || "0",
+          rosterCommit: data.rosterCommit?.toString() || "0",
+          actualHours: data.actualHours?.toString() || "0",
+          otHours: data.otHours?.toString() || "0",
+          wasteRawDaily: data.wasteDaily?.toString() || "0",
         });
       }
       await storage.log("save_daily_sales_data", u.username, `count=${salesData.length}`);

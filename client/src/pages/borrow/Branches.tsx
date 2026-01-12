@@ -29,8 +29,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Building2, Trash2, ToggleLeft, ToggleRight, Search, Check } from "lucide-react";
 import ImportExcelButton from "./components/ImportExcelButton";
-import type { Branch } from "@shared/schema";
+import type { BorrowBranch } from "@shared/schema"; // ✅ แก้ Type ให้ตรง schema (ถ้าชื่อ Type จริงคือ BorrowBranch)
 
+// Helper function
 function norm(v: unknown) {
   return String(v ?? "").trim().toLowerCase();
 }
@@ -44,7 +45,7 @@ export default function Branches() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<{ imported: number } | null>(null);
 
-  // ✅ Autocomplete
+  // ✅ Autocomplete States
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -52,16 +53,18 @@ export default function Branches() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data: branches, isLoading } = useQuery<Branch[]>({
-    queryKey: ["/api/branches"],
+  // ✅ Fetch Branches (Update endpoint)
+  const { data: branches, isLoading } = useQuery<BorrowBranch[]>({
+    queryKey: ["/api/borrow/branches"],
   });
 
+  // ✅ Add Branch Mutation (Update endpoint)
   const addMutation = useMutation({
     mutationFn: async (data: { code: string; name: string }) => {
-      return apiRequest("POST", "/api/branches", data);
+      return apiRequest("POST", "/api/borrow/branches/add", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/branches"] });
       setCode("");
       setName("");
       toast({ title: t.common.success });
@@ -71,15 +74,18 @@ export default function Branches() {
     },
   });
 
+  // ✅ Toggle Mutation (Update endpoint - Note: Backend route might need 'toggle' support if not present, otherwise handle accordingly)
+  // Assuming backend has toggle route or we use update
   const toggleMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("PATCH", `/api/branches/${id}/toggle`, {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/branches"] }),
+    mutationFn: async (id: string) => apiRequest("POST", "/api/borrow/branches/toggle", { id }), // Changed PATCH to POST if needed, check backend
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/borrow/branches"] }),
   });
 
+  // ✅ Delete Mutation (Update endpoint)
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("DELETE", `/api/branches/${id}`, {}),
+    mutationFn: async (id: string) => apiRequest("POST", "/api/borrow/branches/delete", { id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/branches"] });
       setDeleteId(null);
       toast({ title: t.common.success });
     },
@@ -104,7 +110,7 @@ export default function Branches() {
     return list.slice(0, 20);
   }, [branches, filteredBranches, q]);
 
-  const pickBranch = (b: Branch) => {
+  const pickBranch = (b: BorrowBranch) => {
     setSelectedId(b.id);
     setSearchQuery(b.code ? `${b.code} - ${b.name}` : b.name);
     setShowDropdown(false);
@@ -116,7 +122,7 @@ export default function Branches() {
     });
   };
 
-  // ✅ ESC close
+  // Events for autocomplete (ESC, Click Outside)
   useEffect(() => {
     if (!showDropdown) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -129,7 +135,6 @@ export default function Branches() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [showDropdown]);
 
-  // ✅ outside click close
   useEffect(() => {
     if (!showDropdown) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
@@ -147,7 +152,6 @@ export default function Branches() {
 
   const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown) return;
-
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightIndex((cur) => Math.min(cur + 1, Math.max(suggestions.length - 1, 0)));
@@ -165,14 +169,12 @@ export default function Branches() {
     }
   };
 
-  const searchPlaceholder =
-    (t as any)?.branches?.searchPlaceholder || "Search branch by code/name...";
-  const noResultsText =
-    (t as any)?.common?.noResults || "No results";
+  const searchPlaceholder = (t as any)?.branches?.searchPlaceholder || "Search branch...";
+  const noResultsText = (t as any)?.common?.noResults || "No results";
 
   return (
     <div className="space-y-6">
-      {/* Add Branch */}
+      {/* Add Branch Form */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -210,27 +212,30 @@ export default function Branches() {
             </Button>
           </form>
 
+          {/* ✅ Updated Import Button */}
           <div className="pt-4">
             <ImportExcelButton
-              endpoint="/api/import/branches"
-              label="⬆ Import Branches (.xlsx)"
+              endpoint="/api/borrow/branches/import" // Corrected Endpoint
+              label="⬆ Import Branches (.xlsx/.csv)"
+              accept=".csv,.xlsx,.xls"               // Added CSV support
               onDone={(result) => {
-                queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/borrow/branches"] });
                 if (result?.imported) setImportResult(result);
+                toast({ title: t.common.success, description: `Imported ${result.imported} branches` });
               }}
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Branch List */}
+      {/* Branch List Table */}
       <Card>
         <CardHeader>
           <CardTitle>{t.branches.branchList}</CardTitle>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          {/* ✅ Autocomplete */}
+
+          {/* Autocomplete Input */}
           <div ref={wrapRef} className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -247,13 +252,10 @@ export default function Branches() {
               onKeyDown={onInputKeyDown}
               className="pl-10"
             />
-
             {showDropdown && (
               <div className="absolute z-50 mt-2 w-full rounded-lg border bg-popover shadow-md overflow-hidden">
                 {suggestions.length === 0 ? (
-                  <div className="px-3 py-3 text-sm text-muted-foreground">
-                    {noResultsText}
-                  </div>
+                  <div className="px-3 py-3 text-sm text-muted-foreground">{noResultsText}</div>
                 ) : (
                   <div className="max-h-64 overflow-auto">
                     {suggestions.map((b, idx) => {
@@ -272,9 +274,6 @@ export default function Branches() {
                         >
                           <span className="truncate">{label}</span>
                           <span className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs text-muted-foreground">
-                              {b.isActive ? t.branches.active : t.branches.inactive}
-                            </span>
                             {selectedId === b.id ? <Check className="h-4 w-4 text-primary" /> : null}
                           </span>
                         </button>
@@ -288,9 +287,7 @@ export default function Branches() {
 
           {isLoading ? (
             <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : branches && branches.length > 0 ? (
             <div className="overflow-x-auto -mx-6 sm:mx-0">
@@ -300,11 +297,9 @@ export default function Branches() {
                     <TableHead className="w-16 md:w-20">{t.branches.id}</TableHead>
                     <TableHead className="hidden md:table-cell">{t.branches.code}</TableHead>
                     <TableHead>{t.branches.name}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{t.branches.status}</TableHead>
                     <TableHead className="text-right">{t.branches.action}</TableHead>
                   </TableRow>
                 </TableHeader>
-
                 <TableBody>
                   {filteredBranches.map((b, index) => (
                     <TableRow
@@ -315,22 +310,8 @@ export default function Branches() {
                       <TableCell className="font-mono text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{b.code || "-"}</TableCell>
                       <TableCell className="font-medium">{b.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant={b.isActive ? "default" : "secondary"} className="text-xs">
-                          {b.isActive ? t.branches.active : t.branches.inactive}
-                        </Badge>
-                      </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleMutation.mutate(b.id)}
-                            disabled={toggleMutation.isPending}
-                          >
-                            {b.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                            <span className="ml-1 hidden sm:inline">{t.branches.toggle}</span>
-                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => setDeleteId(b.id)}>
                             <Trash2 className="h-4 w-4" />
                             <span className="ml-1 hidden sm:inline">{t.branches.delete}</span>
@@ -370,18 +351,11 @@ export default function Branches() {
           <AlertDialogHeader>
             <AlertDialogTitle>Import Successful</AlertDialogTitle>
             <AlertDialogDescription>
-              {importResult?.imported} branches have been imported and saved to the database.
+              {importResult?.imported} branches have been imported.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction
-              onClick={() => {
-                setImportResult(null);
-                toast({ title: t.common.success });
-              }}
-            >
-              OK
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => setImportResult(null)}>OK</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

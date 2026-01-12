@@ -10,10 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, Building, RefreshCw } from "lucide-react";
+import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { BorrowBranch, BorrowItem, BorrowTransaction } from "@shared/schema";
+
+// ✅ Import ปุ่มสำหรับดึงไฟล์ Excel/CSV
+import ImportExcelButton from "./components/ImportExcelButton";
 
 export default function BorrowTrackerPage() {
   const { user, token } = useAuth();
@@ -81,6 +84,8 @@ export default function BorrowTrackerPage() {
     totalTransactions: language === "th" ? "ธุรกรรมทั้งหมด" : "Total Transactions",
     accessDenied: language === "th" ? "ไม่มีสิทธิ์เข้าถึง" : "Access Denied",
     managersOnly: language === "th" ? "เฉพาะผู้จัดการเท่านั้น" : "Managers only",
+    importBranches: language === "th" ? "นำเข้าสาขา (Excel/CSV)" : "Import Branches",
+    importItems: language === "th" ? "นำเข้ารายการ (Excel/CSV)" : "Import Items",
   };
 
   const fetchData = async () => {
@@ -243,12 +248,28 @@ export default function BorrowTrackerPage() {
                   <TabsTrigger value="branches">{labels.branches}</TabsTrigger>
                   <TabsTrigger value="items">{labels.items}</TabsTrigger>
                 </TabsList>
+
+                {/* 📌 Tab: Branches */}
                 <TabsContent value="branches" className="space-y-4">
                   <div className="flex gap-2">
                     <Input placeholder={labels.code} value={newBranch.code} onChange={(e) => setNewBranch(p => ({ ...p, code: e.target.value }))} className="w-24" data-testid="input-branch-code" />
                     <Input placeholder={labels.name} value={newBranch.name} onChange={(e) => setNewBranch(p => ({ ...p, name: e.target.value }))} className="flex-1" data-testid="input-branch-name" />
                     <Button onClick={handleAddBranch} data-testid="button-add-branch"><Plus className="w-4 h-4" /></Button>
                   </div>
+
+                  {/* ✅ Import Button for Branches */}
+                  <div className="flex justify-end border-b pb-2">
+                    <ImportExcelButton 
+                      endpoint="/api/borrow/branches/import"
+                      accept=".csv,.xlsx,.xls"
+                      label={labels.importBranches}
+                      onDone={(res) => {
+                        toast({ title: language === "th" ? `นำเข้าสำเร็จ ${res.imported} รายการ` : `Imported ${res.imported} branches` });
+                        fetchData();
+                      }}
+                    />
+                  </div>
+
                   <div className="border rounded-lg max-h-48 overflow-y-auto">
                     {branches.length === 0 ? (
                       <p className="text-center text-muted-foreground py-4">{labels.noItems}</p>
@@ -262,6 +283,8 @@ export default function BorrowTrackerPage() {
                     )}
                   </div>
                 </TabsContent>
+
+                {/* 📌 Tab: Items */}
                 <TabsContent value="items" className="space-y-4">
                   <div className="flex gap-2">
                     <Input placeholder={labels.code} value={newItem.code} onChange={(e) => setNewItem(p => ({ ...p, code: e.target.value }))} className="w-24" data-testid="input-item-code" />
@@ -269,6 +292,20 @@ export default function BorrowTrackerPage() {
                     <Input placeholder={labels.unit} value={newItem.unit} onChange={(e) => setNewItem(p => ({ ...p, unit: e.target.value }))} className="w-20" data-testid="input-item-unit" />
                     <Button onClick={handleAddItem} data-testid="button-add-item"><Plus className="w-4 h-4" /></Button>
                   </div>
+
+                  {/* ✅ Import Button for Items */}
+                  <div className="flex justify-end border-b pb-2">
+                    <ImportExcelButton 
+                      endpoint="/api/borrow/items/import"
+                      accept=".csv,.xlsx,.xls"
+                      label={labels.importItems}
+                      onDone={(res) => {
+                        toast({ title: language === "th" ? `นำเข้าสำเร็จ ${res.imported} รายการ` : `Imported ${res.imported} items` });
+                        fetchData();
+                      }}
+                    />
+                  </div>
+
                   <div className="border rounded-lg max-h-48 overflow-y-auto">
                     {items.length === 0 ? (
                       <p className="text-center text-muted-foreground py-4">{labels.noItems}</p>

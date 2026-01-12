@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +19,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Building, Package, Trash2, RefreshCw, Upload, FileSpreadsheet, Check, X } from "lucide-react";
+import { Plus, Building, Package, Trash2, RefreshCw, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BorrowLayout } from "./borrow-layout";
+import ImportExcelButton from "./components/ImportExcelButton"; // ✅ Use shared component
 import type { BorrowBranch, BorrowItem } from "@shared/schema";
 
 export default function BorrowSettingsPage() {
@@ -36,12 +37,11 @@ export default function BorrowSettingsPage() {
   const [showItemDialog, setShowItemDialog] = useState(false);
   const [newBranch, setNewBranch] = useState({ name: "", code: "" });
   const [newItem, setNewItem] = useState({ name: "", code: "", units: "" });
-  const [importingBranches, setImportingBranches] = useState(false);
-  const [importingItems, setImportingItems] = useState(false);
+
+  // Inline editing state for Item Units
   const [editingUnits, setEditingUnits] = useState<{ id: string; units: string } | null>(null);
+
   const [showDeleteAllItemsDialog, setShowDeleteAllItemsDialog] = useState(false);
-  const branchFileRef = useRef<HTMLInputElement>(null);
-  const itemFileRef = useRef<HTMLInputElement>(null);
 
   const isManager = user?.role === "manager" || user?.role === "admin";
 
@@ -61,77 +61,13 @@ export default function BorrowSettingsPage() {
     noBranches: language === "th" ? "ยังไม่มีสาขา" : "No branches yet",
     noItems: language === "th" ? "ยังไม่มีรายการ" : "No items yet",
     refresh: language === "th" ? "รีเฟรช" : "Refresh",
-    importExcel: language === "th" ? "Import Excel" : "Import Excel",
-    importSuccess: language === "th" ? "นำเข้าสำเร็จ" : "Import successful",
-    importFailed: language === "th" ? "นำเข้าไม่สำเร็จ" : "Import failed",
-    importing: language === "th" ? "กำลังนำเข้า..." : "Importing...",
-    rowsImported: language === "th" ? "รายการที่นำเข้า" : "rows imported",
-    rowsSkipped: language === "th" ? "รายการที่ข้าม" : "rows skipped",
+    importBranches: language === "th" ? "นำเข้าสาขา (Excel/CSV)" : "Import Branches",
+    importItems: language === "th" ? "นำเข้ารายการ (Excel/CSV)" : "Import Items",
     deleteAll: language === "th" ? "ลบทั้งหมด" : "Delete All",
     deleteAllConfirm: language === "th" ? "ลบรายการทั้งหมด?" : "Delete All Items?",
     deleteAllWarning: language === "th" 
       ? "การลบนี้จะลบรายการทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้" 
       : "This will permanently delete all items. This action cannot be undone.",
-  };
-
-  const handleImportBranches = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !token) return;
-    setImportingBranches(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("token", token);
-      const res = await fetch("/api/borrow/branches/import", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast({ 
-          title: labels.importSuccess, 
-          description: `${data.imported} ${labels.rowsImported}, ${data.skipped} ${labels.rowsSkipped}` 
-        });
-        fetchData();
-      } else {
-        toast({ title: labels.importFailed, description: data.message, variant: "destructive" });
-      }
-    } catch (err) {
-      toast({ title: labels.importFailed, variant: "destructive" });
-    } finally {
-      setImportingBranches(false);
-      if (branchFileRef.current) branchFileRef.current.value = "";
-    }
-  };
-
-  const handleImportItems = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !token) return;
-    setImportingItems(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("token", token);
-      const res = await fetch("/api/borrow/items/import", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast({ 
-          title: labels.importSuccess, 
-          description: `${data.imported} ${labels.rowsImported}, ${data.skipped} ${labels.rowsSkipped}` 
-        });
-        fetchData();
-      } else {
-        toast({ title: labels.importFailed, description: data.message, variant: "destructive" });
-      }
-    } catch (err) {
-      toast({ title: labels.importFailed, variant: "destructive" });
-    } finally {
-      setImportingItems(false);
-      if (itemFileRef.current) itemFileRef.current.value = "";
-    }
   };
 
   const fetchData = async () => {
@@ -156,17 +92,18 @@ export default function BorrowSettingsPage() {
       if (itemsData.ok) setItems(itemsData.items);
     } catch (err) {
       console.error(err);
+      toast({ title: "Failed to load data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, [token]);
+    if (token && isManager) fetchData();
+  }, [token, isManager]);
 
   const handleAddBranch = async () => {
-    if (!token || !newBranch.name || !newBranch.code) return;
+    if (!token || !newBranch.name) return;
     try {
       const res = await fetch("/api/borrow/branches/add", {
         method: "POST",
@@ -188,7 +125,7 @@ export default function BorrowSettingsPage() {
   };
 
   const handleAddItem = async () => {
-    if (!token || !newItem.name || !newItem.code) return;
+    if (!token || !newItem.name) return;
     try {
       const unitsArray = newItem.units.split(",").map(u => u.trim()).filter(u => u.length > 0);
       const res = await fetch("/api/borrow/items/add", {
@@ -324,26 +261,19 @@ export default function BorrowSettingsPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* === BRANCHES TAB === */}
           <TabsContent value="branches" className="space-y-4">
             <div className="flex justify-end gap-2">
-              <input
-                ref={branchFileRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleImportBranches}
-                data-testid="input-import-branches"
+              {/* ✅ Use ImportExcelButton */}
+              <ImportExcelButton 
+                endpoint="/api/borrow/branches/import"
+                label={labels.importBranches}
+                accept=".csv,.xlsx,.xls"
+                onDone={(res) => {
+                  toast({ title: `Imported ${res.imported} branches` });
+                  fetchData();
+                }}
               />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => branchFileRef.current?.click()}
-                disabled={importingBranches}
-                data-testid="button-import-branches"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-1" />
-                {importingBranches ? labels.importing : labels.importExcel}
-              </Button>
               <Dialog open={showBranchDialog} onOpenChange={setShowBranchDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-add-branch">
@@ -428,26 +358,19 @@ export default function BorrowSettingsPage() {
             </Card>
           </TabsContent>
 
+          {/* === ITEMS TAB === */}
           <TabsContent value="items" className="space-y-4">
             <div className="flex justify-end gap-2">
-              <input
-                ref={itemFileRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleImportItems}
-                data-testid="input-import-items"
+              {/* ✅ Use ImportExcelButton */}
+              <ImportExcelButton 
+                endpoint="/api/borrow/items/import"
+                label={labels.importItems}
+                accept=".csv,.xlsx,.xls"
+                onDone={(res) => {
+                  toast({ title: `Imported ${res.imported} items` });
+                  fetchData();
+                }}
               />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => itemFileRef.current?.click()}
-                disabled={importingItems}
-                data-testid="button-import-items"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-1" />
-                {importingItems ? labels.importing : labels.importExcel}
-              </Button>
               <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-add-item">
@@ -564,9 +487,10 @@ export default function BorrowSettingsPage() {
                               </div>
                             ) : (
                               <span 
-                                className="cursor-pointer hover:underline"
+                                className="cursor-pointer hover:underline decoration-dashed decoration-muted-foreground/50 underline-offset-4"
                                 onClick={() => setEditingUnits({ id: item.id, units: item.units?.join(", ") || "" })}
                                 data-testid={`text-units-${item.id}`}
+                                title="Click to edit"
                               >
                                 {item.units && item.units.length > 0 ? item.units.join(", ") : "-"}
                               </span>

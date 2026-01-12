@@ -3,20 +3,9 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 
-// Chat tables for OpenAI integration
-export const conversations = pgTable("conversations", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
-
-export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
-  role: text("role").notNull(),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+// ==========================================
+// 👤 Users & Roles
+// ==========================================
 
 // Manager position levels
 export const managerPositions = [
@@ -66,6 +55,30 @@ export const users = pgTable("users", {
   createdAt: text("created_at").notNull(),
 });
 
+// ==========================================
+// 💬 Chat & AI (Updated with User Relation)
+// ==========================================
+
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  // ✅ เพิ่ม userId เพื่อระบุเจ้าของแชท
+  userId: text("user_id").references(() => users.username, { onDelete: "cascade" }), 
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// ==========================================
+// 📅 Shifts & Rosters
+// ==========================================
+
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
   date: text("date").notNull(), // YYYY-MM-DD
@@ -83,6 +96,273 @@ export const shifts = pgTable("shifts", {
 }, (t) => ({
   uniqueUserDate: unique().on(t.username, t.date),
 }));
+
+export const swapRequests = pgTable("swap_requests", {
+  id: serial("id").primaryKey(),
+  requesterUsername: text("requester_username").notNull(),
+  requesterDate: text("requester_date").notNull(),
+  targetUsername: text("target_username").notNull(),
+  targetDate: text("target_date").notNull(),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  approvedBy: text("approved_by"),
+  note: text("note"),
+});
+
+// ==========================================
+// 📋 Manager Requests
+// ==========================================
+
+export const managerRequestTypes = [
+  "select_work_time",    // เลือกเวลาเข้างาน
+  "day_off",             // ขอวันหยุด
+  "compensate_leave",    // ขอใช้วัน COM
+  "annual_leave",        // ลาพักร้อน
+  "without_pay",         // ลาไม่รับค่าจ้าง
+] as const;
+
+export type ManagerRequestType = typeof managerRequestTypes[number];
+
+export const managerRequestTypeLabels: Record<ManagerRequestType, { en: string; th: string }> = {
+  select_work_time: { en: "Select Work Time", th: "เลือกเวลาเข้างาน" },
+  day_off: { en: "Day Off", th: "ขอวันหยุด" },
+  compensate_leave: { en: "Compensate Leave (COM)", th: "ลาชดเชย (COM)" },
+  annual_leave: { en: "Annual Leave", th: "ลาพักร้อน" },
+  without_pay: { en: "Without Pay", th: "ลาไม่รับค่าจ้าง" },
+};
+
+export const dayOffReasons = [
+  "doctor_appointment",  // ไปหาหมอ
+  "personal",            // ธุระส่วนตัว
+  "family",              // ธุระครอบครัว
+  "other",               // อื่นๆ
+] as const;
+
+export type DayOffReason = typeof dayOffReasons[number];
+
+export const dayOffReasonLabels: Record<DayOffReason, { en: string; th: string }> = {
+  doctor_appointment: { en: "Doctor Appointment", th: "ไปหาหมอ" },
+  personal: { en: "Personal Business", th: "ธุระส่วนตัว" },
+  family: { en: "Family Business", th: "ธุระครอบครัว" },
+  other: { en: "Other", th: "อื่นๆ" },
+};
+
+export const managerRequests = pgTable("manager_requests", {
+  id: serial("id").primaryKey(),
+  requestType: text("request_type").notNull(),
+  requestDate: text("request_date").notNull(), 
+  requestedBy: text("requested_by").notNull(), 
+
+  // สำหรับ select_work_time
+  startTime: text("start_time"), 
+  endTime: text("end_time"),     
+
+  // สำหรับ day_off
+  dayOffReason: text("day_off_reason"), 
+
+  note: text("note"),
+  status: text("status").notNull().default("pending"), 
+  approvedBy: text("approved_by"),
+  approvedAt: text("approved_at"),
+  rejectionReason: text("rejection_reason"),
+
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// ==========================================
+// 📊 Sales & Reports
+// ==========================================
+
+export const dailySalesReports = pgTable("daily_sales_reports", {
+  id: serial("id").primaryKey(),
+  reportDate: text("report_date").notNull(),
+  reportBy: text("report_by").notNull(),
+  workShift: text("work_shift").notNull().default("full"),
+
+  // Daily Sales
+  dailyTarget: text("daily_target").notNull().default("0"),
+  actualSales: text("actual_sales").notNull().default("0"),
+  transactionCount: text("transaction_count").notNull().default("0"),
+
+  // MTD
+  mtdTarget: text("mtd_target").default("0"),
+  mtdActual: text("mtd_actual").default("0"),
+  mtdTc: text("mtd_tc").default("0"),
+
+  // In Store
+  dineIn: text("dine_in").default("0"),
+  dineInTc: text("dine_in_tc").default("0"),
+  takeAway: text("take_away").default("0"),
+  takeAwayTc: text("take_away_tc").default("0"),
+
+  // Delivery
+  grabfood: text("grabfood").default("0"),
+  lineman: text("lineman").default("0"),
+  shopee: text("shopee").default("0"),
+  bkapp: text("bkapp").default("0"),
+
+  // Metrics
+  osat: text("osat").default("0"),
+  surveyCount: text("survey_count").default("0"),
+  voidAmount: text("void_amount").default("0"),
+  voidCount: text("void_count").default("0"),
+  sosDaily: text("sos_daily").default("0"),
+  sosMtd: text("sos_mtd").default("0"),
+
+  // Add-ons
+  addCheeseCount: text("add_cheese_count").default("0"),
+  addCheesePercent: text("add_cheese_percent").default("0"),
+  vMealCount: text("v_meal_count").default("0"),
+  vMealPercent: text("v_meal_percent").default("0"),
+  upSizeCount: text("up_size_count").default("0"),
+  upSizePercent: text("up_size_percent").default("0"),
+
+  // Waste
+  wasteRawDaily: text("waste_raw_daily").default("0"),
+  wasteRawDailyPercent: text("waste_raw_daily_percent").default("0"),
+  wasteMealDaily: text("waste_meal_daily").default("0"),
+  wasteMealDailyPercent: text("waste_meal_daily_percent").default("0"),
+  wasteRawMtd: text("waste_raw_mtd").default("0"),
+  wasteRawMtdPercent: text("waste_raw_mtd_percent").default("0"),
+  wasteMealMtd: text("waste_meal_mtd").default("0"),
+  wasteMealMtdPercent: text("waste_meal_mtd_percent").default("0"),
+
+  // Labor
+  recommendHours: text("recommend_hours").default("0"),
+  rosterCommit: text("roster_commit").default("0"),
+  actualHours: text("actual_hours").default("0"),
+  otHours: text("ot_hours").default("0"),
+  otMtd: text("ot_mtd").default("0"),
+  summaryHours: text("summary_hours").default("0"),
+  varianceHours: text("variance_hours").default("0"),
+  laborCost: text("labor_cost").default("0"),
+  colPercent: text("col_percent").default("0"),
+  laborHour: text("labor_hour").default("0"),
+  tcmh: text("tcmh").default("0"),
+
+  // Roster
+  managerRosterDate: text("manager_roster_date"),
+  managerRosterText: text("manager_roster_text"),
+  staffRosterText: text("staff_roster_text"),
+
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const dailyTargets = pgTable("daily_targets", {
+  id: serial("id").primaryKey(),
+  targetDate: text("target_date").notNull(),
+  targetSales: text("target_sales").notNull().default("130000"),
+  targetTc: text("target_tc").default("300"),
+  wasteRawDaily: text("waste_raw_daily").default("0"),
+  wasteMealDaily: text("waste_meal_daily").default("0"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => ({
+  uniqueDate: unique().on(t.targetDate),
+}));
+
+export const wasteTargets = pgTable("waste_targets", {
+  id: serial("id").primaryKey(),
+  targetMonth: text("target_month").notNull(),
+  mtdAmount: text("mtd_amount").default("0"),
+  mtdPercent: text("mtd_percent").default("0"),
+  mealAmount: text("meal_amount").default("0"),
+  mealPercent: text("meal_percent").default("0"),
+  rawAmount: text("raw_amount").default("0"),
+  rawPercent: text("raw_percent").default("0"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => ({
+  uniqueMonth: unique().on(t.targetMonth),
+}));
+
+// ==========================================
+// 📦 Borrow Tracker
+// ==========================================
+
+// 1. Define the table first
+// ✅ This is a Drizzle Table definition
+export const borrowBranches = pgTable("borrow_branches", {
+  id: text("id").primaryKey(), // You noted "must be string" in your comments
+  name: text("name").notNull(),
+  code: text("code"),
+  isActive: integer("is_active").notNull().default(1),
+});
+
+export const itemCategories = [
+  { id: "meat", th: "หมวดเนื้อสัตว์", en: "Meat & Pork" },
+  { id: "bun", th: "หมวดขนมปัง", en: "Bun" },
+  { id: "chicken", th: "หมวดไก่และปลา", en: "Chicken & Fish" },
+  { id: "fried", th: "หมวดของทอด", en: "Fried" },
+  { id: "ingredients", th: "หมวดวัตถุดิบและผัก", en: "Ingredients & Veg" },
+  { id: "sauce", th: "หมวดซอสและเครื่องปรุง", en: "Sauce & Condiment" },
+  { id: "beverage", th: "หมวดเครื่องดื่ม", en: "Beverage" },
+  { id: "dessert", th: "หมวดของหวานและเบเกอรี่", en: "Dessert & Pie" },
+  { id: "packaging", th: "หมวดบรรจุภัณฑ์", en: "Packaging - Bags & Boxes" },
+  { id: "cup", th: "หมวดแก้ว ฝา และหลอด", en: "Cup, Lid & Straw" },
+  { id: "utensil", th: "หมวดอุปกรณ์พลาสติกและกระดาษ", en: "Utensil & Paper" },
+] as const;
+
+export type ItemCategoryId = typeof itemCategories[number]["id"];
+
+export const borrowItems = pgTable("borrow_items", {
+  id: text("id").primaryKey(), // Changed from serial to text if you generate ID like "it_..." manually
+  code: text("code"),
+  name: text("name").notNull(),
+  category: text("category"),
+  units: text("units").array(),
+  isActive: integer("is_active").notNull().default(1),
+});
+
+export const borrowTransactions = pgTable("borrow_transactions", {
+  id: text("id").primaryKey(), // Changed from serial to text if you generate ID like "tx_..." manually
+  txDate: text("tx_date").notNull(),
+  dueDate: text("due_date"),
+  txType: text("tx_type").notNull(), // 'borrow_in' | 'borrow_out'
+  branch: text("branch").notNull(), // Stores branch ID
+  item: text("item").notNull(),
+  qty: integer("qty").notNull().default(0),
+  unit: text("unit"),
+  borrower: text("borrower"),
+  lender: text("lender"),
+  note: text("note"),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull(), // Backend seems to generate string timestamps
+});
+
+// ==========================================
+// ⚙️ Labor & Cost Control
+// ==========================================
+
+export const laborSettings = pgTable("labor_settings", {
+  id: serial("id").primaryKey(),
+  rosterHours: decimal("roster_hours", { precision: 10, scale: 2 }).default("88"),        
+  dutyDailyHours: decimal("duty_daily_hours", { precision: 10, scale: 2 }).default("40"), 
+  fixedCostDaily: decimal("fixed_cost_daily", { precision: 10, scale: 2 }).default("0"),  
+  closeShiftDailyCost: decimal("close_shift_daily_cost", { precision: 10, scale: 2 }).default("0"), 
+  ptWageRate: decimal("pt_wage_rate", { precision: 10, scale: 2 }).default("45"),         
+  updatedAt: text("updated_at"),
+});
+
+export const dailyLabor = pgTable("daily_labor", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull().unique(), // YYYY-MM-DD
+  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }).default("0"), 
+  otHours: decimal("ot_hours", { precision: 10, scale: 2 }).default("0"),         
+  summaryHours: decimal("summary_hours", { precision: 10, scale: 2 }).default("0"),     
+  varianceHours: decimal("variance_hours", { precision: 10, scale: 2 }).default("0"),   
+  laborCostTotal: decimal("labor_cost_total", { precision: 10, scale: 2 }).default("0"),
+  colPercent: decimal("col_percent", { precision: 10, scale: 2 }).default("0"),         
+  tcmh: decimal("tcmh", { precision: 10, scale: 2 }).default("0"),                      
+  updatedAt: text("updated_at"),
+});
+
+// ==========================================
+// 🔧 System & Config
+// ==========================================
 
 export const config = pgTable("config", {
   key: text("key").primaryKey(),
@@ -104,101 +384,6 @@ export const sessions = pgTable("sessions", {
   expiresAt: integer("expires_at").notNull(),
 });
 
-export const swapRequests = pgTable("swap_requests", {
-  id: serial("id").primaryKey(),
-  requesterUsername: text("requester_username").notNull(),
-  requesterDate: text("requester_date").notNull(),
-  targetUsername: text("target_username").notNull(),
-  targetDate: text("target_date").notNull(),
-  status: text("status").notNull().default("pending"), // pending, approved, rejected
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-  approvedBy: text("approved_by"),
-  note: text("note"),
-});
-
-// Daily Sales Reports
-export const dailySalesReports = pgTable("daily_sales_reports", {
-  id: serial("id").primaryKey(),
-  reportDate: text("report_date").notNull(),
-  reportBy: text("report_by").notNull(),
-  workShift: text("work_shift").notNull().default("full"),
-  
-  // Daily Sales
-  dailyTarget: text("daily_target").notNull().default("0"),
-  actualSales: text("actual_sales").notNull().default("0"),
-  transactionCount: text("transaction_count").notNull().default("0"),
-  
-  // MTD (Month To Date)
-  mtdTarget: text("mtd_target").default("0"),
-  mtdActual: text("mtd_actual").default("0"),
-  mtdTc: text("mtd_tc").default("0"),
-  
-  // In Store
-  dineIn: text("dine_in").default("0"),
-  dineInTc: text("dine_in_tc").default("0"),
-  takeAway: text("take_away").default("0"),
-  takeAwayTc: text("take_away_tc").default("0"),
-  
-  // Delivery
-  grabfood: text("grabfood").default("0"),
-  lineman: text("lineman").default("0"),
-  shopee: text("shopee").default("0"),
-  bkapp: text("bkapp").default("0"),
-  
-  // Performance Metrics
-  osat: text("osat").default("0"),
-  surveyCount: text("survey_count").default("0"),
-  voidAmount: text("void_amount").default("0"),
-  voidCount: text("void_count").default("0"),
-  
-  // Speed of Service (SOS)
-  sosDaily: text("sos_daily").default("0"),
-  sosMtd: text("sos_mtd").default("0"),
-  
-  // Add-ons
-  addCheeseCount: text("add_cheese_count").default("0"),
-  addCheesePercent: text("add_cheese_percent").default("0"),
-  vMealCount: text("v_meal_count").default("0"),
-  vMealPercent: text("v_meal_percent").default("0"),
-  upSizeCount: text("up_size_count").default("0"),
-  upSizePercent: text("up_size_percent").default("0"),
-  
-  // Waste - Daily
-  wasteRawDaily: text("waste_raw_daily").default("0"),
-  wasteRawDailyPercent: text("waste_raw_daily_percent").default("0"),
-  wasteMealDaily: text("waste_meal_daily").default("0"),
-  wasteMealDailyPercent: text("waste_meal_daily_percent").default("0"),
-  
-  // Waste - MTD
-  wasteRawMtd: text("waste_raw_mtd").default("0"),
-  wasteRawMtdPercent: text("waste_raw_mtd_percent").default("0"),
-  wasteMealMtd: text("waste_meal_mtd").default("0"),
-  wasteMealMtdPercent: text("waste_meal_mtd_percent").default("0"),
-  
-  // Labor
-  recommendHours: text("recommend_hours").default("0"),
-  rosterCommit: text("roster_commit").default("0"),
-  actualHours: text("actual_hours").default("0"),
-  otHours: text("ot_hours").default("0"),
-  otMtd: text("ot_mtd").default("0"),
-  summaryHours: text("summary_hours").default("0"),
-  varianceHours: text("variance_hours").default("0"),
-  laborCost: text("labor_cost").default("0"),
-  colPercent: text("col_percent").default("0"),
-  laborHour: text("labor_hour").default("0"),
-  tcmh: text("tcmh").default("0"),
-  
-  // Roster
-  managerRosterDate: text("manager_roster_date"),
-  managerRosterText: text("manager_roster_text"),
-  staffRosterText: text("staff_roster_text"),
-  
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// Store Settings
 export const storeSettings = pgTable("store_settings", {
   id: serial("id").primaryKey(),
   storeName: text("store_name").notNull(),
@@ -209,185 +394,39 @@ export const storeSettings = pgTable("store_settings", {
   updatedAt: text("updated_at").notNull(),
 });
 
-// Manager Request Types
-export const managerRequestTypes = [
-  "select_work_time",    // เลือกเวลาเข้างาน (จำกัด 2 ครั้ง/เดือน)
-  "day_off",             // ขอวันหยุด
-  "compensate_leave",    // ขอใช้วัน COM
-  "annual_leave",        // ลาพักร้อน
-  "without_pay",         // ลาไม่รับค่าจ้าง
-] as const;
-
-export type ManagerRequestType = typeof managerRequestTypes[number];
-
-export const managerRequestTypeLabels: Record<ManagerRequestType, { en: string; th: string }> = {
-  select_work_time: { en: "Select Work Time", th: "เลือกเวลาเข้างาน" },
-  day_off: { en: "Day Off", th: "ขอวันหยุด" },
-  compensate_leave: { en: "Compensate Leave (COM)", th: "ลาชดเชย (COM)" },
-  annual_leave: { en: "Annual Leave", th: "ลาพักร้อน" },
-  without_pay: { en: "Without Pay", th: "ลาไม่รับค่าจ้าง" },
-};
-
-// Day off reason options
-export const dayOffReasons = [
-  "doctor_appointment",  // ไปหาหมอ
-  "personal",            // ธุระส่วนตัว
-  "family",              // ธุระครอบครัว
-  "other",               // อื่นๆ
-] as const;
-
-export type DayOffReason = typeof dayOffReasons[number];
-
-export const dayOffReasonLabels: Record<DayOffReason, { en: string; th: string }> = {
-  doctor_appointment: { en: "Doctor Appointment", th: "ไปหาหมอ" },
-  personal: { en: "Personal Business", th: "ธุระส่วนตัว" },
-  family: { en: "Family Business", th: "ธุระครอบครัว" },
-  other: { en: "Other", th: "อื่นๆ" },
-};
-
-// Manager Requests Table
-export const managerRequests = pgTable("manager_requests", {
-  id: serial("id").primaryKey(),
-  requestType: text("request_type").notNull(), // select_work_time, day_off, compensate_leave, annual_leave, without_pay
-  requestDate: text("request_date").notNull(), // YYYY-MM-DD - วันที่ขอ
-  requestedBy: text("requested_by").notNull(), // username ของผู้ขอ
-  
-  // สำหรับ select_work_time
-  startTime: text("start_time"), // เวลาเริ่ม (HH:MM)
-  endTime: text("end_time"),     // เวลาเลิก (HH:MM)
-  
-  // สำหรับ day_off
-  dayOffReason: text("day_off_reason"), // doctor_appointment, personal, family, other
-  
-  // หมายเหตุทั่วไป
-  note: text("note"),
-  
-  // สถานะ
-  status: text("status").notNull().default("pending"), // pending, approved, rejected
-  approvedBy: text("approved_by"),
-  approvedAt: text("approved_at"),
-  rejectionReason: text("rejection_reason"),
-  
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// Notifications table for in-app notifications
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
-  recipientUsername: text("recipient_username").notNull(), // who receives the notification
-  type: text("type").notNull(), // shift_change, announcement, swap_request, approval, etc.
+  recipientUsername: text("recipient_username").notNull(), 
+  type: text("type").notNull(), 
   title: text("title").notNull(),
-  titleTh: text("title_th"), // Thai translation
+  titleTh: text("title_th"), 
   message: text("message").notNull(),
-  messageTh: text("message_th"), // Thai translation
-  relatedId: text("related_id"), // ID of related record (shift id, announcement id, etc.)
-  isRead: integer("is_read").notNull().default(0), // 0 = unread, 1 = read
+  messageTh: text("message_th"), 
+  relatedId: text("related_id"), 
+  isRead: integer("is_read").notNull().default(0), 
   createdAt: text("created_at").notNull(),
-  createdBy: text("created_by"), // who triggered this notification
+  createdBy: text("created_by"), 
 });
 
-// Announcements table for branch-wide announcements
 export const announcements = pgTable("announcements", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  titleTh: text("title_th"), // Thai translation
+  titleTh: text("title_th"), 
   content: text("content").notNull(),
-  contentTh: text("content_th"), // Thai translation
-  priority: text("priority").notNull().default("normal"), // normal, important, urgent
-  targetAudience: text("target_audience").notNull().default("all"), // all, staff, managers
+  contentTh: text("content_th"), 
+  priority: text("priority").notNull().default("normal"), 
+  targetAudience: text("target_audience").notNull().default("all"), 
   isPinned: integer("is_pinned").notNull().default(0),
-  expiresAt: text("expires_at"), // optional expiration date
+  expiresAt: text("expires_at"), 
   createdAt: text("created_at").notNull(),
   createdBy: text("created_by").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
 
-// Daily Targets (per day target values like Excel table)
-export const dailyTargets = pgTable("daily_targets", {
-  id: serial("id").primaryKey(),
-  targetDate: text("target_date").notNull(), // YYYY-MM-DD
-  targetSales: text("target_sales").notNull().default("130000"),
-  targetTc: text("target_tc").default("300"), // optional target transaction count
-  // Waste Daily targets (per day)
-  wasteRawDaily: text("waste_raw_daily").default("0"),
-  wasteMealDaily: text("waste_meal_daily").default("0"),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-}, (t) => ({
-  uniqueDate: unique().on(t.targetDate),
-}));
+// ==========================================
+// 🛡️ Zod Schemas
+// ==========================================
 
-// Monthly Waste Targets (MTD targets for each month)
-export const wasteTargets = pgTable("waste_targets", {
-  id: serial("id").primaryKey(),
-  targetMonth: text("target_month").notNull(), // YYYY-MM
-  // MTD Targets
-  mtdAmount: text("mtd_amount").default("0"),
-  mtdPercent: text("mtd_percent").default("0"),
-  mealAmount: text("meal_amount").default("0"),
-  mealPercent: text("meal_percent").default("0"),
-  rawAmount: text("raw_amount").default("0"),
-  rawPercent: text("raw_percent").default("0"),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-}, (t) => ({
-  uniqueMonth: unique().on(t.targetMonth),
-}));
-
-// Borrow Tracker - Branches
-export const borrowBranches = pgTable("borrow_branches", {
-  id: text("id").primaryKey(),
-  code: text("code"),
-  name: text("name").notNull(),
-  isActive: integer("is_active").notNull().default(1),
-});
-
-// Borrow Tracker - Item Categories
-export const itemCategories = [
-  { id: "meat", th: "หมวดเนื้อสัตว์", en: "Meat & Pork" },
-  { id: "bun", th: "หมวดขนมปัง", en: "Bun" },
-  { id: "chicken", th: "หมวดไก่และปลา", en: "Chicken & Fish" },
-  { id: "fried", th: "หมวดของทอด", en: "Fried" },
-  { id: "ingredients", th: "หมวดวัตถุดิบและผัก", en: "Ingredients & Veg" },
-  { id: "sauce", th: "หมวดซอสและเครื่องปรุง", en: "Sauce & Condiment" },
-  { id: "beverage", th: "หมวดเครื่องดื่ม", en: "Beverage" },
-  { id: "dessert", th: "หมวดของหวานและเบเกอรี่", en: "Dessert & Pie" },
-  { id: "packaging", th: "หมวดบรรจุภัณฑ์", en: "Packaging - Bags & Boxes" },
-  { id: "cup", th: "หมวดแก้ว ฝา และหลอด", en: "Cup, Lid & Straw" },
-  { id: "utensil", th: "หมวดอุปกรณ์พลาสติกและกระดาษ", en: "Utensil & Paper" },
-] as const;
-
-export type ItemCategoryId = typeof itemCategories[number]["id"];
-
-// Borrow Tracker - Items
-export const borrowItems = pgTable("borrow_items", {
-  id: text("id").primaryKey(),
-  code: text("code"),
-  name: text("name").notNull(),
-  category: text("category"),
-  units: text("units").array(),
-  isActive: integer("is_active").notNull().default(1),
-});
-
-// Borrow Tracker - Transactions
-export const borrowTransactions = pgTable("borrow_transactions", {
-  id: text("id").primaryKey(),
-  txDate: text("tx_date").notNull(),
-  dueDate: text("due_date"),
-  txType: text("tx_type").notNull(), // 'borrow_in' | 'borrow_out'
-  branch: text("branch").notNull(),
-  item: text("item").notNull(),
-  qty: integer("qty").notNull().default(0),
-  unit: text("unit"),
-  borrower: text("borrower"),
-  lender: text("lender"),
-  note: text("note"),
-  status: text("status").notNull().default("pending"), // 'pending' | 'done'
-  createdAt: text("created_at").notNull(),
-});
-
-// Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);
 export const insertConfigSchema = createInsertSchema(config);
@@ -404,6 +443,10 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
 export const insertBorrowBranchSchema = createInsertSchema(borrowBranches).omit({ id: true });
 export const insertBorrowItemSchema = createInsertSchema(borrowItems).omit({ id: true });
 export const insertBorrowTransactionSchema = createInsertSchema(borrowTransactions).omit({ id: true });
+export const insertLaborSettingsSchema = createInsertSchema(laborSettings).omit({ id: true });
+export const insertDailyLaborSchema = createInsertSchema(dailyLabor).omit({ id: true });
+export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
@@ -435,6 +478,14 @@ export type BorrowItem = typeof borrowItems.$inferSelect;
 export type InsertBorrowItem = z.infer<typeof insertBorrowItemSchema>;
 export type BorrowTransaction = typeof borrowTransactions.$inferSelect;
 export type InsertBorrowTransaction = z.infer<typeof insertBorrowTransactionSchema>;
+export type LaborSettings = typeof laborSettings.$inferSelect;
+export type InsertLaborSettings = z.infer<typeof insertLaborSettingsSchema>;
+export type DailyLabor = typeof dailyLabor.$inferSelect;
+export type InsertDailyLabor = z.infer<typeof insertDailyLaborSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 // Cart item type for borrow tracker (client-side)
 export interface BorrowCartItem {
@@ -443,41 +494,3 @@ export interface BorrowCartItem {
   qty: number;
   unit: string;
 }
-
-// Labor Settings - Constants for COL calculation
-export const laborSettings = pgTable("labor_settings", {
-  id: serial("id").primaryKey(),
-  rosterHours: decimal("roster_hours", { precision: 10, scale: 2 }).default("88"),        // Roster Commit Area (เช่น 88, 96)
-  dutyDailyHours: decimal("duty_daily_hours", { precision: 10, scale: 2 }).default("40"), // ชั่วโมง Duty Team (Fix 40 ชม./วัน)
-  fixedCostDaily: decimal("fixed_cost_daily", { precision: 10, scale: 2 }).default("0"),  // เงินเดือน FT/Manager เฉลี่ยต่อวัน
-  closeShiftDailyCost: decimal("close_shift_daily_cost", { precision: 10, scale: 2 }).default("0"), // ค่ารถปิดร้าน (บาท/วัน)
-  ptWageRate: decimal("pt_wage_rate", { precision: 10, scale: 2 }).default("45"),         // ค่าแรง PT (บาท/ชม.)
-  updatedAt: text("updated_at"),
-});
-
-// Daily Labor - Daily input for labor tracking
-export const dailyLabor = pgTable("daily_labor", {
-  id: serial("id").primaryKey(),
-  date: text("date").notNull().unique(), // YYYY-MM-DD
-  
-  // Input: กรอกทุกวัน
-  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }).default("0"), // ชั่วโมงจริง (PT+FT)
-  otHours: decimal("ot_hours", { precision: 10, scale: 2 }).default("0"),         // ชั่วโมง OT
-  
-  // Calculated: ระบบคำนวณ (Read Only)
-  summaryHours: decimal("summary_hours", { precision: 10, scale: 2 }).default("0"),     // Duty + Actual + OT
-  varianceHours: decimal("variance_hours", { precision: 10, scale: 2 }).default("0"),   // Summary - Roster
-  laborCostTotal: decimal("labor_cost_total", { precision: 10, scale: 2 }).default("0"),// ต้นทุนแรงงานรวม
-  colPercent: decimal("col_percent", { precision: 10, scale: 2 }).default("0"),         // % COL
-  tcmh: decimal("tcmh", { precision: 10, scale: 2 }).default("0"),                      // Productivity
-  
-  updatedAt: text("updated_at"),
-});
-
-export const insertLaborSettingsSchema = createInsertSchema(laborSettings).omit({ id: true });
-export const insertDailyLaborSchema = createInsertSchema(dailyLabor).omit({ id: true });
-
-export type LaborSettings = typeof laborSettings.$inferSelect;
-export type InsertLaborSettings = z.infer<typeof insertLaborSettingsSchema>;
-export type DailyLabor = typeof dailyLabor.$inferSelect;
-export type InsertDailyLabor = z.infer<typeof insertDailyLaborSchema>;

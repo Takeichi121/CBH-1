@@ -579,4 +579,161 @@ export const api = {
       },
     },
   },
+borrow: {
+    // 🏢 Branches
+    getBranches: {
+      method: "POST",
+      path: "/api/borrow/branches",
+      input: z.object({ token: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), branches: z.array(z.any()).optional() }),
+      },
+    },
+    addBranch: {
+      method: "POST",
+      path: "/api/borrow/branches/add",
+      input: z.object({ token: z.string(), name: z.string(), code: z.string().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    deleteBranch: {
+      method: "POST",
+      path: "/api/borrow/branches/delete",
+      input: z.object({ token: z.string(), id: z.any() }), // id อาจเป็น int หรือ string
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    importBranches: {
+      method: "POST",
+      path: "/api/borrow/branches/import",
+      // input เป็น formData ไม่ต้อง validate ตรงนี้
+      responses: {
+        200: z.object({ ok: z.boolean(), imported: z.number().optional() }),
+      },
+    },
+
+    // 📦 Items
+    getItems: {
+      method: "POST",
+      path: "/api/borrow/items",
+      input: z.object({ token: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), items: z.array(z.any()).optional() }),
+      },
+    },
+    addItem: {
+      method: "POST",
+      path: "/api/borrow/items/add",
+      input: z.object({ 
+        token: z.string(), 
+        name: z.string(), 
+        code: z.string().optional(),
+        units: z.array(z.string()).optional(),
+        category: z.string().optional()
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    updateItem: {
+      method: "POST",
+      path: "/api/borrow/items/update",
+      input: z.object({ 
+        token: z.string(), 
+        id: z.any(), // id item
+        units: z.array(z.string()).optional(),
+        category: z.string().optional()
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    deleteItem: {
+      method: "POST",
+      path: "/api/borrow/items/delete",
+      input: z.object({ token: z.string(), id: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    deleteAllItems: {
+      method: "POST",
+      path: "/api/borrow/items/delete-all",
+      input: z.object({ token: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    importItems: {
+      method: "POST",
+      path: "/api/borrow/items/import",
+      responses: {
+        200: z.object({ ok: z.boolean(), imported: z.number().optional(), skipped: z.number().optional() }),
+      },
+    },
+
+    // 📝 Transactions
+    getTransactions: {
+      method: "POST",
+      path: "/api/borrow/transactions",
+      input: z.object({ token: z.string(), limit: z.number().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), transactions: z.array(z.any()).optional() }),
+      },
+    },
+    addTransaction: {
+      method: "POST",
+      path: "/api/borrow/transactions/add",
+      input: z.object({ 
+        token: z.string(),
+        txDate: z.string(),
+        dueDate: z.string().optional(),
+        txType: z.string(),
+        branch: z.string(),
+        item: z.string(),
+        qty: z.number(),
+        unit: z.string().optional(),
+        borrower: z.string().optional(),
+        lender: z.string().optional(),
+        note: z.string().optional()
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    toggleTransaction: {
+      method: "POST",
+      path: "/api/borrow/transactions/toggle",
+      input: z.object({ token: z.string(), id: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), status: z.string().optional() }),
+      },
+    },
+    deleteTransaction: {
+      method: "POST",
+      path: "/api/borrow/transactions/delete",
+      input: z.object({ token: z.string(), id: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    getDashboard: {
+      method: "POST",
+      path: "/api/borrow/dashboard",
+      input: z.object({ token: z.string() }),
+      responses: {
+        200: z.object({ 
+          ok: z.boolean(), 
+          totalTransactions: z.number().optional(),
+          totalBorrowIn: z.number().optional(),
+          totalBorrowOut: z.number().optional(),
+          overdueCount: z.number().optional(),
+          overdueTransactions: z.array(z.any()).optional()
+        }),
+      },
+    },
+  },
+
 };

@@ -8,15 +8,51 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import { hashPass, generateUsernameBase, allocateUsername, isSystemClosed, getWeekRangeTuesday, DEFAULT_CAPACITY, SHIFT_GROUPS } from "./utils";
 import { db } from "./db";
-import { users, shifts } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { 
+  users, 
+  shifts, 
+  borrowBranches, 
+  borrowItems, 
+  borrowTransactions, 
+  laborSettings, 
+  dailyLabor, 
+  sessions,
+  dailySalesReports
+} from "@shared/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
 
+// ตั้งค่า Multer สำหรับอัปโหลดไฟล์
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+
+  // ==========================================
+  // 🛡️ Helpers
+  // ==========================================
+  const verifyManagerAccess = async (token: string) => {
+    if (!token) return { ok: false as const, message: "Token required" };
+
+    // ตรวจสอบ Session จาก DB โดยตรง
+    const session = await db.select().from(sessions).where(eq(sessions.token, token)).limit(1);
+    if (session.length === 0 || session[0].expiresAt < Math.floor(Date.now() / 1000)) {
+      return { ok: false as const, message: "Session expired" };
+    }
+
+    const user = await db.select().from(users).where(eq(users.username, session[0].username)).limit(1);
+    if (user.length === 0) return { ok: false as const, message: "User not found" };
+
+    if (user[0].role !== "admin" && user[0].role !== "manager") {
+      return { ok: false as const, message: "No permission" };
+    }
+    return { ok: true as const, user: user[0] };
+  };
+
+  // ==========================================
+  // 🔧 System & Auth
+  // ==========================================
 
   // Ping
   app.post(api.system.ping.path, async (req, res) => {
@@ -26,28 +62,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Setup
   app.post(api.system.setup.path, async (req, res) => {
-    // Default configs
     const cfg = await storage.getConfig();
     for (const k of Object.keys(DEFAULT_CAPACITY)) {
       if (!("cap_" + k in cfg)) await storage.setConfig("cap_" + k, String(DEFAULT_CAPACITY[k as keyof typeof DEFAULT_CAPACITY]));
     }
 
-    // Default users
     if (!await storage.getUser("admin")) {
       await storage.createUser({ username: "admin", passhash: hashPass("1234"), role: "admin", fullName: "Admin", nickName: "", phone: "", email: "", position: "Admin", active: 1, createdAt: new Date().toISOString() });
-      await storage.log("setup_create_admin", "system", "admin created");
     }
     if (!await storage.getUser("manager")) {
       await storage.createUser({ username: "manager", passhash: hashPass("1234"), role: "manager", fullName: "Manager", nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString() });
-      await storage.log("setup_create_manager", "system", "manager created as store_manager");
     }
     if (!await storage.getUser("staff")) {
       await storage.createUser({ username: "staff", passhash: hashPass("1234"), role: "staff", fullName: "Staff", nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString() });
-      await storage.log("setup_create_staff", "system", "staff created");
     }
     if (!await storage.getUser("devstaff")) {
       await storage.createUser({ username: "devstaff", passhash: hashPass("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: new Date().toISOString() });
-      await storage.log("setup_create_devstaff", "system", "developer staff created");
     }
 
     await storage.log("setup_ok", "system", "setup completed");
@@ -58,20 +88,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post(api.auth.login.path, async (req, res) => {
     const { username, password, developerMode } = req.body;
     if (!username || !password) return res.json({ ok: false, message: "กรอกให้ครบ" });
-    
-    // Check user first to determine if they have 24/7 access
+
     const u = await storage.getUser(username);
     const cfg = await storage.getConfig();
-    
-    // 24/7 access: admin, creator (Chan.J), or developer mode
-    const isCreator = u && (
-      u.username.toLowerCase().includes("chan") ||
-      (u.fullName && u.fullName.toLowerCase().includes("chanon"))
-    );
+
+    const isCreator = u && (u.username.toLowerCase().includes("chan") || (u.fullName && u.fullName.toLowerCase().includes("chanon")));
     const isAdmin = u && u.role === "admin";
     const isManager = u && (u.role === "manager" || u.role === "admin");
-    
-    // Check if system is closed (allow admin, manager, developer mode, or creator to bypass)
+
     if (isSystemClosed(cfg) && !developerMode && !isCreator && !isAdmin && !isManager) {
       return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
     }
@@ -147,7 +171,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const username = await allocateUsername(base, async (u) => !!(await storage.getUser(u)));
     if (!username) return res.json({ ok: false, message: "สร้าง username ไม่สำเร็จ" });
 
-    // Default all managers to Store Manager position
     await storage.createUser({
       username, passhash: hashPass(password), role: "manager",
       fullName, nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString()
@@ -156,7 +179,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, username });
   });
 
-  // Complete Profile (first login)
+  // Complete Profile
   app.post(api.auth.completeProfile.path, async (req, res) => {
     const { token, nickName, phone, email } = req.body;
     const session = await storage.getSession(token);
@@ -173,7 +196,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Settings
+  // ==========================================
+  // ⚙️ Settings & Config
+  // ==========================================
+
   app.post(api.settings.get.path, async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
@@ -186,8 +212,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     for (const k of Object.keys(DEFAULT_CAPACITY)) capacity[k] = Number(cfg["cap_" + k] || DEFAULT_CAPACITY[k as keyof typeof DEFAULT_CAPACITY]);
 
     const lockTimePeriod = cfg.lock_time_period === "true";
-    
-    // Maintenance window settings
     const maintenance = {
       enabled: cfg.maintenance_enabled === "true",
       startDay: Number(cfg.maintenance_start_day ?? 2),
@@ -195,7 +219,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       endDay: Number(cfg.maintenance_end_day ?? 3),
       endTime: cfg.maintenance_end_time ?? "00:00"
     };
-    
     const systemClosed = isSystemClosed(cfg);
 
     res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod, maintenance, systemClosed });
@@ -213,12 +236,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (k in DEFAULT_CAPACITY) await storage.setConfig("cap_" + k, String(capacity[k]));
       }
     }
-    
-    if (lockTimePeriod !== undefined) {
-      await storage.setConfig("lock_time_period", String(lockTimePeriod));
-    }
-    
-    // Update maintenance window settings
+
+    if (lockTimePeriod !== undefined) await storage.setConfig("lock_time_period", String(lockTimePeriod));
+
     if (maintenance) {
       await storage.setConfig("maintenance_enabled", String(maintenance.enabled ?? false));
       await storage.setConfig("maintenance_start_day", String(maintenance.startDay ?? 2));
@@ -231,7 +251,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Shifts: Get My Week
+  // ==========================================
+  // 📅 Shifts
+  // ==========================================
+
   app.post(api.shifts.getMyWeek.path, async (req, res) => {
     const { token, anyDate } = req.body;
     const session = await storage.getSession(token);
@@ -242,7 +265,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const range = getWeekRangeTuesday(anyDate);
     const shifts = await storage.getShiftsInRange(range.start, range.end);
     const myShifts = shifts.filter(s => s.username === u.username);
-    
+
     const cfg = await storage.getConfig();
     const isManager = u.role === "admin" || u.role === "manager";
     const closed = !isManager && isSystemClosed(cfg);
@@ -250,7 +273,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, weekRange: range, shifts: myShifts, items: myShifts, closed });
   });
 
-  // Shifts: Get My Month (for managers)
   app.post(api.shifts.getMyMonth.path, async (req, res) => {
     const { token, month, year } = req.body;
     const session = await storage.getSession(token);
@@ -258,7 +280,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // Get first and last day of the month
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -269,7 +290,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, month, year, shifts: myShifts });
   });
 
-  // Shifts: Get Manager Team Month (all managers' schedules for a month)
   app.post(api.shifts.getManagerTeamMonth.path, async (req, res) => {
     const { token, month, year } = req.body;
     const session = await storage.getSession(token);
@@ -277,42 +297,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // Only managers and admins can view manager team schedule
-    if (u.role !== "manager" && u.role !== "admin") {
-      return res.json({ ok: false, message: "Permission denied" });
-    }
+    if (u.role !== "manager" && u.role !== "admin") return res.json({ ok: false, message: "Permission denied" });
 
-    // Get first and last day of the month
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    // Get all managers (role = manager or admin)
     const allUsers = await storage.getUsers();
     const managers = allUsers.filter(user => (user.role === "manager" || user.role === "admin") && user.active === 1);
-
-    // Get shifts for all managers in this month
     const shifts = await storage.getShiftsInRange(startDate, endDate);
     const managerUsernames = managers.map(m => m.username);
     const managerShifts = shifts.filter(s => managerUsernames.includes(s.username));
 
     res.json({ 
       ok: true, 
-      month, 
-      year, 
-      managers: managers.map(m => ({
-        username: m.username,
-        fullName: m.fullName,
-        fullNameTh: m.fullNameTh,
-        nickName: m.nickName,
-        position: m.position,
-        role: m.role
-      })),
+      month, year, 
+      managers: managers.map(m => ({ username: m.username, fullName: m.fullName, fullNameTh: m.fullNameTh, nickName: m.nickName, position: m.position, role: m.role })),
       shifts: managerShifts 
     });
   });
 
-  // Shifts: Book
   app.post(api.shifts.book.path, async (req, res) => {
     const { token, date, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
@@ -324,26 +328,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const isManager = u.role === "admin" || u.role === "manager";
     if (!isManager && isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ (System maintenance in progress)" });
 
-    // Validate
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.json({ ok: false, message: "Date invalid" });
     const grp = SHIFT_GROUPS.find(g => g.key === shiftGroup);
     if (!grp) return res.json({ ok: false, message: "Shift group invalid" });
 
-    // Handle staff booking default time
     let finalStartTime = startTime;
-    if (!finalStartTime || finalStartTime === "") {
-      finalStartTime = grp.main || grp.windowStart;
-    }
+    if (!finalStartTime || finalStartTime === "") finalStartTime = grp.main || grp.windowStart;
 
-    // Capacity check
     const shiftsOnDate = await storage.getShiftsInRange(date, date);
     const count = shiftsOnDate.filter(s => s.shiftGroup === shiftGroup).length;
     const cap = Number(cfg["cap_" + shiftGroup] || DEFAULT_CAPACITY[shiftGroup as keyof typeof DEFAULT_CAPACITY]);
 
-    // Check if user already has shift on this date
     const existing = await storage.getShift(u.username, date);
-    // If updating existing shift, we don't increase count. If inserting new, we do.
-    // If existing and changing group, check capacity of new group.
     if (!existing) {
        if (count >= cap) return res.json({ ok: false, message: "เต็มแล้ว (Full)" });
     } else if (existing.shiftGroup !== shiftGroup) {
@@ -351,8 +347,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     await storage.upsertShift({
-      date, username: u.username, fullName: u.fullName, role: u.role,
-      nickName: u.nickName,
+      date, username: u.username, fullName: u.fullName, role: u.role, nickName: u.nickName,
       shiftGroup, startTime, endTime: "", note: note || "", 
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
     });
@@ -360,7 +355,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Shifts: Cancel
   app.post(api.shifts.cancel.path, async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
@@ -377,7 +371,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Shifts: Roster
   app.post(api.shifts.getRoster.path, async (req, res) => {
     const { token, anyDate } = req.body;
     const session = await storage.getSession(token);
@@ -391,115 +384,76 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, weekRange: range, roster: shifts, users: allUsers });
   });
 
-  // User: Update Profile
+  // ==========================================
+  // 👤 User Management & Admin
+  // ==========================================
+
   app.post("/api/updateProfile", async (req, res) => {
     const { token, fullName, nickName, phone, email } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // Only update fields that are provided (not empty/undefined)
     const updateData: Record<string, string> = {};
     if (fullName !== undefined && fullName !== "") updateData.fullName = fullName;
     if (nickName !== undefined && nickName !== "") updateData.nickName = nickName;
     if (phone !== undefined && phone !== "") updateData.phone = phone;
     if (email !== undefined && email !== "") updateData.email = email;
 
-    // If no valid fields to update, return current user
-    if (Object.keys(updateData).length === 0) {
-      return res.json({ ok: true, user: u });
-    }
+    if (Object.keys(updateData).length === 0) return res.json({ ok: true, user: u });
 
-    const [updated] = await db.update(users)
-      .set(updateData)
-      .where(eq(users.username, u.username))
-      .returning();
-
+    const [updated] = await db.update(users).set(updateData).where(eq(users.username, u.username)).returning();
     res.json({ ok: true, user: updated });
   });
 
-  // User: Update Profile Picture
   app.post("/api/updateProfilePicture", async (req, res) => {
     const { token, profilePicture } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // Validate profile picture
-    if (!profilePicture || typeof profilePicture !== "string") {
-      return res.json({ ok: false, message: "Invalid profile picture" });
-    }
-
-    // Must be a valid data URL with image mime type (check header only)
+    if (!profilePicture || typeof profilePicture !== "string") return res.json({ ok: false, message: "Invalid profile picture" });
     const headerRegex = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/;
-    if (!headerRegex.test(profilePicture)) {
-      return res.json({ ok: false, message: "Invalid image format. Only JPEG, PNG, GIF, WEBP allowed." });
-    }
+    if (!headerRegex.test(profilePicture)) return res.json({ ok: false, message: "Invalid image format. Only JPEG, PNG, GIF, WEBP allowed." });
 
-    // Check base64 size (limit ~2MB - base64 is ~1.37x larger than binary)
     const base64Data = profilePicture.split(",")[1] || "";
-    const sizeInBytes = (base64Data.length * 3) / 4;
-    const maxSize = 2 * 1024 * 1024; // 2MB
-    if (sizeInBytes > maxSize) {
-      return res.json({ ok: false, message: "File too large. Maximum size is 2MB." });
-    }
+    if ((base64Data.length * 3) / 4 > 2 * 1024 * 1024) return res.json({ ok: false, message: "File too large. Maximum size is 2MB." });
 
-    const [updated] = await db.update(users)
-      .set({ profilePicture })
-      .where(eq(users.username, u.username))
-      .returning();
-
+    const [updated] = await db.update(users).set({ profilePicture }).where(eq(users.username, u.username)).returning();
     await storage.log("update_profile_picture", u.username, "profile picture updated");
     res.json({ ok: true, user: updated });
   });
 
-  // User: Change Password
   app.post("/api/changePassword", async (req, res) => {
     const { token, currentPassword, newPassword } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    if (hashPass(currentPassword) !== u.passhash) {
-      return res.json({ ok: false, message: "Current password incorrect" });
-    }
+    if (hashPass(currentPassword) !== u.passhash) return res.json({ ok: false, message: "Current password incorrect" });
 
-    await db.update(users)
-      .set({ passhash: hashPass(newPassword), mustChangePassword: 0 })
-      .where(eq(users.username, u.username));
-
+    await db.update(users).set({ passhash: hashPass(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
     await storage.log("change_password", u.username, "password updated");
     res.json({ ok: true });
   });
 
-  // User: First-time Password Change (when mustChangePassword is true)
   app.post("/api/forceChangePassword", async (req, res) => {
     const { token, newPassword } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    if (u.mustChangePassword !== 1) {
-      return res.json({ ok: false, message: "Not required to change password" });
-    }
+    if (u.mustChangePassword !== 1) return res.json({ ok: false, message: "Not required to change password" });
 
-    await db.update(users)
-      .set({ passhash: hashPass(newPassword), mustChangePassword: 0 })
-      .where(eq(users.username, u.username));
-
+    await db.update(users).set({ passhash: hashPass(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
     await storage.log("force_change_password", u.username, "first-time password updated");
     res.json({ ok: true });
   });
 
-  // User: Set Active Status (Manager)
   app.post("/api/updateUserStatus", async (req, res) => {
     const { token, username, active } = req.body;
     const session = await storage.getSession(token);
@@ -512,108 +466,73 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Admin/Manager: Delete User
   app.post("/api/admin/deleteUser", async (req, res) => {
     const { token, username } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
-
-    // Cannot delete admin users unless you are admin
-    if (targetUser.role === "admin" && u.role !== "admin") {
-      return res.json({ ok: false, message: "Cannot delete admin" });
-    }
-
-    // Cannot delete yourself
-    if (username === u.username) {
-      return res.json({ ok: false, message: "Cannot delete yourself" });
-    }
+    if (targetUser.role === "admin" && u.role !== "admin") return res.json({ ok: false, message: "Cannot delete admin" });
+    if (username === u.username) return res.json({ ok: false, message: "Cannot delete yourself" });
 
     await db.delete(users).where(eq(users.username, username));
     await storage.log("delete_user", u.username, `deleted ${username}`);
     res.json({ ok: true });
   });
 
-  // Admin/Manager: Mark User as Resigned
   app.post("/api/admin/resignUser", async (req, res) => {
     const { token, username } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
+    if (username === u.username) return res.json({ ok: false, message: "Cannot resign yourself" });
 
-    // Cannot resign yourself
-    if (username === u.username) {
-      return res.json({ ok: false, message: "Cannot resign yourself" });
-    }
-
-    // Set active = 2 for resigned
     await db.update(users).set({ active: 2 }).where(eq(users.username, username));
     await storage.log("resign_user", u.username, `marked ${username} as resigned`);
     res.json({ ok: true });
   });
 
-  // Position hierarchy (lower number = higher rank)
   const positionHierarchy: Record<string, number> = {
-    "admin": 0,
-    "store_manager": 1,
-    "assistant_store_manager": 2,
-    "shift_manager": 3,
-    "management_trainee": 4,
-    "staff": 5,
+    "admin": 0, "store_manager": 1, "assistant_store_manager": 2, "shift_manager": 3, "management_trainee": 4, "staff": 5,
   };
 
   const getUserRank = (user: any): number => {
     if (user.role === "admin") return 0;
     if (user.role === "manager") return positionHierarchy[user.position] || 5;
-    return 5; // staff
+    return 5;
   };
 
-  // Helper: Check if user can manage others
   const canManageUsers = (user: any) => {
     if (user.role === "admin") return true;
     if (user.role === "manager" && user.position === "store_manager") return true;
     return false;
   };
 
-  // Helper: Check if user can create profile for target role/position
   const canCreateProfile = (creator: any, targetRole: string, targetPosition?: string): boolean => {
     const creatorRank = getUserRank(creator);
-    
-    // Admin and Store Manager can create anyone (except Admin for Store Manager)
     if (creator.role === "admin") return true;
     if (creator.role === "manager" && creator.position === "store_manager") {
       if (targetRole === "admin") return false;
       return true;
     }
-    
-    // Other managers can only create profiles for lower ranks
     if (creator.role === "manager") {
       if (targetRole === "admin") return false;
       if (targetRole === "staff") return true;
       if (targetRole === "manager" && targetPosition) {
         const targetRank = positionHierarchy[targetPosition] || 5;
-        return targetRank > creatorRank; // Can only create lower rank
+        return targetRank > creatorRank;
       }
     }
-    
     return false;
   };
 
-  // Manager: Create Profile for Team Member
   app.post("/api/admin/createProfile", async (req, res) => {
     const { token, fullName, fullNameTh, password, role, position, nickName, phone, email, mustChangePassword } = req.body;
     const session = await storage.getSession(token);
@@ -621,39 +540,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const u = await storage.getUser(session.username);
     if (!u || u.role === "staff") return res.json({ ok: false, message: "No permission" });
 
-    if (!fullName || !password) {
-      return res.json({ ok: false, message: "Full name and password required" });
-    }
-
-    // Check if creator has permission to create this role/position
-    if (!canCreateProfile(u, role, position)) {
-      return res.json({ ok: false, message: "Cannot create profile with higher or equal rank" });
-    }
+    if (!fullName || !password) return res.json({ ok: false, message: "Full name and password required" });
+    if (!canCreateProfile(u, role, position)) return res.json({ ok: false, message: "Cannot create profile with higher or equal rank" });
 
     const base = generateUsernameBase(fullName);
     const username = await allocateUsername(base, async (un) => !!(await storage.getUser(un)));
     if (!username) return res.json({ ok: false, message: "Cannot create username" });
 
     await storage.createUser({
-      username,
-      passhash: hashPass(password),
-      role: role || "staff",
-      fullName,
-      fullNameTh: fullNameTh || "",
-      nickName: nickName || "",
-      phone: phone || "",
-      email: email || "",
+      username, passhash: hashPass(password), role: role || "staff", fullName, fullNameTh: fullNameTh || "",
+      nickName: nickName || "", phone: phone || "", email: email || "",
       position: role === "manager" ? (position || "store_manager") : "Service Staff",
-      active: 1,
-      mustChangePassword: mustChangePassword ? 1 : 0,
-      createdAt: new Date().toISOString()
+      active: 1, mustChangePassword: mustChangePassword ? 1 : 0, createdAt: new Date().toISOString()
     });
 
     await storage.log("create_profile", u.username, `created ${username} role=${role} position=${position || "none"}`);
     res.json({ ok: true, username });
   });
 
-  // Admin/Store Manager: Update User Role and Position
   app.post("/api/admin/updateUserRole", async (req, res) => {
     const { token, username, role, position } = req.body;
     const session = await storage.getSession(token);
@@ -663,23 +567,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
-
-    // Store Manager cannot set someone as Admin
-    if (u.role !== "admin" && role === "admin") {
-      return res.json({ ok: false, message: "Only Admin can set Admin role" });
-    }
-
-    // Store Manager cannot modify Admin users
-    if (u.role !== "admin" && targetUser.role === "admin") {
-      return res.json({ ok: false, message: "Cannot modify Admin users" });
-    }
+    if (u.role !== "admin" && role === "admin") return res.json({ ok: false, message: "Only Admin can set Admin role" });
+    if (u.role !== "admin" && targetUser.role === "admin") return res.json({ ok: false, message: "Cannot modify Admin users" });
 
     await storage.updateUserRole(username, role, position);
     await storage.log("update_user_role", u.username, `set ${username} role=${role} position=${position || "none"}`);
     res.json({ ok: true });
   });
 
-  // Admin/Manager: Get all users
   app.post("/api/admin/getUsers", async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
@@ -688,20 +583,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!u || u.role === "staff") return res.json({ ok: false, message: "No permission" });
 
     const allUsers = await storage.getUsers();
-    const creatorRank = getUserRank(u);
-    
-    res.json({ 
-      ok: true, 
-      users: allUsers.map(user => ({
-        ...user,
-        passhash: undefined // Don't send password hash
-      })),
-      creatorRank,
-      canManageAll: canManageUsers(u)
-    });
+    res.json({ ok: true, users: allUsers.map(user => ({ ...user, passhash: undefined })), creatorRank: getUserRank(u), canManageAll: canManageUsers(u) });
   });
 
-  // Shifts: Set For User (Manager)
+  // ==========================================
+  // 📋 Shifts Management (Admin/Manager)
+  // ==========================================
+
   app.post(api.shifts.setForUser.path, async (req, res) => {
     const { token, username, date, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
@@ -713,8 +601,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
 
     await storage.upsertShift({
-      date, username: targetUser.username, fullName: targetUser.fullName, role: targetUser.role,
-      nickName: targetUser.nickName,
+      date, username: targetUser.username, fullName: targetUser.fullName, role: targetUser.role, nickName: targetUser.nickName,
       shiftGroup, startTime, endTime: "", note: note || "",
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
     });
@@ -722,7 +609,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Shifts: Delete For User (Manager)
   app.post(api.shifts.deleteForUser.path, async (req, res) => {
     const { token, username, date } = req.body;
     const session = await storage.getSession(token);
@@ -735,7 +621,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Shifts: Delete by ID (Manager)
   app.post("/api/deleteShift", async (req, res) => {
     const { token, shiftId } = req.body;
     const session = await storage.getSession(token);
@@ -751,8 +636,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ ok: false, message: "Failed to delete" });
     }
   });
-
-  // Shifts: Update by ID (Manager)
+  
   app.post("/api/updateShift", async (req, res) => {
     const { token, shiftId, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
@@ -761,13 +645,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     try {
-      await db.update(shifts).set({
-        shiftGroup,
-        startTime,
-        note: note || "",
-        updatedAt: new Date().toISOString(),
-        updatedBy: u.username,
-      }).where(eq(shifts.id, shiftId));
+      await db.update(shifts).set({ shiftGroup, startTime, note: note || "", updatedAt: new Date().toISOString(), updatedBy: u.username }).where(eq(shifts.id, shiftId));
       await storage.log("manager_update_shift", u.username, `shiftId=${shiftId}`);
       res.json({ ok: true });
     } catch (err) {
@@ -775,121 +653,69 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Shifts: Swap Request (creates a pending request for manager approval)
   app.post(api.shifts.swap.path, async (req, res) => {
     const { token, myDate, targetUsername, targetDate } = req.body;
-
-    if (!token) return res.json({ ok: false, message: "Missing token" });
-    if (!myDate || !targetDate) return res.json({ ok: false, message: "Missing date" });
-    if (!targetUsername) return res.json({ ok: false, message: "Missing targetUsername" });
+      if (!token || !myDate || !targetDate || !targetUsername) return res.json({ ok: false, message: "Missing fields" });
 
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const me = await storage.getUser(session.username);
     if (!me) return res.json({ ok: false, message: "User not found" });
 
     const target = await storage.getUser(String(targetUsername).toLowerCase().trim());
     if (!target) return res.json({ ok: false, message: "Target user not found" });
 
-    if (me.username === target.username) {
-      return res.json({ ok: false, message: "Cannot swap with yourself" });
-    }
-    if (me.role !== "staff" || target.role !== "staff") {
-      return res.json({ ok: false, message: "Swap allowed for staff only" });
-    }
+    if (me.username === target.username) return res.json({ ok: false, message: "Cannot swap with yourself" });
+    if (me.role !== "staff" || target.role !== "staff") return res.json({ ok: false, message: "Swap allowed for staff only" });
 
-    // Check if both have shifts on their respective dates
     const myShift = await storage.getShift(me.username, myDate);
     if (!myShift) return res.json({ ok: false, message: "You have no shift on the selected date" });
-
     const targetShift = await storage.getShift(target.username, targetDate);
     if (!targetShift) return res.json({ ok: false, message: "Target has no shift on the selected date" });
 
-    // Create swap request (pending manager approval)
     const now = new Date().toISOString();
     await storage.createSwapRequest({
-      requesterUsername: me.username,
-      requesterDate: myDate,
-      targetUsername: target.username,
-      targetDate: targetDate,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
+      requesterUsername: me.username, requesterDate: myDate, targetUsername: target.username, targetDate: targetDate,
+      status: "pending", createdAt: now, updatedAt: now,
     });
 
     await storage.log("swap_request", me.username, `request swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
     return res.json({ ok: true, message: "Swap request submitted for manager approval" });
   });
 
-  // Get Swap Requests (for manager view)
   app.post(api.shifts.getSwapRequests.path, async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // Get pending requests for managers, or user's own requests for staff
     const isManager = u.role === "admin" || u.role === "manager";
     const requests = await storage.getSwapRequests(isManager ? "pending" : undefined);
-    
-    // For staff, filter to only their own requests
-    const filteredRequests = isManager 
-      ? requests 
-      : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
-
+    const filteredRequests = isManager ? requests : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
     res.json({ ok: true, requests: filteredRequests });
   });
 
-  // Approve Swap Request (manager only)
   app.post(api.shifts.approveSwap.path, async (req, res) => {
     const { token, requestId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     const request = await storage.getSwapRequestById(requestId);
-    if (!request) return res.json({ ok: false, message: "Request not found" });
-    if (request.status !== "pending") return res.json({ ok: false, message: "Request already processed" });
+    if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
     try {
       await transaction(async (tx) => {
-        const [requesterShift] = await tx
-          .select()
-          .from(shifts)
-          .where(and(eq(shifts.username, request.requesterUsername), eq(shifts.date, request.requesterDate)))
-          .limit(1);
-
+        const [requesterShift] = await tx.select().from(shifts).where(and(eq(shifts.username, request.requesterUsername), eq(shifts.date, request.requesterDate))).limit(1);
         if (!requesterShift) throw new Error("Requester shift not found");
-
-        const [targetShift] = await tx
-          .select()
-          .from(shifts)
-          .where(and(eq(shifts.username, request.targetUsername), eq(shifts.date, request.targetDate)))
-          .limit(1);
-
+        const [targetShift] = await tx.select().from(shifts).where(and(eq(shifts.username, request.targetUsername), eq(shifts.date, request.targetDate))).limit(1);
         if (!targetShift) throw new Error("Target shift not found");
 
         const now = new Date().toISOString();
-
-        // Swap the dates
-        await updateShiftById(tx, requesterShift.id, {
-          date: request.targetDate,
-          updatedAt: now,
-          updatedBy: u.username,
-        });
-
-        await updateShiftById(tx, targetShift.id, {
-          date: request.requesterDate,
-          updatedAt: now,
-          updatedBy: u.username,
-        });
+        await updateShiftById(tx, requesterShift.id, { date: request.targetDate, updatedAt: now, updatedBy: u.username });
+        await updateShiftById(tx, targetShift.id, { date: request.requesterDate, updatedAt: now, updatedBy: u.username });
       });
 
       await storage.updateSwapRequestStatus(requestId, "approved", u.username);
@@ -900,59 +726,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Reject Swap Request (manager only)
   app.post(api.shifts.rejectSwap.path, async (req, res) => {
     const { token, requestId, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     const request = await storage.getSwapRequestById(requestId);
-    if (!request) return res.json({ ok: false, message: "Request not found" });
-    if (request.status !== "pending") return res.json({ ok: false, message: "Request already processed" });
+    if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
     await storage.updateSwapRequestStatus(requestId, "rejected", u.username, note);
     await storage.log("reject_swap", u.username, `rejected swap #${requestId}`);
     return res.json({ ok: true });
   });
 
-  // User: Get Profile
   app.post(api.shifts.getUserProfile.path, async (req, res) => {
     const { token, username } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    
     const u = await storage.getUser(username);
     if (!u) return res.json({ ok: false, message: "User not found" });
-
-    res.json({ 
-      ok: true, 
-      user: {
-        fullName: u.fullName || "",
-        nickName: u.nickName || "",
-        phone: u.phone || "",
-        email: u.email || "",
-        position: u.position || "Staff"
-      }
-    });
+    res.json({ ok: true, user: { fullName: u.fullName || "", nickName: u.nickName || "", phone: u.phone || "", email: u.email || "", position: u.position || "Staff" } });
   });
 
-  // =============== SALES ROUTES ===============
+  // ==========================================
+  // 📊 Sales & Reports
+  // ==========================================
 
-  // Create Daily Sales Report
   app.post(api.sales.createReport.path, async (req, res) => {
     const { token, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     try {
       const created = await storage.createDailySalesReport(report);
@@ -963,37 +770,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Single Report
   app.post(api.sales.getReport.path, async (req, res) => {
     const { token, id } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const report = await storage.getDailySalesReport(id);
     if (!report) return res.json({ ok: false, message: "Report not found" });
     res.json({ ok: true, report });
   });
 
-  // Get Reports List
   app.post(api.sales.getReports.path, async (req, res) => {
     const { token, date, limit } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const reports = await storage.getDailySalesReports(date, limit);
     res.json({ ok: true, reports });
   });
 
-  // Update Report
   app.post(api.sales.updateReport.path, async (req, res) => {
     const { token, id, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     try {
       const updated = await storage.updateDailySalesReport(id, report);
@@ -1004,16 +803,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Delete Report
   app.post(api.sales.deleteReport.path, async (req, res) => {
     const { token, id } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     const deleted = await storage.deleteDailySalesReport(id);
     if (!deleted) return res.json({ ok: false, message: "Report not found" });
@@ -1021,16 +816,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  // Upsert Report By Date (auto-save)
   app.post(api.sales.upsertReportByDate.path, async (req, res) => {
     const { token, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     try {
       const saved = await storage.upsertDailySalesReportByDate(report);
@@ -1040,22 +831,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Report By Date
   app.post(api.sales.getReportByDate.path, async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const report = await storage.getDailySalesReportByDate(date);
     res.json({ ok: true, report: report || null });
   });
 
-  // Get MTD Summary
   app.post(api.sales.getMtdSummary.path, async (req, res) => {
     const { token, year, month, beforeDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const summary = await storage.getMtdSummary(year, month, beforeDate);
       res.json({ ok: true, ...summary });
@@ -1064,26 +851,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Store Settings
   app.post(api.sales.getSettings.path, async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const settings = await storage.getStoreSettings();
     res.json({ ok: true, settings });
   });
 
-  // Update Store Settings
   app.post(api.sales.updateSettings.path, async (req, res) => {
     const { token, settings } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     try {
       const updated = await storage.updateStoreSettings(settings);
@@ -1094,12 +875,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Daily Targets for Month
   app.post(api.sales.getDailyTargets.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const targets = await storage.getDailyTargetsForMonth(year, month);
       res.json({ ok: true, targets });
@@ -1108,17 +887,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Save Daily Targets
   app.post(api.sales.saveDailyTargets.path, async (req, res) => {
     const { token, targets } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
-
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
     try {
       await storage.bulkUpsertDailyTargets(targets);
       await storage.log("save_daily_targets", u.username, `count=${targets.length}`);
@@ -1128,12 +902,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Daily Target for Specific Date
   app.post(api.sales.getDailyTargetForDate.path, async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const target = await storage.getDailyTarget(date);
       res.json({ ok: true, target });
@@ -1142,12 +914,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get MTD Target Sum up to a date
   app.post(api.sales.getMtdTargetSum.path, async (req, res) => {
     const { token, year, month, upToDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const mtdTargetSum = await storage.getMtdTargetSum(year, month, upToDate);
       res.json({ ok: true, mtdTargetSum });
@@ -1156,12 +926,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Monthly Reports for Settings page
   app.post(api.sales.getMonthlyReports.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const reports = await storage.getDailySalesReportsForMonth(year, month);
       res.json({ ok: true, reports });
@@ -1170,12 +938,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Waste Targets for Month
   app.post(api.sales.getWasteTargets.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
       const wasteTarget = await storage.getWasteTarget(targetMonth);
@@ -1185,17 +951,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Save Waste Targets
   app.post(api.sales.saveWasteTargets.path, async (req, res) => {
     const { token, year, month, wasteTarget } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
-
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
     try {
       const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
       await storage.upsertWasteTarget(targetMonth, wasteTarget);
@@ -1206,81 +967,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Save Daily Sales Data
   app.post(api.sales.saveDailySalesData.path, async (req, res) => {
     const { token, salesData } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
+    if (!token || !salesData) return res.json({ ok: false, message: "Missing data" });
+    if (!Array.isArray(salesData)) return res.json({ ok: false, message: "Invalid data format" });
 
-    const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
-      return res.json({ ok: false, message: "No permission" });
-    }
+    try { // <--- [1] TRY OPENS
+      const session = await storage.getSession(token);
+      if (!session) return res.json({ ok: false, message: "Session expired" });
 
-    try {
+      const u = await storage.getUser(session.username);
+      if (!u || !(u.role === "admin" || u.role === "manager")) {
+        return res.json({ ok: false, message: "No permission" });
+      }
+
       for (const data of salesData) {
+        if (!data.reportDate) continue; 
+
         await storage.upsertDailySalesReportByDate({
           reportDate: data.reportDate,
           reportBy: u.nickName || u.fullName || u.username,
           workShift: "full",
-          actualSales: data.actualSales?.toString() || "0",
-          transactionCount: data.transactionCount?.toString() || "0",
-          recommendHours: data.recommendHours?.toString() || "0",
-          rosterCommit: data.rosterCommit?.toString() || "0",
-          actualHours: data.actualHours?.toString() || "0",
-          otHours: data.otHours?.toString() || "0",
-          wasteRawDaily: data.wasteDaily?.toString() || "0",
-        });
-      }
+          actualSales: String(data.actualSales ?? "0"),
+          transactionCount: String(data.transactionCount ?? "0"),
+          recommendHours: String(data.recommendHours ?? "0"),
+          rosterCommit: String(data.rosterCommit ?? "0"),
+          actualHours: String(data.actualHours ?? "0"),
+          otHours: String(data.otHours ?? "0"),
+          wasteRawDaily: String(data.wasteDaily ?? "0"),
+        } as any); 
+      } // <--- [2] FOR LOOP ENDS
+
       await storage.log("save_daily_sales_data", u.username, `count=${salesData.length}`);
       res.json({ ok: true });
-    } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to save daily sales data" });
-    }
-  });
 
+    } catch (e: any) { 
+      console.error("Save Sales Error:", e);
+      res.json({ ok: false, message: e?.message || "Failed" });
+    } // <--- [4] CATCH ENDS
+  }); 
   // ==================== Manager Requests ====================
 
-  // Create Manager Request
   app.post(api.managerRequests.create.path, async (req, res) => {
     const { token, requestType, requestDate, startTime, endTime, dayOffReason, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
-    if (!u || (u.role !== "manager" && u.role !== "admin")) {
-      return res.json({ ok: false, message: "Only managers can create requests" });
-    }
-    
-    // Validate required fields
-    if (!requestType || !requestDate) {
-      return res.json({ ok: false, message: "Request type and date are required" });
-    }
+    if (!u || (u.role !== "manager" && u.role !== "admin")) return res.json({ ok: false, message: "Only managers can create requests" });
 
-    // Check limit for select_work_time (2 per month)
+    if (!requestType || !requestDate) return res.json({ ok: false, message: "Request type and date are required" });
+
     if (requestType === "select_work_time") {
       const dateParts = requestDate.split("-");
       const year = parseInt(dateParts[0]);
       const month = parseInt(dateParts[1]);
       const count = await storage.getSelectWorkTimeCountForMonth(u.username, year, month);
-      if (count >= 2) {
-        return res.json({ ok: false, message: "คุณเลือกเวลาเข้างานครบ 2 ครั้งแล้วในเดือนนี้" });
-      }
+      if (count >= 2) return res.json({ ok: false, message: "คุณเลือกเวลาเข้างานครบ 2 ครั้งแล้วในเดือนนี้" });
     }
 
     try {
       const now = new Date().toISOString();
       const request = await storage.createManagerRequest({
-        requestType,
-        requestDate,
-        requestedBy: u.username,
-        startTime: startTime || null,
-        endTime: endTime || null,
-        dayOffReason: dayOffReason || null,
-        note: note || null,
-        status: "pending",
-        createdAt: now,
-        updatedAt: now,
+        requestType, requestDate, requestedBy: u.username,
+        startTime: startTime || null, endTime: endTime || null, dayOffReason: dayOffReason || null, note: note || null,
+        status: "pending", createdAt: now, updatedAt: now,
       });
       await storage.log("manager_request_create", u.username, `type=${requestType} date=${requestDate}`);
       res.json({ ok: true, request });
@@ -1289,12 +1039,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get My Requests
   app.post(api.managerRequests.getMyRequests.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const requests = await storage.getManagerRequestsByUser(session.username, year, month);
       res.json({ ok: true, requests });
@@ -1303,21 +1051,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get All Requests (Admin/Store Manager only)
   app.post(api.managerRequests.getAllRequests.path, async (req, res) => {
     const { token, status } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    // Check if user is Admin or Store Manager
     const isAdmin = u.role === "admin";
     const isStoreManager = u.role === "manager" && u.position === "store_manager";
-    if (!isAdmin && !isStoreManager) {
-      return res.json({ ok: false, message: "Only Admin or Store Manager can view all requests" });
-    }
+    if (!isAdmin && !isStoreManager) return res.json({ ok: false, message: "Only Admin or Store Manager can view all requests" });
 
     try {
       const requests = await storage.getAllManagerRequests(status);
@@ -1327,20 +1070,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Approve Request
   app.post(api.managerRequests.approve.path, async (req, res) => {
     const { token, requestId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
     const isAdmin = u.role === "admin";
     const isStoreManager = u.role === "manager" && u.position === "store_manager";
-    if (!isAdmin && !isStoreManager) {
-      return res.json({ ok: false, message: "Only Admin or Store Manager can approve requests" });
-    }
+    if (!isAdmin && !isStoreManager) return res.json({ ok: false, message: "Only Admin or Store Manager can approve requests" });
 
     try {
       await storage.updateManagerRequestStatus(requestId, "approved", u.username);
@@ -1351,20 +1090,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Reject Request
   app.post(api.managerRequests.reject.path, async (req, res) => {
     const { token, requestId, reason } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
     const isAdmin = u.role === "admin";
     const isStoreManager = u.role === "manager" && u.position === "store_manager";
-    if (!isAdmin && !isStoreManager) {
-      return res.json({ ok: false, message: "Only Admin or Store Manager can reject requests" });
-    }
+    if (!isAdmin && !isStoreManager) return res.json({ ok: false, message: "Only Admin or Store Manager can reject requests" });
 
     try {
       await storage.updateManagerRequestStatus(requestId, "rejected", u.username, reason);
@@ -1375,7 +1110,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Delete Request (own request only, if pending)
   app.post(api.managerRequests.delete.path, async (req, res) => {
     const { token, requestId } = req.body;
     const session = await storage.getSession(token);
@@ -1383,12 +1117,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const request = await storage.getManagerRequest(requestId);
     if (!request) return res.json({ ok: false, message: "Request not found" });
-    if (request.requestedBy !== session.username) {
-      return res.json({ ok: false, message: "You can only delete your own requests" });
-    }
-    if (request.status !== "pending") {
-      return res.json({ ok: false, message: "Can only delete pending requests" });
-    }
+    if (request.requestedBy !== session.username) return res.json({ ok: false, message: "You can only delete your own requests" });
+    if (request.status !== "pending") return res.json({ ok: false, message: "Can only delete pending requests" });
 
     try {
       await storage.deleteManagerRequest(requestId);
@@ -1399,12 +1129,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Select Work Time Count for Month
   app.post(api.managerRequests.getSelectWorkTimeCount.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-
     try {
       const count = await storage.getSelectWorkTimeCountForMonth(session.username, year, month);
       res.json({ ok: true, count });
@@ -1413,30 +1141,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ==================== Developer Tools ====================
+  // ==========================================
+  // 🔨 Developer Tools
+  // ==========================================
   const DEV_CODE = "bk1040";
-  
+
   const verifyDevAccess = async (token: string, devCode?: string): Promise<{ ok: boolean; user?: any; message?: string }> => {
     const session = await storage.getSession(token);
     if (!session) return { ok: false, message: "Session expired" };
-    
     const u = await storage.getUser(session.username);
     if (!u) return { ok: false, message: "User not found" };
-    
-    // Allow if admin or if correct dev code provided
-    if (u.role === "admin" || devCode === DEV_CODE) {
-      return { ok: true, user: u };
-    }
-    
+    if (u.role === "admin" || devCode === DEV_CODE) return { ok: true, user: u };
     return { ok: false, message: "Access denied - Admin or Dev Code required" };
   };
 
-  // Get System Logs
   app.post(api.devTools.getSystemLogs.path, async (req, res) => {
     const { token, devCode, limit = 100, action } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       const logs = await storage.getSystemLogs(limit, action);
       res.json({ ok: true, logs });
@@ -1445,12 +1167,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Sessions
   app.post(api.devTools.getSessions.path, async (req, res) => {
     const { token, devCode } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       const sessions = await storage.getAllSessions();
       res.json({ ok: true, sessions });
@@ -1459,12 +1179,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Clear Sessions
   app.post(api.devTools.clearSessions.path, async (req, res) => {
     const { token, devCode, username } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       const count = await storage.clearSessions(username);
       await storage.log("dev_clear_sessions", access.user.username, username ? `user=${username}` : "all sessions");
@@ -1474,12 +1192,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Config
   app.post(api.devTools.getConfig.path, async (req, res) => {
     const { token, devCode } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       const config = await storage.getConfig();
       res.json({ ok: true, config });
@@ -1488,12 +1204,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Set Config
   app.post(api.devTools.setConfig.path, async (req, res) => {
     const { token, devCode, key, value } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       await storage.setConfig(key, value);
       await storage.log("dev_set_config", access.user.username, `${key}=${value}`);
@@ -1503,29 +1217,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Reset Password
   app.post(api.devTools.resetPassword.path, async (req, res) => {
     const { token, devCode, username, newPassword } = req.body;
+
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
 
     try {
+      // แนะนำ: ถ้าเป็นไปได้ควรย้าย import ไปไว้บรรทัดบนสุดของไฟล์
       const { hashPassword } = await import("./utils");
-      const passhash = hashPassword(newPassword);
+
+      // ✅ แก้ไข: เพิ่ม await ตรงนี้
+      const passhash = await hashPassword(newPassword);
+
       await storage.updateUserPassword(username, passhash);
       await storage.log("dev_reset_password", access.user.username, `user=${username}`);
+
       res.json({ ok: true, message: `Password reset for ${username}` });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to reset password" });
     }
   });
 
-  // Update User Role
   app.post(api.devTools.updateUserRole.path, async (req, res) => {
     const { token, devCode, username, role, position } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       await storage.updateUserRole(username, role, position);
       await storage.log("dev_update_role", access.user.username, `user=${username} role=${role} position=${position || ""}`);
@@ -1535,12 +1252,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Get Table Info
   app.post(api.devTools.getTableInfo.path, async (req, res) => {
     const { token, devCode, tableName } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
     try {
       if (tableName) {
         const rows = await storage.getTableRows(tableName, 100);
@@ -1554,18 +1269,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Clear Test Data
   app.post(api.devTools.clearTestData.path, async (req, res) => {
     const { token, devCode, tableName } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
-    // Only allow clearing certain tables
     const allowedTables = ["shifts", "systemlog", "sessions", "swap_requests", "daily_sales_reports", "manager_requests"];
-    if (!allowedTables.includes(tableName)) {
-      return res.json({ ok: false, message: `Cannot clear table: ${tableName}. Allowed: ${allowedTables.join(", ")}` });
-    }
-
+    if (!allowedTables.includes(tableName)) return res.json({ ok: false, message: `Cannot clear table: ${tableName}` });
     try {
       const count = await storage.clearTable(tableName);
       await storage.log("dev_clear_table", access.user.username, `table=${tableName} count=${count}`);
@@ -1575,43 +1284,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Execute Query (READ ONLY - strict validation)
   app.post(api.devTools.executeQuery.path, async (req, res) => {
     const { token, devCode, query } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
 
-    // Strict validation: only allow simple SELECT queries
     const cleanQuery = query.trim();
     const upperQuery = cleanQuery.toUpperCase();
-    
-    // Remove leading comments and check for SELECT
     const noComments = upperQuery.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--.*$/gm, "").trim();
-    
-    // Reject if not starting with SELECT
-    if (!noComments.startsWith("SELECT")) {
-      return res.json({ ok: false, message: "Only SELECT queries are allowed" });
-    }
-    
-    // Reject dangerous patterns (multiple statements, subquery manipulation)
-    const dangerousPatterns = [
-      /;.*\S/i, // Multiple statements  
-      /\bDROP\b/i,
-      /\bDELETE\b/i,
-      /\bINSERT\b/i,
-      /\bUPDATE\b/i,
-      /\bTRUNCATE\b/i,
-      /\bALTER\b/i,
-      /\bCREATE\b/i,
-      /\bGRANT\b/i,
-      /\bREVOKE\b/i,
-      /\bEXECUTE\b/i,
-    ];
-    
+
+    if (!noComments.startsWith("SELECT")) return res.json({ ok: false, message: "Only SELECT queries are allowed" });
+    const dangerousPatterns = [/;.*\S/i, /\bDROP\b/i, /\bDELETE\b/i, /\bINSERT\b/i, /\bUPDATE\b/i, /\bTRUNCATE\b/i, /\bALTER\b/i, /\bCREATE\b/i, /\bGRANT\b/i, /\bREVOKE\b/i, /\bEXECUTE\b/i];
     for (const pattern of dangerousPatterns) {
-      if (pattern.test(cleanQuery)) {
-        return res.json({ ok: false, message: "Query contains disallowed keywords" });
-      }
+      if (pattern.test(cleanQuery)) return res.json({ ok: false, message: "Query contains disallowed keywords" });
     }
 
     try {
@@ -1623,89 +1308,54 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Bulk Import Users
   app.post(api.devTools.bulkImportUsers.path, async (req, res) => {
     const { token, devCode, users: inputUsers } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
+    if (!Array.isArray(inputUsers) || inputUsers.length === 0) return res.json({ ok: false, message: "No users provided" });
 
-    if (!Array.isArray(inputUsers) || inputUsers.length === 0) {
-      return res.json({ ok: false, message: "No users provided" });
-    }
-
-    let imported = 0;
-    let failed = 0;
+    let imported = 0, failed = 0;
     const errors: string[] = [];
     const validRoles = ["staff", "manager", "admin"];
 
     for (const u of inputUsers) {
       try {
-        if (!u.username || !u.password) {
-          errors.push(`Missing username or password for entry`);
-          failed++;
-          continue;
-        }
-        
+        if (!u.username || !u.password) { errors.push(`Missing username or password`); failed++; continue; }
         const username = u.username.toLowerCase().trim();
-        if (!/^[a-z0-9._-]+$/.test(username)) {
-          errors.push(`Invalid username format: ${u.username}`);
-          failed++;
-          continue;
-        }
-        
-        // Check if user exists
+        if (!/^[a-z0-9._-]+$/.test(username)) { errors.push(`Invalid username: ${u.username}`); failed++; continue; }
         const existing = await storage.getUser(username);
-        if (existing) {
-          errors.push(`User ${username} already exists`);
-          failed++;
-          continue;
-        }
-        
-        const role = validRoles.includes(u.role) ? u.role : "staff";
-        
+        if (existing) { errors.push(`User ${username} already exists`); failed++; continue; }
+
         await storage.createUser({
-          username,
-          passhash: hashPass(u.password),
-          role,
+          username, passhash: hashPass(u.password), role: validRoles.includes(u.role) ? u.role : "staff",
           fullName: typeof u.fullName === "string" ? u.fullName.trim() : null,
           nickName: typeof u.nickName === "string" ? u.nickName.trim() : null,
           phone: typeof u.phone === "string" ? u.phone.trim() : null,
           email: typeof u.email === "string" ? u.email.trim() : null,
-          active: 1,
-          mustChangePassword: 1,
-          createdAt: new Date().toISOString(),
+          active: 1, mustChangePassword: 1, createdAt: new Date().toISOString(),
         });
         imported++;
       } catch (e: any) {
-        errors.push(`Failed to import ${u.username}: ${e?.message || "Unknown error"}`);
+        errors.push(`Failed to import ${u.username}: ${e?.message}`);
         failed++;
       }
     }
-
     await storage.log("dev_bulk_import", access.user.username, `imported=${imported} failed=${failed}`);
     res.json({ ok: true, imported, failed, errors: errors.length > 0 ? errors : undefined, message: `Imported ${imported} users, ${failed} failed` });
   });
 
-  // Update User Profile
   app.post(api.devTools.updateUserProfile.path, async (req, res) => {
     const { token, devCode, username, updates } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
-
-    if (!username || typeof username !== "string") {
-      return res.json({ ok: false, message: "Username is required" });
-    }
+    if (!username || typeof username !== "string") return res.json({ ok: false, message: "Username is required" });
 
     try {
       const user = await storage.getUser(username);
-      if (!user) {
-        return res.json({ ok: false, message: `User ${username} not found` });
-      }
+      if (!user) return res.json({ ok: false, message: `User ${username} not found` });
 
-      // Whitelist allowed fields for update
       const allowedFields = ["fullName", "fullNameTh", "nickName", "phone", "email", "active"];
       const sanitizedUpdates: Record<string, any> = {};
-      
       for (const key of allowedFields) {
         if (updates && key in updates) {
           const value = updates[key];
@@ -1717,10 +1367,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
       }
-
-      if (Object.keys(sanitizedUpdates).length === 0) {
-        return res.json({ ok: false, message: "No valid updates provided" });
-      }
+      if (Object.keys(sanitizedUpdates).length === 0) return res.json({ ok: false, message: "No valid updates provided" });
 
       await storage.updateUser(username, sanitizedUpdates);
       await storage.log("dev_update_profile", access.user.username, `user=${username} updates=${JSON.stringify(sanitizedUpdates)}`);
@@ -1730,236 +1377,313 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ===================== BORROW TRACKER ROUTES =====================
+  // ==========================================
+  // 📦 Borrow Tracker (Using Direct DB)
+  // ==========================================
 
-  const verifyManagerAccess = async (token: string) => {
-    const session = await storage.getSession(token);
-    if (!session) return { ok: false as const, message: "Session expired" };
-    const user = await storage.getUser(session.username);
-    if (!user) return { ok: false as const, message: "User not found" };
-    if (user.role !== "admin" && user.role !== "manager") {
-      return { ok: false as const, message: "No permission" };
-    }
-    return { ok: true as const, user };
-  };
-
-  // Branches
+  // Get Branches
   app.post("/api/borrow/branches", async (req, res) => {
-    const { token } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    const branches = await storage.getBorrowBranches();
-    res.json({ ok: true, branches });
-  });
-
-  app.post("/api/borrow/branches/add", async (req, res) => {
-    const { token, name, code } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!name || typeof name !== "string") return res.json({ ok: false, message: "Name is required" });
-    const result = await storage.addBorrowBranch(name, code);
-    res.json(result);
-  });
-
-  app.post("/api/borrow/branches/delete", async (req, res) => {
-    const { token, id } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    await storage.deleteBorrowBranch(id);
-    res.json({ ok: true });
-  });
-
-  // Items
-  app.post("/api/borrow/items", async (req, res) => {
-    const { token } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    const items = await storage.getBorrowItems();
-    res.json({ ok: true, items });
-  });
-
-  app.post("/api/borrow/items/add", async (req, res) => {
-    const { token, name, code, units, category } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!name || typeof name !== "string") return res.json({ ok: false, message: "Name is required" });
-    const result = await storage.addBorrowItem(name, code, units, category);
-    res.json(result);
-  });
-
-  app.post("/api/borrow/items/update", async (req, res) => {
-    const { token, id, units, category } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    const result = await storage.updateBorrowItem(id, { units, category });
-    res.json(result);
-  });
-
-  app.post("/api/borrow/items/delete", async (req, res) => {
-    const { token, id } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    await storage.deleteBorrowItem(id);
-    res.json({ ok: true });
-  });
-
-  app.post("/api/borrow/items/delete-all", async (req, res) => {
-    const { token } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    await storage.deleteAllBorrowItems();
-    res.json({ ok: true });
-  });
-
-  // Transactions
-  app.post("/api/borrow/transactions", async (req, res) => {
-    const { token, limit } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    const transactions = await storage.getBorrowTransactions(limit);
-    res.json({ ok: true, transactions });
-  });
-
-  app.post("/api/borrow/transactions/add", async (req, res) => {
-    const { token, txDate, dueDate, txType, branch, item, qty, unit, borrower, lender, note } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!txDate || !txType || !branch || !item || typeof qty !== "number") {
-      return res.json({ ok: false, message: "Missing required fields" });
+    try {
+      const { token } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      const branches = await db.select().from(borrowBranches).where(eq(borrowBranches.isActive, 1));
+      res.json({ ok: true, branches });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
     }
-    const result = await storage.addBorrowTransaction({
-      txDate,
-      dueDate: dueDate || undefined,
-      txType,
-      branch,
-      item,
-      qty,
-      unit: unit || "",
-      borrower: borrower || "",
-      lender: lender || "",
-      note: note || "",
-    });
-    res.json(result);
   });
 
+  // Add Branch
+  app.post("/api/borrow/branches/add", async (req, res) => {
+    try {
+      const { token, name, code } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.insert(borrowBranches).values({
+        name,
+        code: code || "",
+        isActive: 1
+      });
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Delete Branch
+  app.post("/api/borrow/branches/delete", async (req, res) => {
+    try {
+      const { token, id } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.delete(borrowBranches).where(eq(borrowBranches.id, id));
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Import Branches (Excel)
+  app.post("/api/borrow/branches/import", upload.single("file"), async (req, res) => {
+    try {
+      const token = req.body.token;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      if (!req.file) return res.json({ ok: false, message: "No file" });
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json<any>(sheet);
+
+      let imported = 0;
+      for (const row of data) {
+        const name = row['Branch Name'] || row['name'] || row['Name'];
+        const code = row['Branch Code'] || row['code'] || row['Code'] || "";
+        if (name) {
+          await db.insert(borrowBranches).values({
+            name: String(name).trim(),
+            code: String(code).trim(),
+            isActive: 1
+          });
+          imported++;
+        }
+      }
+      res.json({ ok: true, imported });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Get Items
+  app.post("/api/borrow/items", async (req, res) => {
+    try {
+      const { token } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      const items = await db.select().from(borrowItems).where(eq(borrowItems.isActive, 1));
+      res.json({ ok: true, items });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Add Item
+  app.post("/api/borrow/items/add", async (req, res) => {
+    try {
+      const { token, name, code, units, category } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.insert(borrowItems).values({
+        name,
+        code: code || "",
+        units: units || [],
+        category: category || "General",
+        isActive: 1
+      });
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Update Item
+  app.post("/api/borrow/items/update", async (req, res) => {
+    try {
+      const { token, id, units, category } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.update(borrowItems).set({ units, category }).where(eq(borrowItems.id, id));
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Delete Item
+  app.post("/api/borrow/items/delete", async (req, res) => {
+    try {
+      const { token, id } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.delete(borrowItems).where(eq(borrowItems.id, id));
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Delete All Items
+  app.post("/api/borrow/items/delete-all", async (req, res) => {
+    try {
+      const { token } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.delete(borrowItems);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Import Items (CSV/Excel) - Updated with Unit logic
+  app.post("/api/borrow/items/import", upload.single("file"), async (req, res) => {
+    try {
+      const token = req.body.token;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      if (!req.file) return res.json({ ok: false, message: "No file" });
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json<any>(sheet);
+
+      let imported = 0;
+      let skipped = 0;
+
+      for (const row of data) {
+        const name = row['Item Name'] || row['name'] || row['Name'];
+        const code = row['Item ID'] || row['code'] || row['Code'] || "";
+        const rawUnit = row['Unit'] || row['Packing Unit'] || row['Packing Detail'] || row['Packing Unit (Cleaned)'] || row['Inv Unit'] || row['unit'] || "";
+        const category = row['Category'] || "General";
+
+        if (!name) {
+          skipped++;
+          continue;
+        }
+
+        const units = rawUnit ? [String(rawUnit).trim()] : [];
+        await db.insert(borrowItems).values({
+          name: String(name).trim(),
+          code: code ? String(code).trim() : null,
+          units,
+          category,
+          isActive: 1
+        });
+        imported++;
+      }
+      res.json({ ok: true, imported, skipped });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Get Transactions
+  app.post("/api/borrow/transactions", async (req, res) => {
+    try {
+      const { token, limit } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      const transactions = await db.select().from(borrowTransactions)
+        .orderBy(desc(borrowTransactions.txDate))
+        .limit(limit || 100);
+      res.json({ ok: true, transactions });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Add Transaction
+  app.post("/api/borrow/transactions/add", async (req, res) => {
+    try {
+      const { token, ...txData } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+
+      await db.insert(borrowTransactions).values({
+        txDate: txData.txDate,
+        dueDate: txData.dueDate || undefined,
+        txType: txData.txType,
+        branch: txData.branch,
+        item: txData.item,
+        qty: txData.qty,
+        unit: txData.unit || "",
+        borrower: txData.borrower || "",
+        lender: txData.lender || "",
+        note: txData.note || "",
+        status: "pending"
+      });
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // Toggle Transaction Status
   app.post("/api/borrow/transactions/toggle", async (req, res) => {
-    const { token, id } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    const result = await storage.toggleBorrowTransaction(id);
-    res.json(result);
+    try {
+      const { token, id } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+
+      const tx = await db.select().from(borrowTransactions).where(eq(borrowTransactions.id, id)).limit(1);
+      if (tx.length === 0) return res.json({ ok: false, message: "Not found" });
+
+      const newStatus = tx[0].status === "pending" ? "done" : "pending";
+      await db.update(borrowTransactions).set({ status: newStatus }).where(eq(borrowTransactions.id, id));
+      res.json({ ok: true, status: newStatus });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
   });
 
+  // Delete Transaction
   app.post("/api/borrow/transactions/delete", async (req, res) => {
-    const { token, id } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    await storage.deleteBorrowTransaction(id);
-    res.json({ ok: true });
+    try {
+      const { token, id } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+      await db.delete(borrowTransactions).where(eq(borrowTransactions.id, id));
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
   });
 
   // Dashboard
   app.post("/api/borrow/dashboard", async (req, res) => {
-    const { token } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    const metrics = await storage.getBorrowDashboardMetrics();
-    const overdue = await storage.getOverdueBorrowTransactions();
-    res.json({ ok: true, ...metrics, overdueCount: overdue.length, overdueTransactions: overdue });
-  });
-
-  // Excel Import - Branches
-  app.post("/api/borrow/branches/import", upload.single("file"), async (req, res) => {
     try {
-      const token = req.body.token;
-      if (!token) return res.json({ ok: false, message: "Token required" });
+      const { token } = req.body;
       const access = await verifyManagerAccess(token);
-      if (!access.ok) return res.json(access);
+      if (!access.ok) return res.status(401).json(access);
 
-      if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
+      const allTx = await db.select().from(borrowTransactions);
+      const totalTransactions = allTx.length;
+      const totalBorrowIn = allTx.filter(t => t.txType === "borrow_in").length;
+      const totalBorrowOut = allTx.filter(t => t.txType === "borrow_out").length;
 
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json<{ name?: string; code?: string; Name?: string; Code?: string }>(sheet);
+      const today = new Date().toISOString().split('T')[0];
+      const overdueTransactions = allTx.filter(t => t.status === "pending" && t.dueDate && t.dueDate < today);
 
-      let imported = 0;
-      let skipped = 0;
-      for (const row of data) {
-        const name = row.name || row.Name || "";
-        const code = row.code || row.Code || "";
-        if (!name.trim()) {
-          skipped++;
-          continue;
-        }
-        await storage.addBorrowBranch(name.trim(), code.trim());
-        imported++;
-      }
-
-      res.json({ ok: true, imported, skipped, total: data.length });
+      res.json({ 
+        ok: true, 
+        totalTransactions, 
+        totalBorrowIn, 
+        totalBorrowOut, 
+        overdueCount: overdueTransactions.length,
+        overdueTransactions 
+      });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Import failed" });
+      res.json({ ok: false, message: e.message });
     }
   });
 
-  // Excel Import - Items
-  app.post("/api/borrow/items/import", upload.single("file"), async (req, res) => {
-    try {
-      const token = req.body.token;
-      if (!token) return res.json({ ok: false, message: "Token required" });
-      const access = await verifyManagerAccess(token);
-      if (!access.ok) return res.json(access);
+  // ==========================================
+  // ⚙️ Labor Cost Control (Using Direct DB)
+  // ==========================================
 
-      if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
-
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json<{ name?: string; code?: string; unit?: string; category?: string; Name?: string; Code?: string; Unit?: string; Category?: string }>(sheet);
-
-      let imported = 0;
-      let skipped = 0;
-      for (const row of data) {
-        const name = row.name || row.Name || "";
-        const code = row.code || row.Code || "";
-        const unit = row.unit || row.Unit || "";
-        const category = row.category || row.Category || "";
-        if (!name.trim()) {
-          skipped++;
-          continue;
-        }
-        const units = unit.trim() ? [unit.trim()] : null;
-        await storage.addBorrowItem(name.trim(), code.trim(), units, category.trim() || null);
-        imported++;
-      }
-
-      res.json({ ok: true, imported, skipped, total: data.length });
-    } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Import failed" });
-    }
-  });
-
-  // ==================== LABOR SETTINGS ====================
-  
   // Get Labor Settings
   app.post("/api/settings/get-labor", async (req, res) => {
     try {
-      const settings = await storage.getLaborSettings();
-      res.json({ 
-        ok: true, 
-        settings: settings || { 
-          rosterHours: "88", 
-          dutyDailyHours: "40", 
-          ptWageRate: "45", 
-          fixedCostDaily: "0", 
-          closeShiftDailyCost: "0" 
-        } 
-      });
+      const result = await db.select().from(laborSettings).limit(1);
+      const settings = result[0] || { 
+        rosterHours: "88", 
+        dutyDailyHours: "40", 
+        ptWageRate: "45", 
+        fixedCostDaily: "0", 
+        closeShiftDailyCost: "0" 
+      };
+      res.json({ ok: true, settings });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
@@ -1970,31 +1694,43 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const { token, rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
-    
+
     try {
-      await storage.saveLaborSettings({
-        rosterHours: String(rosterHours || 88),
-        dutyDailyHours: String(dutyDailyHours || 40),
-        ptWageRate: String(ptWageRate || 45),
-        fixedCostDaily: String(fixedCostDaily || 0),
-        closeShiftDailyCost: String(closeShiftDailyCost || 0),
-      });
+      const existing = await db.select().from(laborSettings).limit(1);
+      if (existing.length > 0) {
+        await db.update(laborSettings).set({
+          rosterHours: String(rosterHours || 88),
+          dutyDailyHours: String(dutyDailyHours || 40),
+          ptWageRate: String(ptWageRate || 45),
+          fixedCostDaily: String(fixedCostDaily || 0),
+          closeShiftDailyCost: String(closeShiftDailyCost || 0),
+          updatedAt: new Date().toISOString()
+        }).where(eq(laborSettings.id, existing[0].id));
+      } else {
+        await db.insert(laborSettings).values({
+          rosterHours: String(rosterHours || 88),
+          dutyDailyHours: String(dutyDailyHours || 40),
+          ptWageRate: String(ptWageRate || 45),
+          fixedCostDaily: String(fixedCostDaily || 0),
+          closeShiftDailyCost: String(closeShiftDailyCost || 0),
+          updatedAt: new Date().toISOString()
+        });
+      }
       res.json({ ok: true });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
   });
 
-  // Calculate Labor Logic (utility function)
+  // Calculate Labor Logic Helper
   async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }) {
     // 1. Get Settings
-    const cfg = await storage.getLaborSettings() || { 
-      rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", 
-      fixedCostDaily: "0", closeShiftDailyCost: "0" 
-    };
-    
+    const settingsRes = await db.select().from(laborSettings).limit(1);
+    const cfg = settingsRes[0] || { rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", fixedCostDaily: "0", closeShiftDailyCost: "0" };
+
     // 2. Get Sales data for that date
-    const salesData = await storage.getDailySalesReportByDate(date);
+    const salesRes = await db.select().from(dailySalesReports).where(eq(dailySalesReports.reportDate, date)).limit(1);
+    const salesData = salesRes[0];
     const sales = Number(salesData?.actualSales || 0);
     const tc = Number(salesData?.transactionCount || 0);
 
@@ -2003,24 +1739,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const ot = Number(inputs.otHours || 0);
 
     // --- Calculate ---
-    // A. Summary Hours = Duty (Fix) + Actual + OT
     const dutyHours = Number(cfg.dutyDailyHours) || 40;
     const summaryHours = dutyHours + actual + ot;
-
-    // B. Variance = Summary - Roster
     const rosterHours = Number(cfg.rosterHours) || 88;
     const varianceHours = summaryHours - rosterHours;
 
-    // C. Labor Cost (Baht)
-    // Formula: (Fix Cost Daily + Close Shift Cost) + ((Actual + OT) * PT Rate)
     const variableCost = (actual + ot) * (Number(cfg.ptWageRate) || 0);
     const fixedCost = (Number(cfg.fixedCostDaily) || 0) + (Number(cfg.closeShiftDailyCost) || 0);
     const laborCostTotal = fixedCost + variableCost;
 
-    // D. % COL = Cost / Sales * 100
     const colPercent = sales > 0 ? (laborCostTotal / sales) * 100 : 0;
-
-    // E. TCMH = TC / Summary Hours
     const tcmh = summaryHours > 0 ? (tc / summaryHours) : 0;
 
     return {
@@ -2039,10 +1767,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const { token, date, actualHours, otHours } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
-    
+
     try {
       const result = await calculateLaborLogic(date, { actualHours, otHours });
-      await storage.saveDailyLabor(date, result);
+
+      // Upsert daily labor
+      const existing = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date)).limit(1);
+      if (existing.length > 0) {
+        await db.update(dailyLabor).set({ ...result, updatedAt: new Date().toISOString() }).where(eq(dailyLabor.id, existing[0].id));
+      } else {
+        await db.insert(dailyLabor).values({ date, ...result, updatedAt: new Date().toISOString() });
+      }
+
       res.json({ ok: true, data: result });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
@@ -2053,8 +1789,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/sales/get-daily-labor", async (req, res) => {
     const { date } = req.body;
     try {
-      const labor = await storage.getDailyLabor(date);
-      res.json({ ok: true, data: labor || null });
+      const result = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date)).limit(1);
+      res.json({ ok: true, data: result[0] || null });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }

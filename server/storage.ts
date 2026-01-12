@@ -773,22 +773,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Borrow Tracker - Transactions
-  async getBorrowTransactions(limit?: number): Promise<BorrowTransaction[]> {
-    const query = db.select().from(borrowTransactions).orderBy(desc(borrowTransactions.createdAt));
-    if (limit) {
-      return await query.limit(limit);
-    }
-    return await query;
-  }
-
   async addBorrowTransaction(data: { txDate: string; dueDate?: string; txType: string; branch: string; item: string; qty: number; unit: string; borrower: string; lender: string; note: string }): Promise<{ ok: boolean; message?: string }> {
+
+    // ✅ 1. สร้าง ID เองตรงนี้ (สำคัญมาก! ถ้าไม่มีบรรทัดนี้ Database จะแจ้ง Error Null Value)
     const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
     await db.insert(borrowTransactions).values({
-      id,
+      id: id, // ✅ ส่ง ID ที่สร้างแล้วเข้าไป
       txDate: data.txDate,
       dueDate: data.dueDate || null,
       txType: data.txType,
-      branch: data.branch,
+      branch: data.branch, // รับเป็น String ตามที่เราแก้ Frontend แล้ว
       item: data.item,
       qty: data.qty,
       unit: data.unit,
@@ -796,8 +791,9 @@ export class DatabaseStorage implements IStorage {
       lender: data.lender,
       note: data.note,
       status: "pending",
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(), // แปลงวันที่เป็น String
     });
+
     return { ok: true };
   }
 

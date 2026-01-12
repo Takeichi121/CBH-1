@@ -27,12 +27,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ShoppingBag, Trash2, ToggleLeft, ToggleRight, Search, Check } from "lucide-react";
+import { ShoppingBag, Trash2, Search, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { BorrowItem } from "@shared/schema";
 import { itemCategories } from "@shared/schema";
 
-// ✅ Import Excel UI (same as Branches page)
+// ✅ Import Excel UI
 import ImportExcelButton from "./components/ImportExcelButton";
 
 function norm(v: unknown) {
@@ -58,8 +58,9 @@ export default function Items() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // ✅ ใช้ Endpoint ให้ตรงกับ routes.ts (/api/borrow/items)
   const { data: items, isLoading } = useQuery<BorrowItem[]>({
-    queryKey: ["/api/items"],
+    queryKey: ["/api/borrow/items"],
   });
 
   const getCategoryLabel = (catId: string | null | undefined) => {
@@ -69,11 +70,16 @@ export default function Items() {
     return (t as any).common?.language === "th" ? cat.th : cat.en;
   };
 
+  // ✅ Add Item (ตรงกับ routes.ts: /api/borrow/items/add)
   const addMutation = useMutation({
     mutationFn: async (data: { name: string; unit: string; category?: string }) =>
-      apiRequest("POST", "/api/items", data),
+      apiRequest("POST", "/api/borrow/items/add", {
+        name: data.name,
+        units: data.unit ? [data.unit] : [], // Backend รับเป็น array
+        category: data.category
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/items"] });
       setName("");
       setUnit("");
       setCategory("");
@@ -82,24 +88,21 @@ export default function Items() {
     onError: () => toast({ title: t.common.error, variant: "destructive" }),
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("PATCH", `/api/items/${id}/toggle`, {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/items"] }),
-  });
-
+  // ✅ Delete Item (ตรงกับ routes.ts: /api/borrow/items/delete)
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("DELETE", `/api/items/${id}`, {}),
+    mutationFn: async (id: string) => apiRequest("POST", "/api/borrow/items/delete", { id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/items"] });
       setDeleteId(null);
       toast({ title: t.common.success });
     },
   });
 
+  // ✅ Delete All (ตรงกับ routes.ts: /api/borrow/items/delete-all)
   const deleteAllMutation = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/borrow/items/delete-all", { token: localStorage.getItem("bk_token") }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/items"] });
       setShowDeleteAllDialog(false);
       toast({ title: t.common.success });
     },
@@ -132,7 +135,6 @@ export default function Items() {
 
   const pickItem = (it: BorrowItem) => {
     setSelectedId(it.id);
-    // ✅ โชว์ชื่ออย่างเดียว (ยังค้นด้วย code ได้อยู่ เพราะ filter ใช้ code+name)
     setSearchQuery(it.name);
     setShowDropdown(false);
     setHighlightIndex(0);
@@ -196,7 +198,7 @@ export default function Items() {
   const importItemsLabel =
     (t as any)?.common?.importItems ||
     (t as any)?.items?.importItems ||
-    "Import Items (.xlsx)";
+    "Import Items (.xlsx/csv)";
 
   return (
     <div className="space-y-6">
@@ -254,12 +256,17 @@ export default function Items() {
 
           {/* ✅ Import Items & Delete All */}
           <div className="pt-4 border-t border-border flex flex-wrap gap-2 items-center">
+            {/* ✅ Update: Endpoint ตรงกับ routes.ts และเพิ่ม accept CSV */}
             <ImportExcelButton
-              endpoint="/api/import/items"
+              endpoint="/api/borrow/items/import"
               label={importItemsLabel}
-              onDone={() => {
-                queryClient.invalidateQueries({ queryKey: ["/api/items"] });
-                toast({ title: t.common.success });
+              accept=".csv,.xlsx,.xls"
+              onDone={(res) => {
+                queryClient.invalidateQueries({ queryKey: ["/api/borrow/items"] });
+                toast({ 
+                  title: t.common.success, 
+                  description: res.message || `Imported ${res.imported} items`
+                });
               }}
             />
             <Button
@@ -321,7 +328,6 @@ export default function Items() {
                             active ? "bg-muted" : "hover:bg-muted",
                           ].join(" ")}
                         >
-                          {/* ✅ โชว์แค่ชื่อ */}
                           <span className="truncate">{it.name}</span>
                           <span className="flex items-center gap-2 shrink-0">
                             {it.units && it.units.length > 0 ? (
@@ -369,7 +375,6 @@ export default function Items() {
                     <TableHead>{t.items.name}</TableHead>
                     <TableHead>{(t as any).items?.category || "Category"}</TableHead>
                     <TableHead>{t.items.unit}</TableHead>
-                    <TableHead>{t.items.status}</TableHead>
                     <TableHead className="text-right">{(t as any).items?.action || t.items.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -381,29 +386,25 @@ export default function Items() {
                       className={selectedId === item.id ? "bg-muted/60" : ""}
                     >
                       <TableCell className="font-mono text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{getCategoryLabel(item.category)}</TableCell>
-                      <TableCell className="text-muted-foreground">{(item.units && item.units.length > 0) ? item.units.join(", ") : "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant={item.isActive ? "default" : "secondary"} className="text-xs">
-                          {item.isActive ? t.items.active : t.items.inactive}
-                        </Badge>
+                      <TableCell className="font-medium">
+                        {item.name}
+                        {item.code && <div className="text-xs text-muted-foreground">{item.code}</div>}
                       </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{getCategoryLabel(item.category)}</TableCell>
+
+                      {/* ✅ ใช้ UnitSelector ตรงนี้ */}
+                      <TableCell className="w-[180px]">
+                         <UnitSelector 
+                           units={item.units || []} 
+                           onUnitChange={(val) => {
+                             // ตรงนี้ใส่ Logic อัปเดต Database ได้ (ถ้ามี API)
+                             console.log("Selected unit:", val, "for item:", item.name);
+                           }} 
+                         />
+                      </TableCell>
+
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleMutation.mutate(item.id)}
-                            disabled={toggleMutation.isPending}
-                          >
-                            {item.isActive ? (
-                              <ToggleRight className="h-4 w-4" />
-                            ) : (
-                              <ToggleLeft className="h-4 w-4" />
-                            )}
-                            <span className="ml-1 hidden sm:inline">{(t as any).items?.toggle || "Toggle"}</span>
-                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => setDeleteId(item.id)}>
                             <Trash2 className="h-4 w-4" />
                             <span className="ml-1 hidden sm:inline">{(t as any).items?.delete || t.items.deleteItem}</span>
@@ -458,5 +459,50 @@ export default function Items() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// ✅ Component: UnitSelector
+// Logic: รับ array ของ unit (หรือ string ที่อาจมี /) แล้วแยกเป็น Dropdown
+function UnitSelector({ 
+  units, 
+  onUnitChange 
+}: { 
+  units: string[], 
+  onUnitChange?: (val: string) => void 
+}) {
+  // 1. รวมทุกตัวและแยกด้วย "/" (เผื่อใน DB เก็บเป็น "PCS / PACK")
+  const parsedUnits = useMemo(() => {
+    if (!units || units.length === 0) return [];
+    return units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+  }, [units]);
+
+  const [selected, setSelected] = useState(parsedUnits[0] || "");
+
+  // ถ้าไม่มีหน่วยเลย
+  if (parsedUnits.length === 0) return <span className="text-muted-foreground">-</span>;
+
+  // ถ้ามีหน่วยเดียว แสดงเป็น Text ธรรมดา (หรือจะใช้ Dropdown ก็ได้ แล้วแต่ชอบ)
+  if (parsedUnits.length === 1) return <span className="text-sm">{parsedUnits[0]}</span>;
+
+  return (
+    <Select 
+      value={selected} 
+      onValueChange={(val) => {
+        setSelected(val);
+        onUnitChange?.(val);
+      }}
+    >
+      <SelectTrigger className="h-8 w-full min-w-[100px]">
+        <SelectValue placeholder="Unit" />
+      </SelectTrigger>
+      <SelectContent>
+        {parsedUnits.map((u, idx) => (
+          <SelectItem key={`${u}-${idx}`} value={u}>
+            {u}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

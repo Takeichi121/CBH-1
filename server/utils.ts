@@ -1,14 +1,80 @@
-import crypto from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
+import { promisify } from "util";
 
+const scryptAsync = promisify(scrypt);
 const SALT = process.env.SALT || "BK_SALT_v2_change_me";
+
+// ✅ 1. Password Security (New & Secure)
+// ---------------------------------------------------------
+
+export async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+export async function comparePassword(supplied: string, stored: string) {
+  const [hashed, salt] = stored.split(".");
+  const hashedBuf = Buffer.from(hashed, "hex");
+  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
+// (Legacy function - เก็บไว้เผื่อมีส่วนอื่นเรียกใช้ แต่แนะนำให้ใช้ hashPassword ด้านบนแทน)
+export function hashPass(password: string): string {
+  return createHash("sha256").update(SALT + "::" + String(password || "")).digest("hex");
+}
+
+// ✅ 2. Date & Time Helpers
+// ---------------------------------------------------------
 
 export function nowIso() {
   return new Date().toISOString();
 }
 
-export function hashPass(password: string): string {
-  return crypto.createHash("sha256").update(SALT + "::" + String(password || "")).digest("hex");
+export function toYMD(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
+
+export function getWeekStartTuesday(date: Date | string) {
+  const d = (date instanceof Date)
+    ? new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    : new Date(date + "T00:00:00"); // local midnight
+
+  const day = d.getDay(); // 0=Sun,1=Mon,2=Tue,...6=Sat
+  const diff = (day - 2 + 7) % 7;   // how many days to go back to Tuesday
+  d.setDate(d.getDate() - diff);
+  return d; // Tuesday
+}
+
+export function getWeekDaysTuesday(date: Date | string) {
+  const start = getWeekStartTuesday(date);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const x = new Date(start);
+    x.setDate(start.getDate() + i);
+    days.push(x);
+  }
+  return days; // [Tue..Mon]
+}
+
+export function getWeekRangeTuesday(anyDate?: string) {
+  const base = anyDate || toYMD(new Date());
+  const weekDays = getWeekDaysTuesday(base);
+  const days = weekDays.map(d => toYMD(d));
+
+  return {
+    start: days[0],
+    end: days[6],
+    days
+  };
+}
+
+// ✅ 3. Username Generators
+// ---------------------------------------------------------
 
 export function generateUsernameBase(fullName: string): string {
   const s = String(fullName || "").trim().replace(/\s+/g, " ");
@@ -30,7 +96,9 @@ export async function allocateUsername(base6: string, checkExists: (u: string) =
   return "";
 }
 
-// Maintenance window configuration
+// ✅ 4. Maintenance Window Logic
+// ---------------------------------------------------------
+
 export interface MaintenanceWindow {
   enabled: boolean;
   startDay: number;  // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
@@ -49,15 +117,15 @@ export const DEFAULT_MAINTENANCE_WINDOW: MaintenanceWindow = {
 
 export function isSystemClosed(config?: Record<string, string>): boolean {
   if (!config) return false;
-  
+
   const enabled = config["maintenance_enabled"] === "true";
   if (!enabled) return false;
-  
+
   const startDay = Number(config["maintenance_start_day"] ?? DEFAULT_MAINTENANCE_WINDOW.startDay);
   const startTime = config["maintenance_start_time"] ?? DEFAULT_MAINTENANCE_WINDOW.startTime;
   const endDay = Number(config["maintenance_end_day"] ?? DEFAULT_MAINTENANCE_WINDOW.endDay);
   const endTime = config["maintenance_end_time"] ?? DEFAULT_MAINTENANCE_WINDOW.endTime;
-  
+
   return isInMaintenanceWindow(startDay, startTime, endDay, endTime);
 }
 
@@ -67,11 +135,11 @@ function isInMaintenanceWindow(startDay: number, startTime: string, endDay: numb
   const thailandOffset = 7 * 60; // Thailand is UTC+7
   const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   const thailandMinutes = utcMinutes + thailandOffset;
-  
+
   // Calculate Thailand day/time
   let thailandDay = now.getUTCDay();
   let adjustedMinutes = thailandMinutes;
-  
+
   if (thailandMinutes >= 24 * 60) {
     adjustedMinutes = thailandMinutes - 24 * 60;
     thailandDay = (thailandDay + 1) % 7;
@@ -79,16 +147,16 @@ function isInMaintenanceWindow(startDay: number, startTime: string, endDay: numb
     adjustedMinutes = thailandMinutes + 24 * 60;
     thailandDay = (thailandDay + 6) % 7;
   }
-  
+
   const currentHour = Math.floor(adjustedMinutes / 60);
   const currentMinute = adjustedMinutes % 60;
   const currentTimeMinutes = currentHour * 60 + currentMinute;
-  
+
   const [startH, startM] = startTime.split(":").map(Number);
   const [endH, endM] = endTime.split(":").map(Number);
   const startMinutes = startH * 60 + startM;
   const endMinutes = endH * 60 + endM;
-  
+
   // Check if current time is within maintenance window
   if (startDay === endDay) {
     // Same day maintenance
@@ -118,52 +186,15 @@ function isInMaintenanceWindow(startDay: number, startTime: string, endDay: numb
       return true;
     }
   }
-  
+
   return false;
 }
 
-export function getWeekStartTuesday(date: Date | string) {
-  const d = (date instanceof Date)
-    ? new Date(date.getFullYear(), date.getMonth(), date.getDate())
-    : new Date(date + "T00:00:00"); // local midnight
-
-  const day = d.getDay(); // 0=Sun,1=Mon,2=Tue,...6=Sat
-  const diff = (day - 2 + 7) % 7;   // how many days to go back to Tuesday
-  d.setDate(d.getDate() - diff);
-  return d; // Tuesday
-}
-
-export function getWeekDaysTuesday(date: Date | string) {
-  const start = getWeekStartTuesday(date);
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const x = new Date(start);
-    x.setDate(start.getDate() + i);
-    days.push(x);
-  }
-  return days; // [Tue..Mon]
-}
-
-export function toYMD(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-export function getWeekRangeTuesday(anyDate?: string) {
-  const base = anyDate || toYMD(new Date());
-  const weekDays = getWeekDaysTuesday(base);
-  const days = weekDays.map(d => toYMD(d));
-  
-  return {
-    start: days[0],
-    end: days[6],
-    days
-  };
-}
+// ✅ 5. Configuration Constants (Shifts & Capacity)
+// ---------------------------------------------------------
 
 export const DEFAULT_CAPACITY = { open: 4, swing: 4, lunch: 4, dinner: 4, close: 4, late: 4 };
+
 export const SHIFT_GROUPS = [
   { 
     key: "open", 

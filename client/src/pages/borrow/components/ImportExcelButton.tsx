@@ -52,6 +52,10 @@ export default function ImportExcelButton({
       // backend expects field name = "file"
       form.append("file", file);
 
+      // ✅ เพิ่มบรรทัดนี้: ส่ง Token ไปด้วย ไม่งั้น Backend จะ reject
+      const token = localStorage.getItem("bk_token") || "";
+      form.append("token", token);
+
       const res = await fetch(endpoint, {
         method: "POST",
         body: form,

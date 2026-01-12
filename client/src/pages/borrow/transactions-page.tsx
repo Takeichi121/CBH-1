@@ -72,19 +72,23 @@ export default function BorrowTransactionsPage() {
     if (!token) return;
     setLoading(true);
     try {
+      // ✅ Update Endpoints to /api/borrow/...
       const [branchesRes, itemsRes, txRes] = await Promise.all([
         fetch("/api/borrow/branches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
         fetch("/api/borrow/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
-        fetch("/api/borrow/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
+        fetch("/api/borrow/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, limit: 100 }) }),
       ]);
+
       const branchesData = await branchesRes.json();
       const itemsData = await itemsRes.json();
       const txData = await txRes.json();
+
       if (branchesData.ok) setBranches(branchesData.branches);
       if (itemsData.ok) setItems(itemsData.items);
       if (txData.ok) setTransactions(txData.transactions);
     } catch (err) {
       console.error(err);
+      toast({ title: "Failed to load data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -97,6 +101,7 @@ export default function BorrowTransactionsPage() {
   const handleAddTransaction = async () => {
     if (!token || !newTx.branch || !newTx.item) return;
     try {
+      // ✅ Use /api/borrow/transactions/add
       const res = await fetch("/api/borrow/transactions/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,6 +135,7 @@ export default function BorrowTransactionsPage() {
   const handleMarkReturned = async (txId: string) => {
     if (!token) return;
     try {
+      // ✅ Use /api/borrow/transactions/toggle
       const res = await fetch("/api/borrow/transactions/toggle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,6 +155,7 @@ export default function BorrowTransactionsPage() {
     if (!token) return;
     if (!confirm(language === "th" ? "ต้องการลบรายการนี้?" : "Delete this transaction?")) return;
     try {
+      // ✅ Use /api/borrow/transactions/delete
       const res = await fetch("/api/borrow/transactions/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -168,12 +175,12 @@ export default function BorrowTransactionsPage() {
 
   const getStatusBadge = (tx: BorrowTransaction) => {
     if (tx.status === "done") {
-      return <Badge variant="outline" className="text-green-600" data-testid={`badge-status-${tx.id}`}>{labels.returned}</Badge>;
+      return <Badge variant="outline" className="text-green-600 bg-green-50">{labels.returned}</Badge>;
     }
     if (tx.dueDate && new Date(tx.dueDate) < new Date()) {
-      return <Badge variant="destructive" data-testid={`badge-status-${tx.id}`}>{labels.overdue}</Badge>;
+      return <Badge variant="destructive">{labels.overdue}</Badge>;
     }
-    return <Badge variant="secondary" data-testid={`badge-status-${tx.id}`}>{labels.pending}</Badge>;
+    return <Badge variant="secondary">{labels.pending}</Badge>;
   };
 
   return (
@@ -239,7 +246,7 @@ export default function BorrowTransactionsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {branches.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
+                            <SelectItem key={b.id} value={b.name}>{b.name} ({b.code})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -250,8 +257,8 @@ export default function BorrowTransactionsPage() {
                         <Select
                           value={newTx.item}
                           onValueChange={(v) => {
-                            const item = items.find((i) => i.id === v);
-                            setNewTx({ ...newTx, item: v, unit: item?.unit || "" });
+                            const item = items.find((i) => i.name === v);
+                            setNewTx({ ...newTx, item: v, unit: item?.units?.[0] || "" });
                           }}
                         >
                           <SelectTrigger data-testid="select-tx-item">
@@ -259,20 +266,28 @@ export default function BorrowTransactionsPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {items.map((i) => (
-                              <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                              <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
                         <Label>{labels.qty}</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={newTx.qty}
-                          onChange={(e) => setNewTx({ ...newTx, qty: parseInt(e.target.value) || 1 })}
-                          data-testid="input-tx-qty"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min={1}
+                            value={newTx.qty}
+                            onChange={(e) => setNewTx({ ...newTx, qty: parseInt(e.target.value) || 1 })}
+                            data-testid="input-tx-qty"
+                          />
+                          <Input 
+                            value={newTx.unit}
+                            onChange={(e) => setNewTx({ ...newTx, unit: e.target.value })}
+                            placeholder={labels.unit}
+                            className="w-20"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -337,58 +352,56 @@ export default function BorrowTransactionsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions.map((tx) => {
-                      const branch = branches.find((b) => b.id === tx.branchId);
-                      const item = items.find((i) => i.id === tx.itemId);
-                      return (
-                        <TableRow key={tx.id} data-testid={`row-tx-${tx.id}`}>
-                          <TableCell>{tx.txDate}</TableCell>
-                          <TableCell>
-                            {tx.txType === "borrow_in" ? (
-                              <span className="flex items-center gap-1 text-green-600">
-                                <ArrowDownToLine className="w-4 h-4" />
-                                {labels.borrowIn}
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-orange-600">
-                                <ArrowUpFromLine className="w-4 h-4" />
-                                {labels.borrowOut}
-                              </span>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.id} data-testid={`row-tx-${tx.id}`}>
+                        <TableCell className="whitespace-nowrap">{tx.txDate}</TableCell>
+                        <TableCell>
+                          {tx.txType === "borrow_in" ? (
+                            <span className="flex items-center gap-1 text-green-600 font-medium">
+                              <ArrowDownToLine className="w-4 h-4" />
+                              {labels.borrowIn}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-orange-600 font-medium">
+                              <ArrowUpFromLine className="w-4 h-4" />
+                              {labels.borrowOut}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{tx.branch}</TableCell>
+                        <TableCell>{tx.item}</TableCell>
+                        <TableCell className="text-right font-mono">{tx.qty} {tx.unit}</TableCell>
+                        <TableCell>{getStatusBadge(tx)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {tx.status === "pending" && isManager && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleMarkReturned(tx.id)}
+                                data-testid={`button-return-${tx.id}`}
+                                className="h-8 w-8 p-0"
+                                title={labels.markReturned}
+                              >
+                                <Check className="w-4 h-4 text-green-600" />
+                              </Button>
                             )}
-                          </TableCell>
-                          <TableCell>{branch?.name || tx.branchId}</TableCell>
-                          <TableCell>{item?.name || tx.itemId}</TableCell>
-                          <TableCell className="text-right">{tx.qty} {tx.unit}</TableCell>
-                          <TableCell>{getStatusBadge(tx)}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              {tx.status === "pending" && isManager && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleMarkReturned(tx.id)}
-                                  data-testid={`button-return-${tx.id}`}
-                                >
-                                  <Check className="w-4 h-4 mr-1" />
-                                  {labels.markReturned}
-                                </Button>
-                              )}
-                              {isManager && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDelete(tx.id)}
-                                  data-testid={`button-delete-${tx.id}`}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                            {isManager && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(tx.id)}
+                                data-testid={`button-delete-${tx.id}`}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title={labels.delete}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

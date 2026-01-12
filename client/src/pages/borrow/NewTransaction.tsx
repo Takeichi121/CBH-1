@@ -1,477 +1,521 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useLanguage } from "@/lib/i18n";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  FilePlus,
-  ArrowDownLeft,
-  ArrowUpRight,
-  ShoppingCart,
-  Plus,
-  Minus,
-  Trash2,
-  X,
-  Search,
-  Check,
-} from "lucide-react";
-import type { Branch, Item, CartItem } from "@shared/schema";
+  import { useEffect, useMemo, useRef, useState } from "react";
+  import { useLanguage } from "@/lib/i18n";
+  import { useQuery, useMutation } from "@tanstack/react-query";
+  import { queryClient, apiRequest } from "@/lib/queryClient";
+  import { useToast } from "@/hooks/use-toast";
+  import { useLocation } from "wouter";
+  import type { BorrowBranch, BorrowItem } from "@shared/schema";
 
-const PREDEFINED_UNITS = ["CASE", "PACK", "CASE PACK", "PCS", "BAG", "TRAY", "CAN", "TANK", "ROLL", "BOX", "GAL", "BTL"];
+  // --- UI Components Imports ---
+  import { Card, CardContent } from "@/components/ui/card";
+  import { Button } from "@/components/ui/button";
+  import { Input } from "@/components/ui/input";
+  import { Label } from "@/components/ui/label";
+  import { Textarea } from "@/components/ui/textarea";
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from "@/components/ui/select";
+  import { Search, X, Plus, Minus, Trash2 } from "lucide-react";
 
-function norm(v: unknown) {
-  return String(v ?? "").trim().toLowerCase();
-}
+  // Type definitions for Cart
+  interface CartItem {
+    id: string;
+    name: string;
+    qty: number;
+    unit: string;
+  }
 
-export default function NewTransaction() {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [, navigate] = useLocation();
+  const PREDEFINED_UNITS = ["CASE", "PACK", "CASE PACK", "PCS", "BAG", "TRAY", "CAN", "TANK", "ROLL", "BOX", "GAL", "BTL"];
 
-  const [txType, setTxType] = useState<"borrow_in" | "borrow_out">("borrow_in");
-  const [branch, setBranch] = useState("");
-  const [txDate, setTxDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [dueDate, setDueDate] = useState("");
-  const [borrower, setBorrower] = useState("");
-  const [lender, setLender] = useState("");
-  const [note, setNote] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState(""); // itemId
-  const [selectedUnit, setSelectedUnit] = useState("");
-  const [qty, setQty] = useState(1);
+  function norm(v: unknown) {
+    return String(v ?? "").trim().toLowerCase();
+  }
 
-  // ✅ Autocomplete (items)
-  const [itemSearchQuery, setItemSearchQuery] = useState("");
-  const [showItemDropdown, setShowItemDropdown] = useState(false);
-  const [highlightIndex, setHighlightIndex] = useState(0);
-  const itemWrapRef = useRef<HTMLDivElement | null>(null);
-  const itemInputRef = useRef<HTMLInputElement | null>(null);
+  export default function NewTransaction() {
+    const { t } = useLanguage();
+    const { toast } = useToast();
+    const [, navigate] = useLocation();
 
-  const { data: branches, isLoading: branchesLoading } = useQuery<Branch[]>({
-    queryKey: ["/api/branches"],
-  });
+    const [txType, setTxType] = useState<"borrow_in" | "borrow_out">("borrow_in");
+    const [branch, setBranch] = useState("");
+    const [txDate, setTxDate] = useState(() => new Date().toISOString().split("T")[0]);
+    const [dueDate, setDueDate] = useState("");
+    const [borrower, setBorrower] = useState("");
+    const [lender, setLender] = useState("");
+    const [note, setNote] = useState("");
+    const [cart, setCart] = useState<CartItem[]>([]);
 
-  const { data: items, isLoading: itemsLoading } = useQuery<Item[]>({
-    queryKey: ["/api/items"],
-  });
+    // Item selection states
+    const [selectedItem, setSelectedItem] = useState(""); // itemId stored as String
+    const [selectedUnit, setSelectedUnit] = useState("");
+    const [qty, setQty] = useState(1);
 
-  const activeBranches = branches?.filter((b) => b.isActive) || [];
-  const activeItems = items?.filter((i) => i.isActive) || [];
+    // Autocomplete states
+    const [itemSearchQuery, setItemSearchQuery] = useState("");
+    const [showItemDropdown, setShowItemDropdown] = useState(false);
+    const [highlightIndex, setHighlightIndex] = useState(0);
+    const itemWrapRef = useRef<HTMLDivElement | null>(null);
+    const itemInputRef = useRef<HTMLInputElement | null>(null);
 
-  const submitMutation = useMutation({
-    mutationFn: async (data: {
-      txDate: string;
-      dueDate?: string;
-      txType: string;
-      branch: string;
-      borrower: string;
-      lender: string;
-      note: string;
-      items: CartItem[];
-    }) => apiRequest("POST", "/api/transactions", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
-      toast({ title: t.common.success });
-      navigate("/history");
-    },
-    onError: () => toast({ title: t.common.error, variant: "destructive" }),
-  });
+    // ✅ Fetch Branches
+    const { data: branches, isLoading: branchesLoading } = useQuery<BorrowBranch[]>({
+      queryKey: ["/api/borrow/branches"],
+      queryFn: async () => {
+        const res = await apiRequest("POST", "/api/borrow/branches", { token: localStorage.getItem("bk_token") });
+        return res.branches;
+      }
+    });
 
-  const addToCart = () => {
-    if (!selectedItem || qty < 1) return;
+    // ✅ Fetch Items
+    const { data: items, isLoading: itemsLoading } = useQuery<BorrowItem[]>({
+      queryKey: ["/api/borrow/items"],
+      queryFn: async () => {
+        const res = await apiRequest("POST", "/api/borrow/items", { token: localStorage.getItem("bk_token") });
+        return res.items;
+      }
+    });
 
-    const item = activeItems.find((i) => i.id === selectedItem);
-    if (!item) return;
+    const activeBranches = branches?.filter((b) => b.isActive) || [];
+    const activeItems = items?.filter((i) => i.isActive) || [];
 
-    const existingIndex = cart.findIndex((c) => c.id === selectedItem);
-    if (existingIndex >= 0) {
-      const newCart = [...cart];
-      newCart[existingIndex].qty += qty;
-      setCart(newCart);
-    } else {
-      setCart([
-        ...cart,
-        { id: item.id, name: item.name, qty, unit: selectedUnit || item.units?.[0] || "" },
-      ]);
-    }
+    // ✅ Logic to get available units
+    const availableUnits = useMemo(() => {
+      if (!selectedItem) return PREDEFINED_UNITS;
+      // Compare String(i.id) with selectedItem
+      const item = activeItems.find(i => String(i.id) === selectedItem);
+      if (!item || !item.units || item.units.length === 0) return PREDEFINED_UNITS;
 
-    // reset
-    setSelectedItem("");
-    setSelectedUnit("");
-    setQty(1);
-    setItemSearchQuery("");
-    setShowItemDropdown(false);
-    setHighlightIndex(0);
-    itemInputRef.current?.focus();
-  };
+      const parsed = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+      return [...new Set([...parsed, ...PREDEFINED_UNITS])]; 
+    }, [selectedItem, activeItems]);
 
-  const updateCartQty = (id: string, delta: number) => {
-    setCart(cart.map((c) => (c.id === id ? { ...c, qty: Math.max(1, c.qty + delta) } : c)));
-  };
+    // ✅ Submit Mutation (Fixed: Branch Type)
+    const submitMutation = useMutation({
+      mutationFn: async () => {
+        const token = localStorage.getItem("bk_token");
+        const promises = cart.map(item => 
+          apiRequest("POST", "/api/borrow/transactions/add", {
+            token,
+            txDate,
+            dueDate: dueDate || undefined,
+            txType,
+            branch:branch, // Convert String back to Number for API
+            item: item.name,
+            qty: item.qty,
+            unit: item.unit,
+            borrower,
+            lender,
+            note
+          })
+        );
+        return Promise.all(promises);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/borrow/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/borrow/dashboard"] });
+        toast({ title: t.common.success });
+        navigate("/borrow/history");
+      },
+      onError: (err: any) => {
+        toast({ title: err.message || t.common.error, variant: "destructive" });
+      },
+    });
 
-  const removeFromCart = (id: string) => setCart(cart.filter((c) => c.id !== id));
-  const clearCart = () => setCart([]);
+    // ✅ Add To Cart (Fixed: ID Type Matching)
+    const addToCart = () => {
+      if (!selectedItem || qty < 1) return;
 
-  const updateCartUnit = (id: string, newUnit: string) => {
-    setCart(prev => prev.map(item => 
-      item.id === id ? { ...item, unit: newUnit } : item
-    ));
-  };
+      // Convert i.id to String for comparison
+      const item = activeItems.find((i) => String(i.id) === selectedItem);
+      if (!item) return;
 
-  const handleSubmit = () => {
-    if (!branch || cart.length === 0) return;
-    submitMutation.mutate({ txDate, dueDate: dueDate || undefined, txType, branch, borrower, lender, note, items: cart });
-  };
+      const finalUnit = selectedUnit || availableUnits[0] || "PCS"; 
 
-  const totalItems = cart.reduce((sum, c) => sum + c.qty, 0);
+      // Check cart (cart ids are strings)
+      const existingIndex = cart.findIndex((c) => c.id === selectedItem && c.unit === finalUnit); 
 
-  // ===== autocomplete list =====
-  const q = useMemo(() => norm(itemSearchQuery), [itemSearchQuery]);
+      if (existingIndex >= 0) {
+        const newCart = [...cart];
+        newCart[existingIndex].qty += qty;
+        setCart(newCart);
+      } else {
+        setCart([
+          ...cart,
+          { 
+            id: String(item.id), // Store ID as String in Cart
+            name: item.name, 
+            qty, 
+            unit: finalUnit 
+          },
+        ]);
+      }
 
-  const filteredItems = useMemo(() => {
-    const list = activeItems;
-    if (!q) return list.slice(0, 20);
-    return list
-      .filter((it) => `${it.code ?? ""} ${it.name ?? ""}`.toLowerCase().includes(q))
-      .slice(0, 20);
-  }, [activeItems, q]);
+      // Reset fields
+      setSelectedItem("");
+      setSelectedUnit("");
+      setQty(1);
+      setItemSearchQuery("");
+      setShowItemDropdown(false);
+      setHighlightIndex(0);
+      itemInputRef.current?.focus();
+    };
 
-  const pickItem = (it: Item) => {
-    setSelectedItem(it.id);
-    setSelectedUnit(it.units?.[0] || "");
-    setItemSearchQuery(it.code ? `${it.code} - ${it.name}` : it.name);
-    setShowItemDropdown(false);
-    setHighlightIndex(0);
-  };
+    const updateCartQty = (id: string, delta: number) => {
+      setCart(cart.map((c) => (c.id === id ? { ...c, qty: Math.max(1, c.qty + delta) } : c)));
+    };
 
-  // ✅ ESC close
-  useEffect(() => {
-    if (!showItemDropdown) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowItemDropdown(false);
-        itemInputRef.current?.blur();
+    const removeFromCart = (id: string) => setCart(cart.filter((c) => c.id !== id));
+    const clearCart = () => setCart([]);
+
+    const updateCartUnit = (id: string, newUnit: string) => {
+      setCart(prev => prev.map(item => 
+        item.id === id ? { ...item, unit: newUnit } : item
+      ));
+    };
+
+    const handleSubmit = () => {
+      if (!branch || cart.length === 0) return;
+      submitMutation.mutate();
+    };
+
+    const totalItems = cart.reduce((sum, c) => sum + c.qty, 0);
+
+    // ===== Autocomplete Logic =====
+    const q = useMemo(() => norm(itemSearchQuery), [itemSearchQuery]);
+
+    const filteredItems = useMemo(() => {
+      const list = activeItems;
+      if (!q) return list.slice(0, 20);
+      return list
+        .filter((it) => `${it.code ?? ""} ${it.name ?? ""}`.toLowerCase().includes(q))
+        .slice(0, 20);
+    }, [activeItems, q]);
+
+    // ✅ Pick Item (Fixed: Duplicate function removed & String conversion added)
+    const pickItem = (it: BorrowItem) => {
+      setSelectedItem(String(it.id)); // Convert ID to String
+
+      // Auto-select first unit based on split logic
+      const rawUnits = it.units || [];
+      const parsed = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+      setSelectedUnit(parsed[0] || "");
+
+      setItemSearchQuery(it.code ? `${it.code} - ${it.name}` : it.name);
+      setShowItemDropdown(false);
+      setHighlightIndex(0);
+    };
+
+    // Events for Dropdown
+    useEffect(() => {
+      if (!showItemDropdown) return;
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setShowItemDropdown(false);
+          itemInputRef.current?.blur();
+        }
+      };
+      document.addEventListener("keydown", onKeyDown);
+      return () => document.removeEventListener("keydown", onKeyDown);
+    }, [showItemDropdown]);
+
+    useEffect(() => {
+      if (!showItemDropdown) return;
+      const onPointerDown = (e: MouseEvent | TouchEvent) => {
+        const target = e.target as Node | null;
+        if (!target) return;
+        if (!itemWrapRef.current?.contains(target)) setShowItemDropdown(false);
+      };
+      document.addEventListener("mousedown", onPointerDown);
+      document.addEventListener("touchstart", onPointerDown);
+      return () => {
+        document.removeEventListener("mousedown", onPointerDown);
+        document.removeEventListener("touchstart", onPointerDown);
+      };
+    }, [showItemDropdown]);
+
+    // ✅ Added type for 'e'
+    const onItemInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!showItemDropdown) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIndex((cur) => Math.min(cur + 1, Math.max(filteredItems.length - 1, 0)));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIndex((cur) => Math.max(cur - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (filteredItems[highlightIndex]) {
+          pickItem(filteredItems[highlightIndex]);
+        }
       }
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [showItemDropdown]);
 
-  // ✅ outside click close
-  useEffect(() => {
-    if (!showItemDropdown) return;
-    const onPointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (!itemWrapRef.current?.contains(target)) setShowItemDropdown(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("touchstart", onPointerDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("touchstart", onPointerDown);
-    };
-  }, [showItemDropdown]);
+    return (
+      <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6 space-y-6 bg-background">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Add Transaction</h1>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/borrow/history")}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-  const onItemInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showItemDropdown) return;
+        <Card className="border-none shadow-none md:border md:shadow-sm">
+          <CardContent className="p-0 md:p-6 space-y-4">
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlightIndex((cur) => Math.min(cur + 1, Math.max(filteredItems.length - 1, 0)));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlightIndex((cur) => Math.max(cur - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const pick = filteredItems[highlightIndex] || filteredItems[0];
-      if (pick) pickItem(pick);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setShowItemDropdown(false);
-      itemInputRef.current?.blur();
-    }
-  };
-
-  const searchPlaceholder = (t as any)?.newTx?.searchPlaceholder || "Search items...";
-  const noResultsText = (t as any)?.common?.noResults || "No results";
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-2">
-        <FilePlus className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">{t.newTx.title}</h1>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Transaction Form */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardContent className="pt-6 space-y-6">
-              {/* Transaction Type */}
-              <div className="space-y-3">
-                <Label>{t.newTx.txType}</Label>
-                <RadioGroup
-                  value={txType}
-                  onValueChange={(v) => setTxType(v as "borrow_in" | "borrow_out")}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="borrow_in" id="borrow_in" />
-                    <Label htmlFor="borrow_in" className="flex items-center gap-2 cursor-pointer font-normal">
-                      <ArrowDownLeft className="h-4 w-4 text-chart-2" />
-                      {t.newTx.borrowIn}
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="borrow_out" id="borrow_out" />
-                    <Label htmlFor="borrow_out" className="flex items-center gap-2 cursor-pointer font-normal">
-                      <ArrowUpRight className="h-4 w-4 text-destructive" />
-                      {t.newTx.borrowOut}
-                    </Label>
-                  </div>
-                </RadioGroup>
+            {/* Row 1: Date and Due Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input 
+                  type="date" 
+                  value={txDate} 
+                  onChange={(e) => setTxDate(e.target.value)} 
+                  className="border-primary/50"
+                />
               </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input 
+                  type="date" 
+                  value={dueDate} 
+                  onChange={(e) => setDueDate(e.target.value)} 
+                />
+              </div>
+            </div>
 
-              {/* Add Item Section */}
-              <div className="pt-2 pb-2 border-t border-b border-border">
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div className="flex-1 min-w-48 space-y-2" ref={itemWrapRef}>
-                    <Label>{t.newTx.selectItem}</Label>
-                    {itemsLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <div className="relative">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                          <Input
-                            ref={itemInputRef}
-                            placeholder={searchPlaceholder}
-                            value={itemSearchQuery}
-                            onChange={(e) => {
-                              setItemSearchQuery(e.target.value);
-                              setShowItemDropdown(true);
-                              setSelectedItem("");
-                              setHighlightIndex(0);
-                            }}
-                            onFocus={() => setShowItemDropdown(true)}
-                            onKeyDown={onItemInputKeyDown}
-                            className="pl-9"
-                            data-testid="input-item-search"
-                          />
-                        </div>
-                        {showItemDropdown && (
-                          <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {filteredItems.length === 0 ? (
-                              <div className="p-3 text-center text-muted-foreground text-sm">
-                                {noResultsText}
-                              </div>
-                            ) : (
-                              filteredItems.map((it, idx) => (
-                                <div
-                                  key={it.id}
-                                  onClick={() => pickItem(it)}
-                                  className={`px-3 py-2 cursor-pointer flex items-center gap-2 ${
-                                    idx === highlightIndex ? "bg-accent" : "hover:bg-muted"
-                                  } ${selectedItem === it.id ? "font-medium" : ""}`}
-                                  data-testid={`dropdown-item-${it.id}`}
-                                >
-                                  {selectedItem === it.id && <Check className="h-4 w-4 text-primary" />}
-                                  <span className={selectedItem === it.id ? "" : "ml-6"}>
-                                    {it.code ? `${it.code} - ${it.name}` : it.name}
-                                  </span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+            {/* Row 2: Transaction Type */}
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={txType} onValueChange={(v: any) => setTxType(v)}>
+                <SelectTrigger className="bg-muted/20">
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="borrow_out">Borrow Out (ยืมออก)</SelectItem>
+                  <SelectItem value="borrow_in">Borrow In (ยืมเข้า)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                  <div className="w-24 space-y-2">
-                    <Label>{t.newTx.qty}</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={qty}
-                      onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    />
-                  </div>
+            {/* Row 3: Branch */}
+            <div className="space-y-2">
+              <Label>Branch</Label>
+              <Select value={branch} onValueChange={setBranch}>
+                <SelectTrigger className="bg-muted/20">
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeBranches.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)}> {/* ✅ Fixed: String(b.id) */}
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                  <Button onClick={addToCart} disabled={!selectedItem || qty < 1}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    {t.newTx.add}
-                  </Button>
+            <div className="my-4 border-t" />
+
+            {/* Row 4: Item Selection (Autocomplete) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+              {/* Item Search Input */}
+              <div className="md:col-span-6 space-y-2 relative" ref={itemWrapRef}>
+                <Label>Item</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    ref={itemInputRef}
+                    placeholder="Select item..."
+                    className="pl-9 bg-muted/20"
+                    value={itemSearchQuery}
+                    onChange={(e) => {
+                      setItemSearchQuery(e.target.value);
+                      setSelectedItem(""); // Clear selection on type
+                      setShowItemDropdown(true);
+                    }}
+                    onFocus={() => setShowItemDropdown(true)}
+                    onKeyDown={onItemInputKeyDown}
+                  />
                 </div>
 
-                {cart.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <Button className="w-full" onClick={handleSubmit} disabled={submitMutation.isPending || !branch}>
-                      {t.newTx.submitBill}
-                    </Button>
+                {/* Autocomplete Dropdown */}
+                {showItemDropdown && (
+                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95 max-h-[200px] overflow-y-auto">
+                    {filteredItems.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground text-center">No items found</div>
+                    ) : (
+                      filteredItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className={`cursor-pointer select-none relative flex items-center rounded-sm px-2 py-1.5 text-sm outline-none ${
+                            index === highlightIndex ? "bg-accent text-accent-foreground" : ""
+                          }`}
+                          onClick={() => pickItem(item)}
+                          onMouseEnter={() => setHighlightIndex(index)}
+                        >
+                          <span className="font-mono text-xs text-muted-foreground mr-2 w-12 shrink-0">
+                            {item.code}
+                          </span>
+                          <span className="truncate">{item.name}</span>
+                          <span className="ml-auto text-xs text-muted-foreground opacity-70">
+                             {item.units?.join(", ")}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Branch & Date */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t.newTx.branch}</Label>
-                  {branchesLoading ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select value={branch} onValueChange={setBranch}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t.newTx.selectBranch} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeBranches.map((b) => (
-                          <SelectItem key={b.id} value={b.name}>
-                            {b.code ? `${b.code} - ${b.name}` : b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t.newTx.date}</Label>
-                  <Input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} data-testid="input-tx-date" />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t.newTx.dueDate}</Label>
-                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} data-testid="input-due-date" />
-                </div>
-              </div>
-
-              {/* Borrower & Lender */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t.newTx.borrower}</Label>
-                  <Input value={borrower} onChange={(e) => setBorrower(e.target.value)} placeholder={t.newTx.borrowerPlaceholder} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t.newTx.lender}</Label>
-                  <Input value={lender} onChange={(e) => setLender(e.target.value)} placeholder={t.newTx.lenderPlaceholder} />
-                </div>
-              </div>
-
-              {/* Note */}
-              <div className="space-y-2">
-                <Label>{t.newTx.note}</Label>
-                <Textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={t.newTx.notePlaceholder}
-                  className="min-h-20"
+              {/* Qty */}
+              <div className="md:col-span-2 space-y-2">
+                <Label>Qty</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={qty}
+                  onChange={(e) => setQty(Number(e.target.value))}
+                  onKeyDown={(e) => e.key === 'Enter' && addToCart()}
+                  className="bg-muted/20"
                 />
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Cart */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-24">
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                {t.newTx.cart}
-              </CardTitle>
-              {cart.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearCart}>
-                  <X className="h-4 w-4" />
+              {/* Unit */}
+              <div className="md:col-span-2 space-y-2">
+                <Label>Unit</Label>
+                 <Select 
+                    value={selectedUnit} 
+                    onValueChange={setSelectedUnit}
+                    disabled={!selectedItem}
+                  >
+                  <SelectTrigger className="bg-muted/20">
+                    <SelectValue placeholder="Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUnits.map((u) => (
+                      <SelectItem key={u} value={u}>{u}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Add Button */}
+              <div className="md:col-span-2 pb-0.5">
+                <Button 
+                  type="button" 
+                  onClick={addToCart} 
+                  disabled={!selectedItem}
+                  className="w-full"
+                  variant="secondary"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add
                 </Button>
-              )}
-            </CardHeader>
+              </div>
+            </div>
 
-            <CardContent>
-              {cart.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">{t.newTx.emptyCart}</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                        </div>
+            {/* Cart List */}
+            {cart.length > 0 && (
+              <div className="mt-4 border rounded-md overflow-hidden">
+                <div className="bg-muted/50 px-4 py-2 text-xs font-medium uppercase text-muted-foreground grid grid-cols-12 gap-2">
+                  <div className="col-span-6">Item</div>
+                  <div className="col-span-2 text-center">Qty</div>
+                  <div className="col-span-3">Unit</div>
+                  <div className="col-span-1"></div>
+                </div>
+                <div className="divide-y">
+                  {cart.map((item) => (
+                    <div key={`${item.id}-${item.unit}`} className="px-4 py-2 text-sm grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-6 font-medium truncate">{item.name}</div>
 
-                        <div className="flex items-center gap-1">
-                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateCartQty(item.id, -1)}>
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center font-mono font-medium">{item.qty}</span>
-                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateCartQty(item.id, 1)}>
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      {/* Qty Control */}
+                      <div className="col-span-2 flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateCartQty(item.id, -1)}>
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center">{item.qty}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateCartQty(item.id, 1)}>
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
 
-                        <div className="w-[80px]">
-                          <Select 
-                            value={item.unit || ""} 
-                            onValueChange={(value) => updateCartUnit(item.id, value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(() => {
-                                const sourceItem = activeItems.find(i => i.id === item.id);
-                                const itemUnits = sourceItem?.units || [];
-                                const allUnits = [...new Set([...itemUnits, ...PREDEFINED_UNITS])];
-                                return allUnits.map((u) => (
-                                  <SelectItem key={u} value={u}>
-                                    {u}
-                                  </SelectItem>
-                                ));
-                              })()}
-                            </SelectContent>
+                      {/* Unit Display/Edit */}
+                      <div className="col-span-3">
+                          <Select value={item.unit} onValueChange={(val) => updateCartUnit(item.id, val)}>
+                              <SelectTrigger className="h-8 border-none shadow-none focus:ring-0">
+                                  <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {PREDEFINED_UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                              </SelectContent>
                           </Select>
-                        </div>
+                      </div>
 
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeFromCart(item.id)}>
+                      {/* Delete */}
+                      <div className="col-span-1 text-right">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/80" onClick={() => removeFromCart(item.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-4 border-t border-border">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-muted-foreground">{t.newTx.total}:</span>
-                      <span className="font-bold text-lg">
-                        {totalItems} {t.newTx.items}
-                      </span>
                     </div>
-                    <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitMutation.isPending || !branch}>
-                      {t.newTx.submitBill}
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+
+            <div className="my-4 border-t" />
+
+            {/* Row 5: People */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Borrower</Label>
+                <Input 
+                  value={borrower}
+                  onChange={(e) => setBorrower(e.target.value)}
+                  className="bg-muted/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Lender</Label>
+                <Input 
+                  value={lender}
+                  onChange={(e) => setLender(e.target.value)}
+                  className="bg-muted/20"
+                />
+              </div>
+            </div>
+
+            {/* Row 6: Note */}
+            <div className="space-y-2">
+              <Label>Note</Label>
+              <Textarea 
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="bg-muted/20 resize-none"
+                rows={2}
+              />
+            </div>
+
+          </CardContent>
+        </Card>
+
+        {/* Footer Buttons */}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="outline" onClick={() => navigate("/borrow/history")}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={submitMutation.isPending || cart.length === 0 || !branch}
+            className="bg-[#8B5E3C] hover:bg-[#6F4B30] text-white" 
+          >
+            {submitMutation.isPending ? "Saving..." : "Save"}
+          </Button>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

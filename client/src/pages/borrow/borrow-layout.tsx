@@ -1,7 +1,14 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
-import { LayoutDashboard, FileText, Settings, HelpCircle } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  FileText, 
+  Settings, 
+  HelpCircle, 
+  ShoppingBag, // เพิ่มไอคอนสำหรับ Items
+  Store        // เพิ่มไอคอนสำหรับ Branches
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BorrowLayoutProps {
@@ -20,7 +27,7 @@ export function BorrowLayout({ children }: BorrowLayoutProps) {
     },
     {
       href: "/borrow/transactions",
-      label: language === "th" ? "รายการ" : "Transactions",
+      label: language === "th" ? "รายการยืม-คืน" : "Transactions",
       icon: FileText,
     },
     {
@@ -37,19 +44,21 @@ export function BorrowLayout({ children }: BorrowLayoutProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 border-b pb-2">
+      <div className="flex flex-wrap gap-2 border-b pb-2 overflow-x-auto">
         {tabs.map((tab) => {
+          // Logic การเช็ค Active state
           const isActive = location === tab.href || 
             (tab.href !== "/borrow" && location.startsWith(tab.href));
           const isExactDashboard = tab.href === "/borrow" && location === "/borrow";
           const active = isExactDashboard || (tab.href !== "/borrow" && isActive);
-          
+
           const tabId = tab.href === "/borrow" ? "dashboard" : tab.href.replace("/borrow/", "");
+
           return (
             <Link key={tab.href} href={tab.href}>
               <a
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -57,13 +66,16 @@ export function BorrowLayout({ children }: BorrowLayoutProps) {
                 data-testid={`tab-borrow-${tabId}`}
               >
                 <tab.icon className="w-4 h-4" data-testid={`icon-borrow-${tabId}`} />
+                {/* แสดง text ตลอด หรือจะซ่อนในมือถือก็ได้ (ในที่นี้เปิดไว้เพื่อให้กดง่าย) */}
                 <span className="hidden sm:inline" data-testid={`text-borrow-${tabId}`}>{tab.label}</span>
+                {/* Show icon only on very small screens if needed, otherwise span above handles it */}
+                <span className="sm:hidden inline">{tab.label}</span>
               </a>
             </Link>
           );
         })}
       </div>
-      <div>{children}</div>
+      <div className="min-h-screen">{children}</div>
     </div>
   );
 }

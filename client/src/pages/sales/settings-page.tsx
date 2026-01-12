@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 
 type DailyTarget = {
   id?: number;
@@ -19,11 +19,11 @@ type DailySalesData = {
   date: string;
   actualSales: number;
   actualTc: number;
-  laborHour: number;
-  wasteRawDaily: number;
-  wasteMealDaily: number;
-  wasteRawMtd: number;
-  wasteMealMtd: number;
+  recommendHours: number;
+  rosterCommit: number;
+  actualHours: number;
+  otHours: number;
+  wasteDaily: number;
 };
 
 type WasteTarget = {
@@ -59,30 +59,35 @@ export default function SalesSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingTargets, setIsSavingTargets] = useState(false);
+  const [isSavingSales, setIsSavingSales] = useState(false);
+  const [isSavingWaste, setIsSavingWaste] = useState(false);
+  const [isSavingParams, setIsSavingParams] = useState(false);
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [dailyTargets, setDailyTargets] = useState<Record<string, string>>({});
-  const [dailySalesData, setDailySalesData] = useState<Record<string, DailySalesData>>({});
+  
   const [editableSalesData, setEditableSalesData] = useState<Record<string, {
     actualSales: string;
     actualTc: string;
-    laborHour: string;
-    wasteRawDaily: string;
-    wasteMealDaily: string;
+    recommendHours: string;
+    rosterCommit: string;
+    actualHours: string;
+    otHours: string;
+    wasteDaily: string;
   }>>({});
+
   const [defaultTarget, setDefaultTarget] = useState("130000");
-  const [isSavingSales, setIsSavingSales] = useState(false);
   const [wasteTargets, setWasteTargets] = useState<WasteTarget>({
-    mtdAmount: "0",
-    mtdPercent: "0",
-    mealAmount: "0",
-    mealPercent: "0",
-    rawAmount: "0",
-    rawPercent: "0",
+    mtdAmount: "0", mtdPercent: "0", mealAmount: "0", mealPercent: "0", rawAmount: "0", rawPercent: "0",
   });
-  const [isSavingWaste, setIsSavingWaste] = useState(false);
+
+  const [dutyTeamHours, setDutyTeamHours] = useState("40");
+  const [hourlyRate, setHourlyRate] = useState("84");
+
+  const DUTY_TEAM_HOURS = parseFloat(dutyTeamHours) || 40;
+  const HOURLY_RATE = parseFloat(hourlyRate) || 84;
 
   const t = {
     title: language === "th" ? "ตั้งค่าร้านค้า" : "Store Settings",
@@ -91,43 +96,44 @@ export default function SalesSettingsPage() {
     storeName: language === "th" ? "ชื่อร้าน" : "Store Name",
     storeCode: language === "th" ? "รหัสร้าน" : "Store Code",
     dailyTargets: language === "th" ? "เป้าหมายและยอดขายรายวัน" : "Daily Targets & Sales",
-    date: language === "th" ? "วันที่" : "Date",
-    targetSales: language === "th" ? "เป้าหมาย (Daily)" : "Target Sales (Daily)",
-    actualSales: language === "th" ? "ยอดจริง (Daily)" : "Actual Sales (Daily)",
-    actualSalesMtd: language === "th" ? "ยอดจริง MTD" : "Actual Sales MTD",
-    actualTc: language === "th" ? "TC (Daily)" : "Actual TC (Daily)",
-    actualTcMtd: language === "th" ? "TC MTD" : "Actual TC MTD",
-    laborHour: language === "th" ? "ชั่วโมง (Daily)" : "Labor Hr",
-    laborHourMtd: language === "th" ? "ชั่วโมงสะสม (MTD)" : "Labor MTD",
     save: language === "th" ? "บันทึก" : "Save",
     saving: language === "th" ? "กำลังบันทึก..." : "Saving...",
     saved: language === "th" ? "บันทึกแล้ว" : "Saved",
     savedDesc: language === "th" ? "การตั้งค่าถูกบันทึกเรียบร้อยแล้ว" : "Settings have been saved successfully",
-    savedTargets: language === "th" ? "บันทึกเป้าหมายรายวันเรียบร้อย" : "Daily targets saved successfully",
     errorSave: language === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save",
     defaultTarget: language === "th" ? "เป้าเริ่มต้น" : "Default Target",
     applyAll: language === "th" ? "ใช้กับทุกวัน" : "Apply to All",
-    total: "Total",
     months: language === "th" 
       ? ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
       : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    wasteRawDaily: language === "th" ? "Waste Daily (Raw)" : "Waste Daily (Raw)",
-    wasteMealDaily: language === "th" ? "Meal Waste (Daily)" : "Meal Waste (Daily)",
-    wasteRawMtd: language === "th" ? "Waste MTD (Raw)" : "Waste MTD (Raw)",
-    wasteMealMtd: language === "th" ? "Meal Waste MTD" : "Meal Waste MTD",
-    wasteMtd: "MTD",
-    wasteMtdAmount: language === "th" ? "MTD (฿)" : "MTD (฿)",
-    wasteMtdPercent: language === "th" ? "MTD %" : "MTD %",
-    wasteMealAmount: language === "th" ? "Meal (฿)" : "Meal (฿)",
-    wasteMealPercent: language === "th" ? "Meal %" : "Meal %",
-    wasteRawAmount: language === "th" ? "Raw (฿)" : "Raw (฿)",
-    wasteRawPercent: language === "th" ? "Raw %" : "Raw %",
-    wasteTargets: language === "th" ? "เป้าหมาย Waste MTD" : "Waste MTD Targets",
+    date: language === "th" ? "วันที่" : "Date",
+    targetSales: language === "th" ? "เป้าหมาย" : "Target",
+    actSales: "Actual Sales",
+    actSalesMtd: "Sales MTD",
+    actTc: "Actual TC",
+    actTcMtd: "TC MTD",
+    recHours: "Recommend Hr",
+    roster: "Roster Commit",
+    mtdRoster: "MTD Roster",
+    dutyTeam: "Duty Team",
+    actHours: "Actual Hr",
+    otHours: "OT Hr",
+    sumHours: "Summary Hr",
+    mtdHours: "MTD Hr",
+    variance: "Variance Hr",
+    colBath: "COL (฿)",
+    mtdCol: "MTD COL",
+    colPercent: "COL %",
+    tcmh: "TCMH",
+    wasteDaily: "Waste (฿)",
+    wasteMtd: "Waste MTD",
+    wastePercent: "Waste %",
+    laborParams: language === "th" ? "พารามิเตอร์ Labor" : "Labor Parameters",
+    dutyTeamLabel: language === "th" ? "Duty Team Hours (ชม./วัน)" : "Duty Team Hours (hr/day)",
+    pphLabel: language === "th" ? "PPH - ค่าแรงต่อชั่วโมง (฿)" : "PPH - Hourly Rate (฿)",
   };
 
-  const daysInMonth = useMemo(() => {
-    return getDaysInMonth(selectedYear, selectedMonth);
-  }, [selectedYear, selectedMonth]);
+  const daysInMonth = useMemo(() => getDaysInMonth(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
 
   const monthDates = useMemo(() => {
     return Array.from({ length: daysInMonth }, (_, i) => {
@@ -144,24 +150,38 @@ export default function SalesSettingsPage() {
   const tableData = useMemo(() => {
     let runningActualSales = 0;
     let runningActualTc = 0;
-    let runningLaborHour = 0;
-    let runningWasteRaw = 0;
-    let runningWasteMeal = 0;
+    let runningRoster = 0;
+    let runningWorkHours = 0;
+    let runningCol = 0;
+    let runningWaste = 0;
     
     return monthDates.map(({ date, day, displayDate }) => {
       const targetSales = parseFloat(dailyTargets[date]) || 0;
-      const editable = editableSalesData[date];
-      const actualSales = editable ? parseFloat(editable.actualSales) || 0 : 0;
-      const actualTc = editable ? parseFloat(editable.actualTc) || 0 : 0;
-      const laborHour = editable ? parseFloat(editable.laborHour) || 0 : 0;
-      const wasteRawDaily = editable ? parseFloat(editable.wasteRawDaily) || 0 : 0;
-      const wasteMealDaily = editable ? parseFloat(editable.wasteMealDaily) || 0 : 0;
+      const editable = editableSalesData[date] || {};
+      
+      const actualSales = parseFloat(editable.actualSales) || 0;
+      const actualTc = parseFloat(editable.actualTc) || 0;
+      const recommendHours = parseFloat(editable.recommendHours) || 0;
+      const rosterCommit = parseFloat(editable.rosterCommit) || 0;
+      const actualHours = parseFloat(editable.actualHours) || 0;
+      const otHours = parseFloat(editable.otHours) || 0;
+      const wasteDaily = parseFloat(editable.wasteDaily) || 0;
       
       runningActualSales += actualSales;
       runningActualTc += actualTc;
-      runningLaborHour += laborHour;
-      runningWasteRaw += wasteRawDaily;
-      runningWasteMeal += wasteMealDaily;
+      runningRoster += rosterCommit;
+      runningWaste += wasteDaily;
+
+      const summaryHours = DUTY_TEAM_HOURS + actualHours + otHours;
+      runningWorkHours += summaryHours;
+      const varianceHours = recommendHours - summaryHours;
+
+      const colDaily = summaryHours * HOURLY_RATE;
+      runningCol += colDaily;
+      const colPercent = actualSales > 0 ? (colDaily / actualSales) * 100 : 0;
+      
+      const tcmh = summaryHours > 0 ? actualTc / summaryHours : 0;
+      const wastePercent = actualSales > 0 ? (wasteDaily / actualSales) * 100 : 0;
       
       return {
         date,
@@ -172,25 +192,45 @@ export default function SalesSettingsPage() {
         actualSalesMtd: runningActualSales,
         actualTc,
         actualTcMtd: runningActualTc,
-        laborHour,
-        laborHourMtd: runningLaborHour,
-        wasteRawDaily,
-        wasteMealDaily,
-        wasteRawMtd: runningWasteRaw,
-        wasteMealMtd: runningWasteMeal,
+        recommendHours,
+        rosterCommit,
+        mtdRoster: runningRoster,
+        dutyTeam: DUTY_TEAM_HOURS,
+        actualHours,
+        otHours,
+        summaryHours,
+        mtdWorkingHours: runningWorkHours,
+        varianceHours,
+        colDaily,
+        mtdCol: runningCol,
+        colPercent,
+        tcmh,
+        wasteDaily,
+        wasteMtd: runningWaste,
+        wastePercent
       };
     });
-  }, [monthDates, dailyTargets, editableSalesData]);
+  }, [monthDates, dailyTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE]);
 
   const totals = useMemo(() => {
     const lastRow = tableData[tableData.length - 1];
+    if (!lastRow) return null;
     return {
       targetSales: tableData.reduce((sum, row) => sum + row.targetSales, 0),
       actualSales: tableData.reduce((sum, row) => sum + row.actualSales, 0),
-      actualSalesMtd: lastRow?.actualSalesMtd || 0,
+      actualSalesMtd: lastRow.actualSalesMtd,
       actualTc: tableData.reduce((sum, row) => sum + row.actualTc, 0),
-      actualTcMtd: lastRow?.actualTcMtd || 0,
-      laborHour: tableData.reduce((sum, row) => sum + row.laborHour, 0),
+      actualTcMtd: lastRow.actualTcMtd,
+      recommendHours: tableData.reduce((sum, row) => sum + row.recommendHours, 0),
+      rosterCommit: tableData.reduce((sum, row) => sum + row.rosterCommit, 0),
+      mtdRoster: lastRow.mtdRoster,
+      actualHours: tableData.reduce((sum, row) => sum + row.actualHours, 0),
+      otHours: tableData.reduce((sum, row) => sum + row.otHours, 0),
+      summaryHours: tableData.reduce((sum, row) => sum + row.summaryHours, 0),
+      mtdWorkingHours: lastRow.mtdWorkingHours,
+      colDaily: tableData.reduce((sum, row) => sum + row.colDaily, 0),
+      wasteDaily: tableData.reduce((sum, row) => sum + row.wasteDaily, 0),
+      wasteMtd: lastRow.wasteMtd
     };
   }, [tableData]);
 
@@ -204,6 +244,12 @@ export default function SalesSettingsPage() {
           setStoreName(data.settings.storeName || "BK Grand Diamond");
           setStoreCode(data.settings.storeCode || "BK001GDP");
           setDefaultTarget(data.settings.dailyTarget?.toString() || "130000");
+          if (data.settings.dutyTeamHours) {
+            setDutyTeamHours(data.settings.dutyTeamHours.toString());
+          }
+          if (data.settings.hourlyRate) {
+            setHourlyRate(data.settings.hourlyRate.toString());
+          }
         }
       } catch (error) {
         console.error("Failed to load settings:", error);
@@ -266,35 +312,25 @@ export default function SalesSettingsPage() {
         });
         const data = await res.json();
         if (data.ok && data.reports) {
-          const salesMap: Record<string, DailySalesData> = {};
           const editableMap: Record<string, any> = {};
           data.reports.forEach((report: any) => {
-            salesMap[report.reportDate] = {
-              date: report.reportDate,
-              actualSales: parseFloat(report.actualSales) || 0,
-              actualTc: parseInt(report.transactionCount) || 0,
-              laborHour: parseFloat(report.laborHour) || 0,
-              wasteRawDaily: parseFloat(report.wasteRawDaily) || 0,
-              wasteMealDaily: parseFloat(report.wasteMealDaily) || 0,
-              wasteRawMtd: parseFloat(report.wasteRawMtd) || 0,
-              wasteMealMtd: parseFloat(report.wasteMealMtd) || 0,
-            };
             editableMap[report.reportDate] = {
               actualSales: (parseFloat(report.actualSales) || 0).toString(),
               actualTc: (parseInt(report.transactionCount) || 0).toString(),
-              laborHour: (parseFloat(report.laborHour) || 0).toString(),
-              wasteRawDaily: (parseFloat(report.wasteRawDaily) || 0).toString(),
-              wasteMealDaily: (parseFloat(report.wasteMealDaily) || 0).toString(),
+              recommendHours: (parseFloat(report.recommendHours) || 0).toString(),
+              rosterCommit: (parseFloat(report.rosterCommit) || 0).toString(),
+              actualHours: (parseFloat(report.actualHours) || parseFloat(report.laborHour) || 0).toString(),
+              otHours: (parseFloat(report.otHours) || 0).toString(),
+              wasteDaily: (parseFloat(report.wasteDaily) || (parseFloat(report.wasteRawDaily) || 0) + (parseFloat(report.wasteMealDaily) || 0)).toString(),
             };
           });
-          setDailySalesData(salesMap);
           setEditableSalesData(prev => {
             const newMap = { ...prev };
             monthDates.forEach(({ date }) => {
               if (editableMap[date]) {
                 newMap[date] = editableMap[date];
               } else if (!newMap[date]) {
-                newMap[date] = { actualSales: "", actualTc: "", laborHour: "", wasteRawDaily: "", wasteMealDaily: "" };
+                newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
               }
             });
             return newMap;
@@ -304,7 +340,7 @@ export default function SalesSettingsPage() {
             const newMap = { ...prev };
             monthDates.forEach(({ date }) => {
               if (!newMap[date]) {
-                newMap[date] = { actualSales: "", actualTc: "", laborHour: "", wasteRawDaily: "", wasteMealDaily: "" };
+                newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
               }
             });
             return newMap;
@@ -314,35 +350,10 @@ export default function SalesSettingsPage() {
         console.error("Failed to load daily sales:", error);
       }
     };
-
-    const loadWasteTargets = async () => {
-      try {
-        const token = localStorage.getItem("bk_token");
-        const res = await apiRequest("POST", "/api/sales/getWasteTargets", { 
-          token, 
-          year: selectedYear, 
-          month: selectedMonth 
-        });
-        const data = await res.json();
-        if (data.ok && data.wasteTarget) {
-          setWasteTargets({
-            mtdAmount: data.wasteTarget.mtdAmount || "0",
-            mtdPercent: data.wasteTarget.mtdPercent || "0",
-            mealAmount: data.wasteTarget.mealAmount || "0",
-            mealPercent: data.wasteTarget.mealPercent || "0",
-            rawAmount: data.wasteTarget.rawAmount || "0",
-            rawPercent: data.wasteTarget.rawPercent || "0",
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load waste targets:", error);
-      }
-    };
     
     if (!isLoading) {
       loadDailyTargets();
       loadDailySales();
-      loadWasteTargets();
     }
   }, [selectedYear, selectedMonth, isLoading, monthDates, defaultTarget]);
 
@@ -360,25 +371,38 @@ export default function SalesSettingsPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        toast({
-          title: t.saved,
-          description: t.savedDesc,
-        });
+        toast({ title: t.saved, description: t.savedDesc });
       } else {
-        toast({
-          variant: "destructive",
-          title: t.errorSave,
-          description: data.message || "Unknown error",
-        });
+        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: t.errorSave,
-        description: error.message || "Unknown error",
-      });
+      toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveParams = async () => {
+    setIsSavingParams(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const res = await apiRequest("POST", "/api/sales/updateSettings", {
+        token,
+        settings: {
+          dutyTeamHours: parseFloat(dutyTeamHours) || 40,
+          hourlyRate: parseFloat(hourlyRate) || 84,
+        }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: t.saved, description: language === "th" ? "บันทึกพารามิเตอร์ Labor เรียบร้อย" : "Labor parameters saved" });
+      } else {
+        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
+    } finally {
+      setIsSavingParams(false);
     }
   };
 
@@ -390,81 +414,22 @@ export default function SalesSettingsPage() {
         targetDate: date,
         targetSales: dailyTargets[date] || defaultTarget,
       }));
-      const res = await apiRequest("POST", "/api/sales/saveDailyTargets", {
-        token,
-        targets,
-      });
+      const res = await apiRequest("POST", "/api/sales/saveDailyTargets", { token, targets });
       const data = await res.json();
       if (data.ok) {
-        toast({
-          title: t.saved,
-          description: t.savedTargets,
-        });
+        toast({ title: t.saved, description: language === "th" ? "บันทึกเป้าหมายรายวันเรียบร้อย" : "Daily targets saved" });
       } else {
-        toast({
-          variant: "destructive",
-          title: t.errorSave,
-          description: data.message || "Unknown error",
-        });
+        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: t.errorSave,
-        description: error.message || "Unknown error",
-      });
+      toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
     } finally {
       setIsSavingTargets(false);
     }
   };
 
-  const handleSaveWasteTargets = async () => {
-    setIsSavingWaste(true);
-    try {
-      const token = localStorage.getItem("bk_token");
-      const res = await apiRequest("POST", "/api/sales/saveWasteTargets", {
-        token,
-        year: selectedYear,
-        month: selectedMonth,
-        wasteTarget: wasteTargets,
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast({
-          title: t.saved,
-          description: language === "th" ? "บันทึกเป้าหมาย Waste MTD เรียบร้อย" : "Waste MTD targets saved successfully",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: t.errorSave,
-          description: data.message || "Unknown error",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: t.errorSave,
-        description: error.message || "Unknown error",
-      });
-    } finally {
-      setIsSavingWaste(false);
-    }
-  };
-
-  const handleApplyDefaultToAll = () => {
-    const newTargets = { ...dailyTargets };
-    monthDates.forEach(({ date }) => {
-      newTargets[date] = defaultTarget;
-    });
-    setDailyTargets(newTargets);
-  };
-
   const handleTargetChange = (date: string, value: string) => {
-    setDailyTargets(prev => ({
-      ...prev,
-      [date]: value,
-    }));
+    setDailyTargets(prev => ({ ...prev, [date]: value }));
   };
 
   const handleSalesDataChange = (date: string, field: string, value: string) => {
@@ -487,11 +452,13 @@ export default function SalesSettingsPage() {
           reportDate: date,
           actualSales: parseFloat(editable.actualSales) || 0,
           transactionCount: parseInt(editable.actualTc) || 0,
-          laborHour: parseFloat(editable.laborHour) || 0,
-          wasteRawDaily: parseFloat(editable.wasteRawDaily) || 0,
-          wasteMealDaily: parseFloat(editable.wasteMealDaily) || 0,
+          recommendHours: parseFloat(editable.recommendHours) || 0,
+          rosterCommit: parseFloat(editable.rosterCommit) || 0,
+          actualHours: parseFloat(editable.actualHours) || 0,
+          otHours: parseFloat(editable.otHours) || 0,
+          wasteDaily: parseFloat(editable.wasteDaily) || 0,
         };
-      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.laborHour > 0 || d.wasteRawDaily > 0 || d.wasteMealDaily > 0);
+      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0);
       
       const res = await apiRequest("POST", "/api/sales/saveDailySalesData", {
         token,
@@ -501,23 +468,12 @@ export default function SalesSettingsPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        toast({
-          title: t.saved,
-          description: language === "th" ? "บันทึกข้อมูลยอดขายรายวันเรียบร้อย" : "Daily sales data saved successfully",
-        });
+        toast({ title: t.saved, description: language === "th" ? "บันทึกข้อมูลยอดขายรายวันเรียบร้อย" : "Daily sales data saved" });
       } else {
-        toast({
-          variant: "destructive",
-          title: t.errorSave,
-          description: data.message || "Unknown error",
-        });
+        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: t.errorSave,
-        description: error.message || "Unknown error",
-      });
+      toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
     } finally {
       setIsSavingSales(false);
     }
@@ -541,7 +497,16 @@ export default function SalesSettingsPage() {
     }
   };
 
-  const formatNumber = (num: number) => num.toLocaleString('en-US');
+  const handleApplyDefaultToAll = () => {
+    const newTargets = { ...dailyTargets };
+    monthDates.forEach(({ date }) => {
+      newTargets[date] = defaultTarget;
+    });
+    setDailyTargets(newTargets);
+  };
+
+  const fmtNum = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const fmtDec = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (isLoading) {
     return (
@@ -557,9 +522,7 @@ export default function SalesSettingsPage() {
     <SalesLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-settings-title">
-            {t.title}
-          </h1>
+          <h1 className="text-2xl font-bold" data-testid="text-settings-title">{t.title}</h1>
           <p className="text-muted-foreground text-sm">{t.subtitle}</p>
         </div>
 
@@ -571,42 +534,48 @@ export default function SalesSettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="storeName">{t.storeName}</Label>
-                <Input
-                  id="storeName"
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                  data-testid="input-store-name"
-                />
+                <Input id="storeName" value={storeName} onChange={(e) => setStoreName(e.target.value)} data-testid="input-store-name" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="storeCode">{t.storeCode}</Label>
-                <Input
-                  id="storeCode"
-                  value={storeCode}
-                  onChange={(e) => setStoreCode(e.target.value)}
-                  data-testid="input-store-code"
-                />
+                <Input id="storeCode" value={storeCode} onChange={(e) => setStoreCode(e.target.value)} data-testid="input-store-code" />
               </div>
             </div>
             <div className="pt-2 flex justify-end">
               <Button onClick={handleSaveStore} disabled={isSaving} data-testid="button-save-store">
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {t.saving}
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    {t.save}
-                  </>
-                )}
+                {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.saving}</> : <><Save className="w-4 h-4 mr-2" />{t.save}</>}
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              {t.laborParams}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dutyTeamHours">{t.dutyTeamLabel}</Label>
+                <Input id="dutyTeamHours" type="number" value={dutyTeamHours} onChange={(e) => setDutyTeamHours(e.target.value)} data-testid="input-duty-team-hours" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hourlyRate">{t.pphLabel}</Label>
+                <Input id="hourlyRate" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} data-testid="input-hourly-rate" />
+              </div>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <Button onClick={handleSaveParams} disabled={isSavingParams} data-testid="button-save-params">
+                {isSavingParams ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.saving}</> : <><Save className="w-4 h-4 mr-2" />{t.save}</>}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="w-full">
           <CardHeader className="pb-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-lg">{t.dailyTargets}</CardTitle>
@@ -623,168 +592,125 @@ export default function SalesSettingsPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto">
-                <div className="max-h-[500px] overflow-y-auto">
-                  <table className="w-full text-sm border-collapse">
-                    <thead className="sticky top-0 z-10">
-                      <tr className="bg-slate-200 dark:bg-slate-700">
-                        <th className="px-2 py-2 text-left font-semibold border border-slate-300 dark:border-slate-600 min-w-[70px]">{t.date}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px]">{t.targetSales}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px]">{t.actualSales}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[100px]">{t.actualSalesMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px]">{t.actualTc}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px]">{t.actualTcMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">{t.laborHour}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px] bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200">{t.laborHourMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px]">{t.wasteRawDaily}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px]">{t.wasteRawMtd}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px]">{t.wasteMealDaily}</th>
-                        <th className="px-2 py-2 text-right font-semibold border border-slate-300 dark:border-slate-600 min-w-[80px]">{t.wasteMealMtd}</th>
+                <div className="max-h-[600px] overflow-y-auto">
+                  <table className="w-full text-xs border-collapse min-w-[2000px]">
+                    <thead className="sticky top-0 z-20 shadow-sm">
+                      <tr className="bg-slate-200 dark:bg-slate-700 text-center">
+                        <th className="p-2 border border-slate-300 min-w-[80px] sticky left-0 z-30 bg-slate-200 dark:bg-slate-700">{t.date}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-yellow-100 dark:bg-yellow-900">{t.targetSales}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-green-100 dark:bg-green-900">{t.actSales}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.actSalesMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-green-100 dark:bg-green-900">{t.actTc}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.actTcMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.recHours}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.roster}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.mtdRoster}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-gray-200 dark:bg-gray-600 text-gray-500">{t.dutyTeam}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.actHours}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-blue-100 dark:bg-blue-900">{t.otHours}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px] font-bold">{t.sumHours}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.mtdHours}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.variance}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.colBath}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.mtdCol}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.colPercent}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.tcmh}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-red-100 dark:bg-red-900">{t.wasteDaily}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.wasteMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.wastePercent}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {tableData.map((row) => (
-                        <tr 
-                          key={row.date}
-                          className="hover:bg-muted/30"
-                          data-testid={`row-target-${row.day}`}
-                        >
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 font-medium bg-slate-100 dark:bg-slate-800">
-                            {row.displayDate}
+                        <tr key={row.date} className="hover:bg-muted/30 text-center">
+                          <td className="p-1 border border-slate-300 font-medium bg-slate-50 dark:bg-slate-800 sticky left-0 z-10">{row.displayDate}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={dailyTargets[row.date] || ""} onChange={(e) => handleTargetChange(row.date, e.target.value)} data-testid={`input-target-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
-                            <Input
-                              type="number"
-                              value={dailyTargets[row.date] || ""}
-                              onChange={(e) => handleTargetChange(row.date, e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
-                              data-testid={`input-target-${row.day}`}
-                            />
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualSales', e.target.value)} data-testid={`input-sales-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
-                            <Input
-                              type="number"
-                              value={editableSalesData[row.date]?.actualSales || ""}
-                              onChange={(e) => handleSalesDataChange(row.date, "actualSales", e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
-                              data-testid={`input-actual-sales-${row.day}`}
-                            />
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualSalesMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualTc', e.target.value)} data-testid={`input-tc-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
-                            {row.actualSalesMtd > 0 ? formatNumber(row.actualSalesMtd) : ''}
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualTcMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.recommendHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'recommendHours', e.target.value)} data-testid={`input-rec-hours-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
-                            <Input
-                              type="number"
-                              value={editableSalesData[row.date]?.actualTc || ""}
-                              onChange={(e) => handleSalesDataChange(row.date, "actualTc", e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
-                              data-testid={`input-actual-tc-${row.day}`}
-                            />
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.rosterCommit || ""} onChange={(e) => handleSalesDataChange(row.date, 'rosterCommit', e.target.value)} data-testid={`input-roster-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
-                            {row.actualTcMtd > 0 ? formatNumber(row.actualTcMtd) : ''}
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.mtdRoster)}</td>
+                          <td className="p-1 border border-slate-300 bg-gray-100 dark:bg-gray-700 text-center text-gray-500">{row.dutyTeam}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.actualHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualHours', e.target.value)} data-testid={`input-actual-hours-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-indigo-50 dark:bg-indigo-900/50">
-                            <Input
-                              type="number"
-                              value={editableSalesData[row.date]?.laborHour || ""}
-                              onChange={(e) => handleSalesDataChange(row.date, "laborHour", e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent text-indigo-700 dark:text-indigo-300 focus:bg-indigo-100 dark:focus:bg-indigo-800"
-                              data-testid={`input-labor-hour-${row.day}`}
-                            />
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.otHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'otHours', e.target.value)} data-testid={`input-ot-hours-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-indigo-100 dark:bg-indigo-800/50 text-indigo-800 dark:text-indigo-200">
-                            {row.laborHourMtd > 0 ? formatNumber(row.laborHourMtd) : '-'}
+                          <td className="p-1 border border-slate-300 bg-slate-100 dark:bg-slate-700 font-bold text-right pr-2 text-indigo-700 dark:text-indigo-300">{fmtDec(row.summaryHours)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.mtdWorkingHours)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceHours < 0 ? 'text-red-500' : 'text-green-600'}`}>{fmtDec(row.varianceHours)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.colDaily)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.mtdCol)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.colPercent)}%</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.tcmh)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-red-700 dark:text-red-300" value={editableSalesData[row.date]?.wasteDaily || ""} onChange={(e) => handleSalesDataChange(row.date, 'wasteDaily', e.target.value)} data-testid={`input-waste-${row.date}`} />
                           </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
-                            <Input
-                              type="number"
-                              value={editableSalesData[row.date]?.wasteRawDaily || ""}
-                              onChange={(e) => handleSalesDataChange(row.date, "wasteRawDaily", e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
-                              data-testid={`input-waste-raw-${row.day}`}
-                            />
-                          </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
-                            {row.wasteRawMtd > 0 ? formatNumber(row.wasteRawMtd) : '-'}
-                          </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
-                            <Input
-                              type="number"
-                              value={editableSalesData[row.date]?.wasteMealDaily || ""}
-                              onChange={(e) => handleSalesDataChange(row.date, "wasteMealDaily", e.target.value)}
-                              className="h-7 text-right text-sm border-0 bg-transparent focus:bg-slate-50 dark:focus:bg-slate-800"
-                              data-testid={`input-waste-meal-${row.day}`}
-                            />
-                          </td>
-                          <td className="px-2 py-1 border border-slate-300 dark:border-slate-600 text-right font-medium bg-slate-50 dark:bg-slate-800">
-                            {row.wasteMealMtd > 0 ? formatNumber(row.wasteMealMtd) : '-'}
-                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.wasteMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.wastePercent)}%</td>
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="sticky bottom-0">
-                      <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600">{t.total}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.targetSales)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSales)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualSalesMtd)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTc)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{formatNumber(totals.actualTcMtd)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100">{formatNumber(totals.laborHour)}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right bg-indigo-300 dark:bg-indigo-700 text-indigo-900 dark:text-indigo-100">-</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">-</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteRawMtd) : '-'}</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">-</td>
-                        <td className="px-2 py-2 border border-slate-300 dark:border-slate-600 text-right">{tableData.length > 0 ? formatNumber(tableData[tableData.length - 1].wasteMealMtd) : '-'}</td>
+                    <tfoot className="sticky bottom-0 z-20 font-bold bg-slate-200 dark:bg-slate-700">
+                      <tr>
+                        <td className="p-2 border border-slate-300 sticky left-0 bg-slate-200 dark:bg-slate-700">Total</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetSales)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSales)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSalesMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTc)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.recommendHours)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.rosterCommit)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.mtdRoster)}</td>
+                        <td className="p-2 border border-slate-300 bg-gray-300 dark:bg-gray-600 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.actualHours)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.otHours)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.summaryHours)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.mtdWorkingHours)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.colDaily)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.wasteDaily)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.wasteMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>
             </div>
-
-            <div className="pt-2 flex justify-end gap-2">
-              <Button 
-                variant="outline"
-                onClick={handleSaveTargets} 
-                disabled={isSavingTargets} 
-                data-testid="button-save-targets"
-              >
-                {isSavingTargets ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {t.saving}
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    {language === "th" ? "บันทึกเป้าหมาย" : "Save Targets"}
-                  </>
-                )}
+            
+            <div className="pt-4 flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
+                {t.applyAll}
               </Button>
-              <Button 
-                onClick={handleSaveSalesData} 
-                disabled={isSavingSales} 
-                data-testid="button-save-sales"
-              >
-                {isSavingSales ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {t.saving}
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    {language === "th" ? "บันทึกยอดขาย" : "Save Sales Data"}
-                  </>
-                )}
+              <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets} data-testid="button-save-targets">
+                {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
+                {language === "th" ? "บันทึกเป้า" : "Save Targets"}
+              </Button>
+              <Button onClick={handleSaveSalesData} disabled={isSavingSales} data-testid="button-save-data">
+                {isSavingSales ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
+                {language === "th" ? "บันทึกข้อมูล" : "Save Data"}
               </Button>
             </div>
-
           </CardContent>
         </Card>
       </div>

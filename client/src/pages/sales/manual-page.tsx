@@ -29,8 +29,8 @@ export default function SalesManualPage() {
   const t = {
     title: language === "th" ? "คู่มือการใช้งาน" : "User Manual",
     subtitle: language === "th" ? "เมนู Sales Report" : "Sales Report Menu",
-    version: "3.1.5",
-    lastUpdated: "01/10/2026",
+    version: "3.2.0",
+    lastUpdated: "01/12/2026",
     back: language === "th" ? "กลับ" : "Back",
   };
 
@@ -368,30 +368,100 @@ export default function SalesManualPage() {
           <p className="font-medium">หน้าสำหรับตั้งค่าเป้าหมายและข้อมูลร้าน</p>
           <p className="text-muted-foreground">(สำหรับ Manager/Admin เท่านั้น)</p>
 
-          <div className="space-y-2">
-            <h4 className="font-semibold">ข้อมูลร้าน</h4>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li><strong>รหัสร้าน:</strong> BK001GDP</li>
-              <li><strong>ชื่อร้าน:</strong> Burger King Grand Diamond</li>
-            </ul>
-          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="store-info">
+              <AccordionTrigger>ข้อมูลร้าน</AccordionTrigger>
+              <AccordionContent>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><strong>รหัสร้าน:</strong> BK001GDP</li>
+                  <li><strong>ชื่อร้าน:</strong> Burger King Grand Diamond</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
 
-          <div className="space-y-2">
-            <h4 className="font-semibold">เป้าหมายยอดขาย</h4>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li><strong>เป้ารายวัน</strong> - เป้าหมายยอดขายประจำวัน (ค่าเริ่มต้น: ฿250,000)</li>
-              <li><strong>เป้า MTD</strong> - คำนวณจากเป้ารายวัน × จำนวนวัน</li>
-            </ul>
-          </div>
+            <AccordionItem value="labor-params">
+              <AccordionTrigger>พารามิเตอร์ Labor</AccordionTrigger>
+              <AccordionContent>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><strong>Duty Team Hours</strong> - ชั่วโมงทีมผู้จัดการต่อวัน (ค่าเริ่มต้น: 40 ชม.)</li>
+                  <li><strong>PPH (Hourly Rate)</strong> - ค่าแรงต่อชั่วโมง (ค่าเริ่มต้น: ฿84)</li>
+                </ul>
+                <div className="bg-muted p-3 rounded-lg mt-2">
+                  <p className="font-medium">สูตรคำนวณ:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
+                    <li>Summary Hr = Duty Team + Actual Hr + OT Hr</li>
+                    <li>Variance Hr = Summary Hr - Roster Commit</li>
+                    <li>COL (฿) = Summary Hr × PPH</li>
+                    <li>COL % = (COL ÷ Sales) × 100</li>
+                    <li>TCMH = TC ÷ Summary Hr</li>
+                  </ul>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="excel-table">
+              <AccordionTrigger>ตารางข้อมูลรายวัน (22 คอลัมน์)</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm">ตารางแบบ Excel สำหรับดูและแก้ไขข้อมูลทั้งเดือน</p>
+                  
+                  <div className="space-y-2">
+                    <p className="font-medium text-green-600">คอลัมน์ที่กรอกได้ (Input):</p>
+                    <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
+                      <li>Target, Actual Sales, Actual TC</li>
+                      <li>Recommend Hr, Roster Commit, Actual Hr, OT Hr</li>
+                      <li>Waste Daily (฿)</li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="font-medium text-blue-600">คอลัมน์คำนวณอัตโนมัติ:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
+                      <li>Sales MTD, TC MTD, MTD Roster</li>
+                      <li>Summary Hr, MTD Hr, Variance Hr</li>
+                      <li>COL (฿), MTD COL, COL %</li>
+                      <li>TCMH, Waste MTD, Waste %</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="font-medium">วิธีใช้งาน:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-4 text-sm">
+                      <li>เลือกเดือนที่ต้องการด้วยปุ่ม &lt; &gt;</li>
+                      <li>เลื่อนตารางซ้าย-ขวาเพื่อดูคอลัมน์ทั้งหมด</li>
+                      <li>กรอกข้อมูลในช่องที่มีพื้นหลังขาว</li>
+                      <li>กดปุ่ม "บันทึกข้อมูล" เมื่อเสร็จสิ้น</li>
+                    </ol>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       ) : (
         <div className="space-y-4">
           <p className="font-medium">Settings page for targets and store info (Manager/Admin only)</p>
-          <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Store Code: BK001GDP</li>
-            <li>Store Name: Burger King Grand Diamond</li>
-            <li>Daily Target (default: ฿250,000)</li>
-          </ul>
+          
+          <div className="space-y-2">
+            <h4 className="font-semibold">Store Information</h4>
+            <ul className="list-disc list-inside space-y-1 ml-4">
+              <li>Store Code: BK001GDP</li>
+              <li>Store Name: Burger King Grand Diamond</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold">Labor Parameters</h4>
+            <ul className="list-disc list-inside space-y-1 ml-4">
+              <li><strong>Duty Team Hours</strong> - Manager team hours per day (default: 40 hrs)</li>
+              <li><strong>PPH (Hourly Rate)</strong> - Wage per hour (default: ฿84)</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold">Excel-style Daily Data Table (22 Columns)</h4>
+            <p className="text-sm text-muted-foreground">View and edit monthly data including: Target, Sales, TC, Labor Hours, COL calculations, and Waste tracking with MTD running totals.</p>
+          </div>
         </div>
       ),
     },

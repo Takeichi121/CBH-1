@@ -19,7 +19,10 @@
     SelectTrigger,
     SelectValue,
   } from "@/components/ui/select";
-  import { Search, X, Plus, Minus, Trash2 } from "lucide-react";
+  import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+  import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+  import { Search, X, Plus, Minus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+  import { cn } from "@/lib/utils";
 
   // Type definitions for Cart
   interface CartItem {
@@ -42,6 +45,7 @@
 
     const [txType, setTxType] = useState<"borrow_in" | "borrow_out">("borrow_in");
     const [branch, setBranch] = useState("");
+    const [branchOpen, setBranchOpen] = useState(false);
     const [txDate, setTxDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [dueDate, setDueDate] = useState("");
     const [borrower, setBorrower] = useState("");
@@ -54,12 +58,7 @@
     const [selectedUnit, setSelectedUnit] = useState("");
     const [qty, setQty] = useState(1);
 
-    // Autocomplete states
-    const [itemSearchQuery, setItemSearchQuery] = useState("");
     const [showItemDropdown, setShowItemDropdown] = useState(false);
-    const [highlightIndex, setHighlightIndex] = useState(0);
-    const itemWrapRef = useRef<HTMLDivElement | null>(null);
-    const itemInputRef = useRef<HTMLInputElement | null>(null);
 
     // ✅ Fetch Branches
     const { data: branches, isLoading: branchesLoading } = useQuery<BorrowBranch[]>({
@@ -159,10 +158,7 @@
       setSelectedItem("");
       setSelectedUnit("");
       setQty(1);
-      setItemSearchQuery("");
       setShowItemDropdown(false);
-      setHighlightIndex(0);
-      itemInputRef.current?.focus();
     };
 
     const updateCartQty = (id: string, delta: number) => {
@@ -185,17 +181,6 @@
 
     const totalItems = cart.reduce((sum, c) => sum + c.qty, 0);
 
-    // ===== Autocomplete Logic =====
-    const q = useMemo(() => norm(itemSearchQuery), [itemSearchQuery]);
-
-    const filteredItems = useMemo(() => {
-      const list = activeItems;
-      if (!q) return list.slice(0, 20);
-      return list
-        .filter((it) => `${it.code ?? ""} ${it.name ?? ""}`.toLowerCase().includes(q))
-        .slice(0, 20);
-    }, [activeItems, q]);
-
     // ✅ Pick Item (Fixed: Duplicate function removed & String conversion added)
     const pickItem = (it: BorrowItem) => {
       setSelectedItem(String(it.id)); // Convert ID to String
@@ -205,54 +190,7 @@
       const parsed = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
       setSelectedUnit(parsed[0] || "");
 
-      setItemSearchQuery(it.code ? `${it.code} - ${it.name}` : it.name);
       setShowItemDropdown(false);
-      setHighlightIndex(0);
-    };
-
-    // Events for Dropdown
-    useEffect(() => {
-      if (!showItemDropdown) return;
-      const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          setShowItemDropdown(false);
-          itemInputRef.current?.blur();
-        }
-      };
-      document.addEventListener("keydown", onKeyDown);
-      return () => document.removeEventListener("keydown", onKeyDown);
-    }, [showItemDropdown]);
-
-    useEffect(() => {
-      if (!showItemDropdown) return;
-      const onPointerDown = (e: MouseEvent | TouchEvent) => {
-        const target = e.target as Node | null;
-        if (!target) return;
-        if (!itemWrapRef.current?.contains(target)) setShowItemDropdown(false);
-      };
-      document.addEventListener("mousedown", onPointerDown);
-      document.addEventListener("touchstart", onPointerDown);
-      return () => {
-        document.removeEventListener("mousedown", onPointerDown);
-        document.removeEventListener("touchstart", onPointerDown);
-      };
-    }, [showItemDropdown]);
-
-    // ✅ Added type for 'e'
-    const onItemInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (!showItemDropdown) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setHighlightIndex((cur) => Math.min(cur + 1, Math.max(filteredItems.length - 1, 0)));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setHighlightIndex((cur) => Math.max(cur - 1, 0));
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        if (filteredItems[highlightIndex]) {
-          pickItem(filteredItems[highlightIndex]);
-        }
-      }
     };
 
     return (
@@ -306,71 +244,100 @@
             {/* Row 3: Branch */}
             <div className="space-y-2">
               <Label>Branch</Label>
-              <Select value={branch} onValueChange={setBranch}>
-                <SelectTrigger className="bg-muted/20">
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeBranches.map((b) => (
-                    <SelectItem key={b.id} value={String(b.id)}> {/* ✅ Fixed: String(b.id) */}
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={branchOpen} onOpenChange={setBranchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={branchOpen}
+                    className="w-full justify-between bg-muted/20 font-normal"
+                  >
+                    {branch
+                      ? activeBranches.find((b) => String(b.id) === branch)?.name
+                      : "Select branch"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search branch..." />
+                    <CommandList>
+                      <CommandEmpty>No branch found.</CommandEmpty>
+                      <CommandGroup>
+                        {activeBranches.map((b) => (
+                          <CommandItem
+                            key={b.id}
+                            value={b.name}
+                            onSelect={() => {
+                              setBranch(String(b.id));
+                              setBranchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                branch === String(b.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {b.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="my-4 border-t" />
 
-            {/* Row 4: Item Selection (Autocomplete) */}
+            {/* Row 4: Item Selection (Searchable Dropdown) */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-              {/* Item Search Input */}
-              <div className="md:col-span-6 space-y-2 relative" ref={itemWrapRef}>
+              <div className="md:col-span-6 space-y-2">
                 <Label>Item</Label>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    ref={itemInputRef}
-                    placeholder="Select item..."
-                    className="pl-9 bg-muted/20"
-                    value={itemSearchQuery}
-                    onChange={(e) => {
-                      setItemSearchQuery(e.target.value);
-                      setSelectedItem(""); // Clear selection on type
-                      setShowItemDropdown(true);
-                    }}
-                    onFocus={() => setShowItemDropdown(true)}
-                    onKeyDown={onItemInputKeyDown}
-                  />
-                </div>
-
-                {/* Autocomplete Dropdown */}
-                {showItemDropdown && (
-                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95 max-h-[200px] overflow-y-auto">
-                    {filteredItems.length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground text-center">No items found</div>
-                    ) : (
-                      filteredItems.map((item, index) => (
-                        <div
-                          key={item.id}
-                          className={`cursor-pointer select-none relative flex items-center rounded-sm px-2 py-1.5 text-sm outline-none ${
-                            index === highlightIndex ? "bg-accent text-accent-foreground" : ""
-                          }`}
-                          onClick={() => pickItem(item)}
-                          onMouseEnter={() => setHighlightIndex(index)}
-                        >
-                          <span className="font-mono text-xs text-muted-foreground mr-2 w-12 shrink-0">
-                            {item.code}
-                          </span>
-                          <span className="truncate">{item.name}</span>
-                          <span className="ml-auto text-xs text-muted-foreground opacity-70">
-                             {item.units?.join(", ")}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                <Popover open={showItemDropdown} onOpenChange={setShowItemDropdown}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={showItemDropdown}
+                      className="w-full justify-between bg-muted/20 font-normal"
+                    >
+                      {selectedItem
+                        ? activeItems.find((it) => String(it.id) === selectedItem)?.name
+                        : "Select item..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search item..." />
+                      <CommandList>
+                        <CommandEmpty>No item found.</CommandEmpty>
+                        <CommandGroup>
+                          {activeItems.map((it) => (
+                            <CommandItem
+                              key={it.id}
+                              value={it.name}
+                              onSelect={() => {
+                                pickItem(it);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedItem === String(it.id) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span className="font-mono text-xs text-muted-foreground mr-2">{it.code}</span>
+                              {it.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Qty */}
@@ -387,6 +354,7 @@
               </div>
 
               {/* Unit */}
+
               <div className="md:col-span-2 space-y-2">
                 <Label>Unit</Label>
                  <Select 
@@ -404,7 +372,7 @@
                   </SelectContent>
                 </Select>
               </div>
-
+        
               {/* Add Button */}
               <div className="md:col-span-2 pb-0.5">
                 <Button 

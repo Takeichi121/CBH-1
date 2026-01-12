@@ -12,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw, Search } from "lucide-react";
-import { CaretSortIcon } from "@radix-ui/react-icons";
+import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw, Search, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -365,7 +364,7 @@ export default function BorrowTrackerPage() {
                           {newTx.branch
                             ? branches.find((b) => b.name === newTx.branch)?.name
                             : labels.branch}
-                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
@@ -414,7 +413,7 @@ export default function BorrowTrackerPage() {
                           {newTx.item
                             ? items.find((it) => it.name === newTx.item)?.name
                             : labels.item}
-                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">

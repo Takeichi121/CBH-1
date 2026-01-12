@@ -772,7 +772,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(borrowItems);
   }
 
-  // Borrow Tracker - Transactions
+  async getBorrowTransactions(limit: number = 100): Promise<BorrowTransaction[]> {
+    return await db.select().from(borrowTransactions)
+      .orderBy(desc(borrowTransactions.createdAt))
+      .limit(limit);
+  }
+
   async addBorrowTransaction(data: { txDate: string; dueDate?: string; txType: string; branch: string; item: string; qty: number; unit: string; borrower: string; lender: string; note: string }): Promise<{ ok: boolean; message?: string }> {
 
     // ✅ 1. สร้าง ID เองตรงนี้ (สำคัญมาก! ถ้าไม่มีบรรทัดนี้ Database จะแจ้ง Error Null Value)

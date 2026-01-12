@@ -171,6 +171,14 @@ export default function Branches() {
 
   const searchPlaceholder = (t as any)?.branches?.searchPlaceholder || "Search branch...";
   const noResultsText = (t as any)?.common?.noResults || "No results";
+  const idLabel = (t as any)?.branches?.id || "ID";
+  const codeLabel = (t as any)?.branches?.code || "Code";
+  const nameLabel = (t as any)?.branches?.name || "Name";
+  const actionLabel = (t as any)?.branches?.actions || "Actions";
+  const deleteLabel = (t as any)?.branches?.deleteBranch || "Delete";
+  const codePlaceholder = (t as any)?.branches?.codePlaceholder || "Branch Code";
+  const namePlaceholder = (t as any)?.branches?.namePlaceholder || "Branch Name";
+  const branchListLabel = (t as any)?.branches?.branchList || "Branch List";
 
   return (
     <div className="space-y-6">
@@ -179,36 +187,36 @@ export default function Branches() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            {t.branches.title}
+            {t.branches?.title || "Branches"}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">{t.branches.code}</Label>
+                <Label htmlFor="code">{codeLabel}</Label>
                 <Input
                   id="code"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder={t.branches.codePlaceholder}
+                  placeholder={codePlaceholder}
                   data-testid="input-branch-code"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">{t.branches.name}</Label>
+                <Label htmlFor="name">{nameLabel}</Label>
                 <Input
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={t.branches.namePlaceholder}
+                  placeholder={namePlaceholder}
                   required
                   data-testid="input-branch-name"
                 />
               </div>
             </div>
             <Button type="submit" disabled={addMutation.isPending || !name.trim()}>
-              {t.branches.addBranch}
+              {t.branches?.addBranch || "Add Branch"}
             </Button>
           </form>
 
@@ -231,7 +239,7 @@ export default function Branches() {
       {/* Branch List Table */}
       <Card>
         <CardHeader>
-          <CardTitle>{t.branches.branchList}</CardTitle>
+          <CardTitle>{branchListLabel}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
 
@@ -294,10 +302,10 @@ export default function Branches() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-16 md:w-20">{t.branches.id}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t.branches.code}</TableHead>
-                    <TableHead>{t.branches.name}</TableHead>
-                    <TableHead className="text-right">{t.branches.action}</TableHead>
+                    <TableHead className="w-16 md:w-20">{idLabel}</TableHead>
+                    <TableHead className="hidden md:table-cell">{codeLabel}</TableHead>
+                    <TableHead>{nameLabel}</TableHead>
+                    <TableHead className="text-right">{actionLabel}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -314,7 +322,7 @@ export default function Branches() {
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setDeleteId(b.id)}>
                             <Trash2 className="h-4 w-4" />
-                            <span className="ml-1 hidden sm:inline">{t.branches.delete}</span>
+                            <span className="ml-1 hidden sm:inline">{deleteLabel}</span>
                           </Button>
                         </div>
                       </TableCell>
@@ -324,7 +332,7 @@ export default function Branches() {
               </Table>
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">{t.history.noRecords}</p>
+            <p className="text-center text-muted-foreground py-8">{t.history?.noRecords || "No records"}</p>
           )}
         </CardContent>
       </Card>
@@ -333,13 +341,13 @@ export default function Branches() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.branches.confirmDelete}</AlertDialogTitle>
+            <AlertDialogTitle>{t.branches?.confirmDelete || "Confirm Delete"}</AlertDialogTitle>
             <AlertDialogDescription>{t.common.confirm}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
-              {t.branches.delete}
+              {deleteLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

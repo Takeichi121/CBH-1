@@ -39,7 +39,8 @@ export default function History() {
         token: localStorage.getItem("bk_token"),
         limit: 100 // ดึง 100 รายการล่าสุด
       });
-      return res.transactions;
+      const data = await res.json();
+      return data.transactions || [];
     }
   });
 
@@ -50,7 +51,8 @@ export default function History() {
       const res = await apiRequest("POST", "/api/borrow/branches", { 
         token: localStorage.getItem("bk_token") 
       });
-      return res.branches;
+      const data = await res.json();
+      return data.branches || [];
     }
   });
 
@@ -89,16 +91,16 @@ export default function History() {
           <div className="flex flex-col gap-4">
             <CardTitle className="flex items-center gap-2">
               <HistoryIcon className="h-5 w-5" />
-              {t.history.title}
+              {t.borrowTracker}
             </CardTitle>
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Filter Branch */}
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger className="w-full sm:w-40" data-testid="select-filter-branch">
-                  <SelectValue placeholder={t.history.filterBranch} />
+                  <SelectValue placeholder={t.branchName} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t.history.all}</SelectItem>
+                  <SelectItem value="all">{t.viewAll}</SelectItem>
                   {branchOptions.map((branch) => (
                     <SelectItem key={branch} value={branch}>
                       {branch}
@@ -110,12 +112,12 @@ export default function History() {
               {/* Filter Status */}
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-40" data-testid="select-filter-status">
-                  <SelectValue placeholder={t.history.filterStatus} />
+                  <SelectValue placeholder={t.status || "Status"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t.history.all}</SelectItem>
-                  <SelectItem value="pending">{t.history.pending}</SelectItem>
-                  <SelectItem value="done">{t.history.done}</SelectItem>
+                  <SelectItem value="all">{t.viewAll}</SelectItem>
+                  <SelectItem value="pending">{t.pending}</SelectItem>
+                  <SelectItem value="done">{t.approved || "Done"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -133,13 +135,13 @@ export default function History() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t.history.date}</TableHead>
-                    <TableHead>{t.history.type}</TableHead>
-                    <TableHead>{t.history.branch}</TableHead>
-                    <TableHead>{t.history.item}</TableHead>
-                    <TableHead className="text-right">{t.history.qty}</TableHead>
-                    <TableHead className="text-center">{t.history.status}</TableHead>
-                    <TableHead className="text-right">{t.history.action}</TableHead>
+                    <TableHead>{t.date}</TableHead>
+                    <TableHead>{t.requestType}</TableHead>
+                    <TableHead>{t.branchName}</TableHead>
+                    <TableHead>{t.borrowTracker}</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-center">{t.status || "Status"}</TableHead>
+                    <TableHead className="text-right">{t.approve || "Action"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -161,12 +163,12 @@ export default function History() {
                           {tx.txType === "borrow_in" ? (
                             <>
                               <ArrowDownLeft className="h-3 w-3" />
-                              {t.history.borrowIn}
+                              {t.borrowTracker} In
                             </>
                           ) : (
                             <>
                               <ArrowUpRight className="h-3 w-3" />
-                              {t.history.borrowOut}
+                              {t.borrowTracker} Out
                             </>
                           )}
                         </Badge>
@@ -190,7 +192,7 @@ export default function History() {
                           variant={tx.status === "done" ? "secondary" : "outline"}
                           className="text-xs"
                         >
-                          {tx.status === "done" ? t.history.done : t.history.pending}
+                          {tx.status === "done" ? (t.approved || "Done") : t.pending}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -204,7 +206,7 @@ export default function History() {
                             className="h-8"
                           >
                             <Check className="h-3.5 w-3.5 mr-1" />
-                            {t.history.markDone}
+                            {t.ok}
                           </Button>
                         )}
                       </TableCell>
@@ -215,7 +217,7 @@ export default function History() {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              {t.history.noRecords}
+              {t.noRequests || "No records"}
             </p>
           )}
         </CardContent>

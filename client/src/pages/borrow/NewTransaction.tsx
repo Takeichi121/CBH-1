@@ -66,7 +66,8 @@
       queryKey: ["/api/borrow/branches"],
       queryFn: async () => {
         const res = await apiRequest("POST", "/api/borrow/branches", { token: localStorage.getItem("bk_token") });
-        return res.branches;
+        const data = await res.json();
+        return data.branches || [];
       }
     });
 
@@ -75,7 +76,8 @@
       queryKey: ["/api/borrow/items"],
       queryFn: async () => {
         const res = await apiRequest("POST", "/api/borrow/items", { token: localStorage.getItem("bk_token") });
-        return res.items;
+        const data = await res.json();
+        return data.items || [];
       }
     });
 

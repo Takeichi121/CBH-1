@@ -106,9 +106,9 @@ export default function BorrowTrackerPage() {
         setLoading(false);
         return;
       }
-      setBranches(branchRes.branches);
-      setItems(itemRes.items);
-      setTransactions(txRes.transactions);
+      setBranches(branchRes.branches || []);
+      setItems(itemRes.items || []);
+      setTransactions(txRes.transactions || []);
       setDashboardMetrics({ totalTransactions: dashRes.totalTransactions, totalBorrowIn: dashRes.totalBorrowIn, totalBorrowOut: dashRes.totalBorrowOut, overdueCount: dashRes.overdueCount });
     } catch (e) {
       console.error("Failed to fetch borrow data", e);
@@ -263,7 +263,7 @@ export default function BorrowTrackerPage() {
                       endpoint="/api/borrow/branches/import"
                       accept=".csv,.xlsx,.xls"
                       label={labels.importBranches}
-                      onDone={(res) => {
+                      onDone={(res: any) => {
                         toast({ title: language === "th" ? `นำเข้าสำเร็จ ${res.imported} รายการ` : `Imported ${res.imported} branches` });
                         fetchData();
                       }}
@@ -299,7 +299,7 @@ export default function BorrowTrackerPage() {
                       endpoint="/api/borrow/items/import"
                       accept=".csv,.xlsx,.xls"
                       label={labels.importItems}
-                      onDone={(res) => {
+                      onDone={(res: any) => {
                         toast({ title: language === "th" ? `นำเข้าสำเร็จ ${res.imported} รายการ` : `Imported ${res.imported} items` });
                         fetchData();
                       }}
@@ -360,7 +360,7 @@ export default function BorrowTrackerPage() {
                     <Label>{labels.item}</Label>
                     <Select value={newTx.item} onValueChange={(v) => {
                       const selectedItem = items.find(i => i.name === v);
-                      setNewTx(p => ({ ...p, item: v, unit: selectedItem?.unit || "" }));
+                      setNewTx(p => ({ ...p, item: v, unit: selectedItem?.units?.[0] || "" }));
                     }}>
                       <SelectTrigger data-testid="select-item"><SelectValue placeholder={labels.item} /></SelectTrigger>
                       <SelectContent>

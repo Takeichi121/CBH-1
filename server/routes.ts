@@ -1400,7 +1400,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { token, name, code } = req.body;
       const access = await verifyManagerAccess(token);
       if (!access.ok) return res.status(401).json(access);
+      
+      const id = `br_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       await db.insert(borrowBranches).values({
+        id,
         name,
         code: code || "",
         isActive: 1
@@ -1441,7 +1444,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const name = row['Branch Name'] || row['name'] || row['Name'];
         const code = row['Branch Code'] || row['code'] || row['Code'] || "";
         if (name) {
+          const id = `br_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
           await db.insert(borrowBranches).values({
+            id,
             name: String(name).trim(),
             code: String(code).trim(),
             isActive: 1
@@ -1474,7 +1479,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { token, name, code, units, category } = req.body;
       const access = await verifyManagerAccess(token);
       if (!access.ok) return res.status(401).json(access);
+      
+      const id = `it_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       await db.insert(borrowItems).values({
+        id,
         name,
         code: code || "",
         units: units || [],
@@ -1552,8 +1560,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           continue;
         }
 
+        const id = `it_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const units = rawUnit ? [String(rawUnit).trim()] : [];
         await db.insert(borrowItems).values({
+          id,
           name: String(name).trim(),
           code: code ? String(code).trim() : null,
           units,
@@ -1590,7 +1600,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const access = await verifyManagerAccess(token);
       if (!access.ok) return res.status(401).json(access);
 
+      const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       await db.insert(borrowTransactions).values({
+        id,
         txDate: txData.txDate,
         dueDate: txData.dueDate || undefined,
         txType: txData.txType,

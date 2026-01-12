@@ -2414,7 +2414,7 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                     <h3 className="text-sm md:text-base font-medium">
                       {t.labor}
                     </h3>
-                    <Link href="/sales/labor-settings">
+                    <Link href="/sales/settings">
                       <Button
                         type="button"
                         variant="ghost"

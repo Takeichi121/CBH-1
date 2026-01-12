@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
-import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Calculator } from "lucide-react";
+import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SalesLayoutProps {
@@ -32,11 +32,6 @@ export function SalesLayout({ children }: SalesLayoutProps) {
       href: "/sales/settings",
       label: language === "th" ? "ตั้งค่า" : "Settings",
       icon: Settings,
-    },
-    {
-      href: "/sales/labor-settings",
-      label: language === "th" ? "ค่าแรง" : "Labor",
-      icon: Calculator,
     },
     {
       href: "/sales/manual",

@@ -10,8 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw, Search, CaretSortIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { BorrowBranch, BorrowItem, BorrowTransaction } from "@shared/schema";
 
@@ -32,6 +35,8 @@ export default function BorrowTrackerPage() {
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [branchSearchOpen, setBranchSearchOpen] = useState(false);
+  const [itemSearchOpen, setItemSearchOpen] = useState(false);
   const [newBranch, setNewBranch] = useState({ name: "", code: "" });
   const [newItem, setNewItem] = useState({ name: "", code: "", unit: "" });
   const [newTx, setNewTx] = useState({
@@ -312,7 +317,7 @@ export default function BorrowTrackerPage() {
                     ) : (
                       items.map((it) => (
                         <div key={it.id} className="flex items-center justify-between p-2 border-b last:border-b-0">
-                          <span>{it.code ? `[${it.code}] ` : ""}{it.name} {it.unit ? `(${it.unit})` : ""}</span>
+                          <span>{it.code ? `[${it.code}] ` : ""}{it.name} {it.units && it.units.length > 0 ? `(${it.units.join(", ")})` : ""}</span>
                           <Button size="icon" variant="ghost" onClick={() => handleDeleteItem(it.id)} data-testid={`button-delete-item-${it.id}`}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </div>
                       ))
@@ -347,26 +352,104 @@ export default function BorrowTrackerPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>{labels.branch}</Label>
-                    <Select value={newTx.branch} onValueChange={(v) => setNewTx(p => ({ ...p, branch: v }))}>
-                      <SelectTrigger data-testid="select-branch"><SelectValue placeholder={labels.branch} /></SelectTrigger>
-                      <SelectContent>
-                        {branches.map(b => <SelectItem key={b.id} value={b.name}>{b.code ? `[${b.code}] ` : ""}{b.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={branchSearchOpen} onOpenChange={setBranchSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={branchSearchOpen}
+                          className="w-full justify-between font-normal bg-muted/20"
+                          data-testid="select-branch"
+                        >
+                          {newTx.branch
+                            ? branches.find((b) => b.name === newTx.branch)?.name
+                            : labels.branch}
+                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                        <Command>
+                          <CommandInput placeholder={labels.branch} />
+                          <CommandList>
+                            <CommandEmpty>{labels.noItems}</CommandEmpty>
+                            <CommandGroup>
+                              {branches.map((b) => (
+                                <CommandItem
+                                  key={b.id}
+                                  value={b.name}
+                                  onSelect={(currentValue) => {
+                                    setNewTx((p) => ({ ...p, branch: currentValue }));
+                                    setBranchSearchOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      newTx.branch === b.name ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {b.code ? `[${b.code}] ` : ""}{b.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>{labels.item}</Label>
-                    <Select value={newTx.item} onValueChange={(v) => {
-                      const selectedItem = items.find(i => i.name === v);
-                      setNewTx(p => ({ ...p, item: v, unit: selectedItem?.units?.[0] || "" }));
-                    }}>
-                      <SelectTrigger data-testid="select-item"><SelectValue placeholder={labels.item} /></SelectTrigger>
-                      <SelectContent>
-                        {items.map(it => <SelectItem key={it.id} value={it.name}>{it.code ? `[${it.code}] ` : ""}{it.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={itemSearchOpen} onOpenChange={setItemSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={itemSearchOpen}
+                          className="w-full justify-between font-normal"
+                          data-testid="select-item"
+                        >
+                          {newTx.item
+                            ? items.find((it) => it.name === newTx.item)?.name
+                            : labels.item}
+                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                        <Command>
+                          <CommandInput placeholder={labels.item} />
+                          <CommandList>
+                            <CommandEmpty>{labels.noItems}</CommandEmpty>
+                            <CommandGroup>
+                              {items.map((it) => (
+                                <CommandItem
+                                  key={it.id}
+                                  value={it.name}
+                                  onSelect={(currentValue) => {
+                                    const selectedItem = items.find(i => i.name === currentValue);
+                                    setNewTx((p) => ({ 
+                                      ...p, 
+                                      item: currentValue, 
+                                      unit: selectedItem?.units?.[0] || "" 
+                                    }));
+                                    setItemSearchOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      newTx.item === it.name ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {it.code ? `[${it.code}] ` : ""}{it.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>{labels.qty}</Label>

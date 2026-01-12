@@ -708,9 +708,6 @@ export default function SalesSettingsPage() {
             </div>
             
             <div className="pt-4 flex flex-wrap justify-end gap-2">
-              <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
-                {t.applyAll}
-              </Button>
               <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets} data-testid="button-save-targets">
                 {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
                 {language === "th" ? "บันทึกเป้า" : "Save Targets"}

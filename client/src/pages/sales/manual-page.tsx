@@ -29,8 +29,8 @@ export default function SalesManualPage() {
   const t = {
     title: language === "th" ? "คู่มือการใช้งาน" : "User Manual",
     subtitle: language === "th" ? "เมนู Sales Report" : "Sales Report Menu",
-    version: "3.2.0",
-    lastUpdated: "01/12/2026",
+    version: "3.3.0",
+    lastUpdated: "12/01/2026",
     back: language === "th" ? "กลับ" : "Back",
   };
 
@@ -431,7 +431,13 @@ export default function SalesManualPage() {
                       <li>เลื่อนตารางซ้าย-ขวาเพื่อดูคอลัมน์ทั้งหมด</li>
                       <li>กรอกข้อมูลในช่องที่มีพื้นหลังขาว</li>
                       <li>กดปุ่ม "บันทึกข้อมูล" เมื่อเสร็จสิ้น</li>
+                      <li>กดปุ่ม "Undo" เพื่อคืนค่าข้อมูลเดิมก่อนบันทึก</li>
                     </ol>
+                  </div>
+
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg mt-2">
+                    <p className="font-medium text-yellow-700 dark:text-yellow-400">ปุ่ม Undo:</p>
+                    <p className="text-sm mt-1">ใช้คืนค่าข้อมูล Target และ Sales Data ทั้งหมดกลับเป็นค่าเดิมที่โหลดมาจากระบบ (ก่อนการแก้ไข)</p>
                   </div>
                 </div>
               </AccordionContent>
@@ -461,6 +467,11 @@ export default function SalesManualPage() {
           <div className="space-y-2">
             <h4 className="font-semibold">Excel-style Daily Data Table (22 Columns)</h4>
             <p className="text-sm text-muted-foreground">View and edit monthly data including: Target, Sales, TC, Labor Hours, COL calculations, and Waste tracking with MTD running totals.</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold">Undo Button</h4>
+            <p className="text-sm text-muted-foreground">Click "Undo" to restore all Target and Sales Data to their original values before editing.</p>
           </div>
         </div>
       ),

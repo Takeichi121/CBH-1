@@ -1780,20 +1780,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/borrow/items/add", async (req, res) => {
-    const { token, name, code, units } = req.body;
+    const { token, name, code, units, category } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
     if (!name || typeof name !== "string") return res.json({ ok: false, message: "Name is required" });
-    const result = await storage.addBorrowItem(name, code, units);
+    const result = await storage.addBorrowItem(name, code, units, category);
     res.json(result);
   });
 
   app.post("/api/borrow/items/update", async (req, res) => {
-    const { token, id, units } = req.body;
+    const { token, id, units, category } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
     if (!id || typeof id !== "string") return res.json({ ok: false, message: "ID is required" });
-    const result = await storage.updateBorrowItem(id, { units });
+    const result = await storage.updateBorrowItem(id, { units, category });
     res.json(result);
   });
 
@@ -1912,7 +1912,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json<{ name?: string; code?: string; unit?: string; Name?: string; Code?: string; Unit?: string }>(sheet);
+      const data = XLSX.utils.sheet_to_json<{ name?: string; code?: string; unit?: string; category?: string; Name?: string; Code?: string; Unit?: string; Category?: string }>(sheet);
 
       let imported = 0;
       let skipped = 0;
@@ -1920,11 +1920,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const name = row.name || row.Name || "";
         const code = row.code || row.Code || "";
         const unit = row.unit || row.Unit || "";
+        const category = row.category || row.Category || "";
         if (!name.trim()) {
           skipped++;
           continue;
         }
-        await storage.addBorrowItem(name.trim(), code.trim(), unit.trim());
+        const units = unit.trim() ? [unit.trim()] : null;
+        await storage.addBorrowItem(name.trim(), code.trim(), units, category.trim() || null);
         imported++;
       }
 

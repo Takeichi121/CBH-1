@@ -343,11 +343,29 @@ export const borrowBranches = pgTable("borrow_branches", {
   isActive: integer("is_active").notNull().default(1),
 });
 
+// Borrow Tracker - Item Categories
+export const itemCategories = [
+  { id: "meat", th: "หมวดเนื้อสัตว์", en: "Meat & Pork" },
+  { id: "bun", th: "หมวดขนมปัง", en: "Bun" },
+  { id: "chicken", th: "หมวดไก่และปลา", en: "Chicken & Fish" },
+  { id: "fried", th: "หมวดของทอด", en: "Fried" },
+  { id: "ingredients", th: "หมวดวัตถุดิบและผัก", en: "Ingredients & Veg" },
+  { id: "sauce", th: "หมวดซอสและเครื่องปรุง", en: "Sauce & Condiment" },
+  { id: "beverage", th: "หมวดเครื่องดื่ม", en: "Beverage" },
+  { id: "dessert", th: "หมวดของหวานและเบเกอรี่", en: "Dessert & Pie" },
+  { id: "packaging", th: "หมวดบรรจุภัณฑ์", en: "Packaging - Bags & Boxes" },
+  { id: "cup", th: "หมวดแก้ว ฝา และหลอด", en: "Cup, Lid & Straw" },
+  { id: "utensil", th: "หมวดอุปกรณ์พลาสติกและกระดาษ", en: "Utensil & Paper" },
+] as const;
+
+export type ItemCategoryId = typeof itemCategories[number]["id"];
+
 // Borrow Tracker - Items
 export const borrowItems = pgTable("borrow_items", {
   id: text("id").primaryKey(),
   code: text("code"),
   name: text("name").notNull(),
+  category: text("category"),
   units: text("units").array(),
   isActive: integer("is_active").notNull().default(1),
 });

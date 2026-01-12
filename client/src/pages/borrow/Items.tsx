@@ -28,7 +28,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ShoppingBag, Trash2, ToggleLeft, ToggleRight, Search, Check } from "lucide-react";
-import type { Item } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { BorrowItem } from "@shared/schema";
+import { itemCategories } from "@shared/schema";
 
 // ✅ Import Excel UI (same as Branches page)
 import ImportExcelButton from "./components/ImportExcelButton";
@@ -43,6 +45,8 @@ export default function Items() {
 
   const [name, setName] = useState("");
   const [unit, setUnit] = useState("");
+  const [category, setCategory] = useState("");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // ✅ Autocomplete
@@ -53,17 +57,25 @@ export default function Items() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data: items, isLoading } = useQuery<Item[]>({
+  const { data: items, isLoading } = useQuery<BorrowItem[]>({
     queryKey: ["/api/items"],
   });
 
+  const getCategoryLabel = (catId: string | null | undefined) => {
+    if (!catId) return "-";
+    const cat = itemCategories.find(c => c.id === catId);
+    if (!cat) return catId;
+    return (t as any).common?.language === "th" ? cat.th : cat.en;
+  };
+
   const addMutation = useMutation({
-    mutationFn: async (data: { name: string; unit: string }) =>
+    mutationFn: async (data: { name: string; unit: string; category?: string }) =>
       apiRequest("POST", "/api/items", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setName("");
       setUnit("");
+      setCategory("");
       toast({ title: t.common.success });
     },
     onError: () => toast({ title: t.common.error, variant: "destructive" }),
@@ -86,25 +98,28 @@ export default function Items() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addMutation.mutate({ name: name.trim(), unit: unit.trim() });
+    addMutation.mutate({ name: name.trim(), unit: unit.trim(), category: category || undefined });
   };
 
   const q = useMemo(() => norm(searchQuery), [searchQuery]);
 
   const filteredItems = useMemo(() => {
-    const list = items || [];
+    let list = items || [];
+    if (filterCategory && filterCategory !== "all") {
+      list = list.filter((it) => it.category === filterCategory);
+    }
     if (!q) return list;
     return list.filter((it) =>
-      `${it.code ?? ""} ${it.name ?? ""} ${it.unit ?? ""}`.toLowerCase().includes(q),
+      `${it.code ?? ""} ${it.name ?? ""} ${(it.units || []).join(" ")}`.toLowerCase().includes(q),
     );
-  }, [items, q]);
+  }, [items, q, filterCategory]);
 
   const suggestions = useMemo(() => {
     const list = q ? filteredItems : (items || []);
     return list.slice(0, 20);
   }, [items, filteredItems, q]);
 
-  const pickItem = (it: Item) => {
+  const pickItem = (it: BorrowItem) => {
     setSelectedId(it.id);
     // ✅ โชว์ชื่ออย่างเดียว (ยังค้นด้วย code ได้อยู่ เพราะ filter ใช้ code+name)
     setSearchQuery(it.name);
@@ -184,14 +199,14 @@ export default function Items() {
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">{t.items.name}</Label>
                 <Input
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={t.items.namePlaceholder}
+                  placeholder={(t as any).items?.namePlaceholder || "Enter name"}
                   required
                 />
               </div>
@@ -201,8 +216,23 @@ export default function Items() {
                   id="unit"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  placeholder={t.items.unitPlaceholder}
+                  placeholder={(t as any).items?.unitPlaceholder || "Enter unit"}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>{(t as any).items?.category || "Category"}</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={(t as any).items?.selectCategory || "Select Category"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itemCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {(t as any).common?.language === "th" ? cat.th : cat.en}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -228,27 +258,28 @@ export default function Items() {
       {/* Item List */}
       <Card>
         <CardHeader>
-          <CardTitle>{t.items.itemList}</CardTitle>
+          <CardTitle>{(t as any).items?.itemList || t.items.title}</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* ✅ Autocomplete search */}
-          <div ref={wrapRef} className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              placeholder={(t as any)?.items?.searchPlaceholder || "Search by name or code..."}
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowDropdown(true);
-                setSelectedId(null);
-                setHighlightIndex(0);
-              }}
-              onFocus={() => setShowDropdown(true)}
-              onKeyDown={onInputKeyDown}
-              className="pl-10"
-            />
+          {/* ✅ Search and Filter */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div ref={wrapRef} className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                ref={inputRef}
+                placeholder={(t as any)?.items?.searchPlaceholder || "Search by name or code..."}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowDropdown(true);
+                  setSelectedId(null);
+                  setHighlightIndex(0);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onKeyDown={onInputKeyDown}
+                className="pl-10"
+              />
 
             {showDropdown && (
               <div className="absolute z-50 mt-2 w-full rounded-lg border bg-popover shadow-md overflow-hidden">
@@ -272,8 +303,8 @@ export default function Items() {
                           {/* ✅ โชว์แค่ชื่อ */}
                           <span className="truncate">{it.name}</span>
                           <span className="flex items-center gap-2 shrink-0">
-                            {it.unit ? (
-                              <span className="text-xs text-muted-foreground">{it.unit}</span>
+                            {it.units && it.units.length > 0 ? (
+                              <span className="text-xs text-muted-foreground">{it.units[0]}</span>
                             ) : null}
                             {selectedId === it.id ? <Check className="h-4 w-4 text-primary" /> : null}
                           </span>
@@ -284,6 +315,22 @@ export default function Items() {
                 )}
               </div>
             )}
+            </div>
+            <div className="w-full md:w-64">
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder={(t as any).items?.filterByCategory || "Filter by Category"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{(t as any).common?.all || "All Categories"}</SelectItem>
+                  {itemCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {(t as any).common?.language === "th" ? cat.th : cat.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {isLoading ? (
@@ -297,11 +344,12 @@ export default function Items() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20">{t.items.id}</TableHead>
+                    <TableHead className="w-16">{(t as any).items?.id || "#"}</TableHead>
                     <TableHead>{t.items.name}</TableHead>
+                    <TableHead>{(t as any).items?.category || "Category"}</TableHead>
                     <TableHead>{t.items.unit}</TableHead>
                     <TableHead>{t.items.status}</TableHead>
-                    <TableHead className="text-right">{t.items.action}</TableHead>
+                    <TableHead className="text-right">{(t as any).items?.action || t.items.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -313,7 +361,8 @@ export default function Items() {
                     >
                       <TableCell className="font-mono text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.unit || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{getCategoryLabel(item.category)}</TableCell>
+                      <TableCell className="text-muted-foreground">{(item.units && item.units.length > 0) ? item.units.join(", ") : "-"}</TableCell>
                       <TableCell>
                         <Badge variant={item.isActive ? "default" : "secondary"} className="text-xs">
                           {item.isActive ? t.items.active : t.items.inactive}
@@ -332,11 +381,11 @@ export default function Items() {
                             ) : (
                               <ToggleLeft className="h-4 w-4" />
                             )}
-                            <span className="ml-1 hidden sm:inline">{t.items.toggle}</span>
+                            <span className="ml-1 hidden sm:inline">{(t as any).items?.toggle || "Toggle"}</span>
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => setDeleteId(item.id)}>
                             <Trash2 className="h-4 w-4" />
-                            <span className="ml-1 hidden sm:inline">{t.items.delete}</span>
+                            <span className="ml-1 hidden sm:inline">{(t as any).items?.delete || t.items.deleteItem}</span>
                           </Button>
                         </div>
                       </TableCell>
@@ -346,7 +395,7 @@ export default function Items() {
               </Table>
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">{t.history.noRecords}</p>
+            <p className="text-center text-muted-foreground py-8">{(t as any).history?.noRecords || t.common.noData}</p>
           )}
         </CardContent>
       </Card>
@@ -355,13 +404,13 @@ export default function Items() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.items.confirmDelete}</AlertDialogTitle>
+            <AlertDialogTitle>{(t as any).items?.confirmDelete || t.items.deleteConfirm}</AlertDialogTitle>
             <AlertDialogDescription>{t.common.confirm}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
-              {t.items.delete}
+              {(t as any).items?.delete || t.items.deleteItem}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

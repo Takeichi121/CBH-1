@@ -593,8 +593,13 @@ export default function SalesSettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-md overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="border rounded-md overflow-hidden relative">
+              <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                <span className="animate-pulse">←</span>
+                {language === "th" ? "เลื่อนซ้าย-ขวาเพื่อดูข้อมูลทั้งหมด" : "Scroll left-right to see all data"}
+                <span className="animate-pulse">→</span>
+              </div>
+              <div className="overflow-x-auto scrollbar-visible pb-3" style={{ scrollbarWidth: 'auto', scrollbarColor: '#888 #f1f1f1' }}>
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-xs border-collapse min-w-[2000px]">
                     <thead className="sticky top-0 z-20 shadow-sm">

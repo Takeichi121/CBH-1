@@ -8,6 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Building, Package, Trash2, RefreshCw, Upload, FileSpreadsheet, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +39,7 @@ export default function BorrowSettingsPage() {
   const [importingBranches, setImportingBranches] = useState(false);
   const [importingItems, setImportingItems] = useState(false);
   const [editingUnits, setEditingUnits] = useState<{ id: string; units: string } | null>(null);
+  const [showDeleteAllItemsDialog, setShowDeleteAllItemsDialog] = useState(false);
   const branchFileRef = useRef<HTMLInputElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +67,11 @@ export default function BorrowSettingsPage() {
     importing: language === "th" ? "กำลังนำเข้า..." : "Importing...",
     rowsImported: language === "th" ? "รายการที่นำเข้า" : "rows imported",
     rowsSkipped: language === "th" ? "รายการที่ข้าม" : "rows skipped",
+    deleteAll: language === "th" ? "ลบทั้งหมด" : "Delete All",
+    deleteAllConfirm: language === "th" ? "ลบรายการทั้งหมด?" : "Delete All Items?",
+    deleteAllWarning: language === "th" 
+      ? "การลบนี้จะลบรายการทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้" 
+      : "This will permanently delete all items. This action cannot be undone.",
   };
 
   const handleImportBranches = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,6 +240,27 @@ export default function BorrowSettingsPage() {
       if (data.ok) {
         toast({ title: language === "th" ? "ลบรายการสำเร็จ" : "Item deleted" });
         fetchData();
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAllItems = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/borrow/items/delete-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "ลบรายการทั้งหมดสำเร็จ" : "All items deleted" });
+        setShowDeleteAllItemsDialog(false);
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Error", variant: "destructive" });
@@ -461,6 +498,16 @@ export default function BorrowSettingsPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setShowDeleteAllItemsDialog(true)}
+                disabled={items.length === 0}
+                data-testid="button-delete-all-items"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {labels.deleteAll}
+              </Button>
             </div>
 
             <Card>
@@ -545,6 +592,27 @@ export default function BorrowSettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete All Items Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllItemsDialog} onOpenChange={setShowDeleteAllItemsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.deleteAllConfirm}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {labels.deleteAllWarning} ({items.length} {language === "th" ? "รายการ" : "items"})
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllItems}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {labels.deleteAll}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </BorrowLayout>
   );
 }

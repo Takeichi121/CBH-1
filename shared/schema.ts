@@ -177,9 +177,13 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   wasteMealMtdPercent: text("waste_meal_mtd_percent").default("0"),
   
   // Labor
+  recommendHours: text("recommend_hours").default("0"),
+  rosterCommit: text("roster_commit").default("0"),
   actualHours: text("actual_hours").default("0"),
   otHours: text("ot_hours").default("0"),
   otMtd: text("ot_mtd").default("0"),
+  summaryHours: text("summary_hours").default("0"),
+  varianceHours: text("variance_hours").default("0"),
   laborCost: text("labor_cost").default("0"),
   colPercent: text("col_percent").default("0"),
   laborHour: text("labor_hour").default("0"),

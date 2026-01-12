@@ -172,6 +172,8 @@ const formSchema = z.object({
   wasteMealMtd: z.string().default("0"),
 
   // --- Labor section ---
+  recommendHours: z.string().default("0"),
+  rosterCommit: z.string().default("0"),
   actualHours: z.string().default("0"),
   otHours: z.string().default("0"),
   otMtd: z.string().default("0"),
@@ -1068,11 +1070,13 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   const wasteRawMtd = wasteMtdTotal - wasteMealMtd;
 
   // --- Watch labor input fields ---
+  const recommendHoursInput = parseFloat(form.watch("recommendHours") || "0");
+  const rosterCommitInput = parseFloat(form.watch("rosterCommit") || "0");
   const actualHoursInput = parseFloat(form.watch("actualHours") || "0");
   const otHoursInput = parseFloat(form.watch("otHours") || "0");
 
   // --- Compute labor metrics directly (for instant display) ---
-  const { rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
+  const { dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
   
   // Summary Hours = Duty + Actual + OT (Total hours worked)
   const computedSummaryHours = dutyDailyHours + actualHoursInput + otHoursInput;
@@ -1080,24 +1084,27 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   // PT hours (Actual + OT) for cost calculation
   const ptHours = actualHoursInput + otHoursInput;
   
-  // Labor Cost Total = Fixed + Close + (Actual+OT) * PT Rate
-  const computedLaborCost = fixedCostDaily + closeShiftDailyCost + (ptHours * ptWageRate);
+  // Labor Cost Total = Summary Hours × PPH (simplified formula per user request)
+  const computedLaborCost = computedSummaryHours * ptWageRate;
   
   // COL% = Labor Cost / Sales * 100
   const computedColPercent = actualSales > 0 ? (computedLaborCost / actualSales) * 100 : 0;
   
   // TCMH = TC / Summary Hours (transactions per total hour worked)
   const computedTcmh = computedSummaryHours > 0 ? transactionCount / computedSummaryHours : 0;
+  
+  // Variance Hours = Summary Hours - Roster Commit
+  const computedVarianceHours = computedSummaryHours - rosterCommitInput;
 
   // --- Sync computed values to form for saving ---
   useEffect(() => {
     form.setValue("summaryHours", computedSummaryHours.toFixed(2), { shouldDirty: false });
-    form.setValue("varianceHours", (rosterHours - computedSummaryHours).toFixed(2), { shouldDirty: false });
+    form.setValue("varianceHours", computedVarianceHours.toFixed(2), { shouldDirty: false });
     form.setValue("laborCost", computedLaborCost.toFixed(2), { shouldDirty: false });
     form.setValue("laborHour", computedSummaryHours.toFixed(2), { shouldDirty: false });
     form.setValue("colPercent", computedColPercent.toFixed(2), { shouldDirty: false });
     form.setValue("tcmh", computedTcmh.toFixed(2), { shouldDirty: false });
-  }, [computedSummaryHours, computedLaborCost, computedColPercent, computedTcmh, rosterHours, form]);
+  }, [computedSummaryHours, computedLaborCost, computedColPercent, computedTcmh, computedVarianceHours, form]);
 
   // Auto-calculate Add-on percentages when count values change
   useEffect(() => {
@@ -2427,14 +2434,52 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       </Button>
                     </Link>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="recommendHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "Recommend Hr" : "Recommend Hr"}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm" 
+                              {...field} 
+                              placeholder="0"
+                              data-testid="input-recommend-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rosterCommit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "Roster Commit" : "Roster Commit"}
+                          </FormLabel>
+                          <FormControl>
+                            <FormattedInput 
+                              className="text-sm" 
+                              {...field} 
+                              placeholder="0"
+                              data-testid="input-roster-commit"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="actualHours"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">
-                            {language === "th" ? "ชม.จริง (PT)" : "Actual Hrs"}
+                            {language === "th" ? "Actual Hr" : "Actual Hr"}
                           </FormLabel>
                           <FormControl>
                             <FormattedInput 
@@ -2453,7 +2498,7 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs">
-                            {language === "th" ? "ชม. OT" : "OT Hours"}
+                            {language === "th" ? "OT Hr" : "OT Hr"}
                           </FormLabel>
                           <FormControl>
                             <FormattedInput 
@@ -2461,25 +2506,6 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                               {...field} 
                               placeholder="0"
                               data-testid="input-ot-hours"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="otMtd"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            {language === "th" ? "OT MTD" : "OT MTD"}
-                          </FormLabel>
-                          <FormControl>
-                            <FormattedInput 
-                              className="text-sm" 
-                              {...field} 
-                              placeholder="0"
-                              data-testid="input-ot-mtd"
                             />
                           </FormControl>
                         </FormItem>

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2 } from "lucide-react";
 
 type DailyTarget = {
   id?: number;
@@ -85,6 +85,9 @@ export default function SalesSettingsPage() {
 
   const [dutyTeamHours, setDutyTeamHours] = useState("40");
   const [hourlyRate, setHourlyRate] = useState("84");
+
+  const [originalDailyTargets, setOriginalDailyTargets] = useState<Record<string, string>>({});
+  const [originalSalesData, setOriginalSalesData] = useState<Record<string, any>>({});
 
   const DUTY_TEAM_HOURS = parseFloat(dutyTeamHours) || 40;
   const HOURLY_RATE = parseFloat(hourlyRate) || 84;
@@ -275,27 +278,23 @@ export default function SalesSettingsPage() {
           data.targets.forEach((t: DailyTarget) => {
             targetMap[t.targetDate] = t.targetSales;
           });
-          setDailyTargets(prev => {
-            const newTargets = { ...prev };
-            monthDates.forEach(({ date }) => {
-              if (targetMap[date] !== undefined) {
-                newTargets[date] = targetMap[date];
-              } else if (!newTargets[date]) {
-                newTargets[date] = defaultTarget;
-              }
-            });
-            return newTargets;
+          const newTargets: Record<string, string> = {};
+          monthDates.forEach(({ date }) => {
+            if (targetMap[date] !== undefined) {
+              newTargets[date] = targetMap[date];
+            } else {
+              newTargets[date] = defaultTarget;
+            }
           });
+          setDailyTargets(newTargets);
+          setOriginalDailyTargets(JSON.parse(JSON.stringify(newTargets)));
         } else {
-          setDailyTargets(prev => {
-            const newTargets = { ...prev };
-            monthDates.forEach(({ date }) => {
-              if (!newTargets[date]) {
-                newTargets[date] = defaultTarget;
-              }
-            });
-            return newTargets;
+          const newTargets: Record<string, string> = {};
+          monthDates.forEach(({ date }) => {
+            newTargets[date] = defaultTarget;
           });
+          setDailyTargets(newTargets);
+          setOriginalDailyTargets(JSON.parse(JSON.stringify(newTargets)));
         }
       } catch (error) {
         console.error("Failed to load daily targets:", error);
@@ -324,27 +323,23 @@ export default function SalesSettingsPage() {
               wasteDaily: (parseFloat(report.wasteDaily) || (parseFloat(report.wasteRawDaily) || 0) + (parseFloat(report.wasteMealDaily) || 0)).toString(),
             };
           });
-          setEditableSalesData(prev => {
-            const newMap = { ...prev };
-            monthDates.forEach(({ date }) => {
-              if (editableMap[date]) {
-                newMap[date] = editableMap[date];
-              } else if (!newMap[date]) {
-                newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
-              }
-            });
-            return newMap;
+          const newMap: Record<string, any> = {};
+          monthDates.forEach(({ date }) => {
+            if (editableMap[date]) {
+              newMap[date] = editableMap[date];
+            } else {
+              newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
+            }
           });
+          setEditableSalesData(newMap);
+          setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
         } else {
-          setEditableSalesData(prev => {
-            const newMap = { ...prev };
-            monthDates.forEach(({ date }) => {
-              if (!newMap[date]) {
-                newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
-              }
-            });
-            return newMap;
+          const newMap: Record<string, any> = {};
+          monthDates.forEach(({ date }) => {
+            newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
           });
+          setEditableSalesData(newMap);
+          setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
         }
       } catch (error) {
         console.error("Failed to load daily sales:", error);
@@ -503,6 +498,15 @@ export default function SalesSettingsPage() {
       newTargets[date] = defaultTarget;
     });
     setDailyTargets(newTargets);
+  };
+
+  const handleUndo = () => {
+    setDailyTargets(JSON.parse(JSON.stringify(originalDailyTargets)));
+    setEditableSalesData(JSON.parse(JSON.stringify(originalSalesData)));
+    toast({
+      title: language === "th" ? "ยกเลิกการแก้ไข" : "Changes Undone",
+      description: language === "th" ? "คืนค่าข้อมูลเดิมเรียบร้อยแล้ว" : "Data has been restored to original values",
+    });
   };
 
   const fmtNum = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -714,6 +718,10 @@ export default function SalesSettingsPage() {
               <Button onClick={handleSaveSalesData} disabled={isSavingSales} data-testid="button-save-data">
                 {isSavingSales ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
                 {language === "th" ? "บันทึกข้อมูล" : "Save Data"}
+              </Button>
+              <Button variant="outline" onClick={handleUndo} data-testid="button-undo">
+                <Undo2 className="mr-2 w-4 h-4"/>
+                {language === "th" ? "Undo" : "Undo"}
               </Button>
             </div>
           </CardContent>

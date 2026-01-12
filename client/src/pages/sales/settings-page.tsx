@@ -174,7 +174,7 @@ export default function SalesSettingsPage() {
 
       const summaryHours = DUTY_TEAM_HOURS + actualHours + otHours;
       runningWorkHours += summaryHours;
-      const varianceHours = recommendHours - summaryHours;
+      const varianceHours = summaryHours - rosterCommit;
 
       const colDaily = summaryHours * HOURLY_RATE;
       runningCol += colDaily;

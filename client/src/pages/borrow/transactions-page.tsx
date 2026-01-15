@@ -547,5 +547,6 @@ export default function NewTransaction() {
         </Button>
       </div>
     </div>
+    </BorrowLayout>
   );
 }

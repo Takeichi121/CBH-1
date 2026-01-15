@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ShoppingBag, Trash2, Search, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BorrowLayout } from "./borrow-layout";
 import type { BorrowItem } from "@shared/schema";
 import { itemCategories } from "@shared/schema";
 
@@ -201,7 +202,8 @@ export default function Items() {
     "Import Items (.xlsx/csv)";
 
   return (
-    <div className="space-y-6">
+    <BorrowLayout>
+      <div className="space-y-6">
       {/* Add Item Form */}
       <Card>
         <CardHeader>
@@ -459,6 +461,7 @@ export default function Items() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </BorrowLayout>
   );
 }
 

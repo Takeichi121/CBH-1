@@ -4,6 +4,7 @@ import { useI18n } from "@/hooks/use-i18n";
 import { 
   LayoutDashboard, 
   FileText, 
+  Plus,
   Settings, 
   HelpCircle, 
   ShoppingBag, // เพิ่มไอคอนสำหรับ Items

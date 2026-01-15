@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Building2, Trash2, ToggleLeft, ToggleRight, Search, Check } from "lucide-react";
 import ImportExcelButton from "./components/ImportExcelButton";
+import { BorrowLayout } from "./borrow-layout";
 import type { BorrowBranch } from "@shared/schema"; // ✅ แก้ Type ให้ตรง schema (ถ้าชื่อ Type จริงคือ BorrowBranch)
 
 // Helper function
@@ -181,7 +182,8 @@ export default function Branches() {
   const branchListLabel = (t as any)?.branches?.branchList || "Branch List";
 
   return (
-    <div className="space-y-6">
+    <BorrowLayout>
+      <div className="space-y-6">
       {/* Add Branch Form */}
       <Card>
         <CardHeader>
@@ -368,5 +370,6 @@ export default function Branches() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </BorrowLayout>
   );
 }

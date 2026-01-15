@@ -1613,7 +1613,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         borrower: txData.borrower || "",
         lender: txData.lender || "",
         note: txData.note || "",
-        status: "pending"
+        status: "pending",
+        createdAt: new Date().toISOString()
       });
       res.json({ ok: true });
     } catch (e: any) {

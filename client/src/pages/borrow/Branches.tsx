@@ -332,7 +332,7 @@ export default function Branches() {
               </Table>
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">{t.history?.noRecords || "No records"}</p>
+            <p className="text-center text-muted-foreground py-8">{t.history.noRecords}</p>
           )}
         </CardContent>
       </Card>
@@ -341,7 +341,7 @@ export default function Branches() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.branches?.confirmDelete || "Confirm Delete"}</AlertDialogTitle>
+            <AlertDialogTitle>{t.branches.confirmDelete}</AlertDialogTitle>
             <AlertDialogDescription>{t.common.confirm}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

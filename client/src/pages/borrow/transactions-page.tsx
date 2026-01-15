@@ -98,19 +98,14 @@ export default function NewTransaction() {
 
   // ✅ Logic to get available units [cite: 21]
   const availableUnits = useMemo(() => {
-    // เตรียมค่ามาตรฐานจาก UNIT_OPTIONS
     const standardValues = UNIT_OPTIONS.map(o => o.value);
-
     if (!selectedItem) return standardValues;
 
-    // แปลง ID เป็น String เพื่อค้นหา
     const item = activeItems.find(i => String(i.id) === selectedItem);
-    if (!item || !item.units || item.units.length === 0) return standardValues;
+    const itemUnits = item?.units || [];
+    const parsed = itemUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
 
-    // แยกหน่วยเฉพาะของสินค้า
-    const parsed = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
-
-    // รวมหน่วยเฉพาะ + หน่วยมาตรฐาน (เอาหน่วยเฉพาะขึ้นก่อน)
+    // Dynamic suggestions: Put item-specific units at the top
     return Array.from(new Set([...parsed, ...standardValues])); 
   }, [selectedItem, activeItems]);
 

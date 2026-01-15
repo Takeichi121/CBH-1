@@ -183,11 +183,12 @@ export default function BorrowTrackerPage() {
   };
 
   const availableUnits = (() => {
-    if (!newTx.item) return ["PCS", "CASE", "PACK", "BAG", "BOX"];
+    const standardUnits = ["PCS", "CASE", "PACK", "BAG", "BOX", "TRAY", "CAN", "TANK", "ROLL", "GAL", "BTL"];
+    if (!newTx.item) return standardUnits;
     const item = items.find(i => i.name === newTx.item);
-    if (!item || !item.units || item.units.length === 0) return ["PCS", "CASE", "PACK", "BAG", "BOX"];
-    const specificUnits = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
-    return Array.from(new Set([...specificUnits, "PCS", "CASE", "PACK", "BAG", "BOX"]));
+    const itemUnits = item?.units || [];
+    const specificUnits = itemUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+    return Array.from(new Set([...specificUnits, ...standardUnits]));
   })();
 
   const handleAddTransaction = async () => {

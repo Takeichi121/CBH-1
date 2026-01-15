@@ -102,13 +102,11 @@ export default function NewTransaction() {
   const availableUnits = useMemo(() => {
     if (!selectedItem) return PREDEFINED_UNITS;
 
-    // Compare String(i.id) because DB might return number, but state is string
     const item = activeItems.find(i => String(i.id) === selectedItem);
-    if (!item || !item.units || item.units.length === 0) return PREDEFINED_UNITS;
+    const itemUnits = item?.units || [];
+    const parsed = itemUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
 
-    const parsed = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
-
-    // Use Array.from to avoid TS 'downlevelIteration' error
+    // Dynamic suggestions: Put item-specific units at the top, then predefined ones
     return Array.from(new Set([...parsed, ...PREDEFINED_UNITS])); 
   }, [selectedItem, activeItems]);
 

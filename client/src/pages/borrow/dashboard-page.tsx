@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +9,25 @@ import {
   FileStack,
   Database,
   Lightbulb,
-  AlertCircle // เพิ่มไอคอนแจ้งเตือน
+  AlertCircle,
+  BarChart3,
+  RefreshCw
 } from "lucide-react";
 import { BorrowLayout } from "./borrow-layout";
+import { format, subDays } from "date-fns";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  LineChart,
+  Line
+} from "recharts";
+import type { BorrowTransaction } from "@shared/schema";
 
 interface DashboardMetrics {
   totalTransactions: number;
@@ -26,6 +42,27 @@ export default function BorrowDashboardPage() {
   const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/borrow/dashboard"],
   });
+
+  const { data: transactions } = useQuery<BorrowTransaction[]>({
+    queryKey: ["/api/borrow/transactions"],
+  });
+
+  const trendData = useMemo(() => {
+    if (!transactions) return [];
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = subDays(new Date(), i);
+      return format(d, "yyyy-MM-dd");
+    }).reverse();
+
+    return last7Days.map(date => {
+      const dayTxs = transactions.filter(t => t.txDate === date);
+      return {
+        date: format(new Date(date), "dd MMM"),
+        borrow_in: dayTxs.filter(t => t.txType === "borrow_in").length,
+        borrow_out: dayTxs.filter(t => t.txType === "borrow_out").length,
+      };
+    });
+  }, [transactions]);
 
   const labels = {
     totalTransactions: language === "th" ? "รายการทั้งหมด" : "Total Transactions",
@@ -70,6 +107,117 @@ export default function BorrowDashboardPage() {
             isLoading={isLoading}
             variant="danger" // สีแดง
           />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="hover-elevate overflow-hidden border-none shadow-sm md:border md:shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1 bg-muted/5">
+              <CardTitle className="text-base font-semibold">
+                {language === "th" ? "แนวโน้มการยืม-คืน (7 วัน)" : "7-Day Borrow/Lend Trends"}
+              </CardTitle>
+              <BarChart3 className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: "hsl(var(--muted) / 0.2)" }}
+                      contentStyle={{ 
+                        borderRadius: "12px", 
+                        border: "1px solid hsl(var(--border))", 
+                        boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                        backgroundColor: "hsl(var(--background))",
+                      }}
+                    />
+                    <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+                    <Bar 
+                      name={labels.totalBorrowIn} 
+                      dataKey="borrow_in" 
+                      fill="#22c55e" 
+                      radius={[4, 4, 0, 0]} 
+                      barSize={20}
+                    />
+                    <Bar 
+                      name={labels.totalBorrowOut} 
+                      dataKey="borrow_out" 
+                      fill="#f97316" 
+                      radius={[4, 4, 0, 0]} 
+                      barSize={20}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-elevate overflow-hidden border-none shadow-sm md:border md:shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1 bg-muted/5">
+              <CardTitle className="text-base font-semibold">
+                {language === "th" ? "สถิติรายวัน" : "Daily Activity Metrics"}
+              </CardTitle>
+              <RefreshCw className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        borderRadius: "12px", 
+                        border: "1px solid hsl(var(--border))", 
+                        boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                        backgroundColor: "hsl(var(--background))",
+                      }}
+                    />
+                    <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+                    <Line 
+                      type="monotone" 
+                      name={labels.totalBorrowIn} 
+                      dataKey="borrow_in" 
+                      stroke="#22c55e" 
+                      strokeWidth={3} 
+                      dot={{ r: 4, fill: "#22c55e", strokeWidth: 2, stroke: "#fff" }} 
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      name={labels.totalBorrowOut} 
+                      dataKey="borrow_out" 
+                      stroke="#f97316" 
+                      strokeWidth={3} 
+                      dot={{ r: 4, fill: "#f97316", strokeWidth: 2, stroke: "#fff" }} 
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

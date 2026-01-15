@@ -98,15 +98,15 @@ export default function NewTransaction() {
 
   // ✅ Logic to get available units [cite: 21]
   const availableUnits = useMemo(() => {
-    const standardValues = UNIT_OPTIONS.map(o => o.value);
-    if (!selectedItem) return standardValues;
+    const standardUnits = ["PCS", "CASE", "PACK", "BAG", "BOX", "TRAY", "CAN", "TANK", "ROLL", "GAL", "BTL"];
+    if (!selectedItem) return standardUnits;
 
     const item = activeItems.find(i => String(i.id) === selectedItem);
     const itemUnits = item?.units || [];
     const parsed = itemUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
 
     // Dynamic suggestions: Put item-specific units at the top
-    return Array.from(new Set([...parsed, ...standardValues])); 
+    return Array.from(new Set([...parsed, ...standardUnits])); 
   }, [selectedItem, activeItems]);
 
   // ✅ Submit Mutation [cite: 22]
@@ -198,13 +198,12 @@ export default function NewTransaction() {
 
   // ✅ Pick Item Helper [cite: 36]
   const pickItem = (it: BorrowItem) => {
-    setSelectedItem(String(it.id));
-
-    // Auto-select first unit based on split logic
     const rawUnits = it.units || [];
     const parsed = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
-    setSelectedUnit(parsed[0] || "");
+    const firstUnit = parsed[0] || "PCS";
 
+    setSelectedItem(String(it.id));
+    setSelectedUnit(firstUnit);
     setShowItemDropdown(false);
   };
 

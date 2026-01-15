@@ -465,11 +465,15 @@ export default function BorrowTrackerPage() {
                                   key={it.id}
                                   value={it.name}
                                   onSelect={(currentValue) => {
-                                    const selectedItem = items.find(i => i.name === currentValue);
+                                    const selectedItemObj = items.find(i => i.name === currentValue);
+                                    const rawUnits = selectedItemObj?.units || [];
+                                    const parsedUnits = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+                                    const firstUnit = parsedUnits[0] || "PCS";
+                                    
                                     setNewTx((p) => ({ 
                                       ...p, 
                                       item: currentValue, 
-                                      unit: selectedItem?.units?.[0] || "" 
+                                      unit: firstUnit 
                                     }));
                                     setItemSearchOpen(false);
                                   }}

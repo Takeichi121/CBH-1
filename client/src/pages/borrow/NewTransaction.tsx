@@ -98,16 +98,16 @@ export default function NewTransaction() {
   const activeBranches = branches?.filter((b) => b.isActive) || [];
   const activeItems = items?.filter((i) => i.isActive) || [];
 
-  // ✅ Logic to get available units (Fixed: Set iteration for older TS targets)
   const availableUnits = useMemo(() => {
-    if (!selectedItem) return PREDEFINED_UNITS;
+    const standardUnits = ["PCS", "CASE", "PACK", "BAG", "BOX", "TRAY", "CAN", "TANK", "ROLL", "GAL", "BTL"];
+    if (!selectedItem) return standardUnits;
 
     const item = activeItems.find(i => String(i.id) === selectedItem);
     const itemUnits = item?.units || [];
     const parsed = itemUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
 
     // Dynamic suggestions: Put item-specific units at the top, then predefined ones
-    return Array.from(new Set([...parsed, ...PREDEFINED_UNITS])); 
+    return Array.from(new Set([...parsed, ...standardUnits])); 
   }, [selectedItem, activeItems]);
 
   // ✅ Submit Mutation (Fixed: Do NOT convert branch to Number)
@@ -199,13 +199,12 @@ export default function NewTransaction() {
 
   // ✅ Pick Item Helper
   const pickItem = (it: BorrowItem) => {
-    setSelectedItem(String(it.id)); // Convert ID to String
-
-    // Auto-select first unit based on split logic
     const rawUnits = it.units || [];
     const parsed = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
-    setSelectedUnit(parsed[0] || "");
+    const firstUnit = parsed[0] || "PCS";
 
+    setSelectedItem(String(it.id));
+    setSelectedUnit(firstUnit);
     setShowItemDropdown(false);
   };
 

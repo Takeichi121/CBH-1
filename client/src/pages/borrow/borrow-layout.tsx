@@ -26,9 +26,24 @@ export function BorrowLayout({ children }: BorrowLayoutProps) {
       icon: LayoutDashboard,
     },
     {
-      href: "/borrow/transactions",
-      label: language === "th" ? "รายการยืม-คืน" : "Transactions",
+      href: "/borrow/history",
+      label: language === "th" ? "ประวัติ" : "History",
       icon: FileText,
+    },
+    {
+      href: "/borrow/transactions",
+      label: language === "th" ? "เพิ่มรายการ" : "Add New",
+      icon: Plus,
+    },
+    {
+      href: "/borrow/branches",
+      label: language === "th" ? "สาขา" : "Branches",
+      icon: Store,
+    },
+    {
+      href: "/borrow/items",
+      label: language === "th" ? "รายการ" : "Items",
+      icon: ShoppingBag,
     },
     {
       href: "/borrow/settings",

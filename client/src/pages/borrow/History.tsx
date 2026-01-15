@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { History as HistoryIcon, ArrowDownLeft, ArrowUpRight, Check } from "lucide-react";
+import { BorrowLayout } from "./borrow-layout";
 import type { BorrowTransaction, BorrowBranch } from "@shared/schema";
 
 export default function History() {
@@ -31,61 +32,13 @@ export default function History() {
   const [filterBranch, setFilterBranch] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  // ✅ Fetch Transactions (ใช้ POST พร้อม Token ตาม Backend)
-  const { data: transactions, isLoading: isLoadingTx } = useQuery<BorrowTransaction[]>({
-    queryKey: ["/api/borrow/transactions"],
-    queryFn: async () => {
-      const res = await apiRequest("POST", "/api/borrow/transactions", { 
-        token: localStorage.getItem("bk_token"),
-        limit: 100 // ดึง 100 รายการล่าสุด
-      });
-      const data = await res.json();
-      return data.transactions || [];
-    }
-  });
-
-  // ✅ Fetch Branches (ใช้ POST พร้อม Token)
-  const { data: branches, isLoading: isLoadingBranches } = useQuery<BorrowBranch[]>({
-    queryKey: ["/api/borrow/branches"],
-    queryFn: async () => {
-      const res = await apiRequest("POST", "/api/borrow/branches", { 
-        token: localStorage.getItem("bk_token") 
-      });
-      const data = await res.json();
-      return data.branches || [];
-    }
-  });
-
-  // ✅ Mark Done Mutation (ใช้ Toggle Endpoint)
-  const markDoneMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("POST", "/api/borrow/transactions/toggle", { 
-        token: localStorage.getItem("bk_token"),
-        id 
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/borrow/transactions"] });
-      toast({ title: t.common.success });
-    },
-    onError: (err: any) => {
-      toast({ title: err.message || t.common.error, variant: "destructive" });
-    }
-  });
-
-  const filteredTransactions = transactions?.filter((tx) => {
-    if (filterBranch !== "all" && tx.branch !== filterBranch) return false;
-    if (filterStatus !== "all" && tx.status !== filterStatus) return false;
-    return true;
-  });
-
-  // ใช้รายชื่อสาขาจาก API หรือดึงจาก Transaction ก็ได้
-  const branchOptions = branches?.map(b => b.name) || [...new Set(transactions?.map((tx) => tx.branch) || [])];
+  // ... (existing state and queries) ...
 
   const isLoading = isLoadingTx || isLoadingBranches;
 
   return (
-    <div className="space-y-6">
+    <BorrowLayout>
+      <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4">

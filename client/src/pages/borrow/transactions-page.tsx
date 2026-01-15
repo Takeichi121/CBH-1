@@ -47,6 +47,8 @@ const UNIT_OPTIONS = [
   { value: "BTL", label: "BTL" },
 ] as const;
 
+import { BorrowLayout } from "./borrow-layout";
+
 function norm(v: unknown) {
   return String(v ?? "").trim().toLowerCase();
 }
@@ -73,7 +75,7 @@ export default function NewTransaction() {
   const [qty, setQty] = useState(1);
   const [showItemDropdown, setShowItemDropdown] = useState(false);
 
-  // ✅ Fetch Branches [cite: 18]
+  // ✅ Fetch Branches
   const { data: branches, isLoading: branchesLoading } = useQuery<BorrowBranch[]>({
     queryKey: ["/api/borrow/branches"],
     queryFn: async () => {
@@ -83,7 +85,7 @@ export default function NewTransaction() {
     }
   });
 
-  // ✅ Fetch Items [cite: 19]
+  // ✅ Fetch Items
   const { data: items, isLoading: itemsLoading } = useQuery<BorrowItem[]>({
     queryKey: ["/api/borrow/items"],
     queryFn: async () => {
@@ -96,7 +98,7 @@ export default function NewTransaction() {
   const activeBranches = branches?.filter((b) => b.isActive) || [];
   const activeItems = items?.filter((i) => i.isActive) || [];
 
-  // ✅ Logic to get available units [cite: 21]
+  // ✅ Logic to get available units
   const availableUnits = useMemo(() => {
     const standardUnits = ["PCS", "CASE", "PACK", "BAG", "BOX", "TRAY", "CAN", "TANK", "ROLL", "GAL", "BTL"];
     if (!selectedItem) return standardUnits;
@@ -109,7 +111,7 @@ export default function NewTransaction() {
     return Array.from(new Set([...parsed, ...standardUnits])); 
   }, [selectedItem, activeItems]);
 
-  // ✅ Submit Mutation [cite: 22]
+  // ✅ Submit Mutation
   const submitMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem("bk_token");
@@ -119,7 +121,7 @@ export default function NewTransaction() {
           txDate,
           dueDate: dueDate || undefined,
           txType,
-          branch: branch, // ส่งเป็น String ตามที่ Backend ต้องการ (แก้ Error "null id" ต้องแก้ที่ Backend storage.ts ให้สร้าง ID)
+          branch: branch,
           item: item.name,
           qty: item.qty,
           unit: item.unit,
@@ -141,18 +143,15 @@ export default function NewTransaction() {
     },
   });
 
-  // ✅ Add To Cart [cite: 25]
+  // ✅ Add To Cart
   const addToCart = () => {
     if (!selectedItem || qty < 1) return;
 
-    // Convert i.id to String for comparison
     const item = activeItems.find((i) => String(i.id) === selectedItem);
     if (!item) return;
 
-    // Default to the first available unit if selectedUnit is empty
     const finalUnit = selectedUnit || availableUnits[0] || "PCS"; 
 
-    // Check cart
     const existingIndex = cart.findIndex((c) => c.id === selectedItem && c.unit === finalUnit); 
 
     if (existingIndex >= 0) {
@@ -171,7 +170,6 @@ export default function NewTransaction() {
       ]);
     }
 
-    // Reset fields
     setSelectedItem("");
     setSelectedUnit("");
     setQty(1);
@@ -196,7 +194,7 @@ export default function NewTransaction() {
     submitMutation.mutate();
   };
 
-  // ✅ Pick Item Helper [cite: 36]
+  // ✅ Pick Item Helper
   const pickItem = (it: BorrowItem) => {
     const rawUnits = it.units || [];
     const parsed = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
@@ -208,7 +206,8 @@ export default function NewTransaction() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6 space-y-6 bg-background">
+    <BorrowLayout>
+      <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6 space-y-6 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Add Transaction</h1>

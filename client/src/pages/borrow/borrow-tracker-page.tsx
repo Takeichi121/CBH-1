@@ -37,6 +37,7 @@ export default function BorrowTrackerPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [branchSearchOpen, setBranchSearchOpen] = useState(false);
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
+  const [unitSearchOpen, setUnitSearchOpen] = useState(false);
   const [newBranch, setNewBranch] = useState({ name: "", code: "" });
   const [newItem, setNewItem] = useState({ name: "", code: "", unit: "" });
   const [newTx, setNewTx] = useState({
@@ -168,6 +169,14 @@ export default function BorrowTrackerPage() {
     }
     fetchData();
   };
+
+  const availableUnits = (() => {
+    if (!newTx.item) return ["PCS", "CASE", "PACK", "BAG", "BOX"];
+    const item = items.find(i => i.name === newTx.item);
+    if (!item || !item.units || item.units.length === 0) return ["PCS", "CASE", "PACK", "BAG", "BOX"];
+    const specificUnits = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+    return Array.from(new Set([...specificUnits, "PCS", "CASE", "PACK", "BAG", "BOX"]));
+  })();
 
   const handleAddTransaction = async () => {
     if (!newTx.branch || !newTx.item || newTx.qty < 1) {
@@ -455,16 +464,49 @@ export default function BorrowTrackerPage() {
                     <Label>{labels.qty}</Label>
                     <div className="flex gap-2">
                       <Input type="number" min={1} value={newTx.qty} onChange={(e) => setNewTx(p => ({ ...p, qty: parseInt(e.target.value) || 1 }))} data-testid="input-qty" />
-                      <Select value={newTx.unit} onValueChange={(v) => setNewTx(p => ({ ...p, unit: v }))}>
-                        <SelectTrigger className="w-24" data-testid="select-unit">
-                          <SelectValue placeholder={labels.unit} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {items.find(i => i.name === newTx.item)?.units?.map(u => (
-                            <SelectItem key={u} value={u}>{u}</SelectItem>
-                          )) || <SelectItem value="PCS">PCS</SelectItem>}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={unitSearchOpen} onOpenChange={setUnitSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={unitSearchOpen}
+                            className="w-32 justify-between font-normal"
+                            disabled={!newTx.item}
+                            data-testid="select-unit"
+                          >
+                            {newTx.unit || labels.unit}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-48 p-0">
+                          <Command>
+                            <CommandInput placeholder={labels.unit} />
+                            <CommandList>
+                              <CommandEmpty>{labels.noItems}</CommandEmpty>
+                              <CommandGroup>
+                                {availableUnits.map((u) => (
+                                  <CommandItem
+                                    key={u}
+                                    value={u}
+                                    onSelect={(currentValue) => {
+                                      setNewTx(p => ({ ...p, unit: currentValue.toUpperCase() }));
+                                      setUnitSearchOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        newTx.unit === u ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {u}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 </div>

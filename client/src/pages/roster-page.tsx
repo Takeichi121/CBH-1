@@ -107,7 +107,7 @@ export default function RosterPage() {
     "phusanisa", "paisit", "pitak", "pornnipa", "pongpun", "thepthakun", 
     "nattarika", "kanapat", "kidsada"
   ];
-
+  
   const sortedUsers = Object.values(userShifts)
     .filter((u: any) => {
       if (u.role === "admin" || u.role === "manager") return false;

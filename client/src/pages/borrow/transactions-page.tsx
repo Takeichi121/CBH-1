@@ -1,414 +1,558 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useI18n } from "@/hooks/use-i18n";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage } from "@/lib/i18n";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import type { BorrowBranch, BorrowItem } from "@shared/schema";
+
+// --- UI Components Imports ---
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { BorrowLayout } from "./borrow-layout";
-import type { BorrowBranch, BorrowItem, BorrowTransaction } from "@shared/schema";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Search, X, Plus, Minus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export default function BorrowTransactionsPage() {
-  const { user, token } = useAuth();
-  const { language } = useI18n();
+// Type definitions for Cart
+interface CartItem {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+}
+
+// 1. ✅ ตัวแปรหน่วยสินค้า (ภาษาอังกฤษล้วน) [cite: 11]
+const UNIT_OPTIONS = [
+  { value: "PCS", label: "PCS" },
+  { value: "CASE", label: "CASE" },
+  { value: "PACK", label: "PACK" },
+  { value: "BAG", label: "BAG" },
+  { value: "TRAY", label: "TRAY" },
+  { value: "CAN", label: "CAN" },
+  { value: "TANK", label: "TANK" },
+  { value: "ROLL", label: "ROLL" },
+  { value: "BOX", label: "BOX" },
+  { value: "GAL", label: "GAL" },
+  { value: "BTL", label: "BTL" },
+] as const;
+
+function norm(v: unknown) {
+  return String(v ?? "").trim().toLowerCase();
+}
+
+export default function NewTransaction() {
+  const { t } = useLanguage();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
-  const [branches, setBranches] = useState<BorrowBranch[]>([]);
-  const [items, setItems] = useState<BorrowItem[]>([]);
-  const [transactions, setTransactions] = useState<BorrowTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newTx, setNewTx] = useState({
-    txDate: format(new Date(), "yyyy-MM-dd"),
-    dueDate: "",
-    txType: "borrow_out" as "borrow_in" | "borrow_out",
-    branch: "",
-    item: "",
-    qty: 1,
-    unit: "",
-    borrower: "",
-    lender: "",
-    note: "",
+  const [txType, setTxType] = useState<"borrow_in" | "borrow_out">("borrow_in");
+  const [branch, setBranch] = useState("");
+  const [branchOpen, setBranchOpen] = useState(false);
+  const [txDate, setTxDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dueDate, setDueDate] = useState("");
+  const [borrower, setBorrower] = useState("");
+  const [lender, setLender] = useState("");
+  const [note, setNote] = useState("");
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Item selection states
+  const [selectedItem, setSelectedItem] = useState(""); // itemId stored as String
+  const [selectedUnit, setSelectedUnit] = useState("");
+  const [unitSearchOpen, setUnitSearchOpen] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+
+  // ✅ Fetch Branches [cite: 18]
+  const { data: branches, isLoading: branchesLoading } = useQuery<BorrowBranch[]>({
+    queryKey: ["/api/borrow/branches"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/borrow/branches", { token: localStorage.getItem("bk_token") });
+      const data = await res.json();
+      return data.branches || [];
+    }
   });
 
-  const isManager = user?.role === "manager" || user?.role === "admin";
+  // ✅ Fetch Items [cite: 19]
+  const { data: items, isLoading: itemsLoading } = useQuery<BorrowItem[]>({
+    queryKey: ["/api/borrow/items"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/borrow/items", { token: localStorage.getItem("bk_token") });
+      const data = await res.json();
+      return data.items || [];
+    }
+  });
 
-  const labels = {
-    title: language === "th" ? "รายการยืม-คืน" : "Transactions",
-    addTx: language === "th" ? "เพิ่มรายการ" : "Add Transaction",
-    date: language === "th" ? "วันที่" : "Date",
-    dueDate: language === "th" ? "กำหนดคืน" : "Due Date",
-    type: language === "th" ? "ประเภท" : "Type",
-    branch: language === "th" ? "สาขา" : "Branch",
-    item: language === "th" ? "รายการ" : "Item",
-    qty: language === "th" ? "จำนวน" : "Qty",
-    unit: language === "th" ? "หน่วย" : "Unit",
-    borrower: language === "th" ? "ผู้ยืม" : "Borrower",
-    lender: language === "th" ? "ผู้ให้ยืม" : "Lender",
-    note: language === "th" ? "หมายเหตุ" : "Note",
-    status: language === "th" ? "สถานะ" : "Status",
-    actions: language === "th" ? "จัดการ" : "Actions",
-    borrowIn: language === "th" ? "ยืมเข้า" : "Borrow In",
-    borrowOut: language === "th" ? "ให้ยืม" : "Borrow Out",
-    pending: language === "th" ? "รอคืน" : "Pending",
-    returned: language === "th" ? "คืนแล้ว" : "Returned",
-    overdue: language === "th" ? "เลยกำหนด" : "Overdue",
-    save: language === "th" ? "บันทึก" : "Save",
-    cancel: language === "th" ? "ยกเลิก" : "Cancel",
-    noData: language === "th" ? "ยังไม่มีรายการ" : "No transactions yet",
-    refresh: language === "th" ? "รีเฟรช" : "Refresh",
-    markReturned: language === "th" ? "คืนแล้ว" : "Mark Returned",
-    delete: language === "th" ? "ลบ" : "Delete",
-  };
+  const activeBranches = branches?.filter((b) => b.isActive) || [];
+  const activeItems = items?.filter((i) => i.isActive) || [];
 
-  const fetchData = async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      // ✅ Update Endpoints to /api/borrow/...
-      const [branchesRes, itemsRes, txRes] = await Promise.all([
-        fetch("/api/borrow/branches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
-        fetch("/api/borrow/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
-        fetch("/api/borrow/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, limit: 100 }) }),
+  // ✅ Logic to get available units [cite: 21]
+  const availableUnits = useMemo(() => {
+    // เตรียมค่ามาตรฐานจาก UNIT_OPTIONS
+    const standardValues = UNIT_OPTIONS.map(o => o.value);
+
+    if (!selectedItem) return standardValues;
+
+    // แปลง ID เป็น String เพื่อค้นหา
+    const item = activeItems.find(i => String(i.id) === selectedItem);
+    if (!item || !item.units || item.units.length === 0) return standardValues;
+
+    // แยกหน่วยเฉพาะของสินค้า
+    const parsed = item.units.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+
+    // รวมหน่วยเฉพาะ + หน่วยมาตรฐาน (เอาหน่วยเฉพาะขึ้นก่อน)
+    return Array.from(new Set([...parsed, ...standardValues])); 
+  }, [selectedItem, activeItems]);
+
+  // ✅ Submit Mutation [cite: 22]
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem("bk_token");
+      const promises = cart.map(item => 
+        apiRequest("POST", "/api/borrow/transactions/add", {
+          token,
+          txDate,
+          dueDate: dueDate || undefined,
+          txType,
+          branch: branch, // ส่งเป็น String ตามที่ Backend ต้องการ (แก้ Error "null id" ต้องแก้ที่ Backend storage.ts ให้สร้าง ID)
+          item: item.name,
+          qty: item.qty,
+          unit: item.unit,
+          borrower,
+          lender,
+          note
+        })
+      );
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/borrow/dashboard"] });
+      toast({ title: t.common.success });
+      navigate("/borrow/history");
+    },
+    onError: (err: any) => {
+      toast({ title: err.message || t.common.error, variant: "destructive" });
+    },
+  });
+
+  // ✅ Add To Cart [cite: 25]
+  const addToCart = () => {
+    if (!selectedItem || qty < 1) return;
+
+    // Convert i.id to String for comparison
+    const item = activeItems.find((i) => String(i.id) === selectedItem);
+    if (!item) return;
+
+    // Default to the first available unit if selectedUnit is empty
+    const finalUnit = selectedUnit || availableUnits[0] || "PCS"; 
+
+    // Check cart
+    const existingIndex = cart.findIndex((c) => c.id === selectedItem && c.unit === finalUnit); 
+
+    if (existingIndex >= 0) {
+      const newCart = [...cart];
+      newCart[existingIndex].qty += qty;
+      setCart(newCart);
+    } else {
+      setCart([
+        ...cart,
+        { 
+          id: String(item.id),
+          name: item.name, 
+          qty, 
+          unit: finalUnit 
+        },
       ]);
-
-      const branchesData = await branchesRes.json();
-      const itemsData = await itemsRes.json();
-      const txData = await txRes.json();
-
-      if (branchesData.ok) setBranches(branchesData.branches);
-      if (itemsData.ok) setItems(itemsData.items);
-      if (txData.ok) setTransactions(txData.transactions);
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Failed to load data", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+
+    // Reset fields
+    setSelectedItem("");
+    setSelectedUnit("");
+    setQty(1);
+    setShowItemDropdown(false);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [token]);
-
-  const handleAddTransaction = async () => {
-    if (!token || !newTx.branch || !newTx.item) return;
-    try {
-      // ✅ Use /api/borrow/transactions/add
-      const res = await fetch("/api/borrow/transactions/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, ...newTx }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast({ title: language === "th" ? "บันทึกสำเร็จ" : "Saved successfully" });
-        setShowAddDialog(false);
-        setNewTx({
-          txDate: format(new Date(), "yyyy-MM-dd"),
-          dueDate: "",
-          txType: "borrow_out",
-          branch: "",
-          item: "",
-          qty: 1,
-          unit: "",
-          borrower: "",
-          lender: "",
-          note: "",
-        });
-        fetchData();
-      } else {
-        toast({ title: data.message || "Error", variant: "destructive" });
-      }
-    } catch (err) {
-      toast({ title: "Network error", variant: "destructive" });
-    }
+  const updateCartQty = (id: string, delta: number) => {
+    setCart(cart.map((c) => (c.id === id ? { ...c, qty: Math.max(1, c.qty + delta) } : c)));
   };
 
-  const handleMarkReturned = async (txId: string) => {
-    if (!token) return;
-    try {
-      // ✅ Use /api/borrow/transactions/toggle
-      const res = await fetch("/api/borrow/transactions/toggle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, id: txId }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast({ title: language === "th" ? "บันทึกการคืนสำเร็จ" : "Marked as returned" });
-        fetchData();
-      }
-    } catch (err) {
-      toast({ title: "Error", variant: "destructive" });
-    }
+  const removeFromCart = (id: string) => setCart(cart.filter((c) => c.id !== id));
+  const clearCart = () => setCart([]);
+
+  const updateCartUnit = (id: string, newUnit: string) => {
+    setCart(prev => prev.map(item => 
+      item.id === id ? { ...item, unit: newUnit } : item
+    ));
   };
 
-  const handleDelete = async (txId: string) => {
-    if (!token) return;
-    if (!confirm(language === "th" ? "ต้องการลบรายการนี้?" : "Delete this transaction?")) return;
-    try {
-      // ✅ Use /api/borrow/transactions/delete
-      const res = await fetch("/api/borrow/transactions/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, id: txId }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast({ title: language === "th" ? "ลบสำเร็จ" : "Deleted" });
-        fetchData();
-      } else {
-        toast({ title: data.message || "Error", variant: "destructive" });
-      }
-    } catch (err) {
-      toast({ title: "Error", variant: "destructive" });
-    }
+  const handleSubmit = () => {
+    if (!branch || cart.length === 0) return;
+    submitMutation.mutate();
   };
 
-  const getStatusBadge = (tx: BorrowTransaction) => {
-    if (tx.status === "done") {
-      return <Badge variant="outline" className="text-green-600 bg-green-50">{labels.returned}</Badge>;
-    }
-    if (tx.dueDate && new Date(tx.dueDate) < new Date()) {
-      return <Badge variant="destructive">{labels.overdue}</Badge>;
-    }
-    return <Badge variant="secondary">{labels.pending}</Badge>;
+  // ✅ Pick Item Helper [cite: 36]
+  const pickItem = (it: BorrowItem) => {
+    setSelectedItem(String(it.id));
+
+    // Auto-select first unit based on split logic
+    const rawUnits = it.units || [];
+    const parsed = rawUnits.flatMap(u => u.split('/').map(s => s.trim())).filter(Boolean);
+    setSelectedUnit(parsed[0] || "");
+
+    setShowItemDropdown(false);
   };
 
   return (
-    <BorrowLayout>
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold">{labels.title}</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={fetchData} data-testid="button-refresh-transactions">
-              <RefreshCw className="w-4 h-4 mr-1" />
-              {labels.refresh}
-            </Button>
-            {isManager && (
-              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogTrigger asChild>
-                  <Button size="sm" data-testid="button-add-transaction">
-                    <Plus className="w-4 h-4 mr-1" />
-                    {labels.addTx}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{labels.addTx}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>{labels.date}</Label>
-                        <Input
-                          type="date"
-                          value={newTx.txDate}
-                          onChange={(e) => setNewTx({ ...newTx, txDate: e.target.value })}
-                          data-testid="input-tx-date"
-                        />
-                      </div>
-                      <div>
-                        <Label>{labels.dueDate}</Label>
-                        <Input
-                          type="date"
-                          value={newTx.dueDate}
-                          onChange={(e) => setNewTx({ ...newTx, dueDate: e.target.value })}
-                          data-testid="input-tx-due-date"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>{labels.type}</Label>
-                      <Select value={newTx.txType} onValueChange={(v) => setNewTx({ ...newTx, txType: v as any })}>
-                        <SelectTrigger data-testid="select-tx-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="borrow_in">{labels.borrowIn}</SelectItem>
-                          <SelectItem value="borrow_out">{labels.borrowOut}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>{labels.branch}</Label>
-                      <Select value={newTx.branch} onValueChange={(v) => setNewTx({ ...newTx, branch: v })}>
-                        <SelectTrigger data-testid="select-tx-branch">
-                          <SelectValue placeholder={language === "th" ? "เลือกสาขา" : "Select branch"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {branches.map((b) => (
-                            <SelectItem key={b.id} value={b.name}>{b.name} ({b.code})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>{labels.item}</Label>
-                        <Select
-                          value={newTx.item}
-                          onValueChange={(v) => {
-                            const item = items.find((i) => i.name === v);
-                            setNewTx({ ...newTx, item: v, unit: item?.units?.[0] || "" });
+    <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6 space-y-6 bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">Add Transaction</h1>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/borrow/history")}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <Card className="border-none shadow-none md:border md:shadow-sm">
+        <CardContent className="p-0 md:p-6 space-y-4">
+
+          {/* Row 1: Date and Due Date */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Input 
+                type="date" 
+                value={txDate} 
+                onChange={(e) => setTxDate(e.target.value)} 
+                className="border-primary/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Due Date</Label>
+              <Input 
+                type="date" 
+                value={dueDate} 
+                onChange={(e) => setDueDate(e.target.value)} 
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Transaction Type */}
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select value={txType} onValueChange={(v: any) => setTxType(v)}>
+              <SelectTrigger className="bg-muted/20">
+                <SelectValue placeholder="Select Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="borrow_out">Borrow Out (ยืมออก)</SelectItem>
+                <SelectItem value="borrow_in">Borrow In (ยืมเข้า)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Row 3: Branch (Combobox) */}
+          <div className="space-y-2">
+            <Label>Branch</Label>
+            <Popover open={branchOpen} onOpenChange={setBranchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={branchOpen}
+                  className="w-full justify-between bg-muted/20 font-normal"
+                >
+                  {branch
+                    ? activeBranches.find((b) => String(b.id) === branch)?.name
+                    : "Select branch"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                <Command>
+                  <CommandInput placeholder="Search branch..." />
+                  <CommandList>
+                    <CommandEmpty>No branch found.</CommandEmpty>
+                    <CommandGroup>
+                      {activeBranches.map((b) => (
+                        <CommandItem
+                          key={b.id}
+                          value={b.name}
+                          onSelect={() => {
+                            setBranch(String(b.id));
+                            setBranchOpen(false);
                           }}
                         >
-                          <SelectTrigger data-testid="select-tx-item">
-                            <SelectValue placeholder={language === "th" ? "เลือกรายการ" : "Select item"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {items.map((i) => (
-                              <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>
-                            ))}
-                          </SelectContent>
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              branch === String(b.id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {b.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="my-4 border-t" />
+
+          {/* Row 4: Item Selection (Searchable Dropdown) */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div className="md:col-span-6 space-y-2">
+              <Label>Item</Label>
+              <Popover open={showItemDropdown} onOpenChange={setShowItemDropdown}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={showItemDropdown}
+                    className="w-full justify-between bg-muted/20 font-normal"
+                  >
+                    {selectedItem
+                      ? activeItems.find((it) => String(it.id) === selectedItem)?.name
+                      : "Select item..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search item..." />
+                    <CommandList>
+                      <CommandEmpty>No item found.</CommandEmpty>
+                      <CommandGroup>
+                        {activeItems.map((it) => (
+                          <CommandItem
+                            key={it.id}
+                            value={it.name}
+                            onSelect={() => {
+                              pickItem(it);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedItem === String(it.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="font-mono text-xs text-muted-foreground mr-2">{it.code}</span>
+                            {it.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Qty */}
+            <div className="md:col-span-2 space-y-2">
+              <Label>Qty</Label>
+              <Input
+                type="number"
+                min={1}
+                value={qty}
+                onChange={(e) => setQty(Number(e.target.value))}
+                onKeyDown={(e) => e.key === 'Enter' && addToCart()}
+                className="bg-muted/20"
+              />
+            </div>
+
+            {/* Unit Dropdown (Add Section) */}
+            <div className="md:col-span-2 space-y-2">
+              <Label>Unit</Label>
+              <Popover open={unitSearchOpen} onOpenChange={setUnitSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={unitSearchOpen}
+                    className="w-full justify-between bg-muted/20 font-normal"
+                    disabled={!selectedItem}
+                    data-testid="select-unit"
+                  >
+                    {selectedUnit || "Unit"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search unit..." />
+                    <CommandList>
+                      <CommandEmpty>No unit found.</CommandEmpty>
+                      <CommandGroup>
+                        {availableUnits.map((u) => (
+                          <CommandItem
+                            key={u}
+                            value={u}
+                            onSelect={(currentValue) => {
+                              setSelectedUnit(currentValue.toUpperCase());
+                              setUnitSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedUnit === u ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {u}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Add Button */}
+            <div className="md:col-span-2 pb-0.5">
+              <Button 
+                type="button" 
+                onClick={addToCart} 
+                disabled={!selectedItem}
+                className="w-full"
+                variant="secondary"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
+            </div>
+          </div>
+
+          {/* Cart List */}
+          {cart.length > 0 && (
+            <div className="mt-4 border rounded-md overflow-hidden">
+              <div className="bg-muted/50 px-4 py-2 text-xs font-medium uppercase text-muted-foreground grid grid-cols-12 gap-2">
+                <div className="col-span-6">Item</div>
+                <div className="col-span-2 text-center">Qty</div>
+                <div className="col-span-3">Unit</div>
+                <div className="col-span-1"></div>
+              </div>
+              <div className="divide-y">
+                {cart.map((item) => (
+                  <div key={`${item.id}-${item.unit}`} className="px-4 py-2 text-sm grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-6 font-medium truncate">{item.name}</div>
+
+                    {/* Qty Control */}
+                    <div className="col-span-2 flex items-center justify-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateCartQty(item.id, -1)}>
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center">{item.qty}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateCartQty(item.id, 1)}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+
+                    {/* Unit Display/Edit (Cart) */}
+                    <div className="col-span-3">
+                        <Select value={item.unit} onValueChange={(val) => updateCartUnit(item.id, val)}>
+                            <SelectTrigger className="h-8 border-none shadow-none focus:ring-0">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[200px]">
+                                {(() => {
+                                    const originalItem = activeItems.find(i => String(i.id) === item.id);
+                                    const specificUnits = originalItem?.units
+                                        ?.flatMap(u => u.split('/').map(s => s.trim()))
+                                        .filter(Boolean) || [];
+
+                                    const allUnitValues = Array.from(new Set([
+                                        ...specificUnits, 
+                                        ...UNIT_OPTIONS.map(o => o.value)
+                                    ]));
+
+                                    return allUnitValues.map(unitValue => {
+                                        const match = UNIT_OPTIONS.find(o => o.value === unitValue);
+                                        const label = match ? match.label : unitValue;
+                                        return (
+                                            <SelectItem key={unitValue} value={unitValue}>
+                                                {label}
+                                            </SelectItem>
+                                        );
+                                    });
+                                })()}
+                            </SelectContent>
                         </Select>
-                      </div>
-                      <div>
-                        <Label>{labels.qty}</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            min={1}
-                            value={newTx.qty}
-                            onChange={(e) => setNewTx({ ...newTx, qty: parseInt(e.target.value) || 1 })}
-                            data-testid="input-tx-qty"
-                          />
-                          <Input 
-                            value={newTx.unit}
-                            onChange={(e) => setNewTx({ ...newTx, unit: e.target.value })}
-                            placeholder={labels.unit}
-                            className="w-20"
-                          />
-                        </div>
-                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>{labels.borrower}</Label>
-                        <Input
-                          value={newTx.borrower}
-                          onChange={(e) => setNewTx({ ...newTx, borrower: e.target.value })}
-                          data-testid="input-tx-borrower"
-                        />
-                      </div>
-                      <div>
-                        <Label>{labels.lender}</Label>
-                        <Input
-                          value={newTx.lender}
-                          onChange={(e) => setNewTx({ ...newTx, lender: e.target.value })}
-                          data-testid="input-tx-lender"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>{labels.note}</Label>
-                      <Input
-                        value={newTx.note}
-                        onChange={(e) => setNewTx({ ...newTx, note: e.target.value })}
-                        data-testid="input-tx-note"
-                      />
+
+                    {/* Delete */}
+                    <div className="col-span-1 text-right">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/80" onClick={() => removeFromCart(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddDialog(false)} data-testid="button-cancel-tx">
-                      {labels.cancel}
-                    </Button>
-                    <Button onClick={handleAddTransaction} data-testid="button-save-tx">
-                      {labels.save}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        </div>
-
-        <Card>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading...</div>
-            ) : transactions.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">{labels.noData}</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{labels.date}</TableHead>
-                      <TableHead>{labels.type}</TableHead>
-                      <TableHead>{labels.branch}</TableHead>
-                      <TableHead>{labels.item}</TableHead>
-                      <TableHead className="text-right">{labels.qty}</TableHead>
-                      <TableHead>{labels.status}</TableHead>
-                      <TableHead>{labels.actions}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((tx) => (
-                      <TableRow key={tx.id} data-testid={`row-tx-${tx.id}`}>
-                        <TableCell className="whitespace-nowrap">{tx.txDate}</TableCell>
-                        <TableCell>
-                          {tx.txType === "borrow_in" ? (
-                            <span className="flex items-center gap-1 text-green-600 font-medium">
-                              <ArrowDownToLine className="w-4 h-4" />
-                              {labels.borrowIn}
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 text-orange-600 font-medium">
-                              <ArrowUpFromLine className="w-4 h-4" />
-                              {labels.borrowOut}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>{tx.branch}</TableCell>
-                        <TableCell>{tx.item}</TableCell>
-                        <TableCell className="text-right font-mono">{tx.qty} {tx.unit}</TableCell>
-                        <TableCell>{getStatusBadge(tx)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {tx.status === "pending" && isManager && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMarkReturned(tx.id)}
-                                data-testid={`button-return-${tx.id}`}
-                                className="h-8 w-8 p-0"
-                                title={labels.markReturned}
-                              >
-                                <Check className="w-4 h-4 text-green-600" />
-                              </Button>
-                            )}
-                            {isManager && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(tx.id)}
-                                data-testid={`button-delete-${tx.id}`}
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                title={labels.delete}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+
+          <div className="my-4 border-t" />
+
+          {/* Row 5: People */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Borrower</Label>
+              <Input 
+                value={borrower}
+                onChange={(e) => setBorrower(e.target.value)}
+                className="bg-muted/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Lender</Label>
+              <Input 
+                value={lender}
+                onChange={(e) => setLender(e.target.value)}
+                className="bg-muted/20"
+              />
+            </div>
+          </div>
+
+          {/* Row 6: Note */}
+          <div className="space-y-2">
+            <Label>Note</Label>
+            <Textarea 
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="bg-muted/20 resize-none"
+              rows={2}
+            />
+          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* Footer Buttons */}
+      <div className="flex justify-end gap-3 pt-2">
+        <Button variant="outline" onClick={() => navigate("/borrow/history")}>
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleSubmit} 
+          disabled={submitMutation.isPending || cart.length === 0 || !branch}
+          className="bg-[#8B5E3C] hover:bg-[#6F4B30] text-white" 
+        >
+          {submitMutation.isPending ? "Saving..." : "Save"}
+        </Button>
       </div>
-    </BorrowLayout>
+    </div>
   );
 }

@@ -113,3 +113,43 @@ Auto-calculated fields based on input Actual Hours and OT Hours:
 - Vite for frontend development and bundling
 - esbuild for server bundling
 - TypeScript for type checking
+
+## Borrow Tracker System
+
+A comprehensive equipment borrowing management system between branches.
+
+### Features
+- Branch management (add, delete, import from Excel/CSV)
+- Item catalog with multiple units support
+- Transaction tracking (borrow in/out)
+- History with filtering and search
+- Searchable dropdowns using Popover + Command pattern
+- Interactive charts for trends (recharts)
+- Dynamic unit suggestions (item-specific units prioritized)
+
+### Routes
+- `/borrow` - Dashboard with overview
+- `/borrow/history` - Transaction history with filters
+- `/borrow/transactions` - Add new borrow transaction
+- `/borrow/branches` - Manage branches
+- `/borrow/items` - Manage items catalog
+- `/borrow/settings` - System settings (manager only)
+- `/borrow/help` - User guide
+
+### Key Components
+- `BorrowLayout` - Consistent navigation wrapper with 7 tabs
+- `ImportExcelButton` - Shared component for Excel/CSV import
+- Searchable combobox with keyboard navigation (Arrow keys, Enter, Escape)
+
+### Database Tables
+- `borrow_branches` - Branch list with code and name
+- `borrow_items` - Item catalog with units array and category
+- `borrow_transactions` - Transaction records with status tracking
+
+## Recent Changes
+
+### January 16, 2026
+1. **Register Borrow Routes** - Added routes for /borrow/history, /borrow/branches, /borrow/items in App.tsx
+2. **Update Navigation Tabs** - Added all 7 tabs to BorrowLayout (Dashboard, History, Add New, Branches, Items, Settings, Help)
+3. **Fix Import Error** - Fixed "Plus is not defined" error by adding Plus import from lucide-react
+4. **Wrap Pages with BorrowLayout** - Added BorrowLayout wrapper to Branches and Items pages for consistent navigation

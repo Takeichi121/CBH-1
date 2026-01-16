@@ -19,9 +19,10 @@ import {
   dailyLabor, 
   sessions,
   dailySalesReports,
-  passwordResetOtps
+  passwordResetOtps,
+  staffChatMessages
 } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, or } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
@@ -1984,21 +1985,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ==========================================
-  // 💬 Socket.IO Chat System
+  // 💬 Socket.IO Chat System (Persistent)
   // ==========================================
   const io = new SocketIOServer(httpServer);
 
   interface ChatMessage {
+    id?: number;
     user: string;
     senderUsername: string;
-    recipientUsername?: string;
+    recipientUsername?: string | null;
     text: string;
     timestamp: string;
     isPrivate?: boolean;
+    isRead?: number;
   }
 
-  const chatMessages: ChatMessage[] = [];
-  const privateMessages: ChatMessage[] = [];
   const onlineUsers = new Map<string, { username: string; displayName: string; socketId: string }>();
 
   io.use(async (socket, next) => {
@@ -2026,7 +2027,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     io.emit("online_users", usersList);
   };
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     const user = socket.data.user;
     const displayName = user.nickName || user.fullName || user.username;
     console.log("User connected:", user.username);
@@ -2037,47 +2038,181 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       socketId: socket.id
     });
 
-    socket.emit("chat_history", chatMessages.slice(-50));
+    // Load group chat history from database (last 50 messages where recipientUsername is null)
+    try {
+      const groupHistory = await db.select()
+        .from(staffChatMessages)
+        .where(isNull(staffChatMessages.recipientUsername))
+        .orderBy(desc(staffChatMessages.id))
+        .limit(50);
+      
+      const formattedHistory: ChatMessage[] = groupHistory.reverse().map(m => ({
+        id: m.id,
+        user: m.senderDisplayName,
+        senderUsername: m.senderUsername,
+        text: m.text,
+        timestamp: m.createdAt,
+        isPrivate: false
+      }));
+      socket.emit("chat_history", formattedHistory);
+    } catch (e) {
+      console.error("Error loading chat history:", e);
+      socket.emit("chat_history", []);
+    }
+    
     broadcastOnlineUsers();
 
-    socket.on("message", (payload: { text: string }) => {
+    // Group message - save to database
+    socket.on("message", async (payload: { text: string }) => {
+      const timestamp = new Date().toISOString();
       const msg: ChatMessage = {
         user: displayName,
         senderUsername: user.username,
         text: payload.text,
-        timestamp: new Date().toISOString(),
+        timestamp,
         isPrivate: false
       };
-      chatMessages.push(msg);
-      if (chatMessages.length > 100) chatMessages.shift();
+
+      try {
+        // Save to database
+        const result = await db.insert(staffChatMessages).values({
+          senderUsername: user.username,
+          senderDisplayName: displayName,
+          recipientUsername: null,
+          text: payload.text,
+          isRead: 0,
+          createdAt: timestamp
+        }).returning();
+        msg.id = result[0]?.id;
+      } catch (e) {
+        console.error("Error saving message:", e);
+      }
+
       io.emit("message", msg);
     });
 
-    socket.on("private_message", (payload: { text: string; to: string }) => {
-      const targetUser = onlineUsers.get(payload.to);
-      if (!targetUser) return;
-
+    // Private message - save to database and deliver to recipient (even if offline)
+    socket.on("private_message", async (payload: { text: string; to: string }) => {
+      const timestamp = new Date().toISOString();
       const msg: ChatMessage = {
         user: displayName,
         senderUsername: user.username,
         recipientUsername: payload.to,
         text: payload.text,
-        timestamp: new Date().toISOString(),
+        timestamp,
         isPrivate: true
       };
-      privateMessages.push(msg);
-      if (privateMessages.length > 500) privateMessages.shift();
 
+      try {
+        // Save to database
+        const result = await db.insert(staffChatMessages).values({
+          senderUsername: user.username,
+          senderDisplayName: displayName,
+          recipientUsername: payload.to,
+          text: payload.text,
+          isRead: 0,
+          createdAt: timestamp
+        }).returning();
+        msg.id = result[0]?.id;
+      } catch (e) {
+        console.error("Error saving private message:", e);
+      }
+
+      // Send to sender
       socket.emit("message", msg);
-      io.to(targetUser.socketId).emit("message", msg);
+
+      // Send to recipient if online
+      const targetUser = onlineUsers.get(payload.to);
+      if (targetUser) {
+        io.to(targetUser.socketId).emit("message", msg);
+      }
     });
 
-    socket.on("get_private_history", (targetUsername: string) => {
-      const history = privateMessages.filter(m =>
-        (m.senderUsername === user.username && m.recipientUsername === targetUsername) ||
-        (m.senderUsername === targetUsername && m.recipientUsername === user.username)
-      );
-      socket.emit("private_history", history);
+    // Get private history from database
+    socket.on("get_private_history", async (targetUsername: string) => {
+      try {
+        const history = await db.select()
+          .from(staffChatMessages)
+          .where(
+            or(
+              and(
+                eq(staffChatMessages.senderUsername, user.username),
+                eq(staffChatMessages.recipientUsername, targetUsername)
+              ),
+              and(
+                eq(staffChatMessages.senderUsername, targetUsername),
+                eq(staffChatMessages.recipientUsername, user.username)
+              )
+            )
+          )
+          .orderBy(desc(staffChatMessages.id))
+          .limit(100);
+
+        const formattedHistory: ChatMessage[] = history.reverse().map(m => ({
+          id: m.id,
+          user: m.senderDisplayName,
+          senderUsername: m.senderUsername,
+          recipientUsername: m.recipientUsername,
+          text: m.text,
+          timestamp: m.createdAt,
+          isPrivate: true
+        }));
+        socket.emit("private_history", formattedHistory);
+
+        // Mark messages as read
+        await db.update(staffChatMessages)
+          .set({ isRead: 1 })
+          .where(
+            and(
+              eq(staffChatMessages.senderUsername, targetUsername),
+              eq(staffChatMessages.recipientUsername, user.username),
+              eq(staffChatMessages.isRead, 0)
+            )
+          );
+      } catch (e) {
+        console.error("Error loading private history:", e);
+        socket.emit("private_history", []);
+      }
+    });
+
+    // Get all users for private chat (including offline)
+    socket.on("get_all_users", async () => {
+      try {
+        const allUsers = await db.select({
+          username: users.username,
+          fullName: users.fullName,
+          nickName: users.nickName
+        }).from(users).where(eq(users.active, 1));
+
+        const userList = allUsers
+          .filter(u => u.username !== user.username)
+          .map(u => ({
+            username: u.username,
+            displayName: u.nickName || u.fullName || u.username,
+            online: onlineUsers.has(u.username)
+          }));
+        socket.emit("all_users", userList);
+      } catch (e) {
+        console.error("Error getting users:", e);
+        socket.emit("all_users", []);
+      }
+    });
+
+    // Get unread message count
+    socket.on("get_unread_count", async () => {
+      try {
+        const unreadMessages = await db.select()
+          .from(staffChatMessages)
+          .where(
+            and(
+              eq(staffChatMessages.recipientUsername, user.username),
+              eq(staffChatMessages.isRead, 0)
+            )
+          );
+        socket.emit("unread_count", unreadMessages.length);
+      } catch (e) {
+        socket.emit("unread_count", 0);
+      }
     });
 
     socket.on("disconnect", () => {

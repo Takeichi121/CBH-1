@@ -441,6 +441,20 @@ export const announcements = pgTable("announcements", {
 });
 
 // ==========================================
+// 💬 Staff Chat Messages (Persistent)
+// ==========================================
+
+export const staffChatMessages = pgTable("staff_chat_messages", {
+  id: serial("id").primaryKey(),
+  senderUsername: text("sender_username").notNull(),
+  senderDisplayName: text("sender_display_name").notNull(),
+  recipientUsername: text("recipient_username"), // null = group message
+  text: text("text").notNull(),
+  isRead: integer("is_read").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
+
+// ==========================================
 // 🛡️ Zod Schemas
 // ==========================================
 
@@ -464,6 +478,7 @@ export const insertLaborSettingsSchema = createInsertSchema(laborSettings).omit(
 export const insertDailyLaborSchema = createInsertSchema(dailyLabor).omit({ id: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+export const insertStaffChatMessageSchema = createInsertSchema(staffChatMessages).omit({ id: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
@@ -503,6 +518,8 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type StaffChatMessage = typeof staffChatMessages.$inferSelect;
+export type InsertStaffChatMessage = z.infer<typeof insertStaffChatMessageSchema>;
 
 // Cart item type for borrow tracker (client-side)
 export interface BorrowCartItem {

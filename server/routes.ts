@@ -249,7 +249,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
 
     const { sendOtpEmail } = await import('./resend');
-    const sent = await sendOtpEmail(email, otp, user.nickName || user.fullName || user.username);
+    const displayName = user.nickName || user.fullName || user.username;
+    const sent = await sendOtpEmail(email, otp, displayName, user.username);
     
     if (!sent) {
       return res.json({ ok: false, message: "ส่งอีเมลไม่สำเร็จ กรุณาลองใหม่ / Failed to send email" });

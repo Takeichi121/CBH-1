@@ -41,7 +41,7 @@ export async function getResendClient() {
   };
 }
 
-export async function sendOtpEmail(to: string, otp: string, username: string): Promise<boolean> {
+export async function sendOtpEmail(to: string, otp: string, displayName: string, username: string): Promise<boolean> {
   try {
     const { client, fromEmail } = await getResendClient();
     
@@ -54,8 +54,12 @@ export async function sendOtpEmail(to: string, otp: string, username: string): P
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #D62300;">BK Work Schedule - ${branchName}</h2>
-          <p>สวัสดี <strong>${username}</strong>,</p>
-          <p>คุณได้ร้องขอรหัส OTP เพื่อรีเซ็ตรหัสผ่าน:</p>
+          <p>สวัสดี <strong>${displayName}</strong>,</p>
+          <p>คุณได้ร้องขอรหัส OTP เพื่อรีเซ็ตรหัสผ่านสำหรับบัญชี:</p>
+          <div style="background: #e8f4fc; padding: 12px; text-align: center; margin: 10px 0; border-radius: 8px; border: 1px solid #cce5ff;">
+            <span style="font-size: 18px; font-weight: bold; color: #004085;">Username: ${username}</span>
+          </div>
+          <p>รหัส OTP ของคุณ:</p>
           <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
             <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #D62300;">${otp}</span>
           </div>

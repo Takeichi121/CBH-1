@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
+import { APP_VERSION, CHANGELOG } from "@shared/version";
 
 export default function SettingsPage() {
   const { user, setUserProfilePicture } = useAuth();
@@ -576,11 +577,11 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-sm">{t("version")}</Label>
-                <p className="font-medium text-foreground" data-testid="text-version">3.1.5</p>
+                <p className="font-medium text-foreground" data-testid="text-version">{APP_VERSION}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-sm">{t("lastUpdated")}</Label>
-                <p className="font-medium text-foreground" data-testid="text-last-updated">01/10/2026</p>
+                <p className="font-medium text-foreground" data-testid="text-last-updated">{CHANGELOG[0]?.date || "N/A"}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-sm">{t("developer")}</Label>
@@ -594,7 +595,7 @@ export default function SettingsPage() {
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground pt-6 border-t border-border/50 space-y-2">
         <p>&copy; 2025 BK Grand Diamond. Developed by Chanon</p>
-        <p>Version 3.1.5 | Last updated: 01/10/2026</p>
+        <p>Version {APP_VERSION} | Last updated: {CHANGELOG[0]?.date || "N/A"}</p>
         <Link href="/dev-toolbox">
           <Button variant="ghost" size="sm" className="text-muted-foreground/50 hover:text-muted-foreground gap-1" data-testid="button-dev-toolbox">
             <Wrench className="h-3 w-3" />

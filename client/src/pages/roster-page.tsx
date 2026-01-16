@@ -113,7 +113,7 @@ export default function RosterPage() {
       if (u.role === "admin" || u.role === "manager") return false;
       if (u.active === 0) return false;
       // Only show users who have at least one shift this week
-      const hasShift = days.some(d => u.shifts[d]);
+      const hasShift = days.some((d: string) => u.shifts[d]);
       return hasShift;
     })
     .sort((a: any, b: any) => {

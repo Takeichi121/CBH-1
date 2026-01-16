@@ -177,12 +177,31 @@ Real-time chat system for staff communication using Socket.IO.
 - User identity determined server-side from session token
 - Online users tracked via Map with socket ID for targeted private messaging
 
+## Version Tracking
+
+Version history is maintained in `shared/version.ts`:
+- `APP_VERSION`: Current version number
+- `CHANGELOG`: Array of version entries with date and changes
+
+Version is displayed in Settings page footer automatically.
+
 ## Recent Changes
 
-### January 16, 2026
+### Version 1.5.0 (January 16, 2026)
+- เพิ่มระบบสมัครสมาชิกใหม่ให้ผู้ใช้กำหนด Username เองได้
+- เพิ่มช่อง Email, เบอร์โทร, ยืนยันรหัสผ่านในฟอร์มสมัคร
+- เพิ่ม Validation สำหรับ Username (ตัวอักษร/ตัวเลข/_ เท่านั้น)
+- เพิ่มการตรวจสอบ Username ซ้ำ
+
+### Version 1.4.0 (January 16, 2026)
+- เพิ่มระบบ Reset Password ผ่าน OTP ทาง Email
+- ใช้ Resend สำหรับส่ง OTP Email
+
+### Version 1.3.0 (January 16, 2026)
+- เพิ่มระบบ Staff Chat แบบ Real-time ด้วย Socket.IO
+- เพิ่ม Floating Chat Widget
+
+### Earlier Changes
 1. **Register Borrow Routes** - Added routes for /borrow/history, /borrow/branches, /borrow/items in App.tsx
-2. **Update Navigation Tabs** - Added all 7 tabs to BorrowLayout (Dashboard, History, Add New, Branches, Items, Settings, Help)
-3. **Fix Import Error** - Fixed "Plus is not defined" error by adding Plus import from lucide-react
-4. **Wrap Pages with BorrowLayout** - Added BorrowLayout wrapper to Branches and Items pages for consistent navigation
-5. **Bilingual Transaction Form** - Updated Add Transaction form with Thai/English labels
-6. **Staff Chat System** - Added real-time chat with Socket.IO, authentication, and bilingual support
+2. **Update Navigation Tabs** - Added all 7 tabs to BorrowLayout
+3. **Staff Chat System** - Added real-time chat with Socket.IO, authentication, and bilingual support

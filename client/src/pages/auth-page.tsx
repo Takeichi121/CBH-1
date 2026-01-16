@@ -329,24 +329,17 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   const { t, language } = useI18n();
   const [role, setRole] = useState<"staff" | "manager">("staff");
 
-  // Schema depends on role
-  const schema = role === "staff" ? api.auth.registerStaff.input : api.auth.registerManager.input;
-  
   const form = useForm({
-    resolver: zodResolver(schema),
     defaultValues: {
+      username: "",
       fullName: "",
+      email: "",
+      phone: "",
       password: "",
-      verifyCode: "", // Only for manager
+      confirmPassword: "",
+      verifyCode: "",
     },
   });
-
-  const positionLabels: Record<ManagerPosition, string> = {
-    store_manager: t("storeManager"),
-    assistant_store_manager: t("assistantStoreManager"),
-    shift_manager: t("shiftManager"),
-    management_trainee: t("managementTrainee"),
-  };
 
   function onSubmit(data: any) {
     if (role === "staff") {
@@ -365,69 +358,65 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
         <CardDescription className="select-none">{t("joinTeam")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2 mb-6">
-          <Button 
-            type="button" 
-            variant={role === "staff" ? "default" : "outline"} 
-            onClick={() => setRole("staff")}
-            className="flex-1"
-          >
-            {t("staff")}
-          </Button>
-          <Button 
-            type="button" 
-            variant={role === "manager" ? "default" : "outline"} 
-            onClick={() => setRole("manager")}
-            className="flex-1"
-          >
-            {t("manager")}
-          </Button>
+        <div className="flex gap-2 mb-4">
+          <Button type="button" variant={role === "staff" ? "default" : "outline"} onClick={() => setRole("staff")} className="flex-1">{t("staff")}</Button>
+          <Button type="button" variant={role === "manager" ? "default" : "outline"} onClick={() => setRole("manager")} className="flex-1">{t("manager")}</Button>
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-            <FormField
-              control={form.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="select-none">{t("fullName")}</FormLabel>
-                  <FormControl><Input {...field} className="h-10" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="select-none">{t("password")}</FormLabel>
-                  <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+            <FormField control={form.control} name="username" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "Username (กำหนดเอง)" : "Username"}</FormLabel>
+                <FormControl><Input placeholder={language === "th" ? "ตัวอักษร ตัวเลข _ เท่านั้น" : "Letters, numbers, _ only"} {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="fullName" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "ชื่อ - สกุล" : "Full Name"}</FormLabel>
+                <FormControl><Input {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">E-Mail</FormLabel>
+                <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="phone" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "เบอร์โทร" : "Phone"}</FormLabel>
+                <FormControl><Input {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "รหัสผ่าน" : "Password"}</FormLabel>
+                <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "ยืนยันรหัสผ่าน" : "Confirm Password"}</FormLabel>
+                <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             {role === "manager" && (
-              <FormField
-                control={form.control}
-                name="verifyCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="select-none">{t("verificationCode")}</FormLabel>
-                    <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="verifyCode" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="select-none">{language === "th" ? "โค้ดยืนยัน" : "Verification Code"}</FormLabel>
+                  <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
             )}
-
-            <Button 
-              type="submit" 
-              className="w-full mt-4 h-11 shadow-lg shadow-primary/20"
-              disabled={isPending}
-            >
+            <Button type="submit" className="w-full mt-3 h-11 shadow-lg shadow-primary/20" disabled={isPending}>
               {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {t("registerButton")} {role === "manager" ? t("manager") : t("staff")}
             </Button>

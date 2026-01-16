@@ -145,40 +145,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Register Staff
   app.post(api.auth.registerStaff.path, async (req, res) => {
     const cfg = await storage.getConfig();
-    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
-    const { fullName, password } = req.body;
-    if (!fullName || !password) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Password" });
-
-    const base = generateUsernameBase(fullName);
-    const username = await allocateUsername(base, async (u) => !!(await storage.getUser(u)));
-    if (!username) return res.json({ ok: false, message: "สร้าง username ไม่สำเร็จ" });
+    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
+    const { username, fullName, email, phone, password, confirmPassword } = req.body;
+    if (!username || !fullName || !email || !phone || !password) return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
+    if (password !== confirmPassword) return res.json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
+    
+    const existing = await storage.getUser(username.toLowerCase());
+    if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
-      username, passhash: hashPass(password), role: "staff",
-      fullName, nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString()
+      username: username.toLowerCase(), passhash: hashPass(password), role: "staff",
+      fullName, nickName: "", phone, email, position: "Service Staff", active: 1, createdAt: new Date().toISOString()
     });
-    await storage.log("register_staff", username, "fullName=" + fullName);
-    res.json({ ok: true, username });
+    await storage.log("register_staff", username.toLowerCase(), "fullName=" + fullName);
+    res.json({ ok: true, username: username.toLowerCase() });
   });
 
   // Register Manager
   app.post(api.auth.registerManager.path, async (req, res) => {
     const cfg = await storage.getConfig();
-    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
-    const { fullName, password, verifyCode } = req.body;
-    if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก" });
-    if (!fullName || !password) return res.json({ ok: false, message: "ต้องกรอก ชื่อ-สกุล / Password" });
-
-    const base = generateUsernameBase(fullName);
-    const username = await allocateUsername(base, async (u) => !!(await storage.getUser(u)));
-    if (!username) return res.json({ ok: false, message: "สร้าง username ไม่สำเร็จ" });
+    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
+    const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
+    if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
+    if (!username || !fullName || !email || !phone || !password) return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
+    if (password !== confirmPassword) return res.json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
+    
+    const existing = await storage.getUser(username.toLowerCase());
+    if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
-      username, passhash: hashPass(password), role: "manager",
-      fullName, nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString()
+      username: username.toLowerCase(), passhash: hashPass(password), role: "manager",
+      fullName, nickName: "", phone, email, position: "store_manager", active: 1, createdAt: new Date().toISOString()
     });
-    await storage.log("register_manager", username, `fullName=${fullName}, position=store_manager`);
-    res.json({ ok: true, username });
+    await storage.log("register_manager", username.toLowerCase(), `fullName=${fullName}, position=store_manager`);
+    res.json({ ok: true, username: username.toLowerCase() });
   });
 
   // Complete Profile

@@ -18,7 +18,8 @@ import {
   laborSettings, 
   dailyLabor, 
   sessions,
-  dailySalesReports
+  dailySalesReports,
+  passwordResetOtps
 } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -195,6 +196,169 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     await storage.updateUser(u.username, { nickName, phone, email });
     await storage.log("complete_profile", u.username, `nickName=${nickName}, phone=${phone}, email=${email}`);
     res.json({ ok: true });
+  });
+
+  // Auth: Request Password Reset (send OTP via email)
+  app.post(api.auth.requestPasswordReset.path, async (req, res) => {
+    const parsed = api.auth.requestPasswordReset.input.safeParse(req.body);
+    if (!parsed.success) {
+      return res.json({ ok: false, message: "กรุณากรอกอีเมลที่ถูกต้อง / Please enter a valid email" });
+    }
+    const { email } = parsed.data;
+
+    const allUsers = await db.select().from(users).where(eq(users.email, email));
+    
+    const now = Math.floor(Date.now() / 1000);
+    const recentOtps = await db.select()
+      .from(passwordResetOtps)
+      .where(and(
+        eq(passwordResetOtps.email, email),
+        sql`${passwordResetOtps.createdAt} > ${new Date(Date.now() - 60000).toISOString()}`
+      ));
+    
+    if (recentOtps.length > 0) {
+      return res.json({ ok: false, message: "กรุณารอ 1 นาทีก่อนขอรหัสใหม่ / Please wait 1 minute before requesting again" });
+    }
+
+    if (allUsers.length === 0) {
+      return res.json({ ok: true, message: "หากอีเมลนี้มีในระบบ คุณจะได้รับ OTP / If this email exists, you will receive an OTP" });
+    }
+
+    const user = allUsers[0];
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpSalt = crypto.randomBytes(16).toString('hex');
+    const otpHash = crypto.createHash('sha256').update(otp + otpSalt).digest('hex');
+    const expiresAt = now + (10 * 60);
+
+    await db.update(passwordResetOtps)
+      .set({ used: 1 })
+      .where(and(
+        eq(passwordResetOtps.email, email),
+        eq(passwordResetOtps.used, 0)
+      ));
+
+    await db.insert(passwordResetOtps).values({
+      email,
+      username: user.username,
+      otp: otpHash,
+      otpSalt,
+      expiresAt,
+      used: 0,
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    });
+
+    const { sendOtpEmail } = await import('./resend');
+    const sent = await sendOtpEmail(email, otp, user.nickName || user.fullName || user.username);
+    
+    if (!sent) {
+      return res.json({ ok: false, message: "ส่งอีเมลไม่สำเร็จ กรุณาลองใหม่ / Failed to send email" });
+    }
+
+    await storage.log("password_reset_request", user.username, `otp sent to ${email}`);
+    res.json({ ok: true, message: "หากอีเมลนี้มีในระบบ คุณจะได้รับ OTP / If this email exists, you will receive an OTP" });
+  });
+
+  // Auth: Verify OTP
+  app.post(api.auth.verifyOtp.path, async (req, res) => {
+    const parsed = api.auth.verifyOtp.input.safeParse(req.body);
+    if (!parsed.success) {
+      return res.json({ ok: false, message: "ข้อมูลไม่ครบหรือไม่ถูกต้อง / Missing or invalid data" });
+    }
+    const { email, otp } = parsed.data;
+
+    const now = Math.floor(Date.now() / 1000);
+    
+    const otpRecords = await db.select()
+      .from(passwordResetOtps)
+      .where(and(
+        eq(passwordResetOtps.email, email),
+        eq(passwordResetOtps.used, 0)
+      ))
+      .orderBy(desc(passwordResetOtps.id))
+      .limit(1);
+
+    if (otpRecords.length === 0) {
+      return res.json({ ok: false, message: "รหัส OTP ไม่ถูกต้อง / Invalid OTP" });
+    }
+
+    const otpRecord = otpRecords[0];
+    
+    if (otpRecord.attempts >= 5) {
+      await db.update(passwordResetOtps)
+        .set({ used: 1 })
+        .where(eq(passwordResetOtps.id, otpRecord.id));
+      return res.json({ ok: false, message: "ลองผิดหลายครั้ง กรุณาขอรหัสใหม่ / Too many attempts, please request new OTP" });
+    }
+
+    const otpHash = crypto.createHash('sha256').update(otp + otpRecord.otpSalt).digest('hex');
+    if (otpRecord.otp !== otpHash) {
+      await db.update(passwordResetOtps)
+        .set({ attempts: otpRecord.attempts + 1 })
+        .where(eq(passwordResetOtps.id, otpRecord.id));
+      return res.json({ ok: false, message: "รหัส OTP ไม่ถูกต้อง / Invalid OTP" });
+    }
+
+    if (otpRecord.expiresAt < now) {
+      return res.json({ ok: false, message: "รหัส OTP หมดอายุแล้ว / OTP expired" });
+    }
+
+    const resetToken = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+    const resetExpiresAt = now + (15 * 60);
+
+    await db.update(passwordResetOtps)
+      .set({ 
+        used: 1,
+        resetToken,
+        expiresAt: resetExpiresAt
+      })
+      .where(eq(passwordResetOtps.id, otpRecord.id));
+    
+    res.json({ ok: true, resetToken, message: "OTP ถูกต้อง / OTP verified" });
+  });
+
+  // Auth: Reset Password
+  app.post(api.auth.resetPassword.path, async (req, res) => {
+    const parsed = api.auth.resetPassword.input.safeParse(req.body);
+    if (!parsed.success) {
+      return res.json({ ok: false, message: "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร / Password must be at least 4 characters" });
+    }
+    const { resetToken, newPassword } = parsed.data;
+
+    const now = Math.floor(Date.now() / 1000);
+    
+    const otpRecords = await db.select()
+      .from(passwordResetOtps)
+      .where(and(
+        eq(passwordResetOtps.resetToken, resetToken),
+        eq(passwordResetOtps.used, 1)
+      ))
+      .limit(1);
+
+    if (otpRecords.length === 0) {
+      return res.json({ ok: false, message: "ลิงก์หมดอายุแล้ว กรุณาขอใหม่ / Link expired, please request again" });
+    }
+
+    const otpRecord = otpRecords[0];
+    
+    if (otpRecord.expiresAt < now) {
+      await db.update(passwordResetOtps)
+        .set({ resetToken: null })
+        .where(eq(passwordResetOtps.id, otpRecord.id));
+      return res.json({ ok: false, message: "ลิงก์หมดอายุแล้ว กรุณาขอใหม่ / Link expired, please request again" });
+    }
+
+    await db.update(users)
+      .set({ passhash: hashPass(newPassword), mustChangePassword: 0 })
+      .where(eq(users.username, otpRecord.username));
+
+    await db.update(passwordResetOtps)
+      .set({ resetToken: null })
+      .where(eq(passwordResetOtps.id, otpRecord.id));
+      
+    await storage.log("password_reset_success", otpRecord.username, "password changed via OTP");
+    
+    res.json({ ok: true, message: "เปลี่ยนรหัสผ่านสำเร็จ / Password changed successfully" });
   });
 
   // ==========================================

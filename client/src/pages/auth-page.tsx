@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {Loader2, Globe, Sun, Moon, ChevronLeft} from "lucide-react";
+import {Loader2, Globe, Sun, Moon, ChevronLeft, HelpCircle} from "lucide-react";
+import { Link } from "wouter";
 import logoImg from "@assets/Burger_King_2020.svg_1766870334760.png";
 import {useTheme} from "next-themes";
 import { useForm } from "react-hook-form";
@@ -311,6 +312,11 @@ function LoginForm() {
               {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {t("signIn")}
             </Button>
+            <div className="text-center pt-2">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline" data-testid="link-forgot-password">
+                {t("forgotPassword")}
+              </Link>
+            </div>
           </form>
         </Form>
       </CardContent>

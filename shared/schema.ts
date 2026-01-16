@@ -393,8 +393,11 @@ export const passwordResetOtps = pgTable("password_reset_otps", {
   email: text("email").notNull(),
   username: text("username").notNull(),
   otp: text("otp").notNull(),
+  otpSalt: text("otp_salt").notNull().default(""),
+  resetToken: text("reset_token"),
   expiresAt: integer("expires_at").notNull(),
   used: integer("used").notNull().default(0),
+  attempts: integer("attempts").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });
 

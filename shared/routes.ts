@@ -79,6 +79,38 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    requestPasswordReset: {
+      method: "POST",
+      path: "/api/requestPasswordReset",
+      input: z.object({
+        email: z.string().email(),
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
+    verifyOtp: {
+      method: "POST",
+      path: "/api/verifyOtp",
+      input: z.object({
+        email: z.string().email(),
+        otp: z.string().length(6),
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), resetToken: z.string().optional(), message: z.string().optional() }),
+      },
+    },
+    resetPassword: {
+      method: "POST",
+      path: "/api/resetPassword",
+      input: z.object({
+        resetToken: z.string(),
+        newPassword: z.string().min(4),
+      }),
+      responses: {
+        200: z.object({ ok: z.boolean(), message: z.string().optional() }),
+      },
+    },
   },
   settings: {
     get: {

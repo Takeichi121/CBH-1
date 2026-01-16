@@ -28,6 +28,7 @@ import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
 import ChatPage from "@/pages/chat/ChatPage";
+import ForgotPasswordPage from "@/pages/forgot-password-page";
 import NotFound from "@/pages/not-found";
 
 // Sales Pages
@@ -61,6 +62,8 @@ function Router() {
       <Layout>
         <Switch>
           <Route path="/" component={AuthPage} />
+          <Route path="/auth" component={AuthPage} />
+          <Route path="/forgot-password" component={ForgotPasswordPage} />
           
           <Route path="/work">
             <ProtectedRoute component={WorkPage} path="/work" />

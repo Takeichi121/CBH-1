@@ -26,6 +26,7 @@ import BorrowHelpPage from "@/pages/borrow/help-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
+import ChatPage from "@/pages/chat/ChatPage";
 import NotFound from "@/pages/not-found";
 
 // Sales Pages
@@ -136,6 +137,10 @@ function Router() {
           
           <Route path="/dev-toolbox">
             <ProtectedRoute component={DevToolboxPage} path="/dev-toolbox" />
+          </Route>
+          
+          <Route path="/chat">
+            <ProtectedRoute component={ChatPage} path="/chat" />
           </Route>
           
           <Route component={NotFound} />

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import { Server as SocketIOServer } from "socket.io";
 import { storage, transaction, updateShiftById } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -1807,6 +1808,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
+  });
+
+  // ==========================================
+  // 💬 Socket.IO Chat System
+  // ==========================================
+  const io = new SocketIOServer(httpServer);
+
+  const chatMessages: { user: string; text: string; timestamp: string }[] = [];
+
+  io.use(async (socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error("Authentication required"));
+    }
+    const session = await storage.getSession(token);
+    if (!session || session.expiresAt < Math.floor(Date.now() / 1000)) {
+      return next(new Error("Invalid or expired session"));
+    }
+    const user = await storage.getUser(session.username);
+    if (!user) {
+      return next(new Error("User not found"));
+    }
+    socket.data.user = user;
+    next();
+  });
+
+  io.on("connection", (socket) => {
+    const user = socket.data.user;
+    console.log("User connected:", user.username);
+
+    socket.emit("chat_history", chatMessages.slice(-50));
+
+    socket.on("message", (payload: { text: string }) => {
+      const displayName = user.nickName || user.fullName || user.username;
+      const msg = {
+        user: displayName,
+        text: payload.text,
+        timestamp: new Date().toISOString()
+      };
+      chatMessages.push(msg);
+      if (chatMessages.length > 100) chatMessages.shift();
+      io.emit("message", msg);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", user.username);
+    });
   });
 
   return httpServer;

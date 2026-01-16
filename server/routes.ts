@@ -1815,7 +1815,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   const io = new SocketIOServer(httpServer);
 
-  const chatMessages: { user: string; text: string; timestamp: string }[] = [];
+  interface ChatMessage {
+    user: string;
+    senderUsername: string;
+    recipientUsername?: string;
+    text: string;
+    timestamp: string;
+    isPrivate?: boolean;
+  }
+
+  const chatMessages: ChatMessage[] = [];
+  const privateMessages: ChatMessage[] = [];
+  const onlineUsers = new Map<string, { username: string; displayName: string; socketId: string }>();
 
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;
@@ -1834,26 +1845,72 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     next();
   });
 
+  const broadcastOnlineUsers = () => {
+    const usersList = Array.from(onlineUsers.values()).map(u => ({
+      username: u.username,
+      displayName: u.displayName
+    }));
+    io.emit("online_users", usersList);
+  };
+
   io.on("connection", (socket) => {
     const user = socket.data.user;
+    const displayName = user.nickName || user.fullName || user.username;
     console.log("User connected:", user.username);
 
+    onlineUsers.set(user.username, {
+      username: user.username,
+      displayName,
+      socketId: socket.id
+    });
+
     socket.emit("chat_history", chatMessages.slice(-50));
+    broadcastOnlineUsers();
 
     socket.on("message", (payload: { text: string }) => {
-      const displayName = user.nickName || user.fullName || user.username;
-      const msg = {
+      const msg: ChatMessage = {
         user: displayName,
+        senderUsername: user.username,
         text: payload.text,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        isPrivate: false
       };
       chatMessages.push(msg);
       if (chatMessages.length > 100) chatMessages.shift();
       io.emit("message", msg);
     });
 
+    socket.on("private_message", (payload: { text: string; to: string }) => {
+      const targetUser = onlineUsers.get(payload.to);
+      if (!targetUser) return;
+
+      const msg: ChatMessage = {
+        user: displayName,
+        senderUsername: user.username,
+        recipientUsername: payload.to,
+        text: payload.text,
+        timestamp: new Date().toISOString(),
+        isPrivate: true
+      };
+      privateMessages.push(msg);
+      if (privateMessages.length > 500) privateMessages.shift();
+
+      socket.emit("message", msg);
+      io.to(targetUser.socketId).emit("message", msg);
+    });
+
+    socket.on("get_private_history", (targetUsername: string) => {
+      const history = privateMessages.filter(m =>
+        (m.senderUsername === user.username && m.recipientUsername === targetUsername) ||
+        (m.senderUsername === targetUsername && m.recipientUsername === user.username)
+      );
+      socket.emit("private_history", history);
+    });
+
     socket.on("disconnect", () => {
       console.log("User disconnected:", user.username);
+      onlineUsers.delete(user.username);
+      broadcastOnlineUsers();
     });
   });
 

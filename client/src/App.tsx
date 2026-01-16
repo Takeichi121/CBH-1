@@ -9,6 +9,7 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { CompleteProfileModal } from "@/components/complete-profile-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
+import { FloatingChat } from "@/components/floating-chat";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
@@ -148,6 +149,7 @@ function Router() {
       </Layout>
       <ChangePasswordModal />
       <CompleteProfileModal />
+      <FloatingChat />
       <Toaster />
     </>
   );

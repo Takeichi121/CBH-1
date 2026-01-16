@@ -157,6 +157,14 @@ Real-time chat system for staff communication using Socket.IO.
 - Bilingual interface (English/Thai)
 - Auto-scroll to latest messages
 - Connection status indicator
+- Floating chat widget (bottom-right) accessible from all pages
+- Group chat (all staff) and private messaging (1-on-1)
+- Online user tracking for private chat
+- Unread message badge counter
+
+### Components
+- `FloatingChat` - Floating widget component with tabs for group/private chat
+- `ChatPage` - Full page chat interface at `/chat`
 
 ### Route
 - `/chat` - Staff chat page
@@ -164,8 +172,10 @@ Real-time chat system for staff communication using Socket.IO.
 ### Technical Details
 - Server: Socket.IO integrated into Express server with authentication middleware
 - Client: socket.io-client with token passed in handshake auth
-- Messages stored in-memory (last 100 messages)
+- Group messages stored in-memory (last 100 messages)
+- Private messages stored in-memory (last 500 messages)
 - User identity determined server-side from session token
+- Online users tracked via Map with socket ID for targeted private messaging
 
 ## Recent Changes
 

@@ -43,7 +43,9 @@ export async function getResendClient() {
 
 export async function sendOtpEmail(to: string, otp: string, displayName: string, username: string): Promise<boolean> {
   try {
+    console.log('[OTP Email] Starting send to:', to);
     const { client, fromEmail } = await getResendClient();
+    console.log('[OTP Email] Got Resend client, fromEmail:', fromEmail);
     
     const branchName = process.env.BRANCH_NAME || 'Grand Diamond';
     
@@ -73,10 +75,18 @@ export async function sendOtpEmail(to: string, otp: string, displayName: string,
       `,
     });
 
-    console.log('OTP email sent:', result);
+    console.log('[OTP Email] Result:', JSON.stringify(result, null, 2));
+    
+    if (result.error) {
+      console.error('[OTP Email] Resend API returned error:', result.error);
+      return false;
+    }
+    
+    console.log('[OTP Email] Success! Email ID:', result.data?.id);
     return true;
-  } catch (error) {
-    console.error('Failed to send OTP email:', error);
+  } catch (error: any) {
+    console.error('[OTP Email] Exception:', error?.message || error);
+    console.error('[OTP Email] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     return false;
   }
 }

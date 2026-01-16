@@ -47,8 +47,15 @@ export const api = {
       method: "POST",
       path: "/api/registerStaff",
       input: z.object({
-        fullName: z.string(),
-        password: z.string(),
+        username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, "Username must contain only letters, numbers, and underscores"),
+        fullName: z.string().min(1),
+        email: z.string().email(),
+        phone: z.string().min(1),
+        password: z.string().min(4),
+        confirmPassword: z.string().min(4),
+      }).refine((data) => data.password === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
       }),
       responses: {
         200: z.object({ ok: z.boolean(), username: z.string().optional(), message: z.string().optional() }),
@@ -58,9 +65,16 @@ export const api = {
       method: "POST",
       path: "/api/registerManager",
       input: z.object({
-        fullName: z.string(),
-        password: z.string(),
+        username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, "Username must contain only letters, numbers, and underscores"),
+        fullName: z.string().min(1),
+        email: z.string().email(),
+        phone: z.string().min(1),
+        password: z.string().min(4),
+        confirmPassword: z.string().min(4),
         verifyCode: z.string(),
+      }).refine((data) => data.password === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
       }),
       responses: {
         200: z.object({ ok: z.boolean(), username: z.string().optional(), message: z.string().optional() }),

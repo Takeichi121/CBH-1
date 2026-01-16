@@ -384,6 +384,20 @@ export const sessions = pgTable("sessions", {
   expiresAt: integer("expires_at").notNull(),
 });
 
+// ==========================================
+// 🔐 Password Reset OTP
+// ==========================================
+
+export const passwordResetOtps = pgTable("password_reset_otps", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  username: text("username").notNull(),
+  otp: text("otp").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  used: integer("used").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
+
 export const storeSettings = pgTable("store_settings", {
   id: serial("id").primaryKey(),
   storeName: text("store_name").notNull(),

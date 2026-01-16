@@ -83,6 +83,7 @@ export const api = {
       method: "POST",
       path: "/api/requestPasswordReset",
       input: z.object({
+        username: z.string().min(1),
         email: z.string().email(),
       }),
       responses: {

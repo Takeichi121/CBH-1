@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Loader2, Globe, Sun, Moon, ChevronLeft, Mail, Key, Lock, CheckCircle } from "lucide-react";
+import { Loader2, Globe, Sun, Moon, ChevronLeft, Mail, Key, Lock, CheckCircle, User } from "lucide-react";
 import logoImg from "@assets/Burger_King_2020.svg_1766870334760.png";
 import { useTheme } from "next-themes";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ export default function ForgotPasswordPage() {
 
   const [step, setStep] = useState<Step>("email");
   const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [resetToken, setResetToken] = useState("");
@@ -37,9 +38,9 @@ export default function ForgotPasswordPage() {
   }, [countdown]);
 
   const handleRequestOtp = async () => {
-    if (!email) {
+    if (!username || !email) {
       toast({
-        title: language === "th" ? "กรุณากรอกอีเมล" : "Please enter email",
+        title: language === "th" ? "กรุณากรอกข้อมูลให้ครบ" : "Please fill in all fields",
         variant: "destructive",
       });
       return;
@@ -47,7 +48,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/requestPasswordReset", { email });
+      const response = await apiRequest("POST", "/api/requestPasswordReset", { username, email });
       const result = await response.json();
       if (result.ok) {
         setStep("otp");
@@ -208,7 +209,25 @@ export default function ForgotPasswordPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">{t("email")}</Label>
+                  <Label htmlFor="username">
+                    <User className="w-4 h-4 inline mr-1" />
+                    {t("username")}
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder={language === "th" ? "ชื่อผู้ใช้ของคุณ" : "Your username"}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="border-primary/20"
+                    data-testid="input-username-forgot"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    <Mail className="w-4 h-4 inline mr-1" />
+                    {t("email")}
+                  </Label>
                   <Input
                     id="email"
                     type="email"

@@ -202,11 +202,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post(api.auth.requestPasswordReset.path, async (req, res) => {
     const parsed = api.auth.requestPasswordReset.input.safeParse(req.body);
     if (!parsed.success) {
-      return res.json({ ok: false, message: "กรุณากรอกอีเมลที่ถูกต้อง / Please enter a valid email" });
+      return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ถูกต้อง / Please enter valid information" });
     }
-    const { email } = parsed.data;
+    const { username, email } = parsed.data;
 
-    const allUsers = await db.select().from(users).where(eq(users.email, email));
+    // Find user by both username AND email (must match)
+    const allUsers = await db.select().from(users).where(
+      and(
+        eq(users.username, username),
+        eq(users.email, email)
+      )
+    );
     
     const now = Math.floor(Date.now() / 1000);
     const recentOtps = await db.select()

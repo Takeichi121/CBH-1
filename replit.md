@@ -146,6 +146,27 @@ A comprehensive equipment borrowing management system between branches.
 - `borrow_items` - Item catalog with units array and category
 - `borrow_transactions` - Transaction records with status tracking
 
+## Staff Chat System
+
+Real-time chat system for staff communication using Socket.IO.
+
+### Features
+- Real-time messaging with WebSocket
+- Token-based authentication (uses same auth as main app)
+- Chat history (last 50 messages)
+- Bilingual interface (English/Thai)
+- Auto-scroll to latest messages
+- Connection status indicator
+
+### Route
+- `/chat` - Staff chat page
+
+### Technical Details
+- Server: Socket.IO integrated into Express server with authentication middleware
+- Client: socket.io-client with token passed in handshake auth
+- Messages stored in-memory (last 100 messages)
+- User identity determined server-side from session token
+
 ## Recent Changes
 
 ### January 16, 2026
@@ -153,3 +174,5 @@ A comprehensive equipment borrowing management system between branches.
 2. **Update Navigation Tabs** - Added all 7 tabs to BorrowLayout (Dashboard, History, Add New, Branches, Items, Settings, Help)
 3. **Fix Import Error** - Fixed "Plus is not defined" error by adding Plus import from lucide-react
 4. **Wrap Pages with BorrowLayout** - Added BorrowLayout wrapper to Branches and Items pages for consistent navigation
+5. **Bilingual Transaction Form** - Updated Add Transaction form with Thai/English labels
+6. **Staff Chat System** - Added real-time chat with Socket.IO, authentication, and bilingual support

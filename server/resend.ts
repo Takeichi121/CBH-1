@@ -35,9 +35,12 @@ async function getCredentials() {
 
 export async function getResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
+  // Use Resend's sandbox email for testing, or verified domain email for production
+  // gmail.com and other free email domains cannot be used as "from" address
+  const safeFromEmail = 'onboarding@resend.dev';
   return {
     client: new Resend(apiKey),
-    fromEmail: fromEmail || 'noreply@resend.dev'
+    fromEmail: safeFromEmail
   };
 }
 

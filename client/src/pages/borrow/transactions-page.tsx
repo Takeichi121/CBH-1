@@ -45,6 +45,7 @@ const UNIT_OPTIONS = [
   { value: "BOX", label: "BOX" },
   { value: "GAL", label: "GAL" },
   { value: "BTL", label: "BTL" },
+  { value: "GM", label: "GM" },
 ] as const;
 
 import { BorrowLayout } from "./borrow-layout";
@@ -100,7 +101,7 @@ export default function NewTransaction() {
 
   // ✅ Logic to get available units
   const availableUnits = useMemo(() => {
-    const standardUnits = ["PCS", "CASE", "PACK", "BAG", "BOX", "TRAY", "CAN", "TANK", "ROLL", "GAL", "BTL"];
+    const standardUnits = ["PCS", "CASE", "PACK", "BAG", "BOX", "TRAY", "CAN", "TANK", "ROLL", "GAL", "BTL", "GM"];
     if (!selectedItem) return standardUnits;
 
     const item = activeItems.find(i => String(i.id) === selectedItem);
@@ -210,7 +211,7 @@ export default function NewTransaction() {
       <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6 space-y-6 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Add Transaction</h1>
+        <h1 className="text-xl font-bold">Add Transaction / เพิ่มรายการ</h1>
         <Button variant="ghost" size="icon" onClick={() => navigate("/borrow/history")}>
           <X className="h-5 w-5" />
         </Button>
@@ -222,7 +223,7 @@ export default function NewTransaction() {
           {/* Row 1: Date and Due Date */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label>Date / วันที่</Label>
               <Input 
                 type="date" 
                 value={txDate} 
@@ -231,7 +232,7 @@ export default function NewTransaction() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Due Date</Label>
+              <Label>Due Date / กำหนดคืน</Label>
               <Input 
                 type="date" 
                 value={dueDate} 
@@ -242,21 +243,21 @@ export default function NewTransaction() {
 
           {/* Row 2: Transaction Type */}
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>Type / ประเภท</Label>
             <Select value={txType} onValueChange={(v: any) => setTxType(v)}>
               <SelectTrigger className="bg-muted/20">
-                <SelectValue placeholder="Select Type" />
+                <SelectValue placeholder="Select Type / เลือกประเภท" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="borrow_out">Borrow Out (ยืมออก)</SelectItem>
-                <SelectItem value="borrow_in">Borrow In (ยืมเข้า)</SelectItem>
+                <SelectItem value="borrow_out">Borrow Out / ยืมออก</SelectItem>
+                <SelectItem value="borrow_in">Borrow In / ยืมเข้า</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Row 3: Branch (Combobox) */}
           <div className="space-y-2">
-            <Label>Branch</Label>
+            <Label>Branch / สาขา</Label>
             <Popover open={branchOpen} onOpenChange={setBranchOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -267,15 +268,15 @@ export default function NewTransaction() {
                 >
                   {branch
                     ? activeBranches.find((b) => String(b.id) === branch)?.name
-                    : "Select branch"}
+                    : "Select branch / เลือกสาขา"}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                 <Command>
-                  <CommandInput placeholder="Search branch..." />
+                  <CommandInput placeholder="Search branch... / ค้นหาสาขา..." />
                   <CommandList>
-                    <CommandEmpty>No branch found.</CommandEmpty>
+                    <CommandEmpty>No branch found. / ไม่พบสาขา</CommandEmpty>
                     <CommandGroup>
                       {activeBranches.map((b) => (
                         <CommandItem
@@ -307,7 +308,7 @@ export default function NewTransaction() {
           {/* Row 4: Item Selection (Searchable Dropdown) */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
             <div className="md:col-span-6 space-y-2">
-              <Label>Item</Label>
+              <Label>Item / รายการ</Label>
               <Popover open={showItemDropdown} onOpenChange={setShowItemDropdown}>
                 <PopoverTrigger asChild>
                   <Button
@@ -318,15 +319,15 @@ export default function NewTransaction() {
                   >
                     {selectedItem
                       ? activeItems.find((it) => String(it.id) === selectedItem)?.name
-                      : "Select item..."}
+                      : "Select item... / เลือกรายการ..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                   <Command>
-                    <CommandInput placeholder="Search item..." />
+                    <CommandInput placeholder="Search item... / ค้นหารายการ..." />
                     <CommandList>
-                      <CommandEmpty>No item found.</CommandEmpty>
+                      <CommandEmpty>No item found. / ไม่พบรายการ</CommandEmpty>
                       <CommandGroup>
                         {activeItems.map((it) => (
                           <CommandItem
@@ -355,7 +356,7 @@ export default function NewTransaction() {
 
             {/* Qty */}
             <div className="md:col-span-2 space-y-2">
-              <Label>Qty</Label>
+              <Label>Qty / จำนวน</Label>
               <Input
                 type="number"
                 min={1}
@@ -368,7 +369,7 @@ export default function NewTransaction() {
 
             {/* Unit Dropdown (Add Section) */}
             <div className="md:col-span-2 space-y-2">
-              <Label>Unit</Label>
+              <Label>Unit / หน่วย</Label>
               <Popover open={unitSearchOpen} onOpenChange={setUnitSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -379,15 +380,15 @@ export default function NewTransaction() {
                     disabled={!selectedItem}
                     data-testid="select-unit"
                   >
-                    {selectedUnit || "Unit"}
+                    {selectedUnit || "Unit / หน่วย"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                   <Command>
-                    <CommandInput placeholder="Search unit..." />
+                    <CommandInput placeholder="Search unit... / ค้นหาหน่วย..." />
                     <CommandList>
-                      <CommandEmpty>No unit found.</CommandEmpty>
+                      <CommandEmpty>No unit found. / ไม่พบหน่วย</CommandEmpty>
                       <CommandGroup>
                         {availableUnits.map((u) => (
                           <CommandItem
@@ -423,7 +424,7 @@ export default function NewTransaction() {
                 className="w-full"
                 variant="secondary"
               >
-                <Plus className="h-4 w-4 mr-1" /> Add
+                <Plus className="h-4 w-4 mr-1" /> Add / เพิ่ม
               </Button>
             </div>
           </div>
@@ -432,9 +433,9 @@ export default function NewTransaction() {
           {cart.length > 0 && (
             <div className="mt-4 border rounded-md overflow-hidden">
               <div className="bg-muted/50 px-4 py-2 text-xs font-medium uppercase text-muted-foreground grid grid-cols-12 gap-2">
-                <div className="col-span-6">Item</div>
-                <div className="col-span-2 text-center">Qty</div>
-                <div className="col-span-3">Unit</div>
+                <div className="col-span-6">Item / รายการ</div>
+                <div className="col-span-2 text-center">Qty / จำนวน</div>
+                <div className="col-span-3">Unit / หน่วย</div>
                 <div className="col-span-1"></div>
               </div>
               <div className="divide-y">
@@ -502,7 +503,7 @@ export default function NewTransaction() {
           {/* Row 5: People */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Borrower</Label>
+              <Label>Borrower / ผู้ยืม</Label>
               <Input 
                 value={borrower}
                 onChange={(e) => setBorrower(e.target.value)}
@@ -510,7 +511,7 @@ export default function NewTransaction() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Lender</Label>
+              <Label>Lender / ผู้ให้ยืม</Label>
               <Input 
                 value={lender}
                 onChange={(e) => setLender(e.target.value)}
@@ -521,7 +522,7 @@ export default function NewTransaction() {
 
           {/* Row 6: Note */}
           <div className="space-y-2">
-            <Label>Note</Label>
+            <Label>Note / หมายเหตุ</Label>
             <Textarea 
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -536,14 +537,14 @@ export default function NewTransaction() {
       {/* Footer Buttons */}
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="outline" onClick={() => navigate("/borrow/history")}>
-          Cancel
+          Cancel / ยกเลิก
         </Button>
         <Button 
           onClick={handleSubmit} 
           disabled={submitMutation.isPending || cart.length === 0 || !branch}
           className="bg-[#8B5E3C] hover:bg-[#6F4B30] text-white" 
         >
-          {submitMutation.isPending ? "Saving..." : "Save"}
+          {submitMutation.isPending ? "Saving... / กำลังบันทึก..." : "Save / บันทึก"}
         </Button>
       </div>
     </div>

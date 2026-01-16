@@ -46,6 +46,7 @@ const UNIT_OPTIONS = [
   { value: "BOX", label: "BOX" },
   { value: "GAL", label: "GAL" },
   { value: "BTL", label: "BTL" },
+  { value: "GM", label: "GM" },
 ] as const;
 
 function norm(v: unknown) {

@@ -93,7 +93,7 @@ export default function ChatPage() {
 
   if (connectionError) {
     return (
-      <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6">
+      <div className="flex flex-col max-w-2xl mx-auto p-4 md:p-6" style={{ height: "calc(100vh - 120px)" }}>
         <Card className="flex flex-col flex-1">
           <CardHeader className="border-b pb-4">
             <CardTitle className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export default function ChatPage() {
 
   if (!isConnected) {
     return (
-      <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6">
+      <div className="flex flex-col max-w-2xl mx-auto p-4 md:p-6" style={{ height: "calc(100vh - 120px)" }}>
         <Card className="flex flex-col flex-1">
           <CardHeader className="border-b pb-4">
             <CardTitle className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6">
+    <div className="flex flex-col max-w-2xl mx-auto p-4 md:p-6" style={{ height: "calc(100vh - 120px)" }}>
       <Card className="flex flex-col flex-1 overflow-hidden">
         <CardHeader className="border-b pb-4">
           <CardTitle className="flex items-center gap-2">

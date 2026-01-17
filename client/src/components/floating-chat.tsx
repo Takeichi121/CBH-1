@@ -119,9 +119,11 @@ export function FloatingChat() {
   useEffect(() => {
     if (isOpen) {
       setUnreadCount(0);
-      inputRef.current?.focus();
+      if (activeTab === "group") {
+        inputRef.current?.focus();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, activeTab]);
 
   useEffect(() => {
     if (selectedUser && socket && isConnected) {

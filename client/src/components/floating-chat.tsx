@@ -23,6 +23,12 @@ interface OnlineUser {
   displayName: string;
 }
 
+interface AllUser {
+  username: string;
+  displayName: string;
+  online: boolean;
+}
+
 export function FloatingChat() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +37,9 @@ export function FloatingChat() {
   const [groupMessages, setGroupMessages] = useState<ChatMessage[]>([]);
   const [privateMessages, setPrivateMessages] = useState<ChatMessage[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [allUsers, setAllUsers] = useState<AllUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedUserDisplay, setSelectedUserDisplay] = useState<string>("");
   const [isConnected, setIsConnected] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState("group");
@@ -74,6 +82,10 @@ export function FloatingChat() {
       setOnlineUsers(users.filter(u => u.username !== user.username));
     });
 
+    newSocket.on("all_users", (users: AllUser[]) => {
+      setAllUsers(users);
+    });
+
     newSocket.on("private_history", (history: ChatMessage[]) => {
       setPrivateMessages(prev => {
         const existing = new Set(prev.map(m => `${m.senderUsername}-${m.timestamp}`));
@@ -81,6 +93,9 @@ export function FloatingChat() {
         return [...prev, ...newMsgs];
       });
     });
+
+    // Request all users list
+    newSocket.emit("get_all_users");
 
     setSocket(newSocket);
 
@@ -249,18 +264,21 @@ export function FloatingChat() {
               {!selectedUser ? (
                 <div className="flex-1 p-3 overflow-y-auto" data-testid="private-user-list">
                   <p className="text-xs text-muted-foreground mb-2">Select user / เลือกผู้ใช้:</p>
-                  {onlineUsers.length === 0 ? (
+                  {allUsers.length === 0 ? (
                     <div className="text-center text-muted-foreground text-sm py-8" data-testid="text-no-users">
-                      No users online / ไม่มีผู้ใช้ออนไลน์
+                      No users / ไม่มีผู้ใช้
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {onlineUsers.map((u) => (
+                      {allUsers.map((u) => (
                         <Button
                           key={u.username}
                           variant="ghost"
                           className="w-full justify-start gap-2"
-                          onClick={() => setSelectedUser(u.username)}
+                          onClick={() => {
+                            setSelectedUser(u.username);
+                            setSelectedUserDisplay(u.displayName);
+                          }}
                           data-testid={`button-user-${u.username}`}
                         >
                           <Avatar className="h-6 w-6">
@@ -269,8 +287,16 @@ export function FloatingChat() {
                             </AvatarFallback>
                           </Avatar>
                           <span className="text-sm">{u.displayName}</span>
-                          <Badge variant="outline" className="ml-auto text-[10px] bg-green-500/10 text-green-600 border-green-500/20">
-                            Online
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "ml-auto text-[10px]",
+                              u.online 
+                                ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                                : "bg-muted text-muted-foreground border-muted"
+                            )}
+                          >
+                            {u.online ? "Online" : "Offline"}
                           </Badge>
                         </Button>
                       ))}
@@ -290,12 +316,23 @@ export function FloatingChat() {
                     </Button>
                     <Avatar className="h-6 w-6">
                       <AvatarFallback className="text-xs bg-muted">
-                        {getInitials(onlineUsers.find(u => u.username === selectedUser)?.displayName || selectedUser)}
+                        {getInitials(selectedUserDisplay || selectedUser)}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium" data-testid="text-selected-user">
-                      {onlineUsers.find(u => u.username === selectedUser)?.displayName || selectedUser}
+                      {selectedUserDisplay || selectedUser}
                     </span>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "text-[10px]",
+                        allUsers.find(u => u.username === selectedUser)?.online
+                          ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                          : "bg-muted text-muted-foreground border-muted"
+                      )}
+                    >
+                      {allUsers.find(u => u.username === selectedUser)?.online ? "Online" : "Offline"}
+                    </Badge>
                   </div>
 
                   <div ref={privateScrollRef} className="flex-1 p-3 overflow-y-auto space-y-3" data-testid="private-messages-container">

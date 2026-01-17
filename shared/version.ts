@@ -1,6 +1,15 @@
-export const APP_VERSION = "1.6.0";
+export const APP_VERSION = "1.6.1";
 
 export const CHANGELOG = [
+  {
+    version: "1.6.1",
+    date: "2026-01-17",
+    changes: [
+      "แสดงรายชื่อผู้ใช้ทุกคนใน Private Chat (รวมผู้ใช้ที่ออฟไลน์)",
+      "เพิ่มสถานะ Online/Offline สำหรับแต่ละผู้ใช้",
+      "ส่งข้อความหาผู้ใช้ที่ออฟไลน์ได้ทันที",
+    ],
+  },
   {
     version: "1.6.0",
     date: "2026-01-16",

@@ -32,6 +32,8 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [editingUser, setEditingUser] = useState<any>(null);
   const [viewingUser, setViewingUser] = useState<any>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "" });
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -108,6 +110,8 @@ export default function AdminPage() {
     userDetails: language === "th" ? "ข้อมูลผู้ใช้" : "User Details",
     createdAt: language === "th" ? "วันที่สร้าง" : "Created At",
     close: language === "th" ? "ปิด" : "Close",
+    edit: language === "th" ? "แก้ไข" : "Edit",
+    editProfile: language === "th" ? "แก้ไขโปรไฟล์" : "Edit Profile",
   };
 
   const roleColors: Record<string, string> = {
@@ -206,6 +210,39 @@ export default function AdminPage() {
       if (result.ok) {
         toast({ title: labels.markedResigned });
         refetch();
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleStartEditProfile = (u: any) => {
+    setEditProfileData({
+      nickName: u.nickName || "",
+      phone: u.phone || "",
+      email: u.email || "",
+      position: u.position || "",
+    });
+    setIsEditingProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!viewingUser) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      const res = await apiRequest("POST", "/api/admin/updateUserProfile", {
+        token,
+        username: viewingUser.username,
+        ...editProfileData,
+      });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: labels.updated });
+        refetch();
+        setIsEditingProfile(false);
+        setViewingUser(null);
       } else {
         toast({ title: result.message || "Error", variant: "destructive" });
       }
@@ -617,10 +654,10 @@ export default function AdminPage() {
         </div>
       </Card>
 
-      <Dialog open={!!viewingUser} onOpenChange={(open) => !open && setViewingUser(null)}>
+      <Dialog open={!!viewingUser} onOpenChange={(open) => { if (!open) { setViewingUser(null); setIsEditingProfile(false); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{labels.userDetails}</DialogTitle>
+            <DialogTitle>{isEditingProfile ? labels.editProfile : labels.userDetails}</DialogTitle>
           </DialogHeader>
           {viewingUser && (
             <div className="space-y-4 py-4">
@@ -644,60 +681,136 @@ export default function AdminPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">{labels.nickName}</p>
-                  <p className="font-medium">{viewingUser.nickName || "-"}</p>
+              {isEditingProfile ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{labels.nickName}</label>
+                    <Input 
+                      value={editProfileData.nickName}
+                      onChange={(e) => setEditProfileData({ ...editProfileData, nickName: e.target.value })}
+                      data-testid="input-edit-nickname"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{labels.position}</label>
+                    {viewingUser.role === "manager" ? (
+                      <Select value={editProfileData.position} onValueChange={(v) => setEditProfileData({ ...editProfileData, position: v })}>
+                        <SelectTrigger data-testid="select-edit-position">
+                          <SelectValue placeholder={labels.selectPosition} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {managerPositions.map((pos) => (
+                            <SelectItem key={pos} value={pos}>
+                              {managerPositionLabels[pos][language]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select value={editProfileData.position} onValueChange={(v) => setEditProfileData({ ...editProfileData, position: v })}>
+                        <SelectTrigger data-testid="select-edit-staff-position">
+                          <SelectValue placeholder={labels.selectPosition} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staffPositions.map((pos) => (
+                            <SelectItem key={pos} value={pos}>
+                              {staffPositionLabels[pos][language]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{labels.phone}</label>
+                    <Input 
+                      value={editProfileData.phone}
+                      onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                      data-testid="input-edit-phone"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{labels.email}</label>
+                    <Input 
+                      type="email"
+                      value={editProfileData.email}
+                      onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+                      data-testid="input-edit-email"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setIsEditingProfile(false)} className="flex-1">
+                      {labels.cancel}
+                    </Button>
+                    <Button onClick={handleSaveProfile} className="flex-1" data-testid="button-save-profile-edit">
+                      {labels.save}
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">{labels.role}</p>
-                  <Badge className={roleColors[viewingUser.role] || roleColors.staff}>
-                    {viewingUser.role === "admin" ? labels.admin : viewingUser.role === "manager" ? labels.manager : labels.staff}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{labels.position}</p>
-                  <p className="font-medium">
-                    {viewingUser.role === "manager" && viewingUser.position 
-                      ? managerPositionLabels[viewingUser.position as ManagerPosition]?.[language] 
-                      : viewingUser.role === "staff" && viewingUser.position 
-                      ? staffPositionLabels[viewingUser.position as StaffPosition]?.[language] 
-                      : "-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{labels.status}</p>
-                  <Badge variant={viewingUser.active === 1 ? "default" : viewingUser.active === 2 ? "destructive" : "secondary"}>
-                    {viewingUser.active === 1 ? labels.active : viewingUser.active === 2 ? labels.resigned : labels.inactive}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{labels.phone}</p>
-                  <p className="font-medium">{viewingUser.phone || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{labels.email}</p>
-                  <p className="font-medium break-all">{viewingUser.email || "-"}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">{labels.createdAt}</p>
-                  <p className="font-medium">
-                    {viewingUser.createdAt 
-                      ? new Date(viewingUser.createdAt).toLocaleDateString(language === "th" ? "th-TH" : "en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric"
-                        })
-                      : "-"}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="pt-4">
-                <Button variant="outline" onClick={() => setViewingUser(null)} className="w-full">
-                  {labels.close}
-                </Button>
-              </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">{labels.nickName}</p>
+                      <p className="font-medium">{viewingUser.nickName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{labels.role}</p>
+                      <Badge className={roleColors[viewingUser.role] || roleColors.staff}>
+                        {viewingUser.role === "admin" ? labels.admin : viewingUser.role === "manager" ? labels.manager : labels.staff}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{labels.position}</p>
+                      <p className="font-medium">
+                        {viewingUser.role === "manager" && viewingUser.position 
+                          ? managerPositionLabels[viewingUser.position as ManagerPosition]?.[language] 
+                          : viewingUser.role === "staff" && viewingUser.position 
+                          ? staffPositionLabels[viewingUser.position as StaffPosition]?.[language] 
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{labels.status}</p>
+                      <Badge variant={viewingUser.active === 1 ? "default" : viewingUser.active === 2 ? "destructive" : "secondary"}>
+                        {viewingUser.active === 1 ? labels.active : viewingUser.active === 2 ? labels.resigned : labels.inactive}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{labels.phone}</p>
+                      <p className="font-medium">{viewingUser.phone || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{labels.email}</p>
+                      <p className="font-medium break-all">{viewingUser.email || "-"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">{labels.createdAt}</p>
+                      <p className="font-medium">
+                        {viewingUser.createdAt 
+                          ? new Date(viewingUser.createdAt).toLocaleDateString(language === "th" ? "th-TH" : "en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric"
+                            })
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-4">
+                    {isAdmin && (
+                      <Button variant="default" onClick={() => handleStartEditProfile(viewingUser)} className="flex-1" data-testid="button-edit-profile">
+                        <Edit className="w-4 h-4 mr-2" />
+                        {labels.edit}
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setViewingUser(null)} className="flex-1">
+                      {labels.close}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>

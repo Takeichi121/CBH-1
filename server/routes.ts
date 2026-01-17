@@ -761,6 +761,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, users: allUsers.map(user => ({ ...user, passhash: undefined })), creatorRank: getUserRank(u), canManageAll: canManageUsers(u) });
   });
 
+  app.post("/api/admin/updateUserProfile", async (req, res) => {
+    const { token, username, nickName, phone, email, position } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Only Admin can edit user profile" });
+
+    const targetUser = await storage.getUser(username);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+
+    const updates: Record<string, any> = {};
+    if (nickName !== undefined) updates.nickName = nickName;
+    if (phone !== undefined) updates.phone = phone;
+    if (email !== undefined) updates.email = email;
+    if (position !== undefined) updates.position = position;
+
+    if (Object.keys(updates).length === 0) {
+      return res.json({ ok: false, message: "No updates provided" });
+    }
+
+    await storage.updateUser(username, updates);
+    await storage.log("admin_update_profile", u.username, `updated ${username}: ${JSON.stringify(updates)}`);
+    res.json({ ok: true });
+  });
+
   // ==========================================
   // 📋 Shifts Management (Admin/Manager)
   // ==========================================

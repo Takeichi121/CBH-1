@@ -22,7 +22,7 @@ import {
   passwordResetOtps,
   staffChatMessages
 } from "@shared/schema";
-import { eq, and, desc, sql, isNull, or } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, isNotNull, or } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
@@ -2195,6 +2195,39 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } catch (e) {
         console.error("Error getting users:", e);
         socket.emit("all_users", []);
+      }
+    });
+
+    // Get all private messages for the current user (for recent chats)
+    socket.on("get_all_private_history", async () => {
+      try {
+        const history = await db.select()
+          .from(staffChatMessages)
+          .where(
+            and(
+              isNotNull(staffChatMessages.recipientUsername),
+              or(
+                eq(staffChatMessages.senderUsername, user.username),
+                eq(staffChatMessages.recipientUsername, user.username)
+              )
+            )
+          )
+          .orderBy(desc(staffChatMessages.id))
+          .limit(200);
+
+        const formattedHistory: ChatMessage[] = history.reverse().map(m => ({
+          id: m.id,
+          user: m.senderDisplayName,
+          senderUsername: m.senderUsername,
+          recipientUsername: m.recipientUsername,
+          text: m.text,
+          timestamp: m.createdAt,
+          isPrivate: true
+        }));
+        socket.emit("private_history", formattedHistory);
+      } catch (e) {
+        console.error("Error loading all private history:", e);
+        socket.emit("private_history", []);
       }
     });
 

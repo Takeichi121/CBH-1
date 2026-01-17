@@ -94,8 +94,9 @@ export function FloatingChat() {
       });
     });
 
-    // Request all users list
+    // Request all users list and private history
     newSocket.emit("get_all_users");
+    newSocket.emit("get_all_private_history");
 
     setSocket(newSocket);
 
@@ -165,6 +166,35 @@ export function FloatingChat() {
     (m.senderUsername === currentUsername && m.recipientUsername === selectedUser) ||
     (m.senderUsername === selectedUser && m.recipientUsername === currentUsername)
   );
+
+  // Get recent chats - users we've chatted with, ordered by most recent
+  const recentChats = (() => {
+    const chatPartners = new Map<string, { username: string; displayName: string; lastMessage: string; timestamp: string }>();
+    
+    privateMessages.forEach(msg => {
+      const partnerUsername = msg.senderUsername === currentUsername 
+        ? msg.recipientUsername 
+        : msg.senderUsername;
+      
+      if (partnerUsername && partnerUsername !== currentUsername) {
+        const existing = chatPartners.get(partnerUsername);
+        if (!existing || new Date(msg.timestamp) > new Date(existing.timestamp)) {
+          const displayName = msg.senderUsername === currentUsername 
+            ? (allUsers.find(u => u.username === partnerUsername)?.displayName || partnerUsername)
+            : msg.user;
+          chatPartners.set(partnerUsername, {
+            username: partnerUsername,
+            displayName,
+            lastMessage: msg.text.length > 30 ? msg.text.substring(0, 30) + "..." : msg.text,
+            timestamp: msg.timestamp
+          });
+        }
+      }
+    });
+    
+    return Array.from(chatPartners.values())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  })();
 
   if (!user) return null;
 
@@ -265,7 +295,57 @@ export function FloatingChat() {
             <TabsContent value="private" className="flex-1 flex flex-col overflow-hidden m-0">
               {!selectedUser ? (
                 <div className="flex-1 p-3 overflow-y-auto" data-testid="private-user-list">
-                  <p className="text-xs text-muted-foreground mb-2">Select user / เลือกผู้ใช้:</p>
+                  {recentChats.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-2">Recent / ล่าสุด:</p>
+                      <div className="space-y-1">
+                        {recentChats.map((chat) => {
+                          const userInfo = allUsers.find(u => u.username === chat.username);
+                          return (
+                            <Button
+                              key={chat.username}
+                              variant="ghost"
+                              className="w-full justify-start gap-2 h-auto py-2"
+                              onClick={() => {
+                                setSelectedUser(chat.username);
+                                setSelectedUserDisplay(chat.displayName);
+                              }}
+                              data-testid={`button-recent-${chat.username}`}
+                            >
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                  {getInitials(chat.displayName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col items-start flex-1 min-w-0">
+                                <div className="flex items-center gap-2 w-full">
+                                  <span className="text-sm font-medium">{chat.displayName}</span>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "ml-auto text-[10px]",
+                                      userInfo?.online 
+                                        ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                                        : "bg-muted text-muted-foreground border-muted"
+                                    )}
+                                  >
+                                    {userInfo?.online ? "Online" : "Offline"}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground truncate w-full text-left">
+                                  {chat.lastMessage}
+                                </span>
+                              </div>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {recentChats.length > 0 ? "All users / ผู้ใช้ทั้งหมด:" : "Select user / เลือกผู้ใช้:"}
+                  </p>
                   {allUsers.length === 0 ? (
                     <div className="text-center text-muted-foreground text-sm py-8" data-testid="text-no-users">
                       No users / ไม่มีผู้ใช้

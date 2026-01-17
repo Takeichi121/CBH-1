@@ -83,10 +83,15 @@
   }
 }
 
-/* Hide caret for readonly inputs */
-input[readonly],
-textarea[readonly] {
-  caret-color: transparent !important;
+/* Hide caret globally except in actual input fields */
+* {
+  caret-color: transparent;
+}
+
+input:not([readonly]),
+textarea:not([readonly]),
+[contenteditable="true"] {
+  caret-color: auto;
 }
 
 /* Glassmorphism utilities */

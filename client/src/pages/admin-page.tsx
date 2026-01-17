@@ -31,6 +31,7 @@ export default function AdminPage() {
   const { language } = useI18n();
   const { toast } = useToast();
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [viewingUser, setViewingUser] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -104,6 +105,9 @@ export default function AdminPage() {
     confirmResignDesc: language === "th" ? "ผู้ใช้จะถูกทำเครื่องหมายว่าลาออกแล้ว" : "User will be marked as resigned.",
     deleted: language === "th" ? "ลบแล้ว" : "Deleted",
     markedResigned: language === "th" ? "ทำเครื่องหมายลาออกแล้ว" : "Marked as resigned",
+    userDetails: language === "th" ? "ข้อมูลผู้ใช้" : "User Details",
+    createdAt: language === "th" ? "วันที่สร้าง" : "Created At",
+    close: language === "th" ? "ปิด" : "Close",
   };
 
   const roleColors: Record<string, string> = {
@@ -416,7 +420,12 @@ export default function AdminPage() {
             </TableHeader>
             <TableBody>
               {users.map((u: any) => (
-                <TableRow key={u.username} className={u.active !== 1 ? "opacity-50" : ""}>
+                <TableRow 
+                  key={u.username} 
+                  className={`${u.active !== 1 ? "opacity-50" : ""} cursor-pointer hover-elevate`}
+                  onClick={() => setViewingUser(u)}
+                  data-testid={`row-user-${u.username}`}
+                >
                   <TableCell className="font-medium">@{u.username}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -447,7 +456,7 @@ export default function AdminPage() {
                       {u.active === 1 ? labels.active : u.active === 2 ? labels.resigned : labels.inactive}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1 flex-wrap">
                       {canEditUser(u) && (
                       <Dialog open={editingUser?.username === u.username} onOpenChange={(open) => !open && setEditingUser(null)}>
@@ -455,7 +464,7 @@ export default function AdminPage() {
                           <Button 
                             size="icon" 
                             variant="ghost" 
-                            onClick={() => handleEditUser(u)}
+                            onClick={(e) => { e.stopPropagation(); handleEditUser(u); }}
                             data-testid={`button-edit-${u.username}`}
                           >
                             <Edit className="w-4 h-4" />
@@ -607,6 +616,92 @@ export default function AdminPage() {
           </Table>
         </div>
       </Card>
+
+      <Dialog open={!!viewingUser} onOpenChange={(open) => !open && setViewingUser(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{labels.userDetails}</DialogTitle>
+          </DialogHeader>
+          {viewingUser && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-4">
+                {viewingUser.profilePicture ? (
+                  <img 
+                    src={viewingUser.profilePicture} 
+                    alt={viewingUser.fullName}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-2xl font-bold">
+                    {(viewingUser.nickName || viewingUser.fullName || viewingUser.username)?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {language === "th" && viewingUser.fullNameTh ? viewingUser.fullNameTh : viewingUser.fullName || viewingUser.username}
+                  </h3>
+                  <p className="text-muted-foreground">@{viewingUser.username}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">{labels.nickName}</p>
+                  <p className="font-medium">{viewingUser.nickName || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{labels.role}</p>
+                  <Badge className={roleColors[viewingUser.role] || roleColors.staff}>
+                    {viewingUser.role === "admin" ? labels.admin : viewingUser.role === "manager" ? labels.manager : labels.staff}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{labels.position}</p>
+                  <p className="font-medium">
+                    {viewingUser.role === "manager" && viewingUser.position 
+                      ? managerPositionLabels[viewingUser.position as ManagerPosition]?.[language] 
+                      : viewingUser.role === "staff" && viewingUser.position 
+                      ? staffPositionLabels[viewingUser.position as StaffPosition]?.[language] 
+                      : "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{labels.status}</p>
+                  <Badge variant={viewingUser.active === 1 ? "default" : viewingUser.active === 2 ? "destructive" : "secondary"}>
+                    {viewingUser.active === 1 ? labels.active : viewingUser.active === 2 ? labels.resigned : labels.inactive}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{labels.phone}</p>
+                  <p className="font-medium">{viewingUser.phone || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{labels.email}</p>
+                  <p className="font-medium break-all">{viewingUser.email || "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">{labels.createdAt}</p>
+                  <p className="font-medium">
+                    {viewingUser.createdAt 
+                      ? new Date(viewingUser.createdAt).toLocaleDateString(language === "th" ? "th-TH" : "en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric"
+                        })
+                      : "-"}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="pt-4">
+                <Button variant="outline" onClick={() => setViewingUser(null)} className="w-full">
+                  {labels.close}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

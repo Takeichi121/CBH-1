@@ -450,9 +450,31 @@ export const staffChatMessages = pgTable("staff_chat_messages", {
   senderDisplayName: text("sender_display_name").notNull(),
   recipientUsername: text("recipient_username"), // null = group message
   text: text("text").notNull(),
+  messageType: text("message_type").notNull().default("text"), // text, image, sticker
+  imageUrl: text("image_url"), // URL for image messages
   isRead: integer("is_read").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });
+
+// Sticker definitions for chat
+export const CHAT_STICKERS = [
+  { id: "ok", emoji: "👍", label: "OK" },
+  { id: "love", emoji: "❤️", label: "Love" },
+  { id: "laugh", emoji: "😂", label: "Laugh" },
+  { id: "wow", emoji: "😮", label: "Wow" },
+  { id: "sad", emoji: "😢", label: "Sad" },
+  { id: "angry", emoji: "😠", label: "Angry" },
+  { id: "clap", emoji: "👏", label: "Clap" },
+  { id: "fire", emoji: "🔥", label: "Fire" },
+  { id: "think", emoji: "🤔", label: "Think" },
+  { id: "wave", emoji: "👋", label: "Wave" },
+  { id: "party", emoji: "🎉", label: "Party" },
+  { id: "rocket", emoji: "🚀", label: "Rocket" },
+  { id: "star", emoji: "⭐", label: "Star" },
+  { id: "check", emoji: "✅", label: "Check" },
+  { id: "coffee", emoji: "☕", label: "Coffee" },
+  { id: "burger", emoji: "🍔", label: "Burger" },
+] as const;
 
 // ==========================================
 // 🛡️ Zod Schemas

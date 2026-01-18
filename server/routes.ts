@@ -7,6 +7,8 @@ import { z } from "zod";
 import crypto from "crypto";
 import multer from "multer";
 import * as XLSX from "xlsx";
+import path from "path";
+import fs from "fs";
 import { hashPass, generateUsernameBase, allocateUsername, isSystemClosed, getWeekRangeTuesday, DEFAULT_CAPACITY, SHIFT_GROUPS } from "./utils";
 import { db } from "./db";
 import { 
@@ -30,6 +32,34 @@ const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 
 // ตั้งค่า Multer สำหรับอัปโหลดไฟล์
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
+// Multer config for chat images - save to disk
+const chatImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), "uploads", "chat");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, `chat-${uniqueSuffix}${ext}`);
+  }
+});
+const chatImageUpload = multer({
+  storage: chatImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  }
+});
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // ==========================================
@@ -52,6 +82,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     return { ok: true as const, user: user[0] };
   };
+
+  // ==========================================
+  // 📁 Static file serving for uploads
+  // ==========================================
+  const express = await import("express");
+  app.use("/uploads", express.default.static(path.join(process.cwd(), "uploads")));
+
+  // ==========================================
+  // 📸 Chat Image Upload
+  // ==========================================
+  app.post("/api/chat/upload-image", chatImageUpload.single("image"), async (req, res) => {
+    try {
+      const token = req.body.token;
+      if (!token) return res.json({ ok: false, message: "Token required" });
+      
+      const session = await storage.getSession(token);
+      if (!session) return res.json({ ok: false, message: "Invalid session" });
+
+      if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
+
+      const imageUrl = `/uploads/chat/${req.file.filename}`;
+      res.json({ ok: true, imageUrl });
+    } catch (e: any) {
+      console.error("Chat image upload error:", e);
+      res.json({ ok: false, message: e.message || "Upload failed" });
+    }
+  });
 
   // ==========================================
   // 🔧 System & Auth
@@ -2020,6 +2077,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     senderUsername: string;
     recipientUsername?: string | null;
     text: string;
+    messageType?: string; // text, image, sticker
+    imageUrl?: string | null;
     timestamp: string;
     isPrivate?: boolean;
     isRead?: number;
@@ -2076,6 +2135,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         user: m.senderDisplayName,
         senderUsername: m.senderUsername,
         text: m.text,
+        messageType: m.messageType,
+        imageUrl: m.imageUrl,
         timestamp: m.createdAt,
         isPrivate: false
       }));
@@ -2087,13 +2148,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     
     broadcastOnlineUsers();
 
-    // Group message - save to database
-    socket.on("message", async (payload: { text: string }) => {
+    // Group message - save to database (supports text, image, sticker)
+    socket.on("message", async (payload: { text: string; messageType?: string; imageUrl?: string }) => {
       const timestamp = new Date().toISOString();
+      const messageType = payload.messageType || "text";
       const msg: ChatMessage = {
         user: displayName,
         senderUsername: user.username,
         text: payload.text,
+        messageType,
+        imageUrl: payload.imageUrl || null,
         timestamp,
         isPrivate: false
       };
@@ -2105,6 +2169,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           senderDisplayName: displayName,
           recipientUsername: null,
           text: payload.text,
+          messageType,
+          imageUrl: payload.imageUrl || null,
           isRead: 0,
           createdAt: timestamp
         }).returning();
@@ -2117,13 +2183,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
 
     // Private message - save to database and deliver to recipient (even if offline)
-    socket.on("private_message", async (payload: { text: string; to: string }) => {
+    socket.on("private_message", async (payload: { text: string; to: string; messageType?: string; imageUrl?: string }) => {
       const timestamp = new Date().toISOString();
+      const messageType = payload.messageType || "text";
       const msg: ChatMessage = {
         user: displayName,
         senderUsername: user.username,
         recipientUsername: payload.to,
         text: payload.text,
+        messageType,
+        imageUrl: payload.imageUrl || null,
         timestamp,
         isPrivate: true
       };
@@ -2135,6 +2204,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           senderDisplayName: displayName,
           recipientUsername: payload.to,
           text: payload.text,
+          messageType,
+          imageUrl: payload.imageUrl || null,
           isRead: 0,
           createdAt: timestamp
         }).returning();
@@ -2179,6 +2250,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           senderUsername: m.senderUsername,
           recipientUsername: m.recipientUsername,
           text: m.text,
+          messageType: m.messageType,
+          imageUrl: m.imageUrl,
           timestamp: m.createdAt,
           isPrivate: true
         }));
@@ -2246,6 +2319,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           senderUsername: m.senderUsername,
           recipientUsername: m.recipientUsername,
           text: m.text,
+          messageType: m.messageType,
+          imageUrl: m.imageUrl,
           timestamp: m.createdAt,
           isPrivate: true
         }));

@@ -5,15 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Send, MessageCircle, X, Users, User, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { 
+  Send, MessageCircle, X, Users, User, Loader2, Smile, ImagePlus,
+  ThumbsUp, Heart, Smile as SmileIcon, Sparkles, Frown, Flame, Zap, Star, 
+  CheckCircle, Trophy, PartyPopper, Rocket, Coffee, Utensils, Clock
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { CHAT_STICKERS } from "@shared/schema";
+
+const STICKER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  ThumbsUp, Heart, Smile: SmileIcon, Sparkles, Frown, Flame, Zap, Star,
+  CheckCircle, Trophy, PartyPopper, Rocket, Coffee, Utensils, Clock, MessageCircle
+};
 
 interface ChatMessage {
   user: string;
   senderUsername: string;
   recipientUsername?: string;
   text: string;
+  messageType?: string;
+  imageUrl?: string | null;
   timestamp: string;
   isPrivate?: boolean;
 }
@@ -43,9 +56,12 @@ export function FloatingChat() {
   const [isConnected, setIsConnected] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState("group");
+  const [showStickers, setShowStickers] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const privateScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("bk_token");
@@ -94,7 +110,6 @@ export function FloatingChat() {
       });
     });
 
-    // Request all users list and private history
     newSocket.emit("get_all_users");
     newSocket.emit("get_all_private_history");
 
@@ -139,13 +154,79 @@ export function FloatingChat() {
     if (activeTab === "private" && selectedUser) {
       socket.emit("private_message", { 
         text: message.trim(), 
-        to: selectedUser 
+        to: selectedUser,
+        messageType: "text"
       });
     } else {
-      socket.emit("message", { text: message.trim() });
+      socket.emit("message", { text: message.trim(), messageType: "text" });
     }
     setMessage("");
     inputRef.current?.focus();
+  };
+
+  const sendSticker = (stickerId: string) => {
+    if (!socket || !isConnected) return;
+    
+    const sticker = CHAT_STICKERS.find(s => s.id === stickerId);
+    if (!sticker) return;
+
+    if (activeTab === "private" && selectedUser) {
+      socket.emit("private_message", { 
+        text: sticker.icon,
+        to: selectedUser,
+        messageType: "sticker"
+      });
+    } else {
+      socket.emit("message", { text: sticker.icon, messageType: "sticker" });
+    }
+    setShowStickers(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !socket || !isConnected) return;
+
+    const token = localStorage.getItem("bk_token");
+    if (!token) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("token", token);
+
+      const response = await fetch("/api/chat/upload-image", {
+        method: "POST",
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.ok && result.imageUrl) {
+        if (activeTab === "private" && selectedUser) {
+          socket.emit("private_message", { 
+            text: "[Image]",
+            to: selectedUser,
+            messageType: "image",
+            imageUrl: result.imageUrl
+          });
+        } else {
+          socket.emit("message", { 
+            text: "[Image]", 
+            messageType: "image",
+            imageUrl: result.imageUrl
+          });
+        }
+      } else {
+        console.error("Image upload failed:", result.message);
+      }
+    } catch (error) {
+      console.error("Image upload error:", error);
+    } finally {
+      setIsUploading(false);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
+    }
   };
 
   const formatTime = (timestamp: string) => {
@@ -160,6 +241,34 @@ export function FloatingChat() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  const renderMessageContent = (msg: ChatMessage, isMe: boolean) => {
+    if (msg.messageType === "sticker") {
+      const IconComponent = STICKER_ICONS[msg.text];
+      if (IconComponent) {
+        return (
+          <IconComponent className={cn(
+            "h-10 w-10",
+            isMe ? "text-primary" : "text-foreground"
+          )} />
+        );
+      }
+      return <Star className="h-10 w-10 text-muted-foreground" />;
+    }
+    
+    if (msg.messageType === "image" && msg.imageUrl) {
+      return (
+        <img 
+          src={msg.imageUrl} 
+          alt="Chat image"
+          className="max-w-full max-h-48 rounded cursor-pointer"
+          onClick={() => window.open(msg.imageUrl!, "_blank")}
+        />
+      );
+    }
+
+    return msg.text;
+  };
+
   const currentUsername = user?.username || "";
 
   const filteredPrivateMessages = privateMessages.filter(m => 
@@ -167,7 +276,6 @@ export function FloatingChat() {
     (m.senderUsername === selectedUser && m.recipientUsername === currentUsername)
   );
 
-  // Get recent chats - users we've chatted with, ordered by most recent
   const recentChats = (() => {
     const chatPartners = new Map<string, { username: string; displayName: string; lastMessage: string; timestamp: string }>();
     
@@ -182,10 +290,16 @@ export function FloatingChat() {
           const displayName = msg.senderUsername === currentUsername 
             ? (allUsers.find(u => u.username === partnerUsername)?.displayName || partnerUsername)
             : msg.user;
+          
+          let lastMessage = msg.text;
+          if (msg.messageType === "image") lastMessage = "[รูปภาพ]";
+          else if (msg.messageType === "sticker") lastMessage = "[สติ๊กเกอร์]";
+          else if (lastMessage.length > 30) lastMessage = lastMessage.substring(0, 30) + "...";
+          
           chatPartners.set(partnerUsername, {
             username: partnerUsername,
             displayName,
-            lastMessage: msg.text.length > 30 ? msg.text.substring(0, 30) + "..." : msg.text,
+            lastMessage,
             timestamp: msg.timestamp
           });
         }
@@ -197,6 +311,68 @@ export function FloatingChat() {
   })();
 
   if (!user) return null;
+
+  const StickerPicker = () => (
+    <Popover open={showStickers} onOpenChange={setShowStickers}>
+      <PopoverTrigger asChild>
+        <Button 
+          type="button" 
+          variant="ghost" 
+          size="icon" 
+          disabled={!isConnected}
+          data-testid="button-sticker-picker"
+        >
+          <Smile className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="end">
+        <div className="grid grid-cols-4 gap-1">
+          {CHAT_STICKERS.map((sticker) => {
+            const IconComponent = STICKER_ICONS[sticker.icon];
+            return (
+              <Button
+                key={sticker.id}
+                variant="ghost"
+                size="icon"
+                onClick={() => sendSticker(sticker.id)}
+                title={sticker.label}
+                data-testid={`sticker-${sticker.id}`}
+              >
+                {IconComponent && <IconComponent className="h-5 w-5" />}
+              </Button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
+  const ImageUploadButton = () => (
+    <>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+        data-testid="input-image-upload"
+      />
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        disabled={!isConnected || isUploading}
+        onClick={() => imageInputRef.current?.click()}
+        data-testid="button-image-upload"
+      >
+        {isUploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <ImagePlus className="h-4 w-4" />
+        )}
+      </Button>
+    </>
+  );
 
   return (
     <div className="fixed bottom-4 right-4 z-50" data-testid="floating-chat-container">
@@ -242,6 +418,8 @@ export function FloatingChat() {
                 ) : (
                   groupMessages.map((msg, index) => {
                     const isMe = msg.senderUsername === currentUsername;
+                    const isSticker = msg.messageType === "sticker";
+                    const isImage = msg.messageType === "image";
                     return (
                       <div
                         key={index}
@@ -259,10 +437,12 @@ export function FloatingChat() {
                             <span className="text-[10px] text-muted-foreground">{formatTime(msg.timestamp)}</span>
                           </div>
                           <div className={cn(
-                            "rounded-lg px-2.5 py-1.5 text-sm break-words",
-                            isMe ? "bg-primary text-primary-foreground" : "bg-muted"
+                            "rounded-lg text-sm break-words",
+                            isSticker ? "bg-transparent p-0" : "px-2.5 py-1.5",
+                            isImage ? "p-1 bg-muted/50" : "",
+                            !isSticker && !isImage && (isMe ? "bg-primary text-primary-foreground" : "bg-muted")
                           )}>
-                            {msg.text}
+                            {renderMessageContent(msg, isMe)}
                           </div>
                         </div>
                       </div>
@@ -271,12 +451,14 @@ export function FloatingChat() {
                 )}
               </div>
 
-              <form onSubmit={sendMessage} className="flex gap-2 p-3 border-t">
+              <form onSubmit={sendMessage} className="flex items-center gap-1 p-2 border-t">
+                <StickerPicker />
+                <ImageUploadButton />
                 <Input
                   ref={inputRef}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type message... / พิมพ์..."
+                  placeholder="พิมพ์ข้อความ..."
                   className="flex-1"
                   disabled={!isConnected}
                   data-testid="input-group-message"
@@ -297,7 +479,7 @@ export function FloatingChat() {
                 <div className="flex-1 p-3 overflow-y-auto" data-testid="private-user-list">
                   {recentChats.length > 0 && (
                     <div className="mb-4">
-                      <p className="text-xs text-muted-foreground mb-2">Recent / ล่าสุด:</p>
+                      <p className="text-xs text-muted-foreground mb-2">ล่าสุด:</p>
                       <div className="space-y-1">
                         {recentChats.map((chat) => {
                           const userInfo = allUsers.find(u => u.username === chat.username);
@@ -344,11 +526,11 @@ export function FloatingChat() {
                   )}
                   
                   <p className="text-xs text-muted-foreground mb-2">
-                    {recentChats.length > 0 ? "All users / ผู้ใช้ทั้งหมด:" : "Select user / เลือกผู้ใช้:"}
+                    {recentChats.length > 0 ? "ผู้ใช้ทั้งหมด:" : "เลือกผู้ใช้:"}
                   </p>
                   {allUsers.length === 0 ? (
                     <div className="text-center text-muted-foreground text-sm py-8" data-testid="text-no-users">
-                      No users / ไม่มีผู้ใช้
+                      ไม่มีผู้ใช้
                     </div>
                   ) : (
                     <div className="space-y-1">
@@ -420,11 +602,13 @@ export function FloatingChat() {
                   <div ref={privateScrollRef} className="flex-1 p-3 overflow-y-auto space-y-3" data-testid="private-messages-container">
                     {filteredPrivateMessages.length === 0 ? (
                       <div className="text-center text-muted-foreground text-sm py-8" data-testid="text-no-private-messages">
-                        No messages / ยังไม่มีข้อความ
+                        ยังไม่มีข้อความ
                       </div>
                     ) : (
                       filteredPrivateMessages.map((msg, index) => {
                         const isMe = msg.senderUsername === currentUsername;
+                        const isSticker = msg.messageType === "sticker";
+                        const isImage = msg.messageType === "image";
                         return (
                           <div
                             key={index}
@@ -432,10 +616,12 @@ export function FloatingChat() {
                             data-testid={`message-private-${index}`}
                           >
                             <div className={cn(
-                              "rounded-lg px-2.5 py-1.5 text-sm break-words max-w-[80%]",
-                              isMe ? "bg-primary text-primary-foreground" : "bg-muted"
+                              "rounded-lg text-sm break-words max-w-[80%]",
+                              isSticker ? "bg-transparent p-0" : "px-2.5 py-1.5",
+                              isImage ? "p-1 bg-muted/50" : "",
+                              !isSticker && !isImage && (isMe ? "bg-primary text-primary-foreground" : "bg-muted")
                             )}>
-                              {msg.text}
+                              {renderMessageContent(msg, isMe)}
                             </div>
                           </div>
                         );
@@ -443,11 +629,13 @@ export function FloatingChat() {
                     )}
                   </div>
 
-                  <form onSubmit={sendMessage} className="flex gap-2 p-3 border-t">
+                  <form onSubmit={sendMessage} className="flex items-center gap-1 p-2 border-t">
+                    <StickerPicker />
+                    <ImageUploadButton />
                     <Input
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Type message... / พิมพ์..."
+                      placeholder="พิมพ์ข้อความ..."
                       className="flex-1"
                       disabled={!isConnected}
                       data-testid="input-private-message"

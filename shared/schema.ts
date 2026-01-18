@@ -456,24 +456,24 @@ export const staffChatMessages = pgTable("staff_chat_messages", {
   createdAt: text("created_at").notNull(),
 });
 
-// Sticker definitions for chat
+// Sticker definitions for chat - using icon names from lucide-react
 export const CHAT_STICKERS = [
-  { id: "ok", emoji: "👍", label: "OK" },
-  { id: "love", emoji: "❤️", label: "Love" },
-  { id: "laugh", emoji: "😂", label: "Laugh" },
-  { id: "wow", emoji: "😮", label: "Wow" },
-  { id: "sad", emoji: "😢", label: "Sad" },
-  { id: "angry", emoji: "😠", label: "Angry" },
-  { id: "clap", emoji: "👏", label: "Clap" },
-  { id: "fire", emoji: "🔥", label: "Fire" },
-  { id: "think", emoji: "🤔", label: "Think" },
-  { id: "wave", emoji: "👋", label: "Wave" },
-  { id: "party", emoji: "🎉", label: "Party" },
-  { id: "rocket", emoji: "🚀", label: "Rocket" },
-  { id: "star", emoji: "⭐", label: "Star" },
-  { id: "check", emoji: "✅", label: "Check" },
-  { id: "coffee", emoji: "☕", label: "Coffee" },
-  { id: "burger", emoji: "🍔", label: "Burger" },
+  { id: "thumbs-up", icon: "ThumbsUp", label: "OK" },
+  { id: "heart", icon: "Heart", label: "Love" },
+  { id: "smile", icon: "Smile", label: "Smile" },
+  { id: "sparkles", icon: "Sparkles", label: "Wow" },
+  { id: "frown", icon: "Frown", label: "Sad" },
+  { id: "flame", icon: "Flame", label: "Fire" },
+  { id: "zap", icon: "Zap", label: "Zap" },
+  { id: "star", icon: "Star", label: "Star" },
+  { id: "check-circle", icon: "CheckCircle", label: "Check" },
+  { id: "trophy", icon: "Trophy", label: "Trophy" },
+  { id: "party-popper", icon: "PartyPopper", label: "Party" },
+  { id: "rocket", icon: "Rocket", label: "Rocket" },
+  { id: "coffee", icon: "Coffee", label: "Coffee" },
+  { id: "utensils", icon: "Utensils", label: "Food" },
+  { id: "clock", icon: "Clock", label: "Time" },
+  { id: "message-circle", icon: "MessageCircle", label: "Message" },
 ] as const;
 
 // ==========================================

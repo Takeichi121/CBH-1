@@ -580,9 +580,12 @@ export default function WorkPage() {
 }
 
 function BookShiftDialog({ children, groups, day, disabled, settings }: { children: React.ReactNode; groups: any[]; day: string; disabled?: boolean, settings: any }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [open, setOpen] = useState(false);
   const { mutate: bookShift, isPending } = useBookShift();
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [customStartTime, setCustomStartTime] = useState("08:00");
+  const [customEndTime, setCustomEndTime] = useState("16:00");
   
   const form = useForm<BookFormValues>({
     resolver: zodResolver(bookSchema),
@@ -597,10 +600,14 @@ function BookShiftDialog({ children, groups, day, disabled, settings }: { childr
   if (disabled) return <div className="opacity-50 cursor-not-allowed">{children}</div>;
 
   const onSubmit = (data: BookFormValues) => {
-    bookShift(data, {
+    const finalTime = useCustomTime ? `${customStartTime} - ${customEndTime}` : data.startTime;
+    bookShift({ ...data, startTime: finalTime }, {
       onSuccess: () => {
         setOpen(false);
         form.reset();
+        setUseCustomTime(false);
+        setCustomStartTime("08:00");
+        setCustomEndTime("16:00");
       }
     });
   };
@@ -642,23 +649,70 @@ function BookShiftDialog({ children, groups, day, disabled, settings }: { childr
           </div>
 
           {form.watch("shiftGroup") && (
-            <div className="space-y-2">
-              <Label>Time Period</Label>
-              <Select 
-                onValueChange={(val) => form.setValue("startTime", val)} 
-                defaultValue={form.getValues("startTime")}
-                disabled={settings?.lockTimePeriod}
-              >
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Select time period" />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups?.find(g => g.key === form.watch("shiftGroup"))?.times?.map((t: string) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {settings?.lockTimePeriod && <p className="text-[10px] text-muted-foreground">Fixed by Manager</p>}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="bookCustomTime" 
+                  checked={useCustomTime} 
+                  onChange={(e) => setUseCustomTime(e.target.checked)}
+                  className="rounded"
+                  disabled={settings?.lockTimePeriod}
+                />
+                <Label htmlFor="bookCustomTime" className="cursor-pointer">
+                  {language === "th" ? "กำหนดเวลาเอง" : "Custom Time"}
+                </Label>
+              </div>
+              
+              {useCustomTime ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาเริ่ม" : "Start Time"}</Label>
+                    <Select value={customStartTime} onValueChange={setCustomStartTime}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === "th" ? "เวลาจบ" : "End Time"}</Label>
+                    <Select value={customEndTime} onValueChange={setCustomEndTime}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Time Period</Label>
+                  <Select 
+                    onValueChange={(val) => form.setValue("startTime", val)} 
+                    defaultValue={form.getValues("startTime")}
+                    disabled={settings?.lockTimePeriod}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Select time period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups?.find(g => g.key === form.watch("shiftGroup"))?.times?.map((t: string) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {settings?.lockTimePeriod && <p className="text-[10px] text-muted-foreground">Fixed by Manager</p>}
+                </div>
+              )}
             </div>
           )}
 
@@ -734,10 +788,14 @@ function ManageShiftDialogInWork({
   mode: "create" | "edit";
   groups?: any[];
 }) {
+  const { language } = useI18n();
   const [open, setOpen] = useState(false);
   const { mutate: bookShift } = useBookShift();
   const { mutate: cancelShift } = useCancelShift();
   const queryClient = useQueryClient();
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [customStartTime, setCustomStartTime] = useState(existingShift?.startTime?.split(" - ")[0] || "08:00");
+  const [customEndTime, setCustomEndTime] = useState(existingShift?.startTime?.split(" - ")[1] || "16:00");
   
   const [formData, setFormData] = useState({
     shiftGroup: existingShift?.shiftGroup || groups?.[0]?.key || "open",
@@ -748,12 +806,13 @@ function ManageShiftDialogInWork({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("bk_token") || "";
+    const finalTime = useCustomTime ? `${customStartTime} - ${customEndTime}` : formData.startTime;
     apiRequest("POST", "/api/setShiftForUser", {
       token,
       username,
       date,
       shiftGroup: formData.shiftGroup,
-      startTime: formData.startTime,
+      startTime: finalTime,
       note: formData.note
     }).then(() => {
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
@@ -812,21 +871,67 @@ function ManageShiftDialogInWork({
             </Select>
           </div>
           
-          <div className="space-y-2">
-            <Label>Time Period</Label>
-            <Select 
-              value={formData.startTime} 
-              onValueChange={(v) => setFormData({...formData, startTime: v})}
-            >
-              <SelectTrigger className="rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currentGroup?.times?.map((t: string) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="manageCustomTime" 
+                checked={useCustomTime} 
+                onChange={(e) => setUseCustomTime(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="manageCustomTime" className="cursor-pointer">
+                {language === "th" ? "กำหนดเวลาเอง" : "Custom Time"}
+              </Label>
+            </div>
+            
+            {useCustomTime ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>{language === "th" ? "เวลาเริ่ม" : "Start Time"}</Label>
+                  <Select value={customStartTime} onValueChange={setCustomStartTime}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === "th" ? "เวลาจบ" : "End Time"}</Label>
+                  <Select value={customEndTime} onValueChange={setCustomEndTime}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Time Period</Label>
+                <Select 
+                  value={formData.startTime} 
+                  onValueChange={(v) => setFormData({...formData, startTime: v})}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentGroup?.times?.map((t: string) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

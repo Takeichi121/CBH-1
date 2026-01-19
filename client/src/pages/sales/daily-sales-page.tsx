@@ -615,6 +615,51 @@ export default function DailySalesPage() {
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
 
+        // Reset daily fields first to prevent data from other dates mixing in
+        const dailyFieldsToReset = {
+          actualSales: "0",
+          transactionCount: "0",
+          dineIn: "0",
+          dineInTc: "0",
+          takeAway: "0",
+          takeAwayTc: "0",
+          grabfood: "0",
+          lineman: "0",
+          shopee: "0",
+          bkapp: "0",
+          osat: "0",
+          surveyCount: "0",
+          voidAmount: "0",
+          voidCount: "0",
+          sosDaily: "0",
+          addCheeseCount: "0",
+          addCheesePercent: "0",
+          vMealCount: "0",
+          vMealPercent: "0",
+          upSizeCount: "0",
+          upSizePercent: "0",
+          wasteDailyTotal: "0",
+          wasteMealDaily: "0",
+          actualHours: "0",
+          otHours: "0",
+          laborCost: "0",
+          colPercent: "0",
+          laborHour: "0",
+          tcmh: "0",
+          managerPhongsathon: "",
+          managerNuttarika: "",
+          managerBoonyisa: "",
+          managerChanon: "",
+          managerWashiraphan: "",
+          managerRosterText: "",
+          staffRosterText: "",
+          workShift: "full",
+        };
+        Object.entries(dailyFieldsToReset).forEach(([key, value]) => {
+          form.setValue(key as keyof FormData, value);
+        });
+        setStaffRosterEntries([{ shiftGroup: "", staffName: "" }]);
+
         // Load existing report for this date
         const existingRes = await apiRequest(
           "POST",

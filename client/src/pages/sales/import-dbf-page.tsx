@@ -302,12 +302,12 @@ export default function ImportDBFPage() {
                 </div>
                 <div>
                   <Label>{t("Full Name Field", "คอลัมน์ชื่อเต็ม")}</Label>
-                  <Select value={fieldMapping.fullName} onValueChange={(v) => setFieldMapping({...fieldMapping, fullName: v})}>
+                  <Select value={fieldMapping.fullName || "_none_"} onValueChange={(v) => setFieldMapping({...fieldMapping, fullName: v === "_none_" ? "" : v})}>
                     <SelectTrigger data-testid="select-fullname-field">
                       <SelectValue placeholder={t("Select field", "เลือกคอลัมน์")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">({t("None", "ไม่เลือก")})</SelectItem>
+                      <SelectItem value="_none_">({t("None", "ไม่เลือก")})</SelectItem>
                       {parsedData.fields.map(f => (
                         <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>
                       ))}
@@ -316,12 +316,12 @@ export default function ImportDBFPage() {
                 </div>
                 <div>
                   <Label>{t("Nickname Field", "คอลัมน์ชื่อเล่น")}</Label>
-                  <Select value={fieldMapping.nickName} onValueChange={(v) => setFieldMapping({...fieldMapping, nickName: v})}>
+                  <Select value={fieldMapping.nickName || "_none_"} onValueChange={(v) => setFieldMapping({...fieldMapping, nickName: v === "_none_" ? "" : v})}>
                     <SelectTrigger data-testid="select-nickname-field">
                       <SelectValue placeholder={t("Select field", "เลือกคอลัมน์")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">({t("None", "ไม่เลือก")})</SelectItem>
+                      <SelectItem value="_none_">({t("None", "ไม่เลือก")})</SelectItem>
                       {parsedData.fields.map(f => (
                         <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>
                       ))}
@@ -330,12 +330,12 @@ export default function ImportDBFPage() {
                 </div>
                 <div>
                   <Label>{t("Phone Field", "คอลัมน์เบอร์โทร")}</Label>
-                  <Select value={fieldMapping.phone} onValueChange={(v) => setFieldMapping({...fieldMapping, phone: v})}>
+                  <Select value={fieldMapping.phone || "_none_"} onValueChange={(v) => setFieldMapping({...fieldMapping, phone: v === "_none_" ? "" : v})}>
                     <SelectTrigger data-testid="select-phone-field">
                       <SelectValue placeholder={t("Select field", "เลือกคอลัมน์")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">({t("None", "ไม่เลือก")})</SelectItem>
+                      <SelectItem value="_none_">({t("None", "ไม่เลือก")})</SelectItem>
                       {parsedData.fields.map(f => (
                         <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>
                       ))}
@@ -344,12 +344,12 @@ export default function ImportDBFPage() {
                 </div>
                 <div>
                   <Label>{t("Email Field", "คอลัมน์ Email")}</Label>
-                  <Select value={fieldMapping.email} onValueChange={(v) => setFieldMapping({...fieldMapping, email: v})}>
+                  <Select value={fieldMapping.email || "_none_"} onValueChange={(v) => setFieldMapping({...fieldMapping, email: v === "_none_" ? "" : v})}>
                     <SelectTrigger data-testid="select-email-field">
                       <SelectValue placeholder={t("Select field", "เลือกคอลัมน์")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">({t("None", "ไม่เลือก")})</SelectItem>
+                      <SelectItem value="_none_">({t("None", "ไม่เลือก")})</SelectItem>
                       {parsedData.fields.map(f => (
                         <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>
                       ))}

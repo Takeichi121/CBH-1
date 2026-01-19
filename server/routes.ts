@@ -2133,13 +2133,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           // Create new employee
           await db.insert(users).values({
             username: emp.username.toLowerCase(),
-            passwordHash: hashPass(emp.password || "1234"),
+            passhash: hashPass(emp.password || "1234"),
             fullName: emp.fullName || emp.username,
             nickName: emp.nickName || null,
             role: "staff",
             phone: emp.phone || null,
             email: emp.email || null,
-            active: 1
+            active: 1,
+            createdAt: new Date().toISOString()
           });
           imported++;
         } catch (e: any) {

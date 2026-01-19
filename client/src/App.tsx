@@ -36,6 +36,7 @@ import DailySalesPage from "@/pages/sales/daily-sales-page";
 import SalesReportsPage from "@/pages/sales/reports-page";
 import SalesSettingsPage from "@/pages/sales/settings-page";
 import SalesManualPage from "@/pages/sales/manual-page";
+import ImportDBFPage from "@/pages/sales/import-dbf-page";
 
 import { useEffect } from "react";
 
@@ -99,6 +100,10 @@ function Router() {
           
           <Route path="/sales/manual">
             <ProtectedRoute component={SalesManualPage} path="/sales/manual" />
+          </Route>
+          
+          <Route path="/sales/import">
+            <ProtectedRoute component={ImportDBFPage} path="/sales/import" />
           </Route>
           
           {/* Borrow Routes */}

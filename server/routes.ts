@@ -2067,6 +2067,99 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ==========================================
+  // 📂 DBF Import (Aloha POS Integration)
+  // ==========================================
+  
+  // Parse DBF file and return data
+  app.post("/api/import/parse-dbf", upload.single("file"), async (req, res) => {
+    const { token } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+
+    if (!req.file) {
+      return res.json({ ok: false, message: "No file uploaded" });
+    }
+
+    try {
+      const DBFFile = await import("dbffile");
+      
+      // Write buffer to temp file (dbffile needs file path)
+      const tempPath = path.join(process.cwd(), "uploads", `temp_${Date.now()}.dbf`);
+      fs.writeFileSync(tempPath, req.file.buffer);
+      
+      const dbf = await DBFFile.DBFFile.open(tempPath);
+      const records = await dbf.readRecords();
+      
+      // Clean up temp file
+      fs.unlinkSync(tempPath);
+      
+      res.json({ 
+        ok: true, 
+        fields: dbf.fields.map(f => ({ name: f.name, type: f.type, size: f.size })),
+        recordCount: dbf.recordCount,
+        records: records.slice(0, 100) // Return first 100 records for preview
+      });
+    } catch (e: any) {
+      console.error("DBF parse error:", e);
+      res.json({ ok: false, message: e.message || "Failed to parse DBF file" });
+    }
+  });
+
+  // Import employees from DBF
+  app.post("/api/import/employees-from-dbf", async (req, res) => {
+    const { token, employees } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+
+    if (!Array.isArray(employees) || employees.length === 0) {
+      return res.json({ ok: false, message: "No employees to import" });
+    }
+
+    try {
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const emp of employees) {
+        try {
+          // Check if employee exists
+          const existing = await db.select().from(users).where(eq(users.username, emp.username.toLowerCase())).limit(1);
+          
+          if (existing.length > 0) {
+            skipped++;
+            continue;
+          }
+
+          // Create new employee
+          await db.insert(users).values({
+            username: emp.username.toLowerCase(),
+            passwordHash: hashPass(emp.password || "1234"),
+            fullName: emp.fullName || emp.username,
+            nickName: emp.nickName || null,
+            role: "staff",
+            phone: emp.phone || null,
+            email: emp.email || null,
+            active: 1
+          });
+          imported++;
+        } catch (e: any) {
+          errors.push(`${emp.username}: ${e.message}`);
+        }
+      }
+
+      res.json({ 
+        ok: true, 
+        imported, 
+        skipped, 
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Imported ${imported} employees, skipped ${skipped} existing`
+      });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  // ==========================================
   // 💬 Socket.IO Chat System (Persistent)
   // ==========================================
   const io = new SocketIOServer(httpServer);

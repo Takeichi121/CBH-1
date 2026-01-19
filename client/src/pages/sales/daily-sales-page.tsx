@@ -232,7 +232,13 @@ const STAFF_SHIFT_GROUPS = [
   { value: "19:00-04:00", label: "19:00-04:00" },
   { value: "21:00-06:00", label: "21:00-06:00" },
   { value: "22:00-07:00", label: "22:00-07:00" },
+  { value: "CUSTOM", label: "กำหนดเอง" },
 ] as const;
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
+  const hour = i.toString().padStart(2, "0");
+  return `${hour}:00`;
+});
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -311,8 +317,8 @@ export default function DailySalesPage() {
     Array<{ username: string; nickName?: string; fullName?: string }>
   >([]);
   const [staffRosterEntries, setStaffRosterEntries] = useState<
-    Array<{ shiftGroup: string; staffName: string }>
-  >([{ shiftGroup: "", staffName: "" }]);
+    Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }>
+  >([{ shiftGroup: "", staffName: "", customStart: "08:00", customEnd: "16:00" }]);
 
   const { saveData, restoreData, clearData, hasDraft } =
     useFormPersistence<FormData>("daily-sales-form");
@@ -555,7 +561,12 @@ export default function DailySalesPage() {
   useEffect(() => {
     const text = staffRosterEntries
       .filter((e) => e.shiftGroup && e.staffName)
-      .map((e) => `${e.shiftGroup} | ${e.staffName}`)
+      .map((e) => {
+        const shift = e.shiftGroup === "CUSTOM" && e.customStart && e.customEnd 
+          ? `${e.customStart}-${e.customEnd}` 
+          : e.shiftGroup;
+        return `${shift} | ${e.staffName}`;
+      })
       .join("\n");
     form.setValue("staffRosterText", text);
   }, [staffRosterEntries]);
@@ -586,7 +597,7 @@ export default function DailySalesPage() {
   const addStaffEntry = () => {
     setStaffRosterEntries([
       ...staffRosterEntries,
-      { shiftGroup: "", staffName: "" },
+      { shiftGroup: "", staffName: "", customStart: "08:00", customEnd: "16:00" },
     ]);
   };
 
@@ -596,11 +607,11 @@ export default function DailySalesPage() {
 
   const updateStaffEntry = (
     index: number,
-    field: "shiftGroup" | "staffName",
+    field: "shiftGroup" | "staffName" | "customStart" | "customEnd",
     value: string,
   ) => {
     const updated = [...staffRosterEntries];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value;
     setStaffRosterEntries(updated);
   };
 
@@ -2675,7 +2686,7 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                       </div>
                       <div className="space-y-2">
                         {staffRosterEntries.map((entry, index) => (
-                          <div key={index} className="flex items-center gap-2">
+                          <div key={index} className="flex flex-wrap items-center gap-2">
                             <Select
                               value={entry.shiftGroup}
                               onValueChange={(v) =>
@@ -2700,6 +2711,41 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                                 ))}
                               </SelectContent>
                             </Select>
+                            {entry.shiftGroup === "CUSTOM" && (
+                              <>
+                                <Select
+                                  value={entry.customStart || "08:00"}
+                                  onValueChange={(v) =>
+                                    updateStaffEntry(index, "customStart", v)
+                                  }
+                                >
+                                  <SelectTrigger className="w-[70px] text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {HOUR_OPTIONS.map((h) => (
+                                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <span className="text-xs">-</span>
+                                <Select
+                                  value={entry.customEnd || "16:00"}
+                                  onValueChange={(v) =>
+                                    updateStaffEntry(index, "customEnd", v)
+                                  }
+                                >
+                                  <SelectTrigger className="w-[70px] text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {HOUR_OPTIONS.map((h) => (
+                                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </>
+                            )}
                             <Input
                               value={entry.staffName}
                               onChange={(e) =>
@@ -2712,7 +2758,7 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                               placeholder={
                                 language === "th" ? "ชื่อเล่น" : "Nickname"
                               }
-                              className="flex-1 text-sm"
+                              className="flex-1 min-w-[100px] text-sm"
                               data-testid={`input-staff-name-${index}`}
                             />
                             {staffRosterEntries.length > 1 && (

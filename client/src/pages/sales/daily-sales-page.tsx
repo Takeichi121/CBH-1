@@ -1418,8 +1418,9 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                                 ฿
                               </span>
                               <FormattedInput
-                                className="pl-6 text-sm"
+                                className="pl-6 text-sm bg-muted cursor-not-allowed"
                                 {...field}
+                                readOnly
                                 data-testid="input-daily-target"
                               />
                             </div>

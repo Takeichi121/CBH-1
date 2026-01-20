@@ -28,13 +28,14 @@ ON CONFLICT (id) DO UPDATE SET
   pt_wage_rate = EXCLUDED.pt_wage_rate;
 
 -- Store settings
-INSERT INTO store_settings (id, store_name, store_code, daily_target, mtd_target) VALUES 
-(1, 'Grand Diamond', 'BK1040', 250000, 7500000)
+INSERT INTO store_settings (id, store_name, store_code, daily_target, mtd_target, created_at, updated_at) VALUES 
+(1, 'Grand Diamond', 'BK1040', 250000, 7500000, NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET 
   store_name = EXCLUDED.store_name,
   store_code = EXCLUDED.store_code,
   daily_target = EXCLUDED.daily_target,
-  mtd_target = EXCLUDED.mtd_target;
+  mtd_target = EXCLUDED.mtd_target,
+  updated_at = NOW();
 
 -- Users (ALL 25 users)
 INSERT INTO users (username, passhash, role, full_name, nick_name, phone, email, position, active) VALUES 

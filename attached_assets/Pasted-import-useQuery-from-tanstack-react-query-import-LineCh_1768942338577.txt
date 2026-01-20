@@ -1,0 +1,60 @@
+import { useQuery } from "@tanstack/react-query";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+// Interface สำหรับข้อมูลยอดขาย
+interface SalesData {
+  report_date: string;
+  actual_sales: number;
+  transaction_count: number;
+}
+
+export function SalesChart() {
+  // ดึงข้อมูลจาก API (สมมติว่า backend เตรียม endpoint นี้ไว้แล้ว)
+  const { data: salesData, isLoading } = useQuery<SalesData[]>({
+    queryKey: ['/api/sales/history'],
+  });
+
+  if (isLoading) return <div>Loading Chart...</div>;
+
+  return (
+    <Card className="col-span-4">
+      <CardHeader>
+        <CardTitle>ยอดขาย 7 วันย้อนหลัง</CardTitle>
+      </CardHeader>
+      <CardContent className="pl-2">
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={salesData}>
+            <XAxis 
+              dataKey="report_date" 
+              stroke="#888888" 
+              fontSize={12} 
+              tickLine={false} 
+              axisLine={false}
+              tickFormatter={(value) => new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+            />
+            <YAxis
+              stroke="#888888"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `฿${value}`}
+            />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <Tooltip 
+                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px' }}
+                formatter={(value: number) => [`฿${value.toLocaleString()}`, 'ยอดขาย']}
+            />
+            <Line
+              type="monotone"
+              dataKey="actual_sales"
+              stroke="#e11d48" // สีแดงโทน Burger King
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}

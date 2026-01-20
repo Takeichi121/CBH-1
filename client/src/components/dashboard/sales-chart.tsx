@@ -11,12 +11,12 @@ interface SalesData {
 }
 
 export function SalesChart() {
-  const token = localStorage.getItem("token") || "";
+  const token = localStorage.getItem("bk_token") || "";
   
   const { data, isLoading, error, refetch } = useQuery<SalesData[]>({
     queryKey: ["/api/sales/history", token],
     queryFn: async () => {
-      const currentToken = localStorage.getItem("token") || "";
+      const currentToken = localStorage.getItem("bk_token") || "";
       if (!currentToken) throw new Error("No token");
       const res = await apiRequest("POST", "/api/sales/history", { token: currentToken });
       const json = await res.json();

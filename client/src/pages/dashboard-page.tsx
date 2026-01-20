@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const { data: shiftsData } = useQuery({
     queryKey: ["/api/shifts/roster"],
     queryFn: async () => {
-      const token = localStorage.getItem("token") || "";
+      const token = localStorage.getItem("bk_token") || "";
       const today = new Date().toISOString().split("T")[0];
       const res = await apiRequest("POST", "/api/shifts/roster", { token, anyDate: today });
       const json = await res.json();
@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const { data: myShifts } = useQuery({
     queryKey: ["/api/shifts/my-week"],
     queryFn: async () => {
-      const token = localStorage.getItem("token") || "";
+      const token = localStorage.getItem("bk_token") || "";
       const res = await apiRequest("POST", "/api/shifts/my-week", { token });
       const json = await res.json();
       return json;

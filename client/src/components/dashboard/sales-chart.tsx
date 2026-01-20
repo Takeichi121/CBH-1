@@ -11,13 +11,14 @@ interface SalesData {
 }
 
 export function SalesChart() {
-  const { data, isLoading } = useQuery<SalesData[]>({
+  const { data, isLoading, error } = useQuery<SalesData[]>({
     queryKey: ["/api/sales/history"],
     queryFn: async () => {
       const token = localStorage.getItem("token") || "";
       const res = await apiRequest("POST", "/api/sales/history", { token });
       const json = await res.json();
-      return json.data;
+      if (!json.ok) throw new Error(json.message || "Failed to load data");
+      return json.data || [];
     },
   });
 
@@ -25,6 +26,19 @@ export function SalesChart() {
     return (
       <Card className="col-span-4 h-[350px] flex items-center justify-center" data-testid="card-sales-chart-loading">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  if (error || !data || data.length === 0) {
+    return (
+      <Card className="col-span-4" data-testid="card-sales-chart-empty">
+        <CardHeader>
+          <CardTitle>ยอดขาย 7 วันย้อนหลัง</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[300px] flex items-center justify-center">
+          <p className="text-muted-foreground">ยังไม่มีข้อมูลยอดขาย</p>
+        </CardContent>
       </Card>
     );
   }

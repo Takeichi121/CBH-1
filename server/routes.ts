@@ -1195,11 +1195,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Sales History for Dashboard Chart
+  // Sales History for Dashboard Chart (Manager/Admin only)
   app.post("/api/sales/history", async (req, res) => {
     const { token, days = 7 } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
+    
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) {
+      return res.json({ ok: false, message: "No permission" });
+    }
     
     try {
       const salesData = await storage.getDailySalesReports(undefined, days);

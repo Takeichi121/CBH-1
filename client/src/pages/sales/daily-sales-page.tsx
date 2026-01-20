@@ -867,7 +867,7 @@ export default function DailySalesPage() {
         wasteRawMtd: wasteRawMtdNum.toString(),
       };
 
-      const res = await apiRequest("POST", "/api/sales/createReport", {
+      const res = await apiRequest("POST", "/api/sales/upsertReportByDate", {
         token,
         report: reportToSave,
       });

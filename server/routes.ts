@@ -1195,6 +1195,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Sales History for Dashboard Chart
+  app.post("/api/sales/history", async (req, res) => {
+    const { token, days = 7 } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    
+    try {
+      const salesData = await storage.getDailySalesReports(undefined, days);
+      const formattedData = salesData
+        .sort((a, b) => new Date(a.reportDate).getTime() - new Date(b.reportDate).getTime())
+        .map(item => ({
+          reportDate: item.reportDate,
+          actual_sales: Number(item.actualSales || 0),
+          transaction_count: Number(item.transactionCount || 0)
+        }));
+      res.json({ ok: true, data: formattedData });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get sales history" });
+    }
+  });
+
   app.post(api.sales.getWasteTargets.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);

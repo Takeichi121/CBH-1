@@ -28,6 +28,7 @@ import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
 import ForgotPasswordPage from "@/pages/forgot-password-page";
+import DashboardPage from "@/pages/dashboard-page";
 import NotFound from "@/pages/not-found";
 
 // Sales Pages
@@ -147,6 +148,9 @@ function Router() {
             <ProtectedRoute component={DevToolboxPage} path="/dev-toolbox" />
           </Route>
           
+          <Route path="/dashboard">
+            <ProtectedRoute component={DashboardPage} path="/dashboard" />
+          </Route>
           
           <Route component={NotFound} />
         </Switch>

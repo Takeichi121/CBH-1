@@ -11,15 +11,21 @@ interface SalesData {
 }
 
 export function SalesChart() {
-  const { data, isLoading, error } = useQuery<SalesData[]>({
-    queryKey: ["/api/sales/history"],
+  const token = localStorage.getItem("token") || "";
+  
+  const { data, isLoading, error, refetch } = useQuery<SalesData[]>({
+    queryKey: ["/api/sales/history", token],
     queryFn: async () => {
-      const token = localStorage.getItem("token") || "";
-      const res = await apiRequest("POST", "/api/sales/history", { token });
+      const currentToken = localStorage.getItem("token") || "";
+      if (!currentToken) throw new Error("No token");
+      const res = await apiRequest("POST", "/api/sales/history", { token: currentToken });
       const json = await res.json();
       if (!json.ok) throw new Error(json.message || "Failed to load data");
       return json.data || [];
     },
+    enabled: !!token,
+    retry: 1,
+    staleTime: 30000,
   });
 
   if (isLoading) {

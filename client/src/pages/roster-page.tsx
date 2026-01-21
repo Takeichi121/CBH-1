@@ -5,7 +5,8 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addWeeks, subWeeks, parseISO, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, UserPlus, Trash2, EyeOff, Eye, Users } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, UserPlus, Trash2, EyeOff, Eye, Users, Upload } from "lucide-react";
+import { Link } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -144,6 +145,14 @@ export default function RosterPage() {
         </div>
         
         <div className="flex items-center gap-1.5 md:gap-2">
+          {isManager && (
+            <Link href="/roster/import">
+              <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-import-excel">
+                <Upload className="h-4 w-4" />
+                <span className="hidden sm:inline">Import Excel</span>
+              </Button>
+            </Link>
+          )}
           {isManager && hiddenUsers.length > 0 && (
             <HiddenStaffDialog users={hiddenUsers} onUpdateStatus={handleUpdateUserStatus} />
           )}

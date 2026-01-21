@@ -29,6 +29,7 @@ import HandbookPage from "@/pages/handbook-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
 import ForgotPasswordPage from "@/pages/forgot-password-page";
 import DashboardPage from "@/pages/dashboard-page";
+import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
 
 // Sales Pages
@@ -72,6 +73,10 @@ function Router() {
           
           <Route path="/roster">
             <ProtectedRoute component={RosterPage} path="/roster" />
+          </Route>
+          
+          <Route path="/roster/import">
+            <ProtectedRoute component={RosterImportPage} path="/roster/import" />
           </Route>
           
           <Route path="/settings">

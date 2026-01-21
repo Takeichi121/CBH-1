@@ -2475,5 +2475,98 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
   });
 
+  // ===== ROSTER IMPORT FROM EXCEL =====
+  app.post("/api/roster/import", async (req, res) => {
+    try {
+      const { token, data } = req.body;
+
+      const session = await storage.getSession(token);
+      if (!session) {
+        return res.json({ ok: false, message: "Session expired" });
+      }
+
+      const currentUser = await storage.getUser(session.username);
+      if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "manager")) {
+        return res.json({ ok: false, message: "Permission denied" });
+      }
+
+      const results = {
+        imported: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
+
+      const allUsers = await storage.getUsers();
+      const nicknameMap = new Map<string, string>();
+      allUsers.forEach(u => {
+        if (u.nickName) {
+          nicknameMap.set(u.nickName.toLowerCase(), u.username);
+        }
+      });
+
+      const getDefaultTimes = (shiftGroup: string): { startTime: string; endTime: string } => {
+        switch (shiftGroup) {
+          case "open": return { startTime: "07:00", endTime: "16:00" };
+          case "lunch": return { startTime: "10:00", endTime: "19:00" };
+          case "dinner": return { startTime: "16:00", endTime: "01:00" };
+          case "late": return { startTime: "22:00", endTime: "07:00" };
+          default: return { startTime: "09:00", endTime: "18:00" };
+        }
+      };
+
+      const parseTimeRange = (timeRange: string): { startTime: string; endTime: string } | null => {
+        if (!timeRange) return null;
+        const match = timeRange.match(/(\d{1,2})\.(\d{2})\s*-\s*(\d{1,2})\.(\d{2})/);
+        if (match) {
+          const startHour = match[1].padStart(2, "0");
+          const startMin = match[2];
+          const endHour = match[3].padStart(2, "0");
+          const endMin = match[4];
+          return { startTime: `${startHour}:${startMin}`, endTime: `${endHour}:${endMin}` };
+        }
+        return null;
+      };
+
+      for (const item of data) {
+        try {
+          const username = nicknameMap.get(item.nickname.toLowerCase());
+          
+          if (!username) {
+            results.errors.push(`ไม่พบ username สำหรับ nickname: ${item.nickname}`);
+            results.skipped++;
+            continue;
+          }
+
+          if (!item.shiftGroup || item.shiftGroup === "off") {
+            results.skipped++;
+            continue;
+          }
+
+          const parsedTimes = parseTimeRange(item.timeRange);
+          const times = parsedTimes || getDefaultTimes(item.shiftGroup);
+
+          await storage.upsertShift({
+            username,
+            date: item.date,
+            shiftGroup: item.shiftGroup,
+            startTime: times.startTime,
+            endTime: times.endTime,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          results.imported++;
+
+        } catch (err: any) {
+          results.errors.push(`Error for ${item.nickname} on ${item.date}: ${err.message}`);
+        }
+      }
+
+      return res.json({ ok: true, ...results });
+
+    } catch (error: any) {
+      return res.json({ ok: false, message: error.message });
+    }
+  });
+
   return httpServer;
 }

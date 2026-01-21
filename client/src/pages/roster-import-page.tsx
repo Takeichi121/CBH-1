@@ -249,24 +249,39 @@ export default function RosterImportPage() {
               )}
             </div>
 
-            <Button
-              onClick={handleImport}
-              disabled={isLoading}
-              className="mt-4 w-full"
-              data-testid="button-import"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  กำลัง Import...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import ทั้งหมด {parsedData.length} รายการ
-                </>
-              )}
-            </Button>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFile(null);
+                  setParsedData([]);
+                  setResult(null);
+                }}
+                disabled={isLoading}
+                className="flex-1"
+                data-testid="button-cancel-import"
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleImport}
+                disabled={isLoading}
+                className="flex-1"
+                data-testid="button-import"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    กำลัง Import...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import ทั้งหมด {parsedData.length} รายการ
+                  </>
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

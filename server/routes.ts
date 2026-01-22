@@ -24,7 +24,7 @@ import {
   passwordResetOtps,
   staffChatMessages
 } from "@shared/schema";
-import { eq, and, desc, sql, isNull, isNotNull, or } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
@@ -894,6 +894,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
   
+  app.post("/api/deleteShiftsForWeek", async (req, res) => {
+    const { token, days } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false });
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+
+    if (!days || !Array.isArray(days) || days.length === 0) {
+      return res.json({ ok: false, message: "No days specified" });
+    }
+
+    try {
+      const deleted = await db.delete(shifts).where(inArray(shifts.date, days));
+      await storage.log("manager_delete_week_shifts", u.username, `days=${days.join(",")}`);
+      res.json({ ok: true });
+    } catch (err) {
+      res.json({ ok: false, message: "Failed to delete" });
+    }
+  });
+
   app.post("/api/updateShift", async (req, res) => {
     const { token, shiftId, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);

@@ -1784,6 +1784,26 @@ function ManagerEmployeeRosterView() {
             </Button>
           </ManagerCreateCustomScheduleDialog>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (!confirm(language === "th" ? "ยืนยันล้างตารางทั้งสัปดาห์? ข้อมูลจะถูกลบถาวร" : "Clear all shifts for this week? This cannot be undone.")) return;
+              const token = localStorage.getItem("bk_token");
+              try {
+                const res = await apiRequest("POST", "/api/deleteShiftsForWeek", { token, days });
+                if ((res as any).ok) {
+                  queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+                }
+              } catch (err) {
+                console.error("Failed to clear table", err);
+              }
+            }}
+            data-testid="button-clear-week-table"
+          >
+            <Trash2 className="w-4 h-4 mr-1" />
+            {language === "th" ? "ล้างตาราง" : "Clear Table"}
+          </Button>
+          <Button
             variant={viewMode === "booked" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode(viewMode === "booked" ? "roster" : "booked")}

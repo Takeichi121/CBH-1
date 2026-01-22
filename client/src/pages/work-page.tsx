@@ -32,16 +32,46 @@ const bookSchema = z.object({
 
 type BookFormValues = z.infer<typeof bookSchema>;
 
-// Helper function to display shift group name
-const getShiftDisplayName = (shiftGroup: string): string => {
+// Helper function to display shift group name based on time
+const getShiftDisplayName = (shiftGroup: string, startTime?: string): string => {
+  // Special shift types - always show as-is regardless of time
+  const specialShifts = ['com', 'off', 'meeting_manager', 'meeting_zone', 'other', 'sick'];
+  if (specialShifts.includes(shiftGroup?.toLowerCase())) {
+    switch (shiftGroup?.toLowerCase()) {
+      case 'com': return 'COM';
+      case 'off': return 'OFF';
+      case 'meeting_manager': return 'MM';
+      case 'meeting_zone': return 'ZM';
+      case 'other': return 'OTHER';
+      case 'sick': return 'SICK';
+      default: return shiftGroup;
+    }
+  }
+  
+  // For work shifts, determine display name based on start time
+  if (startTime) {
+    const timeMatch = startTime.match(/^(\d{1,2}):(\d{2})/);
+    if (timeMatch) {
+      const hour = parseInt(timeMatch[1], 10);
+      // 22:00 - 06:59 = Late Night
+      if (hour >= 22 || hour < 7) return 'Late Night';
+      // 07:00 - 10:59 = Open
+      if (hour >= 7 && hour < 11) return 'Open';
+      // 11:00 - 14:59 = Lunch
+      if (hour >= 11 && hour < 15) return 'Lunch';
+      // 15:00 - 17:59 = Dinner
+      if (hour >= 15 && hour < 18) return 'Dinner';
+      // 18:00 - 21:59 = Dinner
+      if (hour >= 18 && hour < 22) return 'Dinner';
+    }
+  }
+  
+  // Fallback to shiftGroup name
   switch (shiftGroup?.toLowerCase()) {
     case 'late': return 'Late Night';
-    case 'com': return 'COM';
-    case 'off': return 'OFF';
-    case 'meeting_manager': return 'MM';
-    case 'meeting_zone': return 'ZM';
-    case 'other': return 'OTHER';
-    case 'sick': return 'SICK';
+    case 'open': return 'Open';
+    case 'lunch': return 'Lunch';
+    case 'dinner': return 'Dinner';
     default: return shiftGroup;
   }
 };
@@ -368,7 +398,7 @@ export default function WorkPage() {
                                     }
                                   }}
                                 >
-                                  <span className="text-[7px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup)}</span>
+                                  <span className="text-[7px] font-bold uppercase">{getShiftDisplayName(shift.shiftGroup, shift.startTime)}</span>
                                   <span className="text-[8px]">{shift.startTime}</span>
                                 </div>
                               ) : (
@@ -421,7 +451,7 @@ export default function WorkPage() {
                                           s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                           s.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                        <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
+                                        <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup, s.startTime)}</span>
                                         <span className="text-[5px] leading-tight">Start : {start}</span>
                                         <span className="text-[5px] leading-tight">End : {end}</span>
                                       </div>
@@ -440,7 +470,7 @@ export default function WorkPage() {
                                           s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                           s.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                        <span className="text-[6px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
+                                        <span className="text-[6px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup, s.startTime)}</span>
                                         <span className="text-[6px] leading-tight">{s.startTime}</span>
                                       </div>
                                     );
@@ -517,7 +547,7 @@ export default function WorkPage() {
                               }
                             }}
                           >
-                            <span className="text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup, shift.startTime)}</span>
                             <span className="text-xs font-semibold">{shift.startTime}</span>
                           </div>
                         ) : (
@@ -582,7 +612,7 @@ export default function WorkPage() {
                               s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                               s.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                               'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                            <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
+                            <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup, s.startTime)}</span>
                             <span className="text-[9px]">{s.startTime}</span>
                           </div>
                         ) : (
@@ -1187,7 +1217,7 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
         onMouseLeave={() => setShowActions(false)}
         onClick={() => setEditOpen(true)}
       >
-        <span className="text-[10px] font-bold uppercase whitespace-nowrap">{getShiftDisplayName(shift.shiftGroup)}</span>
+        <span className="text-[10px] font-bold uppercase whitespace-nowrap">{getShiftDisplayName(shift.shiftGroup, shift.startTime)}</span>
         <span className="text-[10px] whitespace-nowrap">{shift.startTime}</span>
         {shift.note && <span className="text-[9px] opacity-70 truncate max-w-full">{shift.note}</span>}
         
@@ -1934,7 +1964,7 @@ function ManagerEmployeeRosterView() {
                               shift.shiftGroup === "dinner" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
                               "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
                             }`}>
-                              <span className="text-[10px] font-bold uppercase whitespace-nowrap">{getShiftDisplayName(shift.shiftGroup)}</span>
+                              <span className="text-[10px] font-bold uppercase whitespace-nowrap">{getShiftDisplayName(shift.shiftGroup, shift.startTime)}</span>
                               <span className="text-[10px] whitespace-nowrap">{shift.startTime}</span>
                             </div>
                           ) : null}
@@ -2291,7 +2321,7 @@ function ManagerMonthlyView() {
                   </span>
                   {shift && (
                     <div className="flex-1 flex flex-col justify-center items-center">
-                      <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup)}</span>
+                      <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">{getShiftDisplayName(shift.shiftGroup, shift.startTime)}</span>
                       <span className="text-[7px] md:text-[9px] hidden md:block">{shift.startTime}</span>
                     </div>
                   )}
@@ -2327,7 +2357,7 @@ function ManagerMonthlyView() {
                           data-testid={`shift-${dateStr}-${m.username}`}
                         >
                           <div className={`w-2 h-2 rounded-full ${color} shrink-0`} />
-                          <span className="truncate font-medium">{getShiftDisplayName(shift.shiftGroup)}</span>
+                          <span className="truncate font-medium">{getShiftDisplayName(shift.shiftGroup, shift.startTime)}</span>
                         </div>
                       );
                     })}

@@ -56,6 +56,7 @@ export default function RosterImportPage() {
     if (upperCode === "MM") return "meeting_manager";
     if (upperCode === "ZM") return "meeting_zone";
     if (upperCode === "OT") return "other";
+    if (upperCode === "SK" || upperCode === "SICK") return "sick";
     
     // Existing shift types
     if (upperCode === "O") return "open";

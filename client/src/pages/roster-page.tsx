@@ -32,7 +32,8 @@ const SHIFT_ORDER: Record<string, number> = {
   'off': 7,
   'meeting_manager': 8,
   'meeting_zone': 9,
-  'other': 10
+  'other': 10,
+  'sick': 11
 };
 
 const getShiftOrder = (shiftGroup: string | undefined): number => {
@@ -50,6 +51,7 @@ const getShiftDisplayName = (shiftGroup: string): string => {
     case 'meeting_manager': return 'MM';
     case 'meeting_zone': return 'ZM';
     case 'other': return 'OTHER';
+    case 'sick': return 'SICK';
     default: return shiftGroup;
   }
 };
@@ -251,6 +253,7 @@ export default function RosterPage() {
                                     shift.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                     shift.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
                                     shift.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                    shift.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                                     'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                   <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(shift.shiftGroup)}</span>
                                   <span className="text-[6px] leading-tight">{shift.startTime}</span>
@@ -385,6 +388,7 @@ function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolea
     meeting_manager: "bg-purple-100 text-purple-700 border-purple-200",
     meeting_zone: "bg-cyan-100 text-cyan-700 border-cyan-200",
     other: "bg-orange-100 text-orange-700 border-orange-200",
+    sick: "bg-red-100 text-red-700 border-red-200",
   };
   
   const bgClass = groupColors[shift.shiftGroup.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200";

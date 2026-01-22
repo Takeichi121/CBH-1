@@ -41,6 +41,7 @@ const getShiftDisplayName = (shiftGroup: string): string => {
     case 'meeting_manager': return 'MM';
     case 'meeting_zone': return 'ZM';
     case 'other': return 'OTHER';
+    case 'sick': return 'SICK';
     default: return shiftGroup;
   }
 };
@@ -58,7 +59,8 @@ const SHIFT_ORDER: Record<string, number> = {
   'off': 7,
   'meeting_manager': 8,
   'meeting_zone': 9,
-  'other': 10
+  'other': 10,
+  'sick': 11
 };
 
 const getShiftOrder = (shiftGroup: string | undefined): number => {
@@ -358,6 +360,7 @@ export default function WorkPage() {
                                       shift.shiftGroup === 'meeting_manager' ? 'bg-purple-100 text-purple-700 border-purple-200' :
                                       shift.shiftGroup === 'meeting_zone' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
                                       shift.shiftGroup === 'other' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                      shift.shiftGroup === 'sick' ? 'bg-red-100 text-red-700 border-red-200' :
                                       'bg-slate-100 text-slate-700 border-slate-200'}`}
                                   onClick={() => {
                                     if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
@@ -416,6 +419,7 @@ export default function WorkPage() {
                                           s.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                           s.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
                                           s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                          s.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                         <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
                                         <span className="text-[5px] leading-tight">Start : {start}</span>
@@ -434,6 +438,7 @@ export default function WorkPage() {
                                           s.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                           s.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
                                           s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                          s.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                         <span className="text-[6px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
                                         <span className="text-[6px] leading-tight">{s.startTime}</span>
@@ -504,6 +509,7 @@ export default function WorkPage() {
                                 shift.shiftGroup === 'meeting_manager' ? 'bg-purple-100 text-purple-700 border-purple-200' :
                                 shift.shiftGroup === 'meeting_zone' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
                                 shift.shiftGroup === 'other' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                shift.shiftGroup === 'sick' ? 'bg-red-100 text-red-700 border-red-200' :
                                 'bg-slate-100 text-slate-700 border-slate-200'}`}
                             onClick={() => {
                               if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
@@ -574,6 +580,7 @@ export default function WorkPage() {
                               s.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                               s.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
                               s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                              s.shiftGroup === 'sick' ? 'bg-red-50 text-red-600 border-red-100' :
                               'bg-slate-50 text-slate-600 border-slate-100'}`}>
                             <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
                             <span className="text-[9px]">{s.startTime}</span>

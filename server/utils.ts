@@ -193,7 +193,7 @@ function isInMaintenanceWindow(startDay: number, startTime: string, endDay: numb
 // ✅ 5. Configuration Constants (Shifts & Capacity)
 // ---------------------------------------------------------
 
-export const DEFAULT_CAPACITY = { open: 4, swing: 4, lunch: 4, dinner: 4, close: 4, late: 4, com: 99, off: 99, meeting_manager: 99, meeting_zone: 99, other: 99 };
+export const DEFAULT_CAPACITY = { open: 4, swing: 4, lunch: 4, dinner: 4, close: 4, late: 4, com: 99, off: 99, meeting_manager: 99, meeting_zone: 99, other: 99, sick: 99 };
 
 export const SHIFT_GROUPS = [
   { 
@@ -294,5 +294,14 @@ export const SHIFT_GROUPS = [
     main: "09:00",
     defaultTime: "09:00 - 18:00",
     times: ["09:00 - 18:00"]
+  },
+  { 
+    key: "sick", 
+    label: "Sick (ลาป่วย)", 
+    windowStart: "00:00", 
+    windowEnd: "23:59", 
+    main: "00:00",
+    defaultTime: "00:00 - 00:00",
+    times: ["00:00 - 00:00"]
   },
 ];

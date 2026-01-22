@@ -111,6 +111,90 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ==========================================
+  // 🤖 Chann AI Assistant
+  // ==========================================
+  app.post("/api/chann", async (req, res) => {
+    try {
+      const { token, message, history } = req.body;
+      if (!token || !message) {
+        return res.json({ ok: false, message: "Token and message required" });
+      }
+
+      const session = await storage.getSession(token);
+      if (!session) {
+        return res.json({ ok: false, message: "Invalid session" });
+      }
+
+      const user = await storage.getUser(session.username);
+      if (!user) {
+        return res.json({ ok: false, message: "User not found" });
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const systemPrompt = `คุณคือ "Chann" — AI Agent อัจฉริยะสุขุมและมืออาชีพ
+
+[บุคลิกภาพ]
+- สุขุม มั่นใจ แต่มีอารมณ์ขันเล็กน้อย
+- อธิบายเรื่องซับซ้อนให้เข้าใจง่าย เรียงลำดับตรรกะชัดเจน
+- ตอบได้ทั้งภาษาไทยและอังกฤษอย่างเป็นธรรมชาติ
+- ถ้าผู้ใช้ถามเป็นภาษาไทย ให้ตอบเป็นภาษาไทย
+
+[ความสามารถหลัก]
+- เขียน ตรวจ และแก้โค้ดทุกภาษา
+- วิเคราะห์ข้อมูล สรุปรายงาน ทำ visualization
+- ออกแบบและพัฒนาเว็บไซต์
+- เขียนบทความ สรุป และรายงานเชิงลึก
+- วิเคราะห์ยอดขาย ข้อมูลธุรกิจ
+
+[หลักการทำงาน]
+- ถ้าเป็นงานเทคนิค ให้อธิบาย pseudocode ก่อนเสมอ
+- เสนอการปรับปรุงที่มีเหตุผลชัดเจน
+- ตอบกระชับ ตรงประเด็น ไม่เยิ่นเย้อ
+- ถ้าไม่แน่ใจ ให้ถามก่อนทำ
+
+[บริบท]
+คุณกำลังช่วยเหลือพนักงานของร้าน BK Grand Diamond ซึ่งเป็นร้านอาหาร
+ระบบนี้ใช้จัดการตารางงาน (Roster), บันทึกยอดขาย, และติดตามต้นทุนแรงงาน
+
+ผู้ใช้ปัจจุบัน: ${user.nickName || user.fullName} (${user.role})`;
+
+      const messages: any[] = [
+        { role: "system", content: systemPrompt }
+      ];
+
+      if (history && Array.isArray(history)) {
+        for (const msg of history.slice(-10)) {
+          if (msg.role === "user" || msg.role === "assistant") {
+            const sanitizedContent = typeof msg.content === "string" ? msg.content.slice(0, 2000) : "";
+            messages.push({ role: msg.role, content: sanitizedContent });
+          }
+        }
+      }
+
+      const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
+      messages.push({ role: "user", content: userContent });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages,
+        max_completion_tokens: 2048,
+      });
+
+      const reply = response.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
+
+      res.json({ ok: true, reply });
+    } catch (e: any) {
+      console.error("Chann AI error:", e);
+      res.json({ ok: false, message: e.message || "AI error" });
+    }
+  });
+
+  // ==========================================
   // 🔧 System & Auth
   // ==========================================
 

@@ -1,0 +1,273 @@
+รับทราบครับ ผมได้เขียนโค้ดสำหรับปรับปรุงไฟล์ client/src/pages/work-page.tsx เพื่อแยก Manager Team Roster View ออกจาก Staff Roster อย่างชัดเจนตามที่คุณต้องการเรียบร้อยครับ
+
+สามารถนำโค้ดทั้ง 2 ส่วนไปแก้ไขในไฟล์ได้เลยครับ
+
+📁 ไฟล์: client/src/pages/work-page.tsx
+ส่วนที่ 1: อัปเดต ManagerDashboard Component เพิ่มปุ่มเลือก View ที่ 3 (Manager Team Schedule)
+
+TypeScript
+function ManagerDashboard() {
+  const { language } = useI18n();
+  // 1.1 เพิ่ม 'managerTeam' ใน State
+  const [selectedView, setSelectedView] = useState<"none" | "employee" | "manager" | "managerTeam">("none");
+
+  // 1.2 เพิ่ม Labels
+  const labels = {
+    title: language === "th" ? "เลือกตารางที่ต้องการดู" : "Select Schedule View",
+    employeeSchedule: language === "th" ? "ตารางงานพนักงาน" : "Employee Schedule",
+    managerSchedule: language === "th" ? "ตารางงานส่วนตัว" : "My Schedule",
+    // เพิ่มใหม่
+    managerTeamSchedule: language === "th" ? "ตารางทีมผู้จัดการ" : "Manager Team Schedule",
+    
+    employeeDesc: language === "th" ? "ดูและจัดการตารางงานของพนักงานทั้งหมด" : "View and manage all employee schedules",
+    managerDesc: language === "th" ? "ดูตารางงานของตัวเองรายเดือน" : "View your own monthly schedule",
+    // เพิ่มใหม่
+    managerTeamDesc: language === "th" ? "ดูและจัดการตารางงานทีมผู้จัดการ" : "View and manage manager team schedules",
+    
+    back: language === "th" ? "กลับ" : "Back",
+  };
+
+  // 1.3 เพิ่ม Condition Render View ใหม่
+  if (selectedView === "employee") {
+    // ... (Employee View เดิม)
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => setSelectedView("none")} className="mb-4">
+           <ArrowLeft className="w-4 h-4 mr-2" />{labels.back}
+        </Button>
+        <ManagerEmployeeRosterView />
+      </div>
+    );
+  }
+
+  if (selectedView === "manager") {
+    // ... (My Schedule View เดิม)
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => setSelectedView("none")} className="mb-4">
+           <ArrowLeft className="w-4 h-4 mr-2" />{labels.back}
+        </Button>
+        <ManagerMonthlyView />
+      </div>
+    );
+  }
+
+  // === เพิ่ม View ใหม่ ===
+  if (selectedView === "managerTeam") {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => setSelectedView("none")} className="mb-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {labels.back}
+        </Button>
+        <ManagerTeamRosterView /> {/* เรียกใช้ Component ใหม่ */}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-display font-bold text-foreground">
+          {labels.title}
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto"> {/* ปรับ grid เป็น 3 cols */}
+        
+        {/* Card 1: Employee Schedule */}
+        <Card 
+          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          onClick={() => setSelectedView("employee")}
+          data-testid="card-employee-schedule"
+        >
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Users className="w-12 h-12 text-primary" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">{labels.employeeSchedule}</h3>
+            <p className="text-sm text-muted-foreground">{labels.employeeDesc}</p>
+          </div>
+        </Card>
+
+        {/* Card 2: Manager Team Schedule (เพิ่มใหม่) */}
+        <Card 
+          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          onClick={() => setSelectedView("managerTeam")}
+          data-testid="card-manager-team-schedule"
+        >
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-24 h-24 rounded-2xl bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+              <UserCog className="w-12 h-12 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">{labels.managerTeamSchedule}</h3>
+            <p className="text-sm text-muted-foreground">{labels.managerTeamDesc}</p>
+          </div>
+        </Card>
+
+        {/* Card 3: My Schedule */}
+        <Card 
+          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          onClick={() => setSelectedView("manager")}
+          data-testid="card-manager-schedule"
+        >
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-24 h-24 rounded-2xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+              <CalendarIcon className="w-12 h-12 text-orange-600 dark:text-orange-400" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">{labels.managerSchedule}</h3>
+            <p className="text-sm text-muted-foreground">{labels.managerDesc}</p>
+          </div>
+        </Card>
+
+      </div>
+    </div>
+  );
+}
+ส่วนที่ 2: เพิ่ม Component ManagerTeamRosterView (วางไว้ท้ายไฟล์หรือใกล้ๆ ManagerEmployeeRosterView)
+
+TypeScript
+function ManagerTeamRosterView() {
+  const { language, t } = useI18n();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [draggedShift, setDraggedShift] = useState<any>(null);
+  const [isCopyMode, setIsCopyMode] = useState(false);
+  const dateParam = format(currentDate, "yyyy-MM-dd");
+  const { data: rosterData, isLoading } = useRoster(dateParam);
+  const { data: settings } = useSettings();
+  const queryClient = useQueryClient();
+
+  // กำหนดกะที่ Manager ใช้ได้ (รวมกะพิเศษ)
+  const MANAGER_SHIFT_GROUPS = ['com', 'off', 'meeting_manager', 'meeting_zone', 'other', 'sick', 'open', 'swing', 'lunch', 'dinner', 'close', 'late'];
+  
+  // กรอง Groups สำหรับ Dropdown
+  const managerGroups = settings?.groups?.filter((g: any) => 
+    MANAGER_SHIFT_GROUPS.includes(g.key?.toLowerCase())
+  );
+
+  const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
+  const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+
+  if (isLoading) return <WorkPageSkeleton />;
+
+  const weekRange = rosterData?.weekRange;
+  const days = weekRange?.days || [];
+  const displayRange = weekRange ? `${format(new Date(weekRange.start), "MMM d")} - ${format(new Date(weekRange.end), "MMM d, yyyy")}` : "";
+
+  const labels = {
+    title: language === "th" ? "ตารางทีมผู้จัดการ" : "Manager Team Schedule",
+    staffMember: language === "th" ? "Manager Name" : "Manager Name",
+    noShifts: language === "th" ? "ไม่พบข้อมูลสำหรับสัปดาห์นี้" : "No data found for this week.",
+  };
+
+  // 1. กรองเฉพาะ role="manager" และ active
+  const managerTeam = rosterData?.users?.filter((u: any) => u.role === "manager" && u.active === 1) || [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-display font-bold text-foreground">
+            {labels.title}
+          </h2>
+          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+            <CalendarIcon className="w-4 h-4" />
+            {displayRange}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+           <div className="flex items-center bg-muted/30 p-1 rounded-full border border-border/50">
+            <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="h-8 w-8 rounded-full">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="h-4 w-px bg-border/50 mx-1" />
+            <Button variant="ghost" size="icon" onClick={handleNextWeek} className="h-8 w-8 rounded-full">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Card className="glass-card overflow-hidden border-none shadow-xl">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="sticky left-0 bg-muted/50 z-10 min-w-[150px] font-bold">
+                  {labels.staffMember}
+                </TableHead>
+                {days.map((day: string) => (
+                  <TableHead key={day} className="text-center min-w-[100px]">
+                    <div className="flex flex-col items-center py-2">
+                      <span className="text-xs uppercase text-primary font-black tracking-tight">
+                        {t(format(parseISO(day), "EEEE").toLowerCase() as any)}
+                      </span>
+                      <span className="text-2xl font-black text-foreground mt-1">
+                        {format(parseISO(day), "d")}
+                      </span>
+                    </div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {managerTeam.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={days.length + 1} className="text-center py-12 text-muted-foreground">
+                    {labels.noShifts}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                managerTeam.map((manager: any) => {
+                  const staffShifts: Record<string, any> = {};
+                  rosterData?.roster?.forEach((s: any) => {
+                    if (s.username === manager.username) {
+                      staffShifts[s.date] = s;
+                    }
+                  });
+                  
+                  return (
+                    <TableRow key={manager.username} className="hover:bg-muted/30">
+                      <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                        <span>{manager.nickName || manager.fullName}</span>
+                      </TableCell>
+                      {days.map((day: string) => {
+                        const shift = staffShifts[day];
+                        return (
+                          <TableCell key={day} className="text-center p-2">
+                            {shift ? (
+                              <ShiftCellWithActions 
+                                shift={shift} 
+                                groups={managerGroups} 
+                                onRefresh={() => queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] })}
+                                onDragStart={(s, copy) => { setDraggedShift(s); setIsCopyMode(copy); }}
+                                onDragEnd={() => { setDraggedShift(null); setIsCopyMode(false); }}
+                              />
+                            ) : (
+                              <ManageShiftDialogInWork 
+                                username={manager.username} 
+                                date={day} 
+                                existingShift={null} 
+                                mode="create" 
+                                groups={managerGroups}
+                              >
+                                <button className="w-full h-10 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors">
+                                  <Plus className="w-4 h-4 text-muted-foreground/50" />
+                                </button>
+                              </ManageShiftDialogInWork>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    </div>
+  );
+}

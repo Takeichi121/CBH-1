@@ -1156,6 +1156,12 @@ function ShiftCellWithActions({ shift, groups, onRefresh, onDragStart, onDragEnd
     dinner: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
     close: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
     late: "bg-slate-700 text-slate-100 dark:bg-slate-800 dark:text-slate-200",
+    com: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    off: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-300",
+    meeting_manager: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    meeting_zone: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+    other: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+    sick: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   };
 
   return (
@@ -2096,6 +2102,12 @@ function ManagerMonthlyView() {
     dinner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
     close: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
     late: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
+    com: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+    off: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700",
+    meeting_manager: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+    meeting_zone: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",
+    other: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+    sick: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
   };
 
   const groupColorsBadge: Record<string, string> = {
@@ -2105,6 +2117,12 @@ function ManagerMonthlyView() {
     dinner: "bg-purple-500",
     close: "bg-pink-500",
     late: "bg-slate-600",
+    com: "bg-green-500",
+    off: "bg-gray-500",
+    meeting_manager: "bg-purple-500",
+    meeting_zone: "bg-cyan-500",
+    other: "bg-orange-500",
+    sick: "bg-red-500",
   };
 
   const managers = teamData?.managers || [];

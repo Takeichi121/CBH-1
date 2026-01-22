@@ -154,7 +154,11 @@ const formSchema = z.object({
   lineman: z.string().default("0"),
   shopee: z.string().default("0"),
   bkapp: z.string().default("0"),
+  robin: z.string().default("0"),
+  gokoo: z.string().default("0"),
   osat: z.string().default("0"),
+  osatScore: z.string().default("0"),
+  osatComments: z.string().default("0"),
   surveyCount: z.string().default("0"),
   voidAmount: z.string().default("0"),
   voidCount: z.string().default("0"),
@@ -274,7 +278,11 @@ export default function DailySalesPage() {
       lineman: "0",
       shopee: "0",
       bkapp: "0",
+      robin: "0",
+      gokoo: "0",
       osat: "0",
+      osatScore: "0",
+      osatComments: "0",
       surveyCount: "0",
       voidAmount: "0",
       voidCount: "0",
@@ -353,6 +361,10 @@ export default function DailySalesPage() {
       lineman: values.lineman?.replace(/,/g, "") || "0",
       shopee: values.shopee?.replace(/,/g, "") || "0",
       bkapp: values.bkapp?.replace(/,/g, "") || "0",
+      robin: values.robin?.replace(/,/g, "") || "0",
+      gokoo: values.gokoo?.replace(/,/g, "") || "0",
+      osatScore: values.osatScore?.replace(/,/g, "") || "0",
+      osatComments: values.osatComments?.replace(/,/g, "") || "0",
       dailyTarget: values.dailyTarget?.replace(/,/g, "") || "0",
       mtdTarget: values.mtdTarget?.replace(/,/g, "") || "0",
       mtdActual: values.mtdActual?.replace(/,/g, "") || "0",
@@ -638,7 +650,11 @@ export default function DailySalesPage() {
           lineman: "0",
           shopee: "0",
           bkapp: "0",
+          robin: "0",
+          gokoo: "0",
           osat: "0",
+          osatScore: "0",
+          osatComments: "0",
           surveyCount: "0",
           voidAmount: "0",
           voidCount: "0",
@@ -694,7 +710,11 @@ export default function DailySalesPage() {
           form.setValue("lineman", r.lineman || "0");
           form.setValue("shopee", r.shopee || "0");
           form.setValue("bkapp", r.bkapp || "0");
+          form.setValue("robin", r.robin || "0");
+          form.setValue("gokoo", r.gokoo || "0");
           form.setValue("osat", r.osat || "0");
+          form.setValue("osatScore", r.osatScore || "0");
+          form.setValue("osatComments", r.osatComments || "0");
           form.setValue("surveyCount", r.surveyCount || "0");
           form.setValue("voidAmount", r.voidAmount || "0");
           form.setValue("voidCount", r.voidCount || "0");
@@ -947,42 +967,52 @@ export default function DailySalesPage() {
     const inStoreTotal = dineInVal + takeAwayVal;
     const dineInPercent =
       actualSalesVal > 0
-        ? ((dineInVal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((dineInVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
     const takeAwayPercent =
       actualSalesVal > 0
-        ? ((takeAwayVal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((takeAwayVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
     const inStoreTotalPercent =
       actualSalesVal > 0
-        ? ((inStoreTotal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((inStoreTotal / actualSalesVal) * 100).toFixed(0)
+        : "0";
 
     const grabVal = parseFloat(v.grabfood) || 0;
     const linemanVal = parseFloat(v.lineman) || 0;
     const shopeeVal = parseFloat(v.shopee) || 0;
     const bkappVal = parseFloat(v.bkapp) || 0;
-    const deliveryTotal = grabVal + linemanVal + shopeeVal + bkappVal;
+    const robinVal = parseFloat(v.robin) || 0;
+    const gokooVal = parseFloat(v.gokoo) || 0;
+    const deliveryTotal = grabVal + linemanVal + shopeeVal + bkappVal + robinVal + gokooVal;
     const grabPercent =
       actualSalesVal > 0
-        ? ((grabVal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((grabVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
     const linemanPercent =
       actualSalesVal > 0
-        ? ((linemanVal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((linemanVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
     const shopeePercent =
       actualSalesVal > 0
-        ? ((shopeeVal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((shopeeVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
     const bkappPercent =
       actualSalesVal > 0
-        ? ((bkappVal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((bkappVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
+    const robinPercent =
+      actualSalesVal > 0
+        ? ((robinVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
+    const gokooPercent =
+      actualSalesVal > 0
+        ? ((gokooVal / actualSalesVal) * 100).toFixed(0)
+        : "0";
     const deliveryTotalPercent =
       actualSalesVal > 0
-        ? ((deliveryTotal / actualSalesVal) * 100).toFixed(2)
-        : "0.00";
+        ? ((deliveryTotal / actualSalesVal) * 100).toFixed(0)
+        : "0";
 
     const wasteDailyTotalVal = parseFloat(v.wasteDailyTotal) || 0;
     const wasteMealDailyVal = parseFloat(v.wasteMealDaily) || 0;
@@ -998,77 +1028,55 @@ export default function DailySalesPage() {
       return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
     };
 
-    const reportText = `💎 Daily Sales Report 💎
-Grand Diamond
-Date: ${formatDate(v.reportDate)}
-========================
+    const dailyTargetVal = parseFloat(v.dailyTarget) || 0;
+    const wasteDailyPercent = actualSalesVal > 0 ? ((wasteDailyTotalVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const wasteMtdPercent = mtdActualVal > 0 ? ((wasteMtdTotalVal / mtdActualVal) * 100).toFixed(2) : "0.00";
+    
+    const actualHoursVal = parseFloat(v.actualHours) || 0;
+    const otHoursVal = parseFloat(v.otHours) || 0;
+    const workHour = (actualHoursVal + otHoursVal).toFixed(1);
 
-📊 Daily
+    const managerLines = MANAGER_NAMES.map(m => {
+      const shift = v[m.key as keyof typeof v] || "";
+      return shift ? `${m.name}: ${shift}` : null;
+    }).filter(Boolean).join("\n");
 
-💰 TG: ${parseFloat(v.dailyTarget).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-💵 AC: ${actualSalesVal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-👥 TC: ${tcVal.toLocaleString()}
-🧾 TA: ${taVal}
+    const reportText = `🗓️${formatDate(v.reportDate)}
 
-📈 MTD 
-💰 MTD TG: ${mtdTargetVal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-💵 MTD AC: ${mtdActualVal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-📉 Variance: ${mtdVariance >= 0 ? "+" : "-"}฿${Math.abs(mtdVariance).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-👥 MTD TC: ${mtdTcVal.toLocaleString()}
-🧾 MTD TA: ${mtdTaVal}
+💵Daily Sales=${actualSalesVal.toLocaleString()}/${dailyTargetVal.toLocaleString()}
+MTD Sale=${mtdActualVal.toLocaleString()}/${mtdTargetVal.toLocaleString()}
 
-🏪 In Store
-🍽️ Dine In: ${dineInVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${dineInPercent}%
-TC: ${parseInt(v.dineInTc) || 0}
-🥡 Take Away: ${takeAwayVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${takeAwayPercent}%
-TC: ${parseInt(v.takeAwayTc) || 0}
-🏪 In Store Total: ${inStoreTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${inStoreTotalPercent}%
+👨‍👩‍👧‍👦Daily TC =${tcVal.toLocaleString()}
+👨‍👩‍👧‍👦MTD TC =${mtdTcVal.toLocaleString()}
+👑 Daily TA =${taVal}
+👑 MTD TA =${mtdTaVal}
 
-🛵 DELIVERY
-🛵 Grab: ${grabVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${grabPercent}%
-🛵 LINE MAN: ${linemanVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${linemanPercent}%
-🛵 Shoppee Food: ${shopeeVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${shopeePercent}%
-🛵 BK App/Web: ${bkappVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${bkappPercent}%
-📦 Delivery Total: ${deliveryTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${deliveryTotalPercent}%
-========================
+🍽 Dinein :${dineInVal.toLocaleString()}/${dineInPercent}%
+🛍Takeaway :${takeAwayVal.toLocaleString()}/${takeAwayPercent}%
+🛵Delivery :${deliveryTotal.toLocaleString()}/${deliveryTotalPercent}%
 
-⭐ OSAT: ${v.osat}
-📋 Survey count: ${v.surveyCount}
-❌ Void: -฿${parseFloat(v.voidAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-count: ${v.voidCount || 0} Bill
+🛵Grab Food :${grabVal.toLocaleString()}/${grabPercent}%
+🛵Line Man :${linemanVal.toLocaleString()}/${linemanPercent}%
+🛵Shopeefood:${shopeeVal.toLocaleString()}/${shopeePercent}%
+🛵BK App:${bkappVal.toLocaleString()}/${bkappPercent}%
+🛵Robin:${robinVal.toLocaleString()}/${robinPercent}%
+🛵GoKOO:${gokooVal.toLocaleString()}/${gokooPercent}%
 
-🧀 Add Cheese: ${v.addCheeseCount}/${v.addCheesePercent}%
-🍔 V-meal: ${v.vMealCount}/${v.vMealPercent}%
-🥤 Up Size: ${v.upSizeCount}/${v.upSizePercent}%
-========================
+🏃🏻‍♀️SOS =${v.sosDaily || "0"}
+🏃🏻MTD SOS =${v.sosMtd || "0"}
 
-🗑️ WASTE
+🗑WasteDaily :${wasteDailyTotalVal.toLocaleString()}/${wasteDailyPercent}%
+🗑WasteMTD:${wasteMtdTotalVal.toLocaleString()}/${wasteMtdPercent}%
 
-Daily
-Daily: ${wasteDailyTotalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${actualSalesVal > 0 ? ((wasteDailyTotalVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
-Meal: ${wasteMealDailyVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${actualSalesVal > 0 ? ((wasteMealDailyVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
-Raw: ${wasteRawDailyVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${actualSalesVal > 0 ? ((wasteRawDailyVal / actualSalesVal) * 100).toFixed(2) : "0.00"}%
+🕰Work Hour :${workHour}
 
-MTD 
-MTD: ${wasteMtdTotalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${mtdActualVal > 0 ? ((wasteMtdTotalVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
-Meal: ${wasteMealMtdVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${mtdActualVal > 0 ? ((wasteMealMtdVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
-Raw: ${wasteRawMtdVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${mtdActualVal > 0 ? ((wasteRawMtdVal / mtdActualVal) * 100).toFixed(2) : "0.00"}%
-========================
+📝OSAT:${v.osatScore || v.osat || "0"}/${v.osatComments || "0"} comments
 
-👷 COL: ${v.colPercent}%
-⏰ Hour: ${v.laborHour}
-📊 TCMH = ${v.tcmh}
-🚀 SOS Daily: ${v.sosDaily || "0"}
-📈 SOS MTD: ${v.sosMtd || "0"}
-========================
-
-📅 Manager Roster 
-Date: ${formatDate(v.managerRosterDate)}
-
-${v.managerRosterText || "Name:Group Shift | Time/OFF,COM,Vacation"}
+👨‍💼 Roster Manager
+${managerLines || v.managerRosterText || ""}
 
 👥 Roster Staff
-${v.staffRosterText || "Group Shift | Time: Name"}
+${v.staffRosterText || ""}
 
 📝 Report by ${v.reportBy}`;
 
@@ -1135,19 +1143,22 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
   // --- Compute labor metrics directly (for instant display) ---
   const { dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
   
-  // Summary Hours = Duty + Actual + OT (Total hours worked)
-  const computedSummaryHours = dutyDailyHours + actualHoursInput + otHoursInput;
+  // Summary Hours = Actual + OT only (ไม่รวมชั่วโมงทีมผู้จัดการตามที่ user ต้องการ)
+  const computedSummaryHours = actualHoursInput + otHoursInput;
   
   // PT hours (Actual + OT) for cost calculation
   const ptHours = actualHoursInput + otHoursInput;
   
-  // Labor Cost Total = Summary Hours × PPH (simplified formula per user request)
-  const computedLaborCost = computedSummaryHours * ptWageRate;
+  // Total hours including duty for labor cost calculation only
+  const totalHoursForCost = dutyDailyHours + actualHoursInput + otHoursInput;
+  
+  // Labor Cost Total = Total Hours (including duty) × PPH
+  const computedLaborCost = totalHoursForCost * ptWageRate;
   
   // COL% = Labor Cost / Sales * 100
   const computedColPercent = actualSales > 0 ? (computedLaborCost / actualSales) * 100 : 0;
   
-  // TCMH = TC / Summary Hours (transactions per total hour worked)
+  // TCMH = TC / Summary Hours (ไม่รวมชั่วโมงทีมผู้จัดการ)
   const computedTcmh = computedSummaryHours > 0 ? transactionCount / computedSummaryHours : 0;
   
   // Variance Hours = Summary Hours - Roster Commit
@@ -1827,6 +1838,72 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                         data-testid="display-bkapp-percent"
                       />
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="robin"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Robin (฿)</FormLabel>
+                          <FormControl>
+                            <FormattedInput
+                              className="text-sm"
+                              {...field}
+                              data-testid="input-robin"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div>
+                      <FormLabel className="text-xs">Robin %</FormLabel>
+                      <Input
+                        value={
+                          actualSales > 0
+                            ? (
+                                (parseFloat(form.watch("robin") || "0") /
+                                  actualSales) *
+                                100
+                              ).toFixed(2)
+                            : "0.00"
+                        }
+                        readOnly
+                        className="bg-muted text-sm"
+                        data-testid="display-robin-percent"
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="gokoo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">GoKOO (฿)</FormLabel>
+                          <FormControl>
+                            <FormattedInput
+                              className="text-sm"
+                              {...field}
+                              data-testid="input-gokoo"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div>
+                      <FormLabel className="text-xs">GoKOO %</FormLabel>
+                      <Input
+                        value={
+                          actualSales > 0
+                            ? (
+                                (parseFloat(form.watch("gokoo") || "0") /
+                                  actualSales) *
+                                100
+                              ).toFixed(2)
+                            : "0.00"
+                        }
+                        readOnly
+                        className="bg-muted text-sm"
+                        data-testid="display-gokoo-percent"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1846,6 +1923,39 @@ ${v.staffRosterText || "Group Shift | Time: Name"}
                               className="text-sm"
                               {...field}
                               data-testid="input-osat"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="osatScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">OSAT Score</FormLabel>
+                          <FormControl>
+                            <FormattedInput
+                              className="text-sm"
+                              {...field}
+                              data-testid="input-osat-score"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="osatComments"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">OSAT Comments</FormLabel>
+                          <FormControl>
+                            <FormattedInput
+                              className="text-sm"
+                              allowDecimals={false}
+                              {...field}
+                              data-testid="input-osat-comments"
                             />
                           </FormControl>
                         </FormItem>

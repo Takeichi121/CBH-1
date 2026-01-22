@@ -1,0 +1,293 @@
+📁 ไฟล์ที่ 1: client/src/pages/work-page.tsx
+(Task 1: อัปเดต Monthly Summary)
+
+ส่วนคำนวณ (Count Logic): ค้นหาจุดที่ประกาศตัวแปร openCount, lunchCount ฯลฯ แล้วเพิ่มโค้ดนี้ต่อท้ายครับ
+
+TypeScript
+
+  // ... ตัวแปรเดิม
+  const lateCount = monthlyShifts?.filter((s) => s.shiftGroup === "late").length || 0;
+
+  // === เพิ่มส่วนนี้ (Task 1) ===
+  const comCount = monthlyShifts?.filter((s) => s.shiftGroup === "com").length || 0;
+  const offCount = monthlyShifts?.filter((s) => s.shiftGroup === "off").length || 0;
+  const mmCount = monthlyShifts?.filter((s) => s.shiftGroup === "meeting_manager").length || 0;
+  const zmCount = monthlyShifts?.filter((s) => s.shiftGroup === "meeting_zone").length || 0;
+  const otherCount = monthlyShifts?.filter((s) => s.shiftGroup === "other").length || 0;
+  const sickCount = monthlyShifts?.filter((s) => s.shiftGroup === "sick").length || 0;
+ส่วนแสดงผล (JSX): ค้นหา <div className="grid grid-cols-2 ..."> (Monthly Summary) แล้วเพิ่ม Card เหล่านี้ต่อท้าย Card เดิม
+
+TypeScript
+
+            {/* ... Cards เดิม (Open, Lunch, Dinner, Late) ... */}
+
+            {/* === เพิ่ม Cards ใหม่ 6 ประเภท (Task 1) === */}
+            
+            {/* 1. COM */}
+            <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
+              <div className="text-xs font-medium text-green-600 dark:text-green-400">COM</div>
+              <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                {comCount}<span className="text-sm font-normal ml-1">shifts</span>
+              </div>
+            </div>
+
+            {/* 2. OFF */}
+            <div className="bg-gray-100 dark:bg-gray-800/30 rounded-lg p-3">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">OFF</div>
+              <div className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+                {offCount}<span className="text-sm font-normal ml-1">days</span>
+              </div>
+            </div>
+
+            {/* 3. MM (Manager Meeting) */}
+            <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-3">
+              <div className="text-xs font-medium text-purple-600 dark:text-purple-400">MM</div>
+              <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                {mmCount}<span className="text-sm font-normal ml-1">times</span>
+              </div>
+            </div>
+
+            {/* 4. ZM (Zone Meeting) */}
+            <div className="bg-cyan-100 dark:bg-cyan-900/30 rounded-lg p-3">
+              <div className="text-xs font-medium text-cyan-600 dark:text-cyan-400">ZM</div>
+              <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-300">
+                {zmCount}<span className="text-sm font-normal ml-1">times</span>
+              </div>
+            </div>
+
+            {/* 5. Other */}
+            <div className="bg-orange-100 dark:bg-orange-900/30 rounded-lg p-3">
+              <div className="text-xs font-medium text-orange-600 dark:text-orange-400">Other</div>
+              <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                {otherCount}<span className="text-sm font-normal ml-1">shifts</span>
+              </div>
+            </div>
+
+            {/* 6. Sick */}
+            <div className="bg-red-100 dark:bg-red-900/30 rounded-lg p-3">
+              <div className="text-xs font-medium text-red-600 dark:text-red-400">Sick</div>
+              <div className="text-2xl font-bold text-red-700 dark:text-red-300">
+                {sickCount}<span className="text-sm font-normal ml-1">days</span>
+              </div>
+            </div>
+📁 ไฟล์ที่ 2: client/src/pages/daily-sales-page.tsx
+ไฟล์นี้มีการแก้ไขหลายจุด (Task 2, 3, 4) ครับ
+
+1. อัปเดต formSchema (Task 2)
+ค้นหา const formSchema = z.object({ ...
+
+TypeScript
+
+const formSchema = z.object({
+  // ... fields เดิม
+  // delivery platform เดิม (grab, lineman, shopee)
+  
+  // === เพิ่ม fields ใหม่ (Task 2) ===
+  robin: z.string().default("0"),
+  gokoo: z.string().default("0"),
+  
+  // OSAT
+  osatScore: z.string().default("0"),
+  osatComments: z.string().default("0"),
+  
+  // SOS (ตรวจสอบว่ามีอยู่แล้ว หรือเพิ่มถ้ายังไม่มี)
+  sosDaily: z.string().default("0"),
+  sosMtd: z.string().default("0"),
+  
+  // ... fields อื่นๆ
+});
+2. แก้ไขการคำนวณ Hours & TCMH (Task 3)
+ค้นหาจุดที่มีการคำนวณ summaryHours หรือ tcmh (มักจะอยู่ใน useEffect หรือตัวแปรที่คำนวณก่อน render)
+
+TypeScript
+
+  // ... ดึงค่าจาก form
+  const actualHoursVal = parseFloat(form.watch("actualHours") || "0");
+  const otHoursVal = parseFloat(form.watch("otHours") || "0");
+  // const dutyTeamHoursVal = ... (ไม่ต้องนำมาบวก)
+
+  // === แก้ไขสูตร (Task 3: ไม่รวม Duty Team) ===
+  const summaryHours = actualHoursVal + otHoursVal; 
+
+  const transactionCountVal = parseFloat(form.watch("transactionCount") || "0");
+  
+  // คำนวณ TCMH ใหม่
+  const tcmh = summaryHours > 0 ? (transactionCountVal / summaryHours) : 0;
+3. อัปเดต handleCopyReport (Task 4)
+แทนที่ฟังก์ชัน handleCopyReport ด้วยโค้ดด้านล่างนี้ (อัปเดต Template และการคำนวณตามโจทย์)
+
+TypeScript
+
+  const handleCopyReport = () => {
+    const v = form.getValues();
+
+    // Sales Values
+    const actualSalesVal = parseFloat(v.actualSales) || 0;
+    const dailyTargetVal = parseFloat(v.dailyTarget) || 0;
+    const mtdActualVal = parseFloat(v.mtdActual) || 0;
+    const mtdTargetVal = parseFloat(v.mtdTarget) || 0;
+
+    // TC Values
+    const tcVal = parseFloat(v.transactionCount) || 0;
+    const mtdTcVal = parseFloat(v.mtdTransactionCount) || 0;
+
+    // TA Values
+    const taVal = tcVal > 0 ? (actualSalesVal / tcVal).toFixed(0) : "0";
+    const mtdTaVal = mtdTcVal > 0 ? (mtdActualVal / mtdTcVal).toFixed(0) : "0";
+
+    // Channel Values & Percentages
+    const dineInVal = parseFloat(v.dineIn) || 0;
+    const takeAwayVal = parseFloat(v.takeAway) || 0;
+    const deliveryTotal = parseFloat(v.delivery) || 0;
+
+    const dineInPercent = actualSalesVal > 0 ? ((dineInVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const takeAwayPercent = actualSalesVal > 0 ? ((takeAwayVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const deliveryTotalPercent = actualSalesVal > 0 ? ((deliveryTotal / actualSalesVal) * 100).toFixed(0) : "0";
+
+    // Delivery Platforms (รวม Robin, GoKOO)
+    const grabVal = parseFloat(v.grab) || 0;
+    const linemanVal = parseFloat(v.lineman) || 0;
+    const shopeeVal = parseFloat(v.shopee) || 0;
+    const robinVal = parseFloat(v.robin) || 0;
+    const gokooVal = parseFloat(v.gokoo) || 0;
+
+    const grabPercent = actualSalesVal > 0 ? ((grabVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const linemanPercent = actualSalesVal > 0 ? ((linemanVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const shopeePercent = actualSalesVal > 0 ? ((shopeeVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const robinPercent = actualSalesVal > 0 ? ((robinVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const gokooPercent = actualSalesVal > 0 ? ((gokooVal / actualSalesVal) * 100).toFixed(0) : "0";
+
+    // Waste Logic
+    const wasteDailyTotalVal = parseFloat(v.wasteDailyTotal) || 0;
+    const wasteMtdTotalVal = parseFloat(v.wasteMtdTotal) || 0;
+    
+    // คำนวณ Waste % (เทียบกับยอดขาย)
+    const wasteDailyPercent = actualSalesVal > 0 ? ((wasteDailyTotalVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const wasteMtdPercent = mtdActualVal > 0 ? ((wasteMtdTotalVal / mtdActualVal) * 100).toFixed(2) : "0.00";
+
+    // Hours (Task 3: ไม่รวมทีมผู้จัดการ)
+    const actualHoursVal = parseFloat(v.actualHours) || 0;
+    const otHoursVal = parseFloat(v.otHours) || 0;
+    const workHour = (actualHoursVal + otHoursVal).toFixed(1);
+
+    // Roster Logic (Mockup or existing logic)
+    const managerRosterLines = "Manager List..."; // ดึงจาก Logic เดิมของคุณ
+    const staffRosterLines = "Staff List...";     // ดึงจาก Logic เดิมของคุณ
+    const nextDayFormatted = "DD/MM/YYYY";        // ดึงจาก Logic เดิมของคุณ
+
+    // === Report Template (Task 4) ===
+    const reportText = `🗓️${format(new Date(v.reportDate), "dd/MM/yyyy")}
+
+💵Daily Sales=${actualSalesVal.toLocaleString()}/${dailyTargetVal.toLocaleString()}
+MTD Sale=${mtdActualVal.toLocaleString()}/${mtdTargetVal.toLocaleString()}
+
+👨‍👩‍👧‍👦Daily TC =${tcVal.toLocaleString()}
+👨‍👩‍👧‍👦MTD TC =${mtdTcVal.toLocaleString()}
+👑 Daily TA =${taVal}
+👑 MTD TA =${mtdTaVal}
+
+🍽 Dinein :${dineInVal.toLocaleString()}/${dineInPercent}%
+🛍Takeaway :${takeAwayVal.toLocaleString()}/${takeAwayPercent}%
+🛵Delivery :${deliveryTotal.toLocaleString()}/${deliveryTotalPercent}%
+
+🛵Grab Food :${grabVal.toLocaleString()}/${grabPercent}%
+🛵Line Man :${linemanVal.toLocaleString()}/${linemanPercent}%
+🛵 Shopeefood:${shopeeVal.toLocaleString()}/${shopeePercent}%
+🛵Robin:${robinPercent}%
+🛵 GoKOO:${gokooPercent}%
+
+🏃🏻‍♀️SOS =${v.sosDaily}
+🏃🏻MTD SOS =${v.sosMtd}
+
+🗑WasteDaily :${wasteDailyTotalVal.toLocaleString()}/${wasteDailyPercent}%
+🗑 WasteMTD:${wasteMtdTotalVal.toLocaleString()}/${wasteMtdPercent}%
+
+🕰Work Hour :${workHour} (ไม่รวมทีมผู้จัดการ)
+
+📝OSAT:${v.osatScore}/${v.osatComments}comments
+
+🗓️S[week] ${nextDayFormatted}📌
+Roster Manager,Duty
+${managerRosterLines}
+
+📄Roster Tomorrow
+${staffRosterLines}`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(reportText);
+    toast({ title: "Copied!", description: "รายงานถูกคัดลอกแล้ว" });
+  };
+4. เพิ่ม Input Fields ใน UI (Task 2)
+ค้นหาส่วนที่แสดง Input ของ Delivery (เช่น Grab, Shopee) แล้วเพิ่ม Robin และ GoKOO ต่อท้าย
+
+TypeScript
+
+                  {/* ... Existing Delivery Inputs ... */}
+                  
+                  {/* Robin */}
+                  <FormField
+                    control={form.control}
+                    name="robin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Robin</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* GoKOO */}
+                  <FormField
+                    control={form.control}
+                    name="gokoo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GoKOO</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+และเพิ่ม Section ใหม่สำหรับ OSAT (เช่น วางไว้ก่อนปุ่ม Submit หรือต่อจากส่วน Waste)
+
+TypeScript
+
+                {/* OSAT Section */}
+                <div className="bg-slate-50 p-4 rounded-lg border">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    📝 OSAT Score
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="osatScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Score</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="osatComments"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Comments (จำนวน)</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>

@@ -27,7 +27,12 @@ const SHIFT_ORDER: Record<string, number> = {
   'swing': 2,
   'dinner': 3,
   'close': 4,
-  'late': 5
+  'late': 5,
+  'com': 6,
+  'off': 7,
+  'meeting_manager': 8,
+  'meeting_zone': 9,
+  'other': 10
 };
 
 const getShiftOrder = (shiftGroup: string | undefined): number => {
@@ -38,8 +43,15 @@ const getShiftOrder = (shiftGroup: string | undefined): number => {
 
 // Helper function to display shift group name
 const getShiftDisplayName = (shiftGroup: string): string => {
-  if (shiftGroup?.toLowerCase() === 'late') return 'Late Night';
-  return shiftGroup;
+  switch (shiftGroup?.toLowerCase()) {
+    case 'late': return 'Late Night';
+    case 'com': return 'COM';
+    case 'off': return 'OFF';
+    case 'meeting_manager': return 'MM';
+    case 'meeting_zone': return 'ZM';
+    case 'other': return 'OTHER';
+    default: return shiftGroup;
+  }
 };
 
 export default function RosterPage() {
@@ -234,6 +246,11 @@ export default function RosterPage() {
                                     shift.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                     shift.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                     shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                    shift.shiftGroup === 'com' ? 'bg-green-50 text-green-600 border-green-100' :
+                                    shift.shiftGroup === 'off' ? 'bg-gray-50 text-gray-600 border-gray-200' :
+                                    shift.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                    shift.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
+                                    shift.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                     'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                   <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(shift.shiftGroup)}</span>
                                   <span className="text-[6px] leading-tight">{shift.startTime}</span>
@@ -363,6 +380,11 @@ function ShiftCell({ shift, isManager, groups }: { shift: any; isManager: boolea
     dinner: "bg-purple-100 text-purple-700 border-purple-200",
     close: "bg-pink-100 text-pink-700 border-pink-200",
     late: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200",
+    com: "bg-green-100 text-green-700 border-green-200",
+    off: "bg-gray-100 text-gray-700 border-gray-200",
+    meeting_manager: "bg-purple-100 text-purple-700 border-purple-200",
+    meeting_zone: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    other: "bg-orange-100 text-orange-700 border-orange-200",
   };
   
   const bgClass = groupColors[shift.shiftGroup.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200";

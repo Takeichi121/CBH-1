@@ -2537,7 +2537,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             continue;
           }
 
-          if (!item.shiftGroup || item.shiftGroup === "off") {
+          if (!item.shiftGroup) {
             results.skipped++;
             continue;
           }

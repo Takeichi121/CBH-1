@@ -48,10 +48,21 @@ export default function RosterImportPage() {
   const parseShiftGroup = (code: string, timeRange: string): string | null => {
     const upperCode = code?.toUpperCase()?.trim();
     
-    if (!upperCode || upperCode === "OFF" || upperCode === "COM" || upperCode === "") {
-      return null;
-    }
-
+    if (!upperCode || upperCode === "") return null;
+    
+    // New shift types
+    if (upperCode === "COM") return "com";
+    if (upperCode === "OFF") return "off";
+    if (upperCode === "MM") return "meeting_manager";
+    if (upperCode === "ZM") return "meeting_zone";
+    if (upperCode === "OT") return "other";
+    
+    // Existing shift types
+    if (upperCode === "O") return "open";
+    if (upperCode === "S") return "lunch";
+    if (upperCode === "C") return "dinner";
+    
+    // Parse from time range if available (Fallback case)
     if (timeRange) {
       const match = timeRange.match(/(\d{1,2})\.(\d{2})/);
       if (match) {
@@ -62,10 +73,6 @@ export default function RosterImportPage() {
         return "open";
       }
     }
-
-    if (upperCode === "O") return "open";
-    if (upperCode === "S") return "lunch";
-    if (upperCode === "C") return "dinner";
 
     return "lunch";
   };

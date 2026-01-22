@@ -34,8 +34,15 @@ type BookFormValues = z.infer<typeof bookSchema>;
 
 // Helper function to display shift group name
 const getShiftDisplayName = (shiftGroup: string): string => {
-  if (shiftGroup?.toLowerCase() === 'late') return 'Late Night';
-  return shiftGroup;
+  switch (shiftGroup?.toLowerCase()) {
+    case 'late': return 'Late Night';
+    case 'com': return 'COM';
+    case 'off': return 'OFF';
+    case 'meeting_manager': return 'MM';
+    case 'meeting_zone': return 'ZM';
+    case 'other': return 'OTHER';
+    default: return shiftGroup;
+  }
 };
 
 // Shift order for filtering based on typical shift times
@@ -46,7 +53,12 @@ const SHIFT_ORDER: Record<string, number> = {
   'swing': 2,
   'dinner': 3,
   'close': 4,
-  'late': 5
+  'late': 5,
+  'com': 6,
+  'off': 7,
+  'meeting_manager': 8,
+  'meeting_zone': 9,
+  'other': 10
 };
 
 const getShiftOrder = (shiftGroup: string | undefined): number => {
@@ -341,6 +353,11 @@ export default function WorkPage() {
                                       shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
                                       shift.shiftGroup === 'close' ? 'bg-pink-100 text-pink-700 border-pink-200' :
                                       shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                      shift.shiftGroup === 'com' ? 'bg-green-100 text-green-700 border-green-200' :
+                                      shift.shiftGroup === 'off' ? 'bg-gray-100 text-gray-700 border-gray-200' :
+                                      shift.shiftGroup === 'meeting_manager' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                      shift.shiftGroup === 'meeting_zone' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
+                                      shift.shiftGroup === 'other' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                       'bg-slate-100 text-slate-700 border-slate-200'}`}
                                   onClick={() => {
                                     if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
@@ -394,6 +411,11 @@ export default function WorkPage() {
                                           s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                           s.shiftGroup === 'close' ? 'bg-pink-50 text-pink-600 border-pink-100' :
                                           s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                          s.shiftGroup === 'com' ? 'bg-green-50 text-green-600 border-green-100' :
+                                          s.shiftGroup === 'off' ? 'bg-gray-50 text-gray-600 border-gray-200' :
+                                          s.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                          s.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
+                                          s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                         <span className="text-[7px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
                                         <span className="text-[5px] leading-tight">Start : {start}</span>
@@ -407,6 +429,11 @@ export default function WorkPage() {
                                           s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                           s.shiftGroup === 'close' ? 'bg-pink-50 text-pink-600 border-pink-100' :
                                           s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                          s.shiftGroup === 'com' ? 'bg-green-50 text-green-600 border-green-100' :
+                                          s.shiftGroup === 'off' ? 'bg-gray-50 text-gray-600 border-gray-200' :
+                                          s.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                          s.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
+                                          s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                           'bg-slate-50 text-slate-600 border-slate-100'}`}>
                                         <span className="text-[6px] font-bold uppercase leading-tight">{getShiftDisplayName(s.shiftGroup)}</span>
                                         <span className="text-[6px] leading-tight">{s.startTime}</span>
@@ -471,6 +498,12 @@ export default function WorkPage() {
                               ${shift.shiftGroup === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                                 shift.shiftGroup === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                 shift.shiftGroup === 'dinner' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                shift.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                                shift.shiftGroup === 'com' ? 'bg-green-100 text-green-700 border-green-200' :
+                                shift.shiftGroup === 'off' ? 'bg-gray-100 text-gray-700 border-gray-200' :
+                                shift.shiftGroup === 'meeting_manager' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                shift.shiftGroup === 'meeting_zone' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
+                                shift.shiftGroup === 'other' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                 'bg-slate-100 text-slate-700 border-slate-200'}`}
                             onClick={() => {
                               if (!data.closed && confirm("Are you sure you want to cancel this shift?")) {
@@ -535,6 +568,12 @@ export default function WorkPage() {
                             ${s.shiftGroup === 'open' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                               s.shiftGroup === 'lunch' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                               s.shiftGroup === 'dinner' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                              s.shiftGroup === 'late' ? 'bg-slate-700 text-slate-100 border-slate-600' :
+                              s.shiftGroup === 'com' ? 'bg-green-50 text-green-600 border-green-100' :
+                              s.shiftGroup === 'off' ? 'bg-gray-50 text-gray-600 border-gray-200' :
+                              s.shiftGroup === 'meeting_manager' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                              s.shiftGroup === 'meeting_zone' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
+                              s.shiftGroup === 'other' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                               'bg-slate-50 text-slate-600 border-slate-100'}`}>
                             <span className="text-[8px] font-bold uppercase">{getShiftDisplayName(s.shiftGroup)}</span>
                             <span className="text-[9px]">{s.startTime}</span>

@@ -100,6 +100,9 @@ const getShiftOrder = (shiftGroup: string | undefined): number => {
   return order !== undefined ? order : 99;
 };
 
+// Shift groups available for employees (excludes COM, OFF, meetings, etc.)
+const EMPLOYEE_SHIFT_GROUPS = ['open', 'swing', 'lunch', 'dinner', 'close', 'late'];
+
 export default function WorkPage() {
   const { user } = useAuth();
   const { t } = useI18n();
@@ -115,6 +118,11 @@ export default function WorkPage() {
   const { mutate: cancelShift } = useCancelShift();
   const queryClient = useQueryClient();
   const isManager = user?.role === "manager" || user?.role === "admin";
+
+  // Filter shift groups for employees - only show work shifts
+  const employeeGroups = settings?.groups?.filter((g: any) => 
+    EMPLOYEE_SHIFT_GROUPS.includes(g.key?.toLowerCase())
+  );
 
   // For managers, show dashboard with selection
   if (isManager) {
@@ -403,7 +411,7 @@ export default function WorkPage() {
                                 </div>
                               ) : (
                                 <BookShiftDialog 
-                                  groups={settings?.groups} 
+                                  groups={employeeGroups} 
                                   day={day} 
                                   disabled={data.closed}
                                   settings={settings}
@@ -552,7 +560,7 @@ export default function WorkPage() {
                           </div>
                         ) : (
                           <BookShiftDialog 
-                            groups={settings?.groups} 
+                            groups={employeeGroups} 
                             day={day} 
                             disabled={data.closed}
                             settings={settings}
@@ -1906,12 +1914,12 @@ function ManagerEmployeeRosterView() {
                           staffShifts[s.date] = s;
                         }
                       });
-                      const firstShift = days.map(d => staffShifts[d]).find(s => s);
+                      const firstShift = days.map((d: string) => staffShifts[d]).find((s: any) => s);
                       const sortTime = firstShift?.startTime?.split(" - ")[0] || "99:99";
                       return { staff, staffShifts, sortTime };
                     })
-                    .sort((a, b) => a.sortTime.localeCompare(b.sortTime))
-                    .map(({ staff, staffShifts }) => (
+                    .sort((a: { sortTime: string }, b: { sortTime: string }) => a.sortTime.localeCompare(b.sortTime))
+                    .map(({ staff, staffShifts }: { staff: any, staffShifts: Record<string, any> }) => (
                       <TableRow key={staff.username} className="hover:bg-muted/30">
                         <TableCell className="sticky left-0 bg-card z-10 font-medium">
                           <span>{staff.nickName || staff.fullName}</span>

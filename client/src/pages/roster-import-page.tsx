@@ -4,7 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileSpreadsheet, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  ArrowLeft,
+} from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import * as XLSX from "xlsx";
@@ -47,9 +54,9 @@ export default function RosterImportPage() {
 
   const parseShiftGroup = (code: string, timeRange: string): string | null => {
     const upperCode = code?.toUpperCase()?.trim();
-    
+
     if (!upperCode || upperCode === "") return null;
-    
+
     // New shift types
     if (upperCode === "COM") return "com";
     if (upperCode === "OFF") return "off";
@@ -57,12 +64,15 @@ export default function RosterImportPage() {
     if (upperCode === "ZM") return "meeting_zone";
     if (upperCode === "OT") return "other";
     if (upperCode === "SK" || upperCode === "SICK") return "sick";
-    
+
     // Existing shift types
-    if (upperCode === "O") return "open";
-    if (upperCode === "S") return "lunch";
-    if (upperCode === "C") return "dinner";
-    
+    if (upperCode === "7.00-16.00") return "open";
+    if (upperCode === "09.00-18.00") return "swing";
+    if (upperCode === "13.00-22.00") return "lunch";
+    if (upperCode === "15.00-00.00") return "dinner";
+    if (upperCode === "19.00-04.00") return "close";
+    if (upperCode === "22.00-07.00") return "late night";
+
     // Parse from time range if available (Fallback case)
     if (timeRange) {
       const match = timeRange.match(/(\d{1,2})\.(\d{2})/);
@@ -90,7 +100,7 @@ export default function RosterImportPage() {
       const workbook = XLSX.read(arrayBuffer);
       const parsed: ParsedShift[] = [];
 
-      workbook.SheetNames.forEach(sheetName => {
+      workbook.SheetNames.forEach((sheetName) => {
         const sheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
@@ -110,13 +120,18 @@ export default function RosterImportPage() {
             continue;
           }
 
-          if (row[0] === "Store Name" || row[2] === "TUE" || row[2] === "WED") continue;
+          if (row[0] === "Store Name" || row[2] === "TUE" || row[2] === "WED")
+            continue;
 
           if (row[0] && typeof row[0] === "string" && row[0].trim() !== "") {
             const currentNickname = row[0].trim();
-            
+
             let dateIndex = 0;
-            for (let j = 2; j < row.length && dateIndex < dateRow.length; j += 2) {
+            for (
+              let j = 2;
+              j < row.length && dateIndex < dateRow.length;
+              j += 2
+            ) {
               const code = row[j];
               const nextRow = data[i + 1];
               const timeRange = nextRow?.[j] || "";
@@ -143,7 +158,6 @@ export default function RosterImportPage() {
         title: "อ่านไฟล์สำเร็จ",
         description: `พบ ${parsed.length} รายการ พร้อม import`,
       });
-
     } catch (err: any) {
       toast({
         title: "อ่านไฟล์ไม่สำเร็จ",
@@ -163,7 +177,7 @@ export default function RosterImportPage() {
         token,
         data: parsedData,
       });
-      
+
       const json: ImportResult = await res.json();
       setResult(json);
 
@@ -191,7 +205,10 @@ export default function RosterImportPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl" data-testid="page-roster-import">
+    <div
+      className="container mx-auto p-4 max-w-4xl"
+      data-testid="page-roster-import"
+    >
       <div className="flex items-center gap-4 mb-6">
         <Link href="/roster">
           <Button variant="ghost" size="icon" data-testid="button-back-roster">
@@ -309,7 +326,9 @@ export default function RosterImportPage() {
           <CardContent>
             {result.ok ? (
               <div className="space-y-2">
-                <p className="text-green-600">นำเข้าสำเร็จ: {result.imported} รายการ</p>
+                <p className="text-green-600">
+                  นำเข้าสำเร็จ: {result.imported} รายการ
+                </p>
                 <p className="text-yellow-600">ข้าม: {result.skipped} รายการ</p>
                 {result.errors && result.errors.length > 0 && (
                   <div className="mt-4">

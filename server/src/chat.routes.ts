@@ -1,26 +1,7 @@
 import type { Express, Request, Response } from "express";
-import OpenAI from "openai";
 import { chatStorage } from "./storage";
-
-type Mode = "casual" | "code" | "analysis";
-
-function getSystemPrompt(mode: Mode) {
-  if (mode === "code") {
-    return "You are Chann, a friendly senior software engineer. Be concise, correct, and provide code examples when helpful.";
-  }
-  if (mode === "analysis") {
-    return "You are Chann, a helpful data analyst. Explain step-by-step clearly. Use tables if useful. Avoid hallucination.";
-  }
-  return "You are Chann, a warm AI companion. Be supportive, friendly, natural, and helpful.";
-}
-
-const openai = new OpenAI({
-  apiKey:
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||
-    process.env.OPENAI_API_KEY ||
-    "",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL
-});
+import { streamLLM } from "./services/llm-router";
+import type { Mode, Provider } from "./services/llm-types";
 
 export function registerChatRoutes(app: Express): void {
   // Get all conversations
@@ -88,9 +69,9 @@ export function registerChatRoutes(app: Express): void {
   });
 
   /**
-   * ✅ Send message and get AI response (SSE streaming)
+   * Streaming chat
    * POST /api/conversations/:id/messages
-   * body: { content: string, mode?: "casual"|"code"|"analysis" }
+   * body: { content: string, mode?: Mode, provider?: Provider }
    */
   app.post("/api/conversations/:id/messages", async (req: Request, res: Response) => {
     const conversationId = Number(req.params.id);
@@ -102,81 +83,57 @@ export function registerChatRoutes(app: Express): void {
 
       const content = String(req.body?.content || "").trim();
       const mode = (req.body?.mode as Mode) || "casual";
+      const provider = (req.body?.provider as Provider) || "auto";
 
       if (!content) {
         return res.status(400).json({ error: "Message content is empty" });
       }
 
-      if (!openai.apiKey) {
-        return res.status(500).json({ error: "Missing OpenAI API key" });
-      }
-
-      // Save user message first
+      // save user message
       await chatStorage.createMessage(conversationId, "user", content);
 
-      // ✅ Get limited conversation history (reduce token + safer)
-      const allMessages = await chatStorage.getMessagesByConversation(conversationId);
-      const lastMessages = allMessages.slice(-24);
-
-      const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] =
-        [
-          { role: "system", content: getSystemPrompt(mode) },
-          ...lastMessages.map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content
-          }))
-        ];
+      // history (limit for speed)
+      const messages = await chatStorage.getMessagesByConversation(conversationId);
+      const lastMessages = messages.slice(-24).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content
+      }));
 
       // SSE headers
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no"); // nginx: disable buffering
-
-      // flush headers immediately
+      res.setHeader("X-Accel-Buffering", "no");
       res.flushHeaders?.();
 
-      // client retry hint
       res.write(`retry: 1000\n\n`);
 
-      // ✅ heartbeat
-      const heartbeat = setInterval(() => {
-        res.write(`: ping\n\n`);
-      }, 15000);
+      // heartbeat
+      const heartbeat = setInterval(() => res.write(`: ping\n\n`), 15000);
 
-      // ✅ Abort if client disconnects
+      // abort when client disconnects
       const abortController = new AbortController();
       req.on("close", () => {
         abortController.abort();
         clearInterval(heartbeat);
       });
 
-      const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-      // Stream response
-      const stream = await openai.chat.completions.create(
-        {
-          model,
-          messages: chatMessages,
-          stream: true,
-          max_completion_tokens: 2048
-        },
-        { signal: abortController.signal }
-      );
-
       let fullResponse = "";
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || "";
-        if (!delta) continue;
-
-        fullResponse += delta;
-        res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
-      }
+      fullResponse = await streamLLM({
+        provider,
+        mode,
+        message: content,
+        history: lastMessages,
+        signal: abortController.signal,
+        onToken: (delta) => {
+          res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
+        }
+      });
 
       clearInterval(heartbeat);
 
-      // Save assistant message only if any output
+      // save assistant message
       if (fullResponse.trim()) {
         await chatStorage.createMessage(conversationId, "assistant", fullResponse);
       }
@@ -187,12 +144,7 @@ export function registerChatRoutes(app: Express): void {
       console.error("Error sending message:", error);
 
       if (res.headersSent) {
-        res.write(
-          `data: ${JSON.stringify({
-            error: "Failed to send message",
-            done: true
-          })}\n\n`
-        );
+        res.write(`data: ${JSON.stringify({ error: "Failed to send message", done: true })}\n\n`);
         res.end();
       } else {
         res.status(500).json({ error: "Failed to send message" });

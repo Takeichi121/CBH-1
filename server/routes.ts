@@ -180,7 +180,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       messages.push({ role: "user", content: userContent });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages,
         max_completion_tokens: 2048,
       });

@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { CHAT_STICKERS } from "@shared/schema";
+import { showLocalNotification } from "@/lib/notifications";
 
 const STICKER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   ThumbsUp, Heart, Smile: SmileIcon, Sparkles, Frown, Flame, Zap, Star,
@@ -85,12 +86,26 @@ export function FloatingChat() {
     });
 
     newSocket.on("message", (payload: ChatMessage) => {
+      const isFromMe = payload.senderUsername === user?.username;
+      
       if (payload.isPrivate) {
         setPrivateMessages((prev) => [...prev, payload]);
-        if (!isOpen) setUnreadCount(c => c + 1);
+        if (!isOpen && !isFromMe) {
+          setUnreadCount(c => c + 1);
+          showLocalNotification(
+            `ข้อความจาก ${payload.user}`,
+            payload.messageType === "sticker" ? "ส่งสติกเกอร์" : payload.text.slice(0, 50)
+          );
+        }
       } else {
         setGroupMessages((prev) => [...prev, payload]);
-        if (!isOpen) setUnreadCount(c => c + 1);
+        if (!isOpen && !isFromMe) {
+          setUnreadCount(c => c + 1);
+          showLocalNotification(
+            `${payload.user} ในแชทกลุ่ม`,
+            payload.messageType === "sticker" ? "ส่งสติกเกอร์" : payload.text.slice(0, 50)
+          );
+        }
       }
     });
 

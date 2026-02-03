@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { useChatCustomization, ChatCustomizationPanel } from "@/components/chat-customization";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -90,6 +91,8 @@ export function FloatingChannChat() {
   };
 
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [showCustomization, setShowCustomization] = useState(false);
+  const { getBubbleColorClass, getBubbleStyleClass, getAvatarStyleClass } = useChatCustomization();
 
   const summarizeChat = async () => {
     if (messages.length === 0 || isSummarizing) return;
@@ -186,6 +189,15 @@ export function FloatingChannChat() {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setShowCustomization(true)}
+                title="ปรับแต่งแชท"
+                data-testid="button-customize-chat"
+              >
+                <Palette className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={clearHistory}
                 title="ล้างประวัติ"
                 data-testid="button-clear-chann-history"
@@ -223,25 +235,25 @@ export function FloatingChannChat() {
                 data-testid={`message-chann-${msg.role}-${index}`}
               >
                 {msg.role === "assistant" && (
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
+                    <AvatarFallback className={cn("bg-primary text-primary-foreground text-xs", getAvatarStyleClass())}>
                       <Bot className="w-4 h-4" />
                     </AvatarFallback>
                   </Avatar>
                 )}
                 <div
                   className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                    "max-w-[80%] px-4 py-2 text-sm",
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted text-foreground rounded-bl-md"
+                      ? cn(getBubbleColorClass(), "text-white", getBubbleStyleClass())
+                      : cn("bg-muted text-foreground", getBubbleStyleClass())
                   )}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 </div>
                 {msg.role === "user" && (
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                  <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
+                    <AvatarFallback className={cn("bg-muted text-muted-foreground text-xs", getAvatarStyleClass())}>
                       <User className="w-4 h-4" />
                     </AvatarFallback>
                   </Avatar>
@@ -295,6 +307,11 @@ export function FloatingChannChat() {
           </div>
         </div>
       )}
+
+      <ChatCustomizationPanel 
+        isOpen={showCustomization} 
+        onClose={() => setShowCustomization(false)} 
+      />
     </>
   );
 }

@@ -16,6 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { APP_VERSION, CHANGELOG } from "@shared/version";
+import { requestNotificationPermission } from "@/lib/notifications";
+import { RestartTourButton } from "@/components/onboarding-tour";
+import { Bell, HelpCircle } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, setUserProfilePicture } = useAuth();
@@ -49,6 +52,13 @@ export default function SettingsPage() {
   }, [user, profileForm]);
 
   const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
   const passwordForm = useForm({
     defaultValues: {
       currentPassword: "",
@@ -372,6 +382,48 @@ export default function SettingsPage() {
                   {t("dark")}
                 </Button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  {language === "th" ? "การแจ้งเตือน" : "Notifications"}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {language === "th" ? "รับการแจ้งเตือนเมื่อมีข้อความใหม่" : "Get notified when new messages arrive"}
+                </p>
+              </div>
+              <Switch
+                checked={notificationsEnabled}
+                onCheckedChange={async (checked) => {
+                  if (checked) {
+                    const granted = await requestNotificationPermission();
+                    setNotificationsEnabled(granted);
+                    if (!granted) {
+                      toast({
+                        title: language === "th" ? "ไม่สามารถเปิดการแจ้งเตือน" : "Cannot enable notifications",
+                        description: language === "th" ? "กรุณาอนุญาตการแจ้งเตือนในการตั้งค่าเบราว์เซอร์" : "Please allow notifications in browser settings",
+                        variant: "destructive"
+                      });
+                    }
+                  }
+                }}
+                data-testid="switch-notifications"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4" />
+                  {language === "th" ? "คู่มือใช้งาน" : "App Tutorial"}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {language === "th" ? "ดูทัวร์แนะนำการใช้งานแอปอีกครั้ง" : "View the app introduction tour again"}
+                </p>
+              </div>
+              <RestartTourButton />
             </div>
           </CardContent>
         </Card>

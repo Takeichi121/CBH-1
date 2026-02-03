@@ -156,14 +156,28 @@ export function registerChatRoutes(app: Express): void {
       // Save user message first
       await chatStorage.createMessage(conversationId, "user", content);
 
-      // ✅ Get limited conversation history (reduce token + safer)
+      // ✅ Get limited conversation history with token budgeting
       const allMessages = await chatStorage.getMessagesByConversation(conversationId);
-      const lastMessages = allMessages.slice(-24);
+      
+      // Limit to recent messages and approximate token count
+      const MAX_CONTEXT_CHARS = 80000; // ~20k tokens (4 chars/token average)
+      const systemPrompt = getSystemPrompt(mode);
+      let totalChars = systemPrompt.length;
+      
+      // Take messages from most recent, respecting token budget
+      const selectedMessages: typeof allMessages = [];
+      for (let i = allMessages.length - 1; i >= 0 && selectedMessages.length < 20; i--) {
+        const msg = allMessages[i];
+        const msgChars = msg.content.length;
+        if (totalChars + msgChars > MAX_CONTEXT_CHARS) break;
+        totalChars += msgChars;
+        selectedMessages.unshift(msg);
+      }
 
       const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] =
         [
-          { role: "system", content: getSystemPrompt(mode) },
-          ...lastMessages.map((m) => ({
+          { role: "system", content: systemPrompt },
+          ...selectedMessages.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content
           }))

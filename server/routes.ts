@@ -190,10 +190,58 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         model: "gpt-4o",
         messages,
         max_completion_tokens: 2048,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "getTableRows",
+              description: "Get data from a specific table in the database",
+              parameters: {
+                type: "object",
+                properties: {
+                  tableName: {
+                    type: "string",
+                    enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "daily_labor"],
+                    description: "The name of the table to read"
+                  },
+                  limit: {
+                    type: "number",
+                    description: "Number of rows to return (max 100)",
+                    default: 50
+                  }
+                },
+                required: ["tableName"]
+              }
+            }
+          }
+        ]
       });
 
-      const reply = response.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
+      const toolCalls = response.choices[0]?.message?.tool_calls;
+      if (toolCalls && toolCalls.length > 0) {
+        for (const toolCall of toolCalls) {
+          if ((toolCall as any).function?.name === "getTableRows") {
+            const args = JSON.parse((toolCall as any).function.arguments);
+            const tableData = await storage.getTableRows(args.tableName, args.limit);
+            messages.push(response.choices[0].message);
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(tableData)
+            });
+          }
+        }
 
+        const secondResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+        });
+
+        const secondReply = secondResponse.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
+        return res.json({ ok: true, reply: secondReply });
+      }
+
+      const reply = response.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
       res.json({ ok: true, reply });
     } catch (e: any) {
       console.error("Chann AI error:", e);
@@ -363,7 +411,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       }
 
       await storage.updateUserPassword(session.username, hashPass(newPassword));
-      await storage.updateUser(session.username, { mustChangePassword: 0 });
+      await storage.updateUser(session.username, { mustChangePassword: 0 as any });
       await storage.log("password_change_forced", session.username, "success");
 
       res.json({ ok: true, message: "Password updated successfully" });

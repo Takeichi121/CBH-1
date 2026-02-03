@@ -342,6 +342,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
+  // Auth: Force Change Password
+  app.post("/api/forceChangePassword", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) {
+        return res.json({ ok: false, message: "Token and new password required" });
+      }
+
+      const session = await storage.getSession(token);
+      if (!session) {
+        return res.json({ ok: false, message: "Invalid session" });
+      }
+
+      await storage.updateUserPassword(session.username, hashPass(newPassword));
+      await storage.updateUser(session.username, { mustChangePassword: 0 });
+      await storage.log("password_change_forced", session.username, "success");
+
+      res.json({ ok: true, message: "Password updated successfully" });
+    } catch (e: any) {
+      console.error("Force change password error:", e);
+      res.json({ ok: false, message: e.message || "Failed to update password" });
+    }
+  });
+
   // Auth: Request Password Reset (send OTP via email)
   app.post(api.auth.requestPasswordReset.path, async (req, res) => {
     const parsed = api.auth.requestPasswordReset.input.safeParse(req.body);

@@ -36,7 +36,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUsers(): Promise<User[]>;
   updateUserStatus(username: string, active: number): Promise<void>;
-  updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; active: number }>): Promise<void>;
+  updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; active: number; mustChangePassword: number }>): Promise<void>;
   updateUserRole(username: string, role: string, position?: string): Promise<void>;
 
   // Shifts

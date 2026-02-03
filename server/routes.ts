@@ -145,7 +145,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ถ้าผู้ใช้ถามเป็นภาษาไทย ให้ตอบเป็นภาษาไทย
 
 [ความสามารถหลัก]
-- เขียน ตรวจ และแก้โค้ดทุกภาษา
+- เข้าถึงฐานข้อมูลของระบบได้ (Roster, Sales, Labor, Borrow Tracker)
 - วิเคราะห์ข้อมูล สรุปรายงาน ทำ visualization
 - ออกแบบและพัฒนาเว็บไซต์
 - เขียนบทความ สรุป และรายงานเชิงลึก
@@ -157,11 +157,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ตอบกระชับ ตรงประเด็น ไม่เยิ่นเย้อ
 - ถ้าไม่แน่ใจ ให้ถามก่อนทำ
 
-[บริบท]
-คุณกำลังช่วยเหลือพนักงานของร้าน BK Grand Diamond ซึ่งเป็นร้านอาหาร
-ระบบนี้ใช้จัดการตารางงาน (Roster), บันทึกยอดขาย, และติดตามต้นทุนแรงงาน
+[บริบทฐานข้อมูล]
+คุณสามารถช่วยดูข้อมูลในตารางต่อไปนี้:
+1. users: ข้อมูลพนักงานและสิทธิ์
+2. shifts: ตารางเวรพนักงาน
+3. dailySalesReports: รายงานยอดขายรายวัน
+4. borrow_transactions: ข้อมูลการยืมคืนของระหว่างสาขา
+5. labor_settings & daily_labor: ข้อมูลต้นทุนแรงงาน
 
-ผู้ใช้ปัจจุบัน: ${user.nickName || user.fullName} (${user.role})`;
+ผู้ใช้ปัจจุบัน: ${user.nickName || user.fullName} (${user.role})
+
+ข้อมูลปัจจุบันในระบบ (Snapshot):
+${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
       const messages: any[] = [
         { role: "system", content: systemPrompt }

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2 } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -89,6 +89,46 @@ export function FloatingChannChat() {
     }
   };
 
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
+  const summarizeChat = async () => {
+    if (messages.length === 0 || isSummarizing) return;
+    
+    setIsSummarizing(true);
+    try {
+      // For floating chat, we might not have a conversation ID if it's in-memory
+      // But let's check if there's a way to get one or use a generic summary endpoint
+      // Given the floating chat uses /api/chann with history, let's implement a quick summary via AI directly
+      
+      const token = localStorage.getItem("bk_token");
+      if (!token) return;
+
+      const res = await fetch("/api/chann", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
+          history: messages.slice(-20),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.ok && data.reply) {
+        const aiMessage: ChatMessage = {
+          role: "assistant",
+          content: `--- สรุปบทสนทนา ---\n${data.reply}`,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
+    } catch (error) {
+      console.error("Summary error:", error);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   const clearHistory = () => {
     setMessages([]);
   };
@@ -129,6 +169,20 @@ export function FloatingChannChat() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={summarizeChat}
+                disabled={messages.length === 0 || isSummarizing}
+                title="สรุปบทสนทนา"
+                data-testid="button-summarize-chann"
+              >
+                {isSummarizing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

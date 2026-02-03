@@ -89,6 +89,46 @@ export function registerChatRoutes(app: Express): void {
     }
   });
 
+  // Generate conversation summary
+  app.post("/api/conversations/:id/summary", async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ error: "Invalid conversation id" });
+      }
+
+      const messages = await chatStorage.getMessagesByConversation(id);
+      if (messages.length === 0) {
+        return res.json({ summary: "ไม่มีข้อความในบทสนทนานี้" });
+      }
+
+      const conversationText = messages
+        .map((m) => `${m.role === "user" ? "นาย" : "Chann"}: ${m.content}`)
+        .join("\n");
+
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "คุณคือนักสรุปข้อมูลอัจฉริยะ สรุปบทสนทนาที่กำหนดให้สั้น กระชับ และได้ใจความสำคัญที่สุด โดยใช้ภาษาที่เป็นกันเองและเคารพ (เรียกผู้ใช้ว่านาย)"
+          },
+          {
+            role: "user",
+            content: `ช่วยสรุปบทสนทนานี้ให้ทีครับนาย:\n\n${conversationText}`
+          }
+        ],
+        max_completion_tokens: 500
+      });
+
+      const summary = response.choices[0]?.message?.content || "ไม่สามารถสรุปได้ในขณะนี้";
+      res.json({ summary });
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      res.status(500).json({ error: "Failed to generate summary" });
+    }
+  });
+
   /**
    * ✅ Send message and get AI response (SSE streaming)
    * POST /api/conversations/:id/messages

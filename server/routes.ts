@@ -158,13 +158,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ตอบกระชับ ตรงประเด็น ไม่เยิ่นเย้อ
 - ถ้าไม่แน่ใจ ให้ถามนายก่อนทำ
 
-[บริบทฐานข้อมูล]
-คุณสามารถช่วยดูข้อมูลในตารางต่อไปนี้:
-1. users: ข้อมูลพนักงานและสิทธิ์
-2. shifts: ตารางเวรพนักงาน
-3. dailySalesReports: รายงานยอดขายรายวัน
-4. borrow_transactions: ข้อมูลการยืมคืนของระหว่างสาขา
-5. labor_settings & daily_labor: ข้อมูลต้นทุนแรงงาน
+[บริบทฐานข้อมูล - เชื่อมโยงทุกระบบ]
+คุณมีเครื่องมือพิเศษในการดึงข้อมูลข้ามระบบ:
+- getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings)
+- getShiftsForDate: ดูใครทำกะวันไหน
+- getShiftsInRange: ดูกะในช่วงเวลา
+- getSalesSummary: สรุปยอดขายรายเดือน
+- getCrossSystemSummary: สรุปภาพรวมทุกระบบในวันเดียว (กะ+ยอดขาย+แรงงาน+ยืมคืน)
+
+ใช้ getCrossSystemSummary เมื่อนายถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
 
 ผู้ใช้ปัจจุบัน (นาย): ${user.nickName || user.fullName} (${user.role})
 
@@ -187,22 +189,18 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
       messages.push({ role: "user", content: userContent });
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        max_completion_tokens: 2048,
-        tools: [
+      const channTools = [
           {
-            type: "function",
+            type: "function" as const,
             function: {
               name: "getTableRows",
-              description: "Get data from a specific table in the database",
+              description: "Get data from a specific table in the database. Use this for general queries.",
               parameters: {
                 type: "object",
                 properties: {
                   tableName: {
                     type: "string",
-                    enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "daily_labor"],
+                    enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "borrow_branches", "borrow_items", "daily_labor", "labor_settings", "manager_requests", "store_settings"],
                     description: "The name of the table to read"
                   },
                   limit: {
@@ -214,28 +212,125 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
                 required: ["tableName"]
               }
             }
+          },
+          {
+            type: "function" as const,
+            function: {
+              name: "getShiftsForDate",
+              description: "Get all shift bookings for a specific date. Returns who is working and which shift group.",
+              parameters: {
+                type: "object",
+                properties: {
+                  date: { type: "string", description: "Date in YYYY-MM-DD format" }
+                },
+                required: ["date"]
+              }
+            }
+          },
+          {
+            type: "function" as const,
+            function: {
+              name: "getShiftsInRange",
+              description: "Get shift bookings within a date range. Useful for weekly/monthly summaries.",
+              parameters: {
+                type: "object",
+                properties: {
+                  startDate: { type: "string", description: "Start date in YYYY-MM-DD format" },
+                  endDate: { type: "string", description: "End date in YYYY-MM-DD format" }
+                },
+                required: ["startDate", "endDate"]
+              }
+            }
+          },
+          {
+            type: "function" as const,
+            function: {
+              name: "getSalesSummary",
+              description: "Get daily sales reports for a month. Returns sales data, transaction counts, and labor metrics.",
+              parameters: {
+                type: "object",
+                properties: {
+                  year: { type: "number", description: "Year (e.g. 2026)" },
+                  month: { type: "number", description: "Month (1-12)" }
+                },
+                required: ["year", "month"]
+              }
+            }
+          },
+          {
+            type: "function" as const,
+            function: {
+              name: "getCrossSystemSummary",
+              description: "Get a cross-system summary for a specific date. Returns shift count, sales data, and borrow transactions for that day.",
+              parameters: {
+                type: "object",
+                properties: {
+                  date: { type: "string", description: "Date in YYYY-MM-DD format" }
+                },
+                required: ["date"]
+              }
+            }
           }
-        ]
+        ];
+
+      async function handleToolCall(name: string, args: any): Promise<string> {
+        switch (name) {
+          case "getTableRows":
+            return JSON.stringify(await storage.getTableRows(args.tableName, args.limit || 50));
+          case "getShiftsForDate": {
+            const shifts = await storage.getShiftsInRange(args.date, args.date);
+            return JSON.stringify({ date: args.date, totalStaff: shifts.length, shifts });
+          }
+          case "getShiftsInRange":
+            return JSON.stringify(await storage.getShiftsInRange(args.startDate, args.endDate));
+          case "getSalesSummary":
+            return JSON.stringify(await storage.getDailySalesReportsForMonth(args.year, args.month));
+          case "getCrossSystemSummary": {
+            const [dayShifts, salesReport, borrowTxs, laborData] = await Promise.all([
+              storage.getShiftsInRange(args.date, args.date),
+              storage.getDailySalesReportByDate(args.date),
+              storage.getBorrowTransactions(100),
+              storage.getDailyLabor(args.date)
+            ]);
+            const dayBorrows = borrowTxs.filter((t: any) => t.txDate === args.date);
+            return JSON.stringify({
+              date: args.date,
+              shifts: { total: dayShifts.length, byGroup: dayShifts.reduce((acc: any, s: any) => { acc[s.shiftGroup] = (acc[s.shiftGroup] || 0) + 1; return acc; }, {}) },
+              sales: salesReport || null,
+              labor: laborData || null,
+              borrows: { total: dayBorrows.length, items: dayBorrows }
+            });
+          }
+          default:
+            return JSON.stringify({ error: "Unknown function" });
+        }
+      }
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        max_completion_tokens: 2048,
+        tools: channTools
       });
 
       const toolCalls = response.choices[0]?.message?.tool_calls;
       if (toolCalls && toolCalls.length > 0) {
+        messages.push(response.choices[0].message);
         for (const toolCall of toolCalls) {
-          if ((toolCall as any).function?.name === "getTableRows") {
-            const args = JSON.parse((toolCall as any).function.arguments);
-            const tableData = await storage.getTableRows(args.tableName, args.limit);
-            messages.push(response.choices[0].message);
-            messages.push({
-              role: "tool",
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(tableData)
-            });
-          }
+          const fnName = (toolCall as any).function?.name;
+          const args = JSON.parse((toolCall as any).function.arguments);
+          const result = await handleToolCall(fnName, args);
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: result
+          });
         }
 
         const secondResponse = await openai.chat.completions.create({
           model: "gpt-4o",
           messages,
+          max_completion_tokens: 2048
         });
 
         const secondReply = secondResponse.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
@@ -778,6 +873,91 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const shifts = await storage.getShiftsInRange(range.start, range.end);
     const allUsers = await storage.getUsers();
     res.json({ ok: true, weekRange: range, roster: shifts, users: allUsers });
+  });
+
+  // ==========================================
+  // 📊 Unified Dashboard & Cross-System APIs
+  // ==========================================
+
+  app.post("/api/unified-dashboard", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false });
+
+    const today = new Date().toISOString().split("T")[0];
+    const isManager = u.role === "manager" || u.role === "admin";
+
+    try {
+      const [todayShifts, salesReport, borrowTxs, allUsers, laborData] = await Promise.all([
+        storage.getShiftsInRange(today, today),
+        storage.getDailySalesReportByDate(today),
+        storage.getBorrowTransactions(10),
+        storage.getUsers(),
+        storage.getDailyLabor(today)
+      ]);
+
+      const shiftsByGroup = todayShifts.reduce((acc: any, s: any) => {
+        acc[s.shiftGroup] = (acc[s.shiftGroup] || 0) + 1;
+        return acc;
+      }, {});
+
+      const activeStaff = allUsers.filter((u: any) => u.active === 1).length;
+      const pendingBorrows = borrowTxs.filter((t: any) => t.status === "pending").length;
+
+      res.json({
+        ok: true,
+        date: today,
+        shifts: {
+          total: todayShifts.length,
+          byGroup: shiftsByGroup,
+          staff: todayShifts.map((s: any) => ({ username: s.username, nickName: s.nickName, shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime }))
+        },
+        sales: salesReport ? {
+          actualSales: salesReport.actualSales,
+          dailyTarget: salesReport.dailyTarget,
+          transactionCount: salesReport.transactionCount,
+        } : null,
+        labor: laborData ? {
+          actualHours: laborData.actualHours,
+          otHours: laborData.otHours,
+          summaryHours: laborData.summaryHours,
+          laborCostTotal: laborData.laborCostTotal,
+          colPercent: laborData.colPercent
+        } : null,
+        borrows: {
+          recent: borrowTxs.slice(0, 5).map((t: any) => ({
+            id: t.id, txDate: t.txDate, txType: t.txType, branch: t.branch, item: t.item, qty: t.qty, unit: t.unit, status: t.status
+          })),
+          pendingCount: pendingBorrows
+        },
+        stats: {
+          activeStaff,
+          todayShiftCount: todayShifts.length,
+        }
+      });
+    } catch (e: any) {
+      console.error("Unified dashboard error:", e);
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  app.post("/api/shift-count-for-date", async (req, res) => {
+    const { token, date } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false });
+
+    try {
+      const shifts = await storage.getShiftsInRange(date, date);
+      const byGroup = shifts.reduce((acc: any, s: any) => {
+        acc[s.shiftGroup] = (acc[s.shiftGroup] || 0) + 1;
+        return acc;
+      }, {});
+      res.json({ ok: true, date, total: shifts.length, byGroup, shifts: shifts.map((s: any) => ({ username: s.username, nickName: s.nickName, shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime })) });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
   });
 
   // ==========================================

@@ -615,7 +615,12 @@ export class DatabaseStorage implements IStorage {
       daily_sales_reports: dailySalesReports, 
       store_settings: storeSettings, 
       daily_targets: dailyTargets,
-      manager_requests: managerRequests
+      manager_requests: managerRequests,
+      borrow_branches: borrowBranches,
+      borrow_items: borrowItems,
+      borrow_transactions: borrowTransactions,
+      labor_settings: laborSettings,
+      daily_labor: dailyLabor
     };
     const table = allowedTables[tableName];
     if (!table) throw new Error(`Unknown table: ${tableName}`);

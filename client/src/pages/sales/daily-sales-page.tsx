@@ -506,6 +506,8 @@ export default function DailySalesPage() {
   // State for default target from settings
   const [defaultDailyTarget, setDefaultDailyTarget] = useState("250000");
 
+  const [shiftCountData, setShiftCountData] = useState<any>(null);
+  
   // State for labor settings (constants)
   const [laborSettings, setLaborSettings] = useState({
     rosterHours: 88,
@@ -629,6 +631,20 @@ export default function DailySalesPage() {
 
   // Load daily target, MTD summary, and existing report when date changes
   const reportDate = form.watch("reportDate");
+
+  useEffect(() => {
+    const loadShiftCount = async () => {
+      if (!reportDate) return;
+      try {
+        const token = localStorage.getItem("bk_token");
+        const res = await apiRequest("POST", "/api/shift-count-for-date", { token, date: reportDate });
+        const data = await res.json();
+        if (data.ok) setShiftCountData(data);
+      } catch (e) { console.error("Failed to load shift count:", e); }
+    };
+    loadShiftCount();
+  }, [reportDate]);
+
   useEffect(() => {
     const loadDailyTargetAndMtd = async () => {
       if (!reportDate) return;
@@ -2585,22 +2601,34 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-sm md:text-base font-medium">
                       {t.labor}
                     </h3>
-                    <Link href="/sales/settings">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        data-testid="button-labor-settings"
-                      >
-                        <Settings className="w-3 h-3 mr-1" />
-                        {language === "th" ? "ตั้งค่า" : "Settings"}
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {shiftCountData && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md" data-testid="text-shift-count-labor">
+                          {language === "th" ? `จองกะ ${shiftCountData.total} คน` : `${shiftCountData.total} staff booked`}
+                          {shiftCountData.byGroup && Object.keys(shiftCountData.byGroup).length > 0 && (
+                            <span className="ml-1 opacity-70">
+                              ({Object.entries(shiftCountData.byGroup).map(([k, v]) => `${k}:${v}`).join(" ")})
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      <Link href="/sales/settings">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          data-testid="button-labor-settings"
+                        >
+                          <Settings className="w-3 h-3 mr-1" />
+                          {language === "th" ? "ตั้งค่า" : "Settings"}
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     <FormField

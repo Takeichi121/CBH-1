@@ -2489,7 +2489,7 @@ function ManagerTeamRosterView() {
 
   const managerTeam =
     rosterData?.users?.filter(
-      (u: any) => u.role === "manager" && u.active === 1,
+      (u: any) => (u.role === "manager" || u.role === "admin") && u.active === 1,
     ) || [];
 
   // Filter roster shifts to only include manager shifts

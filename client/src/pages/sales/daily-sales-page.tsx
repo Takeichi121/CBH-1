@@ -2821,6 +2821,43 @@ ${v.staffRosterText || ""}
                       </Link>
                     </div>
                   </div>
+                  {shiftCountData && shiftCountData.shifts && shiftCountData.shifts.length > 0 && (
+                    <div className="mb-3 border border-border/50 rounded-md overflow-hidden" data-testid="table-shift-schedule">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="text-left px-2 py-1.5 font-medium">{language === "th" ? "ชื่อ" : "Name"}</th>
+                            <th className="text-left px-2 py-1.5 font-medium">{language === "th" ? "กะ" : "Shift"}</th>
+                            <th className="text-left px-2 py-1.5 font-medium">{language === "th" ? "เวลา" : "Time"}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {shiftCountData.shifts.map((s: any, i: number) => (
+                            <tr key={i} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                              <td className="px-2 py-1.5">{s.nickName || s.fullName || s.username}</td>
+                              <td className="px-2 py-1.5">
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                  s.shiftGroup === "open" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                                  s.shiftGroup === "lunch" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                                  s.shiftGroup === "dinner" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                                  s.shiftGroup === "late" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" :
+                                  "bg-muted text-muted-foreground"
+                                }`}>
+                                  {s.shiftGroup === "open" ? (language === "th" ? "เปิด" : "Open") :
+                                   s.shiftGroup === "lunch" ? (language === "th" ? "กลางวัน" : "Lunch") :
+                                   s.shiftGroup === "dinner" ? (language === "th" ? "เย็น" : "Dinner") :
+                                   s.shiftGroup === "late" ? (language === "th" ? "ดึก" : "Late") :
+                                   s.shiftGroup === "off" ? "OFF" :
+                                   s.shiftGroup}
+                                </span>
+                              </td>
+                              <td className="px-2 py-1.5">{s.startTime}-{s.endTime}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     <FormField
                       control={form.control}

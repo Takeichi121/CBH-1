@@ -954,7 +954,18 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         acc[s.shiftGroup] = (acc[s.shiftGroup] || 0) + 1;
         return acc;
       }, {});
-      res.json({ ok: true, date, total: shifts.length, byGroup, shifts: shifts.map((s: any) => ({ username: s.username, nickName: s.nickName, shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime })) });
+      const enrichedShifts = await Promise.all(shifts.map(async (s: any) => {
+        const user = await storage.getUser(s.username);
+        return {
+          username: s.username,
+          nickName: user?.nickName || s.nickName || null,
+          fullName: user?.fullName || null,
+          shiftGroup: s.shiftGroup,
+          startTime: s.startTime,
+          endTime: s.endTime,
+        };
+      }));
+      res.json({ ok: true, date, total: shifts.length, byGroup, shifts: enrichedShifts });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }

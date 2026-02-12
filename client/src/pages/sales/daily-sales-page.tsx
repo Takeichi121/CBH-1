@@ -48,6 +48,7 @@ import {
   Plus,
   X,
   Settings,
+  ClipboardPaste,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
@@ -1245,6 +1246,125 @@ ${v.staffRosterText || ""}
     setAddonDialogOpen(false);
   };
 
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteDate, setPasteDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const parseLineReport = (text: string) => {
+    const stripped = text.replace(/[\u{1F300}-\u{1FAD6}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{200D}\u{FE0F}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "");
+    const clean = (s: string) => s.replace(/,/g, "").trim();
+    const num = (s: string) => {
+      const v = clean(s);
+      const n = parseFloat(v);
+      return isNaN(n) ? "0" : String(n);
+    };
+
+    const parsed: Record<string, string> = {};
+
+    const dateMatch = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dateMatch) {
+      const [, d, m, y] = dateMatch;
+      parsed.reportDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+
+    const salesMatch = stripped.match(/Daily\s*Sales\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)/i);
+    if (salesMatch) {
+      parsed.actualSales = num(salesMatch[1]);
+      parsed.dailyTarget = num(salesMatch[2]);
+    }
+
+    const mtdSaleMatch = stripped.match(/MTD\s*Sale[s]?\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)/i);
+    if (mtdSaleMatch) {
+      parsed.mtdActual = num(mtdSaleMatch[1]);
+      parsed.mtdTarget = num(mtdSaleMatch[2]);
+    }
+
+    const dailyTcMatch = stripped.match(/Daily\s*TC\s*[=:]\s*([\d,.]+)/i);
+    if (dailyTcMatch) parsed.transactionCount = num(dailyTcMatch[1]);
+
+    const mtdTcMatch = stripped.match(/MTD\s*TC\s*[=:]\s*([\d,.]+)/i);
+    if (mtdTcMatch) parsed.mtdTc = num(mtdTcMatch[1]);
+
+    const dineInMatch = stripped.match(/Dine\s*[- ]?\s*in\s*[=:]\s*([\d,.]+)/i);
+    if (dineInMatch) parsed.dineIn = num(dineInMatch[1]);
+
+    const takeawayMatch = stripped.match(/Take\s*[- ]?\s*away\s*[=:]\s*([\d,.]+)/i);
+    if (takeawayMatch) parsed.takeAway = num(takeawayMatch[1]);
+
+    const grabMatch = stripped.match(/Grab\s*(?:Food)?\s*[=:]\s*([\d,.]+)/i);
+    if (grabMatch) parsed.grabfood = num(grabMatch[1]);
+
+    const linemanMatch = stripped.match(/Line\s*[- ]?\s*Man\s*[=:]\s*([\d,.]+)/i);
+    if (linemanMatch) parsed.lineman = num(linemanMatch[1]);
+
+    const shopeeMatch = stripped.match(/Shopee\s*(?:food)?\s*[=:]\s*([\d,.]+)/i);
+    if (shopeeMatch) parsed.shopee = num(shopeeMatch[1]);
+
+    const bkappMatch = stripped.match(/BK\s*App\s*[=:]\s*([\d,.]+)/i);
+    if (bkappMatch) parsed.bkapp = num(bkappMatch[1]);
+
+    const robinMatch = stripped.match(/Robin\s*[=:]\s*([\d,.]+)/i);
+    if (robinMatch) parsed.robin = num(robinMatch[1]);
+
+    const gokooMatch = stripped.match(/Go\s*KOO\s*[=:]\s*([\d,.]+)/i);
+    if (gokooMatch) parsed.gokoo = num(gokooMatch[1]);
+
+    const sosDailyMatch = stripped.match(/(?:^|\n)\s*SOS\s*[=:]\s*([\d,.]+)/im);
+    if (sosDailyMatch) parsed.sosDaily = num(sosDailyMatch[1]);
+
+    const sosMtdMatch = stripped.match(/MTD\s*SOS\s*[=:]\s*([\d,.]+)/i);
+    if (sosMtdMatch) parsed.sosMtd = num(sosMtdMatch[1]);
+
+    const wasteDailyMatch = stripped.match(/Waste\s*Daily\s*[=:]\s*([\d,.]+)/i);
+    if (wasteDailyMatch) parsed.wasteDailyTotal = num(wasteDailyMatch[1]);
+
+    const wasteMtdMatch = stripped.match(/Waste\s*MTD\s*[=:]\s*([\d,.]+)/i);
+    if (wasteMtdMatch) parsed.wasteMtdTotal = num(wasteMtdMatch[1]);
+
+    const workHourMatch = stripped.match(/Work\s*Hour\s*[=:]\s*([\d,.]+)/i);
+    if (workHourMatch) parsed.actualHours = num(workHourMatch[1]);
+
+    const osatMatch = stripped.match(/OSAT\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)\s*comments?/i);
+    if (osatMatch) {
+      parsed.osatScore = num(osatMatch[1]);
+      parsed.osatComments = num(osatMatch[2]);
+    }
+
+    const reportByMatch = stripped.match(/Report\s*by\s+(\S+)/i);
+    if (reportByMatch) parsed.reportBy = reportByMatch[1];
+
+    return parsed;
+  };
+
+  const handlePasteImport = () => {
+    if (!pasteText.trim()) {
+      toast({ variant: "destructive", title: language === "th" ? "กรุณาวางข้อความ" : "Please paste text" });
+      return;
+    }
+
+    const parsed = parseLineReport(pasteText);
+
+    if (pasteDate) {
+      parsed.reportDate = pasteDate;
+    }
+
+    Object.entries(parsed).forEach(([key, value]) => {
+      form.setValue(key as any, value, { shouldDirty: true });
+    });
+
+    markAsChanged();
+
+    toast({
+      title: language === "th" ? "นำเข้าข้อมูลสำเร็จ" : "Data imported successfully",
+      description: language === "th"
+        ? `กรอกข้อมูล ${Object.keys(parsed).length} ช่องอัตโนมัติ`
+        : `Auto-filled ${Object.keys(parsed).length} fields`,
+    });
+
+    setPasteDialogOpen(false);
+    setPasteText("");
+  };
+
   const t = {
     formTitle: language === "th" ? "สรุปยอดรายวัน" : "Daily Sales Report",
     formSubtitle:
@@ -1362,9 +1482,80 @@ ${v.staffRosterText || ""}
             <Form {...form}>
               <form className="space-y-6">
                 <div className="bg-muted/50 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.basicInfo}
-                  </h3>
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.basicInfo}
+                    </h3>
+                    <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1"
+                          data-testid="button-paste-line-report"
+                        >
+                          <ClipboardPaste className="w-4 h-4" />
+                          {language === "th" ? "วางข้อมูล LINE" : "Paste LINE Report"}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle>
+                            {language === "th" ? "วางข้อมูลจาก LINE" : "Paste LINE Report"}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">
+                              {language === "th" ? "เลือกวันที่" : "Select Date"}
+                            </label>
+                            <Input
+                              type="date"
+                              value={pasteDate}
+                              onChange={(e) => setPasteDate(e.target.value)}
+                              className="text-sm"
+                              data-testid="input-paste-date"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">
+                              {language === "th" ? "วางข้อความรายงานจาก LINE" : "Paste report text from LINE"}
+                            </label>
+                            <Textarea
+                              value={pasteText}
+                              onChange={(e) => setPasteText(e.target.value)}
+                              placeholder={language === "th"
+                                ? "วางข้อความรายงาน LINE ที่นี่...\nเช่น:\n💵Daily Sales=150,000/110,000\n👨‍👩‍👧‍👦Daily TC =450"
+                                : "Paste LINE report text here..."}
+                              rows={12}
+                              className="text-sm font-mono"
+                              data-testid="textarea-paste-line"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setPasteDialogOpen(false)}
+                              data-testid="button-paste-cancel"
+                            >
+                              {language === "th" ? "ยกเลิก" : "Cancel"}
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={handlePasteImport}
+                              className="gap-1"
+                              data-testid="button-paste-import"
+                            >
+                              <ClipboardPaste className="w-4 h-4" />
+                              {language === "th" ? "นำเข้าข้อมูล" : "Import Data"}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField
                       control={form.control}

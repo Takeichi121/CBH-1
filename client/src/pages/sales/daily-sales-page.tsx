@@ -1354,9 +1354,28 @@ ${v.staffRosterText || ""}
       }
     }
 
-    const rosterTomorrowMatch = stripped.match(/Roster\s*Tomorrow\s*([\s\S]*?)(?:\n\s*\n|$)/i);
-    if (rosterTomorrowMatch) {
-      const rosterBlock = rosterTomorrowMatch[1].trim();
+    const rosterTomorrowMatch = stripped.match(/(?:Roster\s*(?:Tomorrow|Staff|พนักงาน)|Staff\s*Roster)\s*([\s\S]*?)(?:\n\s*\n|$)/i);
+    let rosterBlock = rosterTomorrowMatch ? rosterTomorrowMatch[1].trim() : "";
+    if (!rosterBlock) {
+      const allLines = stripped.split("\n");
+      const managerNamesSet = new Set(managerNames.map(n => n.toLowerCase()));
+      const rosterLines: string[] = [];
+      for (const line of allLines) {
+        const trimmed = line.trim();
+        const tm = trimmed.match(/([\d.:]+\s*-\s*[\d.:]+)\s*[=:|]\s*(.+)/);
+        if (tm) {
+          const namesPart = tm[2].trim().split(/[\s,|]+/);
+          const isManager = namesPart.every(n => managerNamesSet.has(n.toLowerCase()));
+          if (!isManager) {
+            rosterLines.push(trimmed);
+          }
+        }
+      }
+      if (rosterLines.length >= 2) {
+        rosterBlock = rosterLines.join("\n");
+      }
+    }
+    if (rosterBlock) {
       const lines = rosterBlock.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
       const staffEntries: Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }> = [];
       const knownShifts = ["07:00-16:00","09:00-18:00","10:00-19:00","11:00-20:00","12:00-21:00","13:00-22:00","14:00-23:00","15:00-00:00","18:00-00:00","19:00-04:00","21:00-06:00","22:00-07:00"];

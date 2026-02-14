@@ -1285,22 +1285,28 @@ ${v.staffRosterText || ""}
     const mtdTcMatch = stripped.match(/MTD\s*TC\s*[=:]\s*([\d,.]+)/i);
     if (mtdTcMatch) parsed.mtdTc = num(mtdTcMatch[1]);
 
-    const dineInMatch = stripped.match(/Dine\s*[- ]?\s*in\s*[=:]\s*([\d,.]+)/i);
-    if (dineInMatch) parsed.dineIn = num(dineInMatch[1]);
+    const dineInMatch = stripped.match(/Dine\s*[-]?\s*in\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d,.]+))?/i);
+    if (dineInMatch) {
+      parsed.dineIn = num(dineInMatch[1]);
+      if (dineInMatch[2]) parsed.dineInTc = num(dineInMatch[2]);
+    }
 
-    const takeawayMatch = stripped.match(/Take\s*[- ]?\s*away\s*[=:]\s*([\d,.]+)/i);
-    if (takeawayMatch) parsed.takeAway = num(takeawayMatch[1]);
+    const takeawayMatch = stripped.match(/Take\s*[-]?\s*away\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d,.]+))?/i);
+    if (takeawayMatch) {
+      parsed.takeAway = num(takeawayMatch[1]);
+      if (takeawayMatch[2]) parsed.takeAwayTc = num(takeawayMatch[2]);
+    }
 
     const grabMatch = stripped.match(/Grab\s*(?:Food)?\s*[=:]\s*([\d,.]+)/i);
     if (grabMatch) parsed.grabfood = num(grabMatch[1]);
 
-    const linemanMatch = stripped.match(/Line\s*[- ]?\s*Man\s*[=:]\s*([\d,.]+)/i);
+    const linemanMatch = stripped.match(/Line\s*[-]?\s*Man\s*[=:]\s*([\d,.]+)/i);
     if (linemanMatch) parsed.lineman = num(linemanMatch[1]);
 
     const shopeeMatch = stripped.match(/Shopee\s*(?:food)?\s*[=:]\s*([\d,.]+)/i);
     if (shopeeMatch) parsed.shopee = num(shopeeMatch[1]);
 
-    const bkappMatch = stripped.match(/BK\s*App\s*[=:]\s*([\d,.]+)/i);
+    const bkappMatch = stripped.match(/(?:BK\s*App|1112)\s*[=:]\s*([\d,.]+)/i);
     if (bkappMatch) parsed.bkapp = num(bkappMatch[1]);
 
     const robinMatch = stripped.match(/Robin\s*[=:]\s*([\d,.]+)/i);
@@ -1309,7 +1315,7 @@ ${v.staffRosterText || ""}
     const gokooMatch = stripped.match(/Go\s*KOO\s*[=:]\s*([\d,.]+)/i);
     if (gokooMatch) parsed.gokoo = num(gokooMatch[1]);
 
-    const sosDailyMatch = stripped.match(/(?:^|\n)\s*SOS\s*[=:]\s*([\d,.]+)/im);
+    const sosDailyMatch = stripped.match(/(?:^|\n)[^M\n]*SOS\s*[=:]\s*([\d,.]+)/im);
     if (sosDailyMatch) parsed.sosDaily = num(sosDailyMatch[1]);
 
     const sosMtdMatch = stripped.match(/MTD\s*SOS\s*[=:]\s*([\d,.]+)/i);
@@ -1330,6 +1336,51 @@ ${v.staffRosterText || ""}
       parsed.osatComments = num(osatMatch[2]);
     }
 
+    const managerNames = ["Phongsathon", "Nuttarika", "Boonyisa", "Chanon", "Washiraphan"];
+    const normalizeShift = (raw: string) => {
+      let s = raw.trim().replace(/\./g, ":");
+      s = s.replace(/24:00/g, "00:00");
+      s = s.replace(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/, (_, h1, m1, h2, m2) =>
+        `${h1.padStart(2,"0")}:${m1}-${h2.padStart(2,"0")}:${m2}`
+      );
+      return s;
+    };
+    for (const name of managerNames) {
+      const mgrMatch = stripped.match(new RegExp(name + "\\s*[=:]\\s*([\\d.:]+\\s*-\\s*[\\d.:]+|OFF|COM|Vacation|QSNCC)", "i"));
+      if (mgrMatch) {
+        const val = normalizeShift(mgrMatch[1]);
+        const key = `manager${name}` as string;
+        parsed[key] = val;
+      }
+    }
+
+    const rosterTomorrowMatch = stripped.match(/Roster\s*Tomorrow\s*([\s\S]*?)(?:\n\s*\n|$)/i);
+    if (rosterTomorrowMatch) {
+      const rosterBlock = rosterTomorrowMatch[1].trim();
+      const lines = rosterBlock.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+      const staffEntries: Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }> = [];
+      const knownShifts = ["07:00-16:00","09:00-18:00","10:00-19:00","11:00-20:00","12:00-21:00","13:00-22:00","14:00-23:00","15:00-00:00","18:00-00:00","19:00-04:00","21:00-06:00","22:00-07:00"];
+      for (const line of lines) {
+        const timeMatch = line.match(/([\d.:]+\s*-\s*[\d.:]+)\s*[=:|]\s*(.+)/);
+        if (timeMatch) {
+          const normalizedTime = normalizeShift(timeMatch[1]);
+          const names = timeMatch[2].trim().split(/[\s,|]+/);
+          for (const name of names) {
+            if (!name.trim()) continue;
+            if (knownShifts.includes(normalizedTime)) {
+              staffEntries.push({ shiftGroup: normalizedTime, staffName: name.trim() });
+            } else {
+              const parts = normalizedTime.split("-");
+              staffEntries.push({ shiftGroup: "CUSTOM", staffName: name.trim(), customStart: parts[0], customEnd: parts[1] });
+            }
+          }
+        }
+      }
+      if (staffEntries.length > 0) {
+        parsed._staffRosterEntries = JSON.stringify(staffEntries);
+      }
+    }
+
     const reportByMatch = stripped.match(/Report\s*by\s+(\S+)/i);
     if (reportByMatch) parsed.reportBy = reportByMatch[1];
 
@@ -1348,17 +1399,30 @@ ${v.staffRosterText || ""}
       parsed.reportDate = pasteDate;
     }
 
+    let staffRosterParsed = false;
+    if (parsed._staffRosterEntries) {
+      try {
+        const entries = JSON.parse(parsed._staffRosterEntries);
+        if (entries.length > 0) {
+          setStaffRosterEntries(entries);
+          staffRosterParsed = true;
+        }
+      } catch {}
+      delete parsed._staffRosterEntries;
+    }
+
     Object.entries(parsed).forEach(([key, value]) => {
       form.setValue(key as any, value, { shouldDirty: true });
     });
 
     markAsChanged();
 
+    const fieldCount = Object.keys(parsed).length + (staffRosterParsed ? 1 : 0);
     toast({
       title: language === "th" ? "นำเข้าข้อมูลสำเร็จ" : "Data imported successfully",
       description: language === "th"
-        ? `กรอกข้อมูล ${Object.keys(parsed).length} ช่องอัตโนมัติ`
-        : `Auto-filled ${Object.keys(parsed).length} fields`,
+        ? `กรอกข้อมูล ${fieldCount} ช่องอัตโนมัติ`
+        : `Auto-filled ${fieldCount} fields`,
     });
 
     setPasteDialogOpen(false);

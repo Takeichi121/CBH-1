@@ -1596,6 +1596,41 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     }
   });
 
+  // Weekly Sales Reports
+  app.post(api.sales.upsertWeeklyReport.path, async (req, res) => {
+    const { token, report } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    try {
+      const saved = await storage.upsertWeeklySalesReport(report);
+      res.json({ ok: true, report: saved });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to save weekly report" });
+    }
+  });
+
+  app.post(api.sales.getWeeklyReport.path, async (req, res) => {
+    const { token, weekStartDate } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const report = await storage.getWeeklySalesReport(weekStartDate);
+    res.json({ ok: true, report: report || null });
+  });
+
+  app.post(api.sales.getWeeklyReports.path, async (req, res) => {
+    const { token, limit } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    try {
+      const reports = await storage.getWeeklySalesReports(limit || 20);
+      res.json({ ok: true, reports });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get weekly reports" });
+    }
+  });
+
   app.post(api.sales.getWasteTargets.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -91,6 +91,11 @@ export interface IStorage {
   upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget>;
   bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void>;
   getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number>;
+
+  // Weekly Sales Reports
+  getWeeklySalesReport(weekStartDate: string): Promise<WeeklySalesReport | undefined>;
+  upsertWeeklySalesReport(report: InsertWeeklySales): Promise<WeeklySalesReport>;
+  getWeeklySalesReports(limit?: number): Promise<WeeklySalesReport[]>;
 
   // Waste Targets
   getWasteTarget(targetMonth: string): Promise<WasteTarget | undefined>;
@@ -875,6 +880,33 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return inserted;
     }
+  }
+  // Weekly Sales Reports
+  async getWeeklySalesReport(weekStartDate: string): Promise<WeeklySalesReport | undefined> {
+    const [report] = await db.select().from(weeklySalesReports)
+      .where(eq(weeklySalesReports.weekStartDate, weekStartDate));
+    return report;
+  }
+
+  async upsertWeeklySalesReport(report: InsertWeeklySales): Promise<WeeklySalesReport> {
+    const existing = await this.getWeeklySalesReport(report.weekStartDate);
+    if (existing) {
+      const [updated] = await db.update(weeklySalesReports)
+        .set({ ...report, updatedAt: new Date().toISOString() })
+        .where(eq(weeklySalesReports.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(weeklySalesReports)
+      .values({ ...report, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .returning();
+    return created;
+  }
+
+  async getWeeklySalesReports(limit?: number): Promise<WeeklySalesReport[]> {
+    const q = db.select().from(weeklySalesReports).orderBy(desc(weeklySalesReports.weekStartDate));
+    if (limit) return await q.limit(limit);
+    return await q;
   }
 }
 

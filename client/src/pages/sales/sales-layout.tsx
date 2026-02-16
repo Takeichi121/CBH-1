@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
-import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database } from "lucide-react";
+import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SalesLayoutProps {
@@ -22,6 +22,11 @@ export function SalesLayout({ children }: SalesLayoutProps) {
       href: "/sales/daily",
       label: language === "th" ? "กรอกข้อมูล" : "Daily Sales",
       icon: FileEdit,
+    },
+    {
+      href: "/sales/weekly",
+      label: language === "th" ? "รายสัปดาห์" : "Weekly",
+      icon: CalendarRange,
     },
     {
       href: "/sales/reports",

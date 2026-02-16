@@ -437,6 +437,30 @@ export const api = {
         200: z.object({ ok: z.boolean(), message: z.string().optional() }),
       },
     },
+    upsertWeeklyReport: {
+      method: "POST",
+      path: "/api/sales/upsertWeeklyReport",
+      input: z.object({ token: z.string(), report: z.any() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional(), message: z.string().optional() }),
+      },
+    },
+    getWeeklyReport: {
+      method: "POST",
+      path: "/api/sales/getWeeklyReport",
+      input: z.object({ token: z.string(), weekStartDate: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), report: z.any().optional() }),
+      },
+    },
+    getWeeklyReports: {
+      method: "POST",
+      path: "/api/sales/getWeeklyReports",
+      input: z.object({ token: z.string(), limit: z.number().optional() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), reports: z.array(z.any()).optional() }),
+      },
+    },
   },
   managerRequests: {
     create: {

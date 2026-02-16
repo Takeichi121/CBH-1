@@ -251,6 +251,35 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Weekly Sales Reports
+export const weeklySalesReports = pgTable("weekly_sales_reports", {
+  id: serial("id").primaryKey(),
+  weekStartDate: text("week_start_date").notNull(),
+  weekEndDate: text("week_end_date").notNull(),
+  reportBy: text("report_by").notNull(),
+
+  sale: text("sale").default(""),
+  tc: text("tc").default(""),
+  ta: text("ta").default(""),
+  cog: text("cog").default(""),
+  waste: text("waste").default(""),
+  unac: text("unac").default(""),
+  sos: text("sos").default(""),
+  gsi: text("gsi").default(""),
+  osat: text("osat").default(""),
+  delivery: text("delivery").default(""),
+  googleReview: text("google_review").default(""),
+  colMtd: text("col_mtd").default(""),
+
+  wasteTop3: text("waste_top3").default(""),
+  unaccountedTop3: text("unaccounted_top3").default(""),
+
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => ({
+  uniqueWeek: unique().on(t.weekStartDate),
+}));
+
 export const dailyTargets = pgTable("daily_targets", {
   id: serial("id").primaryKey(),
   targetDate: text("target_date").notNull(),
@@ -498,6 +527,7 @@ export const insertBorrowItemSchema = createInsertSchema(borrowItems).omit({ id:
 export const insertBorrowTransactionSchema = createInsertSchema(borrowTransactions).omit({ id: true });
 export const insertLaborSettingsSchema = createInsertSchema(laborSettings).omit({ id: true });
 export const insertDailyLaborSchema = createInsertSchema(dailyLabor).omit({ id: true });
+export const insertWeeklySalesSchema = createInsertSchema(weeklySalesReports).omit({ id: true });
 export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertStaffChatMessageSchema = createInsertSchema(staffChatMessages).omit({ id: true });
@@ -536,6 +566,8 @@ export type LaborSettings = typeof laborSettings.$inferSelect;
 export type InsertLaborSettings = z.infer<typeof insertLaborSettingsSchema>;
 export type DailyLabor = typeof dailyLabor.$inferSelect;
 export type InsertDailyLabor = z.infer<typeof insertDailyLaborSchema>;
+export type WeeklySalesReport = typeof weeklySalesReports.$inferSelect;
+export type InsertWeeklySales = z.infer<typeof insertWeeklySalesSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;

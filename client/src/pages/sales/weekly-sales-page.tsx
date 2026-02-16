@@ -82,14 +82,23 @@ export default function WeeklySalesPage() {
       });
       const data = await res.json();
       if (data.ok && data.report) {
+        const fmt = (v: string) => {
+          if (!v) return "";
+          const stripped = v.replace(/,/g, "");
+          const num = stripped.replace(/[^0-9.]/g, "");
+          if (!num || isNaN(Number(num))) return v;
+          const parts = num.split(".");
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+          return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
+        };
         setForm({
-          sale: data.report.sale || "",
-          tc: data.report.tc || "",
-          ta: data.report.ta || "",
+          sale: fmt(data.report.sale || ""),
+          tc: fmt(data.report.tc || ""),
+          ta: fmt(data.report.ta || ""),
           cog: data.report.cog || "",
           waste: data.report.waste || "",
           unac: data.report.unac || "",
-          sos: data.report.sos || "",
+          sos: fmt(data.report.sos || ""),
           gsi: data.report.gsi || "",
           osat: data.report.osat || "",
           delivery: data.report.delivery || "",
@@ -177,8 +186,20 @@ export default function WeeklySalesPage() {
     }
   };
 
+  const numericFields = new Set<keyof WeeklyFormData>(["sale", "tc", "ta", "sos"]);
+
+  const formatWithCommas = (val: string) => {
+    const stripped = val.replace(/,/g, "");
+    const num = stripped.replace(/[^0-9.]/g, "");
+    if (!num) return "";
+    const parts = num.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
+  };
+
   const update = (field: keyof WeeklyFormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    const formatted = numericFields.has(field) ? formatWithCommas(value) : value;
+    setForm((prev) => ({ ...prev, [field]: formatted }));
   };
 
   const isManager = user?.role === "manager" || user?.role === "admin";

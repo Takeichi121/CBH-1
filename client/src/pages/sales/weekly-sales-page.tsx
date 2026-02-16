@@ -56,7 +56,7 @@ export default function WeeklySalesPage() {
   const { user } = useAuth();
   const { language } = useI18n();
   const { toast } = useToast();
-  const token = localStorage.getItem("token") || "";
+  const token = localStorage.getItem("bk_token") || "";
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [form, setForm] = useState<WeeklyFormData>({ ...emptyForm });

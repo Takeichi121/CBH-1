@@ -1,0 +1,87 @@
+// ภายใน function WeeklySalesPage() ...
+
+  // --- 2.1 State ใหม่ ---
+  const [borrowItems, setBorrowItems] = useState<{ id: number; name: string }[]>([]);
+  
+  // State สำหรับ Waste (3 รายการ)
+  const [wasteSelections, setWasteSelections] = useState([
+    { itemName: "", detail: "" },
+    { itemName: "", detail: "" },
+    { itemName: "", detail: "" },
+  ]);
+
+  // State สำหรับ Unaccounted (3 รายการ)
+  const [unacSelections, setUnacSelections] = useState([
+    { itemName: "", detail: "" },
+    { itemName: "", detail: "" },
+    { itemName: "", detail: "" },
+  ]);
+
+  // State ช่วยจัดการการเปิด/ปิด Popover แยกแต่ละช่อง
+  const [openCombobox, setOpenCombobox] = useState<{ type: 'waste' | 'unac', index: number } | null>(null);
+
+  // --- 3. ฟังก์ชันโหลด Borrow Items ---
+  useEffect(() => {
+    const fetchBorrowItems = async () => {
+      try {
+        // ใช้ token จาก auth context หรือ storage ตามระบบเดิมของคุณ
+        const token = localStorage.getItem("token"); 
+        const response = await fetch("/api/borrow/items", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // สมมติ structure data คือ array object { id, name }
+          setBorrowItems(data); 
+        }
+      } catch (error) {
+        console.error("Failed to fetch borrow items", error);
+      }
+    };
+    fetchBorrowItems();
+  }, []);
+
+  // --- 6. ฟังก์ชัน Sync ข้อความ (Waste) ---
+  useEffect(() => {
+    // กรองเฉพาะแถวที่มีการเลือก Item
+    const activeRows = wasteSelections.filter(row => row.itemName);
+    if (activeRows.length > 0) {
+      const text = activeRows
+        .map((row, i) => `${i + 1}. ${row.itemName}${row.detail ? ` - ${row.detail}` : ""}`)
+        .join("\n");
+      form.setValue("wasteTop3", text, { shouldDirty: true });
+    }
+  }, [wasteSelections, form]);
+
+  // --- 6. ฟังก์ชัน Sync ข้อความ (Unaccounted) ---
+  useEffect(() => {
+    const activeRows = unacSelections.filter(row => row.itemName);
+    if (activeRows.length > 0) {
+      const text = activeRows
+        .map((row, i) => `${i + 1}. ${row.itemName}${row.detail ? ` - ${row.detail}` : ""}`)
+        .join("\n");
+      form.setValue("unaccountedTop3", text, { shouldDirty: true });
+    }
+  }, [unacSelections, form]);
+
+  // Helper function สำหรับ update state
+  const updateSelection = (
+    type: 'waste' | 'unac', 
+    index: number, 
+    field: 'itemName' | 'detail', 
+    value: string
+  ) => {
+    if (type === 'waste') {
+      const newRows = [...wasteSelections];
+      newRows[index] = { ...newRows[index], [field]: value };
+      setWasteSelections(newRows);
+    } else {
+      const newRows = [...unacSelections];
+      newRows[index] = { ...newRows[index], [field]: value };
+      setUnacSelections(newRows);
+    }
+  };

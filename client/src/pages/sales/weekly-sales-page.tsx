@@ -9,8 +9,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 function getWeekRange(date: Date) {
   const start = startOfWeek(date, { weekStartsOn: 2 });
@@ -52,6 +66,45 @@ const emptyForm: WeeklyFormData = {
   unaccountedTop3: "",
 };
 
+interface ItemSelection {
+  itemName: string;
+  detail: string;
+}
+
+const emptySelections: ItemSelection[] = [
+  { itemName: "", detail: "" },
+  { itemName: "", detail: "" },
+  { itemName: "", detail: "" },
+];
+
+function parseSelectionsFromText(text: string): ItemSelection[] {
+  if (!text) return [...emptySelections.map(s => ({ ...s }))];
+  const lines = text.split("\n").filter(l => l.trim());
+  const result: ItemSelection[] = [];
+  for (let i = 0; i < 3; i++) {
+    if (i < lines.length) {
+      const line = lines[i].replace(/^\d+\.\s*/, "");
+      const dashIdx = line.indexOf(" - ");
+      if (dashIdx >= 0) {
+        result.push({ itemName: line.substring(0, dashIdx).trim(), detail: line.substring(dashIdx + 3).trim() });
+      } else {
+        result.push({ itemName: line.trim(), detail: "" });
+      }
+    } else {
+      result.push({ itemName: "", detail: "" });
+    }
+  }
+  return result;
+}
+
+function selectionsToText(selections: ItemSelection[]): string {
+  const active = selections.filter(r => r.itemName);
+  if (active.length === 0) return "";
+  return active
+    .map((row, i) => `${i + 1}. ${row.itemName}${row.detail ? ` - ${row.detail}` : ""}`)
+    .join("\n");
+}
+
 export default function WeeklySalesPage() {
   const { user } = useAuth();
   const { language } = useI18n();
@@ -64,14 +117,44 @@ export default function WeeklySalesPage() {
   const [saving, setSaving] = useState(false);
   const [hasData, setHasData] = useState(false);
 
+  const [borrowItems, setBorrowItems] = useState<{ id: number; name: string }[]>([]);
+  const [wasteSelections, setWasteSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
+  const [unacSelections, setUnacSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
+  const [openCombobox, setOpenCombobox] = useState<{ type: 'waste' | 'unac'; index: number } | null>(null);
+
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekEndStr = format(weekEnd, "yyyy-MM-dd");
   const weekLabel = `${format(weekStart, "dd/MM/yyyy")} - ${format(weekEnd, "dd/MM/yyyy")}`;
 
   useEffect(() => {
+    const fetchBorrowItems = async () => {
+      try {
+        const res = await apiRequest("POST", "/api/borrow/items", { token });
+        const data = await res.json();
+        if (data.ok && data.items) {
+          setBorrowItems(data.items.map((item: any) => ({ id: item.id, name: item.name })));
+        }
+      } catch {
+        console.error("Failed to fetch borrow items");
+      }
+    };
+    fetchBorrowItems();
+  }, []);
+
+  useEffect(() => {
     loadWeeklyReport();
   }, [weekStartStr]);
+
+  useEffect(() => {
+    const text = selectionsToText(wasteSelections);
+    setForm(prev => ({ ...prev, wasteTop3: text }));
+  }, [wasteSelections]);
+
+  useEffect(() => {
+    const text = selectionsToText(unacSelections);
+    setForm(prev => ({ ...prev, unaccountedTop3: text }));
+  }, [unacSelections]);
 
   const loadWeeklyReport = async () => {
     setLoading(true);
@@ -107,13 +190,19 @@ export default function WeeklySalesPage() {
           wasteTop3: data.report.wasteTop3 || "",
           unaccountedTop3: data.report.unaccountedTop3 || "",
         });
+        setWasteSelections(parseSelectionsFromText(data.report.wasteTop3 || ""));
+        setUnacSelections(parseSelectionsFromText(data.report.unaccountedTop3 || ""));
         setHasData(true);
       } else {
         setForm({ ...emptyForm });
+        setWasteSelections([...emptySelections.map(s => ({ ...s }))]);
+        setUnacSelections([...emptySelections.map(s => ({ ...s }))]);
         setHasData(false);
       }
     } catch {
       setForm({ ...emptyForm });
+      setWasteSelections([...emptySelections.map(s => ({ ...s }))]);
+      setUnacSelections([...emptySelections.map(s => ({ ...s }))]);
       setHasData(false);
     }
     setLoading(false);
@@ -202,6 +291,35 @@ export default function WeeklySalesPage() {
     setForm((prev) => ({ ...prev, [field]: formatted }));
   };
 
+  const updateSelection = (
+    type: 'waste' | 'unac',
+    index: number,
+    field: 'itemName' | 'detail',
+    value: string
+  ) => {
+    if (type === 'waste') {
+      const newRows = [...wasteSelections];
+      newRows[index] = { ...newRows[index], [field]: value };
+      setWasteSelections(newRows);
+    } else {
+      const newRows = [...unacSelections];
+      newRows[index] = { ...newRows[index], [field]: value };
+      setUnacSelections(newRows);
+    }
+  };
+
+  const clearSelection = (type: 'waste' | 'unac', index: number) => {
+    if (type === 'waste') {
+      const newRows = [...wasteSelections];
+      newRows[index] = { itemName: "", detail: "" };
+      setWasteSelections(newRows);
+    } else {
+      const newRows = [...unacSelections];
+      newRows[index] = { itemName: "", detail: "" };
+      setUnacSelections(newRows);
+    }
+  };
+
   const isManager = user?.role === "manager" || user?.role === "admin";
 
   const t = {
@@ -213,6 +331,10 @@ export default function WeeklySalesPage() {
     wasteTop3: language === "th" ? "Waste Top 3 รายการ" : "Waste Top 3 Items",
     unaccountedTop3: language === "th" ? "Unaccounted Top 3 รายการ" : "Unaccounted Top 3 Items",
     noPermission: language === "th" ? "เฉพาะผู้จัดการ" : "Manager only",
+    selectItem: language === "th" ? "เลือก Item..." : "Select Item...",
+    searchItem: language === "th" ? "ค้นหา item..." : "Search item...",
+    noItems: language === "th" ? "ไม่พบข้อมูล" : "No items found",
+    detailPlaceholder: language === "th" ? "รายละเอียด (เช่น 500 บาท)" : "Detail (e.g. 500 Baht)",
   };
 
   const fields: Array<{ key: keyof WeeklyFormData; label: string; placeholder?: string }> = [
@@ -229,6 +351,95 @@ export default function WeeklySalesPage() {
     { key: "googleReview", label: "Google Review", placeholder: "e.g. 4.3" },
     { key: "colMtd", label: "COL MTD", placeholder: "e.g. 18%" },
   ];
+
+  const renderTop3Selectors = (
+    type: 'waste' | 'unac',
+    selections: ItemSelection[]
+  ) => {
+    return (
+      <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+        {selections.map((row, index) => (
+          <div key={index} className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium w-4">{index + 1}.</span>
+
+            <Popover
+              open={openCombobox?.type === type && openCombobox?.index === index}
+              onOpenChange={(isOpen) =>
+                setOpenCombobox(isOpen ? { type, index } : null)
+              }
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  disabled={!isManager}
+                  className={cn(
+                    "w-[180px] sm:w-[200px] justify-between text-sm",
+                    !row.itemName && "text-muted-foreground"
+                  )}
+                  data-testid={`button-${type}-item-${index}`}
+                >
+                  <span className="truncate">{row.itemName || t.selectItem}</span>
+                  <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder={t.searchItem} />
+                  <CommandList>
+                    <CommandEmpty>{t.noItems}</CommandEmpty>
+                    <CommandGroup>
+                      {borrowItems.map((item) => (
+                        <CommandItem
+                          key={item.id}
+                          value={item.name}
+                          onSelect={(currentValue) => {
+                            updateSelection(type, index, 'itemName', currentValue === row.itemName ? "" : currentValue);
+                            setOpenCombobox(null);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              row.itemName === item.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {item.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <Input
+              placeholder={t.detailPlaceholder}
+              value={row.detail}
+              onChange={(e) => updateSelection(type, index, 'detail', e.target.value)}
+              className="flex-1 min-w-[120px] text-sm"
+              disabled={!isManager}
+              data-testid={`input-${type}-detail-${index}`}
+            />
+
+            <div className={cn("w-9", !(row.itemName || row.detail) && "invisible")}>
+              {(row.itemName || row.detail) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => clearSelection(type, index)}
+                  disabled={!isManager}
+                  data-testid={`button-${type}-clear-${index}`}
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <SalesLayout>
@@ -299,30 +510,14 @@ export default function WeeklySalesPage() {
                   <Label className="text-xs font-medium text-muted-foreground mb-1 block">
                     {t.wasteTop3}
                   </Label>
-                  <Textarea
-                    value={form.wasteTop3}
-                    onChange={(e) => update("wasteTop3", e.target.value)}
-                    placeholder={language === "th" ? "รายการ Waste Top 3 (บรรทัดละรายการ)" : "Waste Top 3 items (one per line)"}
-                    rows={3}
-                    className="text-sm"
-                    disabled={!isManager}
-                    data-testid="input-weekly-wasteTop3"
-                  />
+                  {renderTop3Selectors('waste', wasteSelections)}
                 </div>
 
                 <div>
                   <Label className="text-xs font-medium text-muted-foreground mb-1 block">
                     {t.unaccountedTop3}
                   </Label>
-                  <Textarea
-                    value={form.unaccountedTop3}
-                    onChange={(e) => update("unaccountedTop3", e.target.value)}
-                    placeholder={language === "th" ? "รายการ Unaccounted Top 3 (บรรทัดละรายการ)" : "Unaccounted Top 3 items (one per line)"}
-                    rows={3}
-                    className="text-sm"
-                    disabled={!isManager}
-                    data-testid="input-weekly-unaccountedTop3"
-                  />
+                  {renderTop3Selectors('unac', unacSelections)}
                 </div>
 
                 {isManager && (

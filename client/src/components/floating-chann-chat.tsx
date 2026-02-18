@@ -151,7 +151,7 @@ export function FloatingChannChat() {
         <Button
           onClick={() => setIsOpen(true)}
           size="lg"
-          className="fixed bottom-20 md:bottom-4 right-4 z-50 rounded-full shadow-lg"
+          className="fixed bottom-32 md:bottom-16 right-4 z-50 rounded-full shadow-lg"
           data-testid="button-open-chann-chat"
         >
           <Bot className="w-5 h-5 mr-1" />
@@ -160,7 +160,7 @@ export function FloatingChannChat() {
       )}
 
       {isOpen && (
-        <div className="fixed bottom-20 md:bottom-4 right-4 z-50 w-[360px] h-[500px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden" data-testid="container-chann-chat">
+        <div className="fixed bottom-32 md:bottom-4 right-4 z-[51] w-[360px] max-w-[calc(100vw-2rem)] h-[460px] max-h-[calc(100vh-10rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden" data-testid="container-chann-chat">
           <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">

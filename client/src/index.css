@@ -210,6 +210,11 @@ textarea:not([readonly]),
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.bottom-nav-safe {
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @media (max-width: 768px) {
   button, a, [role="button"], input, select, textarea {
     -webkit-tap-highlight-color: transparent;

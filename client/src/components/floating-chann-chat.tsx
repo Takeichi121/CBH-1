@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useChatCustomization, ChatCustomizationPanel } from "@/components/chat-customization";
@@ -11,6 +11,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  imageUrl?: string;
 }
 
 export function FloatingChannChat() {
@@ -19,8 +20,10 @@ export function FloatingChannChat() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -34,31 +37,61 @@ export function FloatingChannChat() {
     }
   }, [isOpen]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 4 * 1024 * 1024) {
+      alert("ไฟล์ใหญ่เกินไป (สูงสุด 4MB)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const removeImagePreview = () => {
+    setImagePreview(null);
+  };
+
   const sendMessage = async () => {
-    if (!message.trim() || isLoading) return;
+    if ((!message.trim() && !imagePreview) || isLoading) return;
 
     const token = localStorage.getItem("bk_token");
     if (!token) return;
 
+    const currentImage = imagePreview;
     const userMessage: ChatMessage = {
       role: "user",
-      content: message.trim(),
+      content: message.trim() || (currentImage ? "ส่งรูปภาพ" : ""),
       timestamp: new Date().toISOString(),
+      imageUrl: currentImage || undefined,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setMessage("");
+    setImagePreview(null);
     setIsLoading(true);
 
     try {
+      const body: any = {
+        token,
+        message: userMessage.content,
+        history: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
+      };
+      if (currentImage) {
+        body.imageBase64 = currentImage;
+      }
+
       const res = await fetch("/api/chann", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          message: userMessage.content,
-          history: messages.slice(-10),
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -249,7 +282,18 @@ export function FloatingChannChat() {
                       : cn("bg-muted text-foreground", getBubbleStyleClass())
                   )}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {msg.imageUrl && (
+                    <img
+                      src={msg.imageUrl}
+                      alt="sent"
+                      className="max-w-full max-h-40 rounded-md mb-1 cursor-pointer"
+                      onClick={() => window.open(msg.imageUrl, "_blank")}
+                      data-testid={`img-chann-${index}`}
+                    />
+                  )}
+                  {msg.content && msg.content !== "ส่งรูปภาพ" && (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
                 </div>
                 {msg.role === "user" && (
                   <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
@@ -280,7 +324,36 @@ export function FloatingChannChat() {
           </div>
 
           <div className="p-3 border-t border-border">
+            {imagePreview && (
+              <div className="mb-2 relative inline-block">
+                <img src={imagePreview} alt="preview" className="max-h-20 rounded-md border" />
+                <button
+                  onClick={removeImagePreview}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                  data-testid="button-remove-image-preview"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelect}
+              data-testid="input-chann-image"
+            />
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isLoading}
+                data-testid="button-chann-image-upload"
+              >
+                <ImagePlus className="w-4 h-4" />
+              </Button>
               <Input
                 ref={inputRef}
                 value={message}
@@ -293,7 +366,7 @@ export function FloatingChannChat() {
               />
               <Button
                 onClick={sendMessage}
-                disabled={!message.trim() || isLoading}
+                disabled={(!message.trim() && !imagePreview) || isLoading}
                 size="icon"
                 data-testid="button-send-chann-message"
               >

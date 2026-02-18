@@ -115,8 +115,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, history } = req.body;
-      if (!token || !message) {
+      const { token, message, history, imageBase64 } = req.body;
+      if (!token || (!message && !imageBase64)) {
         return res.json({ ok: false, message: "Token and message required" });
       }
 
@@ -186,8 +186,22 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       }
 
-      const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
-      messages.push({ role: "user", content: userContent });
+      if (imageBase64) {
+        const userContentParts: any[] = [];
+        if (message && typeof message === "string" && message.trim()) {
+          userContentParts.push({ type: "text", text: message.slice(0, 2000) });
+        } else {
+          userContentParts.push({ type: "text", text: "ช่วยดูรูปนี้ให้หน่อยครับ" });
+        }
+        userContentParts.push({
+          type: "image_url",
+          image_url: { url: imageBase64, detail: "auto" }
+        });
+        messages.push({ role: "user", content: userContentParts });
+      } else {
+        const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
+        messages.push({ role: "user", content: userContent });
+      }
 
       const channTools = [
           {

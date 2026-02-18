@@ -390,7 +390,7 @@ export function FloatingChat() {
   );
 
   return (
-    <div className="fixed bottom-4 right-4 z-50" data-testid="floating-chat-container">
+    <div className="fixed bottom-20 md:bottom-4 right-4 z-50" data-testid="floating-chat-container">
       {isOpen ? (
         <div className="w-80 sm:w-96 h-[500px] bg-background border rounded-lg shadow-lg flex flex-col overflow-hidden">
           <div className="flex items-center justify-between gap-2 p-3 border-b bg-primary text-primary-foreground">

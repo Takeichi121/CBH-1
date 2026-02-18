@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { BottomNav } from "@/components/bottom-nav";
+import { OfflineIndicator } from "@/components/offline-indicator";
 
 import { useI18n } from "@/hooks/use-i18n";
 
@@ -56,6 +58,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <OfflineIndicator />
+
       {/* Mobile Header */}
       <header className="md:hidden h-16 flex items-center justify-between px-4 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -219,9 +223,11 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6 md:py-8">
+      <main className="flex-1 container mx-auto px-4 py-6 md:py-8 pb-24 md:pb-8">
         {children}
       </main>
+
+      <BottomNav />
     </div>
   );
 }

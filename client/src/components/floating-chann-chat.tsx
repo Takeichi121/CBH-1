@@ -37,22 +37,37 @@ export function FloatingChannChat() {
     }
   }, [isOpen]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
     if (file.size > 4 * 1024 * 1024) {
       alert("ไฟล์ใหญ่เกินไป (สูงสุด 4MB)");
       return;
     }
-
     const reader = new FileReader();
     reader.onload = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
+  };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processImageFile(file);
     if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) processImageFile(file);
+        return;
+      }
+    }
   };
 
   const removeImagePreview = () => {
@@ -359,6 +374,7 @@ export function FloatingChannChat() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 placeholder="พิมพ์ข้อความ..."
                 disabled={isLoading}
                 className="flex-1"

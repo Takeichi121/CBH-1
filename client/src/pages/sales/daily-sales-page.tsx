@@ -158,8 +158,6 @@ const formSchema = z.object({
   robin: z.string().default("0"),
   gokoo: z.string().default("0"),
   osat: z.string().default("0"),
-  osatScore: z.string().default("0"),
-  osatComments: z.string().default("0"),
   surveyCount: z.string().default("0"),
   voidAmount: z.string().default("0"),
   voidCount: z.string().default("0"),
@@ -282,8 +280,6 @@ export default function DailySalesPage() {
       robin: "0",
       gokoo: "0",
       osat: "0",
-      osatScore: "0",
-      osatComments: "0",
       surveyCount: "0",
       voidAmount: "0",
       voidCount: "0",
@@ -364,8 +360,6 @@ export default function DailySalesPage() {
       bkapp: values.bkapp?.replace(/,/g, "") || "0",
       robin: values.robin?.replace(/,/g, "") || "0",
       gokoo: values.gokoo?.replace(/,/g, "") || "0",
-      osatScore: values.osatScore?.replace(/,/g, "") || "0",
-      osatComments: values.osatComments?.replace(/,/g, "") || "0",
       dailyTarget: values.dailyTarget?.replace(/,/g, "") || "0",
       mtdTarget: values.mtdTarget?.replace(/,/g, "") || "0",
       mtdActual: values.mtdActual?.replace(/,/g, "") || "0",
@@ -670,8 +664,6 @@ export default function DailySalesPage() {
           robin: "0",
           gokoo: "0",
           osat: "0",
-          osatScore: "0",
-          osatComments: "0",
           surveyCount: "0",
           voidAmount: "0",
           voidCount: "0",
@@ -730,8 +722,6 @@ export default function DailySalesPage() {
           form.setValue("robin", r.robin || "0");
           form.setValue("gokoo", r.gokoo || "0");
           form.setValue("osat", r.osat || "0");
-          form.setValue("osatScore", r.osatScore || "0");
-          form.setValue("osatComments", r.osatComments || "0");
           form.setValue("surveyCount", r.surveyCount || "0");
           form.setValue("voidAmount", r.voidAmount || "0");
           form.setValue("voidCount", r.voidCount || "0");
@@ -1087,7 +1077,7 @@ MTD Sale=${mtdActualVal.toLocaleString()}/${mtdTargetVal.toLocaleString()}
 
 🕰Work Hour :${workHour}
 
-📝OSAT:${v.osatScore || v.osat || "0"}/${v.osatComments || "0"} comments
+📝OSAT:${v.osat || "0"}
 
 👨‍💼 Roster Manager
 ${managerLines || v.managerRosterText || ""}
@@ -1330,10 +1320,9 @@ ${v.staffRosterText || ""}
     const workHourMatch = stripped.match(/Work\s*Hour\s*[=:]\s*([\d,.]+)/i);
     if (workHourMatch) parsed.actualHours = num(workHourMatch[1]);
 
-    const osatMatch = stripped.match(/OSAT\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)\s*comments?/i);
+    const osatMatch = stripped.match(/OSAT\s*[=:]\s*([\d,.]+)/i);
     if (osatMatch) {
-      parsed.osatScore = num(osatMatch[1]);
-      parsed.osatComments = num(osatMatch[2]);
+      parsed.osat = num(osatMatch[1]);
     }
 
     const managerNames = ["Phongsathon", "Nuttarika", "Boonyisa", "Chanon", "Washiraphan"];
@@ -2213,39 +2202,6 @@ ${v.staffRosterText || ""}
                               className="text-sm"
                               {...field}
                               data-testid="input-osat"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="osatScore"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">OSAT Score</FormLabel>
-                          <FormControl>
-                            <FormattedInput
-                              className="text-sm"
-                              {...field}
-                              data-testid="input-osat-score"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="osatComments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">OSAT Comments</FormLabel>
-                          <FormControl>
-                            <FormattedInput
-                              className="text-sm"
-                              allowDecimals={false}
-                              {...field}
-                              data-testid="input-osat-comments"
                             />
                           </FormControl>
                         </FormItem>

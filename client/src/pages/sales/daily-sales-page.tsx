@@ -346,8 +346,19 @@ export default function DailySalesPage() {
     );
     const wasteRawDailyNum = wasteDailyTotalNum - wasteMealDailyNum;
 
+    const {
+      wasteDailyTotal: _wdt2,
+      wasteMtdTotal: _wmt2,
+      managerPhongsathon: _mp2,
+      managerNuttarika: _mn2,
+      managerBoonyisa: _mb2,
+      managerChanon: _mc2,
+      managerWashiraphan: _mw2,
+      ...autoDbFields
+    } = values;
+
     const cleanedReport = {
-      ...values,
+      ...autoDbFields,
       actualSales: values.actualSales?.replace(/,/g, "") || "0",
       transactionCount: values.transactionCount?.replace(/,/g, "") || "0",
       dineIn: values.dineIn?.replace(/,/g, "") || "0",
@@ -375,7 +386,6 @@ export default function DailySalesPage() {
       ).toString(),
       wasteMealMtd: values.wasteMealMtd?.replace(/,/g, "") || "0",
 
-      // --- Labor fields ---
       actualHours: values.actualHours?.replace(/,/g, "") || "0",
       otHours: values.otHours?.replace(/,/g, "") || "0",
       otMtd: values.otMtd?.replace(/,/g, "") || "0",
@@ -888,10 +898,49 @@ export default function DailySalesPage() {
       );
       const wasteRawMtdNum = wasteMtdTotalNum - wasteMealMtdNum;
 
+      const {
+        wasteDailyTotal: _wdt,
+        wasteMtdTotal: _wmt,
+        managerPhongsathon: _mp,
+        managerNuttarika: _mn,
+        managerBoonyisa: _mb,
+        managerChanon: _mc,
+        managerWashiraphan: _mw,
+        ...dbFields
+      } = values;
+
       const reportToSave = {
-        ...values,
+        ...dbFields,
+        actualSales: values.actualSales?.replace(/,/g, "") || "0",
+        transactionCount: values.transactionCount?.replace(/,/g, "") || "0",
+        dineIn: values.dineIn?.replace(/,/g, "") || "0",
+        dineInTc: values.dineInTc?.replace(/,/g, "") || "0",
+        takeAway: values.takeAway?.replace(/,/g, "") || "0",
+        takeAwayTc: values.takeAwayTc?.replace(/,/g, "") || "0",
+        grabfood: values.grabfood?.replace(/,/g, "") || "0",
+        lineman: values.lineman?.replace(/,/g, "") || "0",
+        shopee: values.shopee?.replace(/,/g, "") || "0",
+        bkapp: values.bkapp?.replace(/,/g, "") || "0",
+        robin: values.robin?.replace(/,/g, "") || "0",
+        gokoo: values.gokoo?.replace(/,/g, "") || "0",
+        dailyTarget: values.dailyTarget?.replace(/,/g, "") || "0",
+        mtdTarget: values.mtdTarget?.replace(/,/g, "") || "0",
+        mtdActual: values.mtdActual?.replace(/,/g, "") || "0",
+        mtdTc: values.mtdTc?.replace(/,/g, "") || "0",
+        voidAmount: values.voidAmount?.replace(/,/g, "") || "0",
+        sosDaily: values.sosDaily?.replace(/,/g, "") || "0",
+        sosMtd: values.sosMtd?.replace(/,/g, "") || "0",
         wasteRawDaily: wasteRawDailyNum.toString(),
+        wasteMealDaily: values.wasteMealDaily?.replace(/,/g, "") || "0",
         wasteRawMtd: wasteRawMtdNum.toString(),
+        wasteMealMtd: values.wasteMealMtd?.replace(/,/g, "") || "0",
+        actualHours: values.actualHours?.replace(/,/g, "") || "0",
+        otHours: values.otHours?.replace(/,/g, "") || "0",
+        otMtd: values.otMtd?.replace(/,/g, "") || "0",
+        laborCost: values.laborCost?.replace(/,/g, "") || "0",
+        laborHour: values.laborHour?.replace(/,/g, "") || "0",
+        colPercent: values.colPercent?.replace(/,/g, "") || "0",
+        tcmh: values.tcmh?.replace(/,/g, "") || "0",
       };
 
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", {
@@ -913,6 +962,7 @@ export default function DailySalesPage() {
         });
       }
     } catch (error: any) {
+      console.error("Save to DB error:", error);
       toast({
         variant: "destructive",
         title: "Error",

@@ -202,6 +202,8 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   lineman: text("lineman").default("0"),
   shopee: text("shopee").default("0"),
   bkapp: text("bkapp").default("0"),
+  robin: text("robin").default("0"),
+  gokoo: text("gokoo").default("0"),
 
   // Metrics
   osat: text("osat").default("0"),

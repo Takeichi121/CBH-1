@@ -506,7 +506,8 @@ export default function DailySalesPage() {
         }
       }
     }
-  }, [form.setValue, restoreData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // State for default target from settings
   const [defaultDailyTarget, setDefaultDailyTarget] = useState("250000");
@@ -1222,35 +1223,49 @@ ${v.staffRosterText || ""}
   const computedVarianceHours = computedSummaryHours - rosterCommitInput;
 
   // --- Sync computed values to form for saving ---
+  const prevComputedRef = useRef({ summaryHours: "", varianceHours: "", laborCost: "", colPercent: "", tcmh: "" });
   useEffect(() => {
-    form.setValue("summaryHours", computedSummaryHours.toFixed(2), { shouldDirty: false });
-    form.setValue("varianceHours", computedVarianceHours.toFixed(2), { shouldDirty: false });
-    form.setValue("laborCost", computedLaborCost.toFixed(2), { shouldDirty: false });
-    form.setValue("laborHour", computedSummaryHours.toFixed(2), { shouldDirty: false });
-    form.setValue("colPercent", computedColPercent.toFixed(2), { shouldDirty: false });
-    form.setValue("tcmh", computedTcmh.toFixed(2), { shouldDirty: false });
-  }, [computedSummaryHours, computedLaborCost, computedColPercent, computedTcmh, computedVarianceHours, form]);
+    const newVals = {
+      summaryHours: computedSummaryHours.toFixed(2),
+      varianceHours: computedVarianceHours.toFixed(2),
+      laborCost: computedLaborCost.toFixed(2),
+      colPercent: computedColPercent.toFixed(2),
+      tcmh: computedTcmh.toFixed(2),
+    };
+    const prev = prevComputedRef.current;
+    if (
+      prev.summaryHours === newVals.summaryHours &&
+      prev.varianceHours === newVals.varianceHours &&
+      prev.laborCost === newVals.laborCost &&
+      prev.colPercent === newVals.colPercent &&
+      prev.tcmh === newVals.tcmh
+    ) return;
+    prevComputedRef.current = newVals;
+    form.setValue("summaryHours", newVals.summaryHours, { shouldDirty: false });
+    form.setValue("varianceHours", newVals.varianceHours, { shouldDirty: false });
+    form.setValue("laborCost", newVals.laborCost, { shouldDirty: false });
+    form.setValue("laborHour", newVals.summaryHours, { shouldDirty: false });
+    form.setValue("colPercent", newVals.colPercent, { shouldDirty: false });
+    form.setValue("tcmh", newVals.tcmh, { shouldDirty: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedSummaryHours, computedLaborCost, computedColPercent, computedTcmh, computedVarianceHours]);
 
   // Auto-calculate Add-on percentages when count values change
+  const prevAddonsRef = useRef({ addCheese: "", vMeal: "", upSize: "" });
   useEffect(() => {
     if (transactionCount > 0) {
-      form.setValue(
-        "addCheesePercent",
-        ((addCheeseCount / transactionCount) * 100).toFixed(2),
-        { shouldDirty: true }
-      );
-      form.setValue(
-        "vMealPercent",
-        ((vMealCount / transactionCount) * 100).toFixed(2),
-        { shouldDirty: true }
-      );
-      form.setValue(
-        "upSizePercent",
-        ((upSizeCount / transactionCount) * 100).toFixed(2),
-        { shouldDirty: true }
-      );
+      const newAddCheese = ((addCheeseCount / transactionCount) * 100).toFixed(2);
+      const newVMeal = ((vMealCount / transactionCount) * 100).toFixed(2);
+      const newUpSize = ((upSizeCount / transactionCount) * 100).toFixed(2);
+      const prev = prevAddonsRef.current;
+      if (prev.addCheese === newAddCheese && prev.vMeal === newVMeal && prev.upSize === newUpSize) return;
+      prevAddonsRef.current = { addCheese: newAddCheese, vMeal: newVMeal, upSize: newUpSize };
+      form.setValue("addCheesePercent", newAddCheese, { shouldDirty: true });
+      form.setValue("vMealPercent", newVMeal, { shouldDirty: true });
+      form.setValue("upSizePercent", newUpSize, { shouldDirty: true });
     }
-  }, [addCheeseCount, vMealCount, upSizeCount, transactionCount, form.setValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addCheeseCount, vMealCount, upSizeCount, transactionCount]);
 
   const handleAutoCalculateAddons = () => {
     const divisor = customAddonDivisor

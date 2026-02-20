@@ -161,23 +161,25 @@ export default function SettingsPage() {
 
     setIsPictureUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const res = await apiRequest("POST", "/api/updateProfilePicture", {
-          token: localStorage.getItem("bk_token"),
-          profilePicture: base64
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setUserProfilePicture(base64);
-          toast({ title: "Success", description: t("profilePictureUpdated") || "Profile picture updated" });
-        } else {
-          toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update" });
-        }
-        setIsPictureUploading(false);
-      };
-      reader.readAsDataURL(file);
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = `data:${file.type};base64,${btoa(binary)}`;
+      const res = await apiRequest("POST", "/api/updateProfilePicture", {
+        token: localStorage.getItem("bk_token"),
+        profilePicture: base64
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setUserProfilePicture(base64);
+        toast({ title: "Success", description: t("profilePictureUpdated") || "Profile picture updated" });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message || "Failed to update" });
+      }
+      setIsPictureUploading(false);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
       setIsPictureUploading(false);

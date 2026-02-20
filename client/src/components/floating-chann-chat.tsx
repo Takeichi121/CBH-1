@@ -37,17 +37,24 @@ export function FloatingChannChat() {
     }
   }, [isOpen]);
 
-  const processImageFile = (file: File) => {
+  const processImageFile = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
     if (file.size > 4 * 1024 * 1024) {
       alert("ไฟล์ใหญ่เกินไป (สูงสุด 4MB)");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      setImagePreview(`data:${file.type};base64,${btoa(binary)}`);
+    } catch {
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+    }
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

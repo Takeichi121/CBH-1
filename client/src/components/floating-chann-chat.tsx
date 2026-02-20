@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,7 +22,7 @@ export function FloatingChannChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -215,7 +215,7 @@ export function FloatingChannChat() {
       )}
 
       {isOpen && (
-        <div className="fixed bottom-32 md:bottom-4 right-4 z-[51] w-[360px] max-w-[calc(100vw-2rem)] h-[460px] max-h-[calc(100vh-10rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden" data-testid="container-chann-chat">
+        <div className="fixed inset-4 bottom-20 md:inset-auto md:bottom-4 md:right-4 md:w-[400px] md:h-[600px] md:max-h-[calc(100vh-6rem)] z-[51] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden" data-testid="container-chann-chat">
           <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
@@ -366,7 +366,7 @@ export function FloatingChannChat() {
               onChange={handleImageSelect}
               data-testid="input-chann-image"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-end gap-2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -376,7 +376,7 @@ export function FloatingChannChat() {
               >
                 <ImagePlus className="w-4 h-4" />
               </Button>
-              <Input
+              <Textarea
                 ref={inputRef}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -384,7 +384,8 @@ export function FloatingChannChat() {
                 onPaste={handlePaste}
                 placeholder="พิมพ์ข้อความ..."
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 min-h-[40px] max-h-[120px] resize-none text-sm"
+                rows={1}
                 data-testid="input-chann-message"
               />
               <Button

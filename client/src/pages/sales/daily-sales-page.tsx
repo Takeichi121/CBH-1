@@ -851,6 +851,10 @@ export default function DailySalesPage() {
             "wasteMealMtd",
             parseFloat(mtdData.wasteMealMtd || 0).toFixed(2),
           );
+          form.setValue(
+            "otMtd",
+            parseFloat(mtdData.otMtd || 0).toFixed(2),
+          );
         }
 
         // Get MTD Target from daily_targets table
@@ -2976,23 +2980,15 @@ ${v.staffRosterText || ""}
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="otMtd"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">OT MTD</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              inputMode="decimal"
-                              className="text-sm"
-                              data-testid="input-ot-mtd"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    <div>
+                      <FormLabel className="text-xs">OT MTD</FormLabel>
+                      <Input
+                        value={form.watch("otMtd") || "0"}
+                        readOnly
+                        className="text-sm bg-muted pointer-events-none focus-visible:ring-0"
+                        data-testid="display-ot-mtd"
+                      />
+                    </div>
                     <div>
                       <FormLabel className="text-xs">
                         {language === "th" ? "รวมชม." : "Summary Hrs"}

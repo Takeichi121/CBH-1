@@ -2895,7 +2895,155 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                {/* Labor section hidden */}
+                <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg">
+                  <h3 className="text-sm md:text-base font-medium mb-3">
+                    {t.labor}
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="recommendHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "ชม.แนะนำ" : "Recommend Hrs"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="decimal"
+                              className="text-sm"
+                              data-testid="input-recommend-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rosterCommit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "Roster Commit" : "Roster Commit"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="decimal"
+                              className="text-sm"
+                              data-testid="input-roster-commit"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="actualHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "ชม.จริง" : "Actual Hrs"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="decimal"
+                              className="text-sm"
+                              data-testid="input-actual-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="otHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "OT ชม." : "OT Hrs"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="decimal"
+                              className="text-sm"
+                              data-testid="input-ot-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="otMtd"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">OT MTD</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="decimal"
+                              className="text-sm"
+                              data-testid="input-ot-mtd"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div>
+                      <FormLabel className="text-xs">
+                        {language === "th" ? "รวมชม." : "Summary Hrs"}
+                      </FormLabel>
+                      <Input
+                        value={computedSummaryHours.toFixed(2)}
+                        readOnly
+                        className="text-sm bg-muted pointer-events-none focus-visible:ring-0"
+                        data-testid="display-summary-hours"
+                      />
+                    </div>
+                    <div>
+                      <FormLabel className="text-xs">
+                        {language === "th" ? "ส่วนต่างชม." : "Variance Hrs"}
+                      </FormLabel>
+                      <Input
+                        value={computedVarianceHours.toFixed(2)}
+                        readOnly
+                        className={`text-sm pointer-events-none focus-visible:ring-0 ${computedVarianceHours >= 0 ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"}`}
+                        data-testid="display-variance-hours"
+                      />
+                    </div>
+                    <div>
+                      <FormLabel className="text-xs">{t.labor} Cost</FormLabel>
+                      <Input
+                        value={computedLaborCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        readOnly
+                        className="text-sm bg-muted pointer-events-none focus-visible:ring-0"
+                        data-testid="display-labor-cost"
+                      />
+                    </div>
+                    <div>
+                      <FormLabel className="text-xs">{t.col}</FormLabel>
+                      <Input
+                        value={computedColPercent.toFixed(2) + "%"}
+                        readOnly
+                        className={`text-sm pointer-events-none focus-visible:ring-0 ${computedColPercent <= 25 ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"}`}
+                        data-testid="display-col-percent"
+                      />
+                    </div>
+                    <div>
+                      <FormLabel className="text-xs">{t.tcmh}</FormLabel>
+                      <Input
+                        value={computedTcmh.toFixed(2)}
+                        readOnly
+                        className="text-sm bg-muted pointer-events-none focus-visible:ring-0"
+                        data-testid="display-tcmh"
+                      />
+                    </div>
+                  </div>
+                </div>
 
                 <div className="bg-teal-50 dark:bg-teal-950/30 p-3 md:p-4 rounded-lg">
                   <h3 className="text-sm md:text-base font-medium mb-3">

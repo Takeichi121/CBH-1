@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2 } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 type DailyTarget = {
   id?: number;
@@ -76,6 +77,11 @@ export default function SalesSettingsPage() {
     actualHours: string;
     otHours: string;
     wasteDaily: string;
+    lastYearSales: string;
+    forecastSales: string;
+    lastYearTc: string;
+    targetTc: string;
+    targetTa: string;
   }>>({});
 
   const [defaultTarget, setDefaultTarget] = useState("130000");
@@ -134,6 +140,22 @@ export default function SalesSettingsPage() {
     laborParams: language === "th" ? "พารามิเตอร์ Labor" : "Labor Parameters",
     dutyTeamLabel: language === "th" ? "Duty Team Hours (ชม./วัน)" : "Duty Team Hours (hr/day)",
     pphLabel: language === "th" ? "PPH - ค่าแรงต่อชั่วโมง (฿)" : "PPH - Hourly Rate (฿)",
+    lyDailySales: "LY Sales",
+    lyMtdSales: "LY Sales MTD",
+    forecastSales: "Forecast",
+    forecastMtd: "Forecast MTD",
+    achievePercent: "Achieve %",
+    compSalesPercent: "Comp Sales %",
+    lyTc: "LY TC",
+    lyTcMtd: "LY TC MTD",
+    targetTcLabel: "Target TC",
+    targetTcMtd: "Target TC MTD",
+    compTcPercent: "Comp TC %",
+    lyTa: "LY TA",
+    targetTaLabel: "Target TA",
+    actualTa: "Actual TA",
+    varianceTa: "Variance TA",
+    exportExcel: language === "th" ? "Export Excel" : "Export Excel",
   };
 
   const daysInMonth = useMemo(() => getDaysInMonth(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
@@ -157,6 +179,11 @@ export default function SalesSettingsPage() {
     let runningWorkHours = 0;
     let runningCol = 0;
     let runningWaste = 0;
+    let runningTargetSales = 0;
+    let runningLastYearSales = 0;
+    let runningForecast = 0;
+    let runningLastYearTc = 0;
+    let runningTargetTc = 0;
     
     return monthDates.map(({ date, day, displayDate }) => {
       const targetSales = parseFloat(dailyTargets[date]) || 0;
@@ -169,11 +196,21 @@ export default function SalesSettingsPage() {
       const actualHours = parseFloat(editable.actualHours) || 0;
       const otHours = parseFloat(editable.otHours) || 0;
       const wasteDaily = parseFloat(editable.wasteDaily) || 0;
+      const lastYearSales = parseFloat(editable.lastYearSales) || 0;
+      const forecastSales = parseFloat(editable.forecastSales) || 0;
+      const lastYearTc = parseFloat(editable.lastYearTc) || 0;
+      const targetTc = parseFloat(editable.targetTc) || 0;
+      const targetTa = parseFloat(editable.targetTa) || 0;
       
       runningActualSales += actualSales;
       runningActualTc += actualTc;
       runningRoster += rosterCommit;
       runningWaste += wasteDaily;
+      runningTargetSales += targetSales;
+      runningLastYearSales += lastYearSales;
+      runningForecast += forecastSales;
+      runningLastYearTc += lastYearTc;
+      runningTargetTc += targetTc;
 
       const summaryHours = DUTY_TEAM_HOURS + actualHours + otHours;
       runningWorkHours += summaryHours;
@@ -185,6 +222,13 @@ export default function SalesSettingsPage() {
       
       const tcmh = summaryHours > 0 ? actualTc / summaryHours : 0;
       const wastePercent = actualSales > 0 ? (wasteDaily / actualSales) * 100 : 0;
+
+      const achievePercent = runningTargetSales > 0 ? (runningActualSales / runningTargetSales) * 100 : 0;
+      const compSalesPercent = lastYearSales > 0 ? ((actualSales / lastYearSales) - 1) * 100 : 0;
+      const compTcPercent = lastYearTc > 0 ? ((actualTc / lastYearTc) - 1) * 100 : 0;
+      const lastYearTa = lastYearTc > 0 ? lastYearSales / lastYearTc : 0;
+      const actualTa = actualTc > 0 ? actualSales / actualTc : 0;
+      const varianceTa = actualTa - targetTa;
       
       return {
         date,
@@ -210,7 +254,22 @@ export default function SalesSettingsPage() {
         tcmh,
         wasteDaily,
         wasteMtd: runningWaste,
-        wastePercent
+        wastePercent,
+        lastYearSales,
+        lastYearSalesMtd: runningLastYearSales,
+        forecastSales,
+        forecastMtd: runningForecast,
+        achievePercent,
+        compSalesPercent,
+        lastYearTc,
+        lastYearTcMtd: runningLastYearTc,
+        targetTc,
+        targetTcMtd: runningTargetTc,
+        compTcPercent,
+        lastYearTa,
+        targetTa,
+        actualTa,
+        varianceTa,
       };
     });
   }, [monthDates, dailyTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE]);
@@ -233,7 +292,16 @@ export default function SalesSettingsPage() {
       mtdWorkingHours: lastRow.mtdWorkingHours,
       colDaily: tableData.reduce((sum, row) => sum + row.colDaily, 0),
       wasteDaily: tableData.reduce((sum, row) => sum + row.wasteDaily, 0),
-      wasteMtd: lastRow.wasteMtd
+      wasteMtd: lastRow.wasteMtd,
+      lastYearSales: tableData.reduce((sum, row) => sum + row.lastYearSales, 0),
+      lastYearSalesMtd: lastRow.lastYearSalesMtd,
+      forecastSales: tableData.reduce((sum, row) => sum + row.forecastSales, 0),
+      forecastMtd: lastRow.forecastMtd,
+      lastYearTc: tableData.reduce((sum, row) => sum + row.lastYearTc, 0),
+      lastYearTcMtd: lastRow.lastYearTcMtd,
+      targetTc: tableData.reduce((sum, row) => sum + row.targetTc, 0),
+      targetTcMtd: lastRow.targetTcMtd,
+      targetTa: tableData.reduce((sum, row) => sum + row.targetTa, 0),
     };
   }, [tableData]);
 
@@ -312,6 +380,7 @@ export default function SalesSettingsPage() {
         const data = await res.json();
         if (data.ok && data.reports) {
           const editableMap: Record<string, any> = {};
+          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "" };
           data.reports.forEach((report: any) => {
             editableMap[report.reportDate] = {
               actualSales: (parseFloat(report.actualSales) || 0).toString(),
@@ -321,6 +390,11 @@ export default function SalesSettingsPage() {
               actualHours: (parseFloat(report.actualHours) || parseFloat(report.laborHour) || 0).toString(),
               otHours: (parseFloat(report.otHours) || 0).toString(),
               wasteDaily: (parseFloat(report.wasteDaily) || (parseFloat(report.wasteRawDaily) || 0) + (parseFloat(report.wasteMealDaily) || 0)).toString(),
+              lastYearSales: (parseFloat(report.lastYearSales) || 0).toString(),
+              forecastSales: (parseFloat(report.forecastSales) || 0).toString(),
+              lastYearTc: (parseFloat(report.lastYearTc) || 0).toString(),
+              targetTc: (parseFloat(report.targetTc) || 0).toString(),
+              targetTa: (parseFloat(report.targetTa) || 0).toString(),
             };
           });
           const newMap: Record<string, any> = {};
@@ -328,15 +402,16 @@ export default function SalesSettingsPage() {
             if (editableMap[date]) {
               newMap[date] = editableMap[date];
             } else {
-              newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
+              newMap[date] = { ...emptyRow };
             }
           });
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
         } else {
+          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "" };
           const newMap: Record<string, any> = {};
           monthDates.forEach(({ date }) => {
-            newMap[date] = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "" };
+            newMap[date] = { ...emptyRow };
           });
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
@@ -452,8 +527,13 @@ export default function SalesSettingsPage() {
           actualHours: parseFloat(editable.actualHours) || 0,
           otHours: parseFloat(editable.otHours) || 0,
           wasteDaily: parseFloat(editable.wasteDaily) || 0,
+          lastYearSales: parseFloat(editable.lastYearSales) || 0,
+          forecastSales: parseFloat(editable.forecastSales) || 0,
+          lastYearTc: parseFloat(editable.lastYearTc) || 0,
+          targetTc: parseFloat(editable.targetTc) || 0,
+          targetTa: parseFloat(editable.targetTa) || 0,
         };
-      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0);
+      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0 || d.lastYearSales > 0 || d.forecastSales > 0 || d.lastYearTc > 0 || d.targetTc > 0 || d.targetTa > 0);
       
       const res = await apiRequest("POST", "/api/sales/saveDailySalesData", {
         token,
@@ -511,6 +591,65 @@ export default function SalesSettingsPage() {
 
   const fmtNum = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const fmtDec = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const handleExportExcel = () => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const dataForExcel = tableData.map(row => ({
+      "Date": row.displayDate,
+      "Target Sales": row.targetSales,
+      "Actual Sales": row.actualSales,
+      "Sales MTD": row.actualSalesMtd,
+      "LY Sales": row.lastYearSales,
+      "LY Sales MTD": row.lastYearSalesMtd,
+      "Forecast": row.forecastSales,
+      "Forecast MTD": row.forecastMtd,
+      "Achieve %": parseFloat(row.achievePercent.toFixed(2)),
+      "Comp Sales %": parseFloat(row.compSalesPercent.toFixed(2)),
+      "Actual TC": row.actualTc,
+      "TC MTD": row.actualTcMtd,
+      "LY TC": row.lastYearTc,
+      "LY TC MTD": row.lastYearTcMtd,
+      "Target TC": row.targetTc,
+      "Target TC MTD": row.targetTcMtd,
+      "Comp TC %": parseFloat(row.compTcPercent.toFixed(2)),
+      "LY TA": parseFloat(row.lastYearTa.toFixed(2)),
+      "Target TA": row.targetTa,
+      "Actual TA": parseFloat(row.actualTa.toFixed(2)),
+      "Variance TA": parseFloat(row.varianceTa.toFixed(2)),
+      "Recommend Hr": row.recommendHours,
+      "Roster Commit": row.rosterCommit,
+      "MTD Roster": row.mtdRoster,
+      "Duty Team": row.dutyTeam,
+      "Actual Hr": row.actualHours,
+      "OT Hr": row.otHours,
+      "Summary Hr": parseFloat(row.summaryHours.toFixed(2)),
+      "MTD Hr": parseFloat(row.mtdWorkingHours.toFixed(2)),
+      "Variance Hr": parseFloat(row.varianceHours.toFixed(2)),
+      "COL (฿)": parseFloat(row.colDaily.toFixed(0)),
+      "MTD COL": parseFloat(row.mtdCol.toFixed(0)),
+      "COL %": parseFloat(row.colPercent.toFixed(2)),
+      "TCMH": parseFloat(row.tcmh.toFixed(2)),
+      "Waste (฿)": row.wasteDaily,
+      "Waste MTD": row.wasteMtd,
+      "Waste %": parseFloat(row.wastePercent.toFixed(2)),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Report");
+
+    worksheet['!cols'] = Array(37).fill(null).map((_, i) => ({
+      wch: i === 0 ? 10 : 14
+    }));
+
+    const cleanStoreName = storeName.replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `Sales_${cleanStoreName}_${monthNames[selectedMonth - 1]}${selectedYear}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    toast({
+      title: language === "th" ? "สำเร็จ" : "Success",
+      description: language === "th" ? `Export ไฟล์ ${fileName} เรียบร้อย` : `Exported ${fileName} successfully`,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -605,15 +744,30 @@ export default function SalesSettingsPage() {
               </div>
               <div className="overflow-x-auto scrollbar-visible pb-3" style={{ scrollbarWidth: 'auto', scrollbarColor: '#888 #f1f1f1' }}>
                 <div className="max-h-[600px] overflow-y-auto">
-                  <table className="w-full text-xs border-collapse min-w-[2000px]">
+                  <table className="w-full text-xs border-collapse min-w-[3800px]">
                     <thead className="sticky top-0 z-20 shadow-sm">
                       <tr className="bg-slate-200 dark:bg-slate-700 text-center">
                         <th className="p-2 border border-slate-300 min-w-[80px] sticky left-0 z-30 bg-slate-200 dark:bg-slate-700">{t.date}</th>
                         <th className="p-2 border border-slate-300 min-w-[80px] bg-yellow-100 dark:bg-yellow-900">{t.targetSales}</th>
                         <th className="p-2 border border-slate-300 min-w-[80px] bg-green-100 dark:bg-green-900">{t.actSales}</th>
                         <th className="p-2 border border-slate-300 min-w-[80px]">{t.actSalesMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-orange-100 dark:bg-orange-900">{t.lyDailySales}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.lyMtdSales}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-orange-100 dark:bg-orange-900">{t.forecastSales}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.forecastMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.achievePercent}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.compSalesPercent}</th>
                         <th className="p-2 border border-slate-300 min-w-[60px] bg-green-100 dark:bg-green-900">{t.actTc}</th>
                         <th className="p-2 border border-slate-300 min-w-[60px]">{t.actTcMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-orange-100 dark:bg-orange-900">{t.lyTc}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.lyTcMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-orange-100 dark:bg-orange-900">{t.targetTcLabel}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.targetTcMtd}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.compTcPercent}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.lyTa}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-orange-100 dark:bg-orange-900">{t.targetTaLabel}</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.actualTa}</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.varianceTa}</th>
                         <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.recHours}</th>
                         <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.roster}</th>
                         <th className="p-2 border border-slate-300 min-w-[70px]">{t.mtdRoster}</th>
@@ -644,9 +798,34 @@ export default function SalesSettingsPage() {
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualSalesMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearSales', e.target.value)} data-testid={`input-ly-sales-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.lastYearSalesMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.forecastSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'forecastSales', e.target.value)} data-testid={`input-forecast-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.forecastMtd)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.achievePercent >= 100 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.achievePercent)}%</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.compSalesPercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.compSalesPercent)}%</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualTc', e.target.value)} data-testid={`input-tc-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualTcMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearTc', e.target.value)} data-testid={`input-ly-tc-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.lastYearTcMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTc', e.target.value)} data-testid={`input-target-tc-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.targetTcMtd)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.compTcPercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.compTcPercent)}%</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.lastYearTa)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTa || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTa', e.target.value)} data-testid={`input-target-ta-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.actualTa)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceTa >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.varianceTa)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.recommendHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'recommendHours', e.target.value)} data-testid={`input-rec-hours-${row.date}`} />
                           </td>
@@ -682,8 +861,23 @@ export default function SalesSettingsPage() {
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetSales)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSales)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSalesMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearSales)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearSalesMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.forecastSales)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.forecastMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTc)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearTc)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetTc)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.recommendHours)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.rosterCommit)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.mtdRoster)}</td>
@@ -708,6 +902,10 @@ export default function SalesSettingsPage() {
             </div>
             
             <div className="pt-4 flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={handleExportExcel} className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-900/50 dark:border-green-700 dark:text-green-300" data-testid="button-export-excel">
+                <FileSpreadsheet className="mr-2 w-4 h-4"/>
+                {t.exportExcel}
+              </Button>
               <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
                 {t.applyAll}
               </Button>

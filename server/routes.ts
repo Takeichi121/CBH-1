@@ -1799,6 +1799,11 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           actualHours: String(data.actualHours ?? "0"),
           otHours: String(data.otHours ?? "0"),
           wasteRawDaily: String(data.wasteDaily ?? "0"),
+          lastYearSales: String(data.lastYearSales ?? "0"),
+          forecastSales: String(data.forecastSales ?? "0"),
+          lastYearTc: String(data.lastYearTc ?? "0"),
+          targetTc: String(data.targetTc ?? "0"),
+          targetTa: String(data.targetTa ?? "0"),
         } as any); 
       } // <--- [2] FOR LOOP ENDS
 

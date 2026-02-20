@@ -249,6 +249,13 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   managerRosterText: text("manager_roster_text"),
   staffRosterText: text("staff_roster_text"),
 
+  // Excel Comparison Fields
+  lastYearSales: text("last_year_sales").default("0"),
+  forecastSales: text("forecast_sales").default("0"),
+  lastYearTc: text("last_year_tc").default("0"),
+  targetTc: text("target_tc").default("0"),
+  targetTa: text("target_ta").default("0"),
+
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

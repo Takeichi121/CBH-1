@@ -582,3 +582,19 @@ export interface BorrowCartItem {
   qty: number;
   unit: string;
 }
+
+// ==========================================
+// 🤖 Chann AI Conversations
+// ==========================================
+
+export const channConversations = pgTable("chann_conversations", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull(),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ChannConversation = typeof channConversations.$inferSelect;
+export type InsertChannConversation = typeof channConversations.$inferInsert;

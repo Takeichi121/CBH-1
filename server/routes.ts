@@ -22,7 +22,8 @@ import {
   sessions,
   dailySalesReports,
   passwordResetOtps,
-  staffChatMessages
+  staffChatMessages,
+  channConversations
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -111,11 +112,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ==========================================
-  // 🤖 Chann AI Assistant
+  // 🤖 Chann AI Assistant (SSE Streaming)
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, history, imageBase64 } = req.body;
+      const { token, message, imageBase64 } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.json({ ok: false, message: "Token and message required" });
       }
@@ -129,6 +130,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!user) {
         return res.json({ ok: false, message: "User not found" });
       }
+
+      const username = session.username;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
+
+      await db.insert(channConversations).values({
+        username,
+        role: "user",
+        content: userContent,
+        imageUrl: imageBase64 ? "(image attached)" : null,
+      });
 
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({
@@ -144,6 +162,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - อธิบายเรื่องซับซ้อนให้เข้าใจง่าย เรียงลำดับตรรกะชัดเจน
 - ตอบได้ทั้งภาษาไทยและอังกฤษอย่างเป็นธรรมชาติ
 - ถ้าผู้ใช้ถามเป็นภาษาไทย ให้ตอบเป็นภาษาไทย
+- ใช้ Markdown formatting ในการตอบ: **bold**, *italic*, bullet points, numbered lists, headers
+- จัดรูปแบบข้อมูลเป็นตาราง markdown เมื่อเหมาะสม
 
 [ความสามารถหลัก]
 - เข้าถึงฐานข้อมูลของระบบได้ (Roster, Sales, Labor, Borrow Tracker)
@@ -173,127 +193,124 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 ข้อมูลปัจจุบันในระบบ (Snapshot):
 ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
-      const messages: any[] = [
+      const aiMessages: any[] = [
         { role: "system", content: systemPrompt }
       ];
 
-      if (history && Array.isArray(history)) {
-        for (const msg of history.slice(-10)) {
-          if (msg.role === "user" || msg.role === "assistant") {
-            const sanitizedContent = typeof msg.content === "string" ? msg.content.slice(0, 2000) : "";
-            messages.push({ role: msg.role, content: sanitizedContent });
-          }
+      const recentHistory = await db.select().from(channConversations)
+        .where(eq(channConversations.username, username))
+        .orderBy(desc(channConversations.createdAt))
+        .limit(10);
+
+      recentHistory.reverse().forEach((msg) => {
+        if (msg.role === "user" || msg.role === "assistant") {
+          aiMessages.push({ role: msg.role, content: msg.content });
         }
-      }
+      });
 
       if (imageBase64) {
-        const userContentParts: any[] = [];
-        if (message && typeof message === "string" && message.trim()) {
-          userContentParts.push({ type: "text", text: message.slice(0, 2000) });
-        } else {
-          userContentParts.push({ type: "text", text: "ช่วยดูรูปนี้ให้หน่อยครับ" });
-        }
-        userContentParts.push({
-          type: "image_url",
-          image_url: { url: imageBase64, detail: "auto" }
-        });
-        messages.push({ role: "user", content: userContentParts });
-      } else {
-        const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
-        messages.push({ role: "user", content: userContent });
+        const lastIdx = aiMessages.length - 1;
+        const textContent = aiMessages[lastIdx]?.content || "ช่วยดูรูปนี้ให้หน่อยครับ";
+        aiMessages[lastIdx] = {
+          role: "user",
+          content: [
+            { type: "text", text: typeof textContent === "string" ? textContent : "ช่วยดูรูปนี้ให้หน่อยครับ" },
+            { type: "image_url", image_url: { url: imageBase64, detail: "auto" } }
+          ]
+        };
       }
 
       const channTools = [
-          {
-            type: "function" as const,
-            function: {
-              name: "getTableRows",
-              description: "Get data from a specific table in the database. Use this for general queries.",
-              parameters: {
-                type: "object",
-                properties: {
-                  tableName: {
-                    type: "string",
-                    enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "borrow_branches", "borrow_items", "daily_labor", "labor_settings", "manager_requests", "store_settings"],
-                    description: "The name of the table to read"
-                  },
-                  limit: {
-                    type: "number",
-                    description: "Number of rows to return (max 100)",
-                    default: 50
-                  }
+        {
+          type: "function" as const,
+          function: {
+            name: "getTableRows",
+            description: "Get data from a specific table in the database. Use this for general queries.",
+            parameters: {
+              type: "object",
+              properties: {
+                tableName: {
+                  type: "string",
+                  enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "borrow_branches", "borrow_items", "daily_labor", "labor_settings", "manager_requests", "store_settings"],
+                  description: "The name of the table to read"
                 },
-                required: ["tableName"]
-              }
-            }
-          },
-          {
-            type: "function" as const,
-            function: {
-              name: "getShiftsForDate",
-              description: "Get all shift bookings for a specific date. Returns who is working and which shift group.",
-              parameters: {
-                type: "object",
-                properties: {
-                  date: { type: "string", description: "Date in YYYY-MM-DD format" }
-                },
-                required: ["date"]
-              }
-            }
-          },
-          {
-            type: "function" as const,
-            function: {
-              name: "getShiftsInRange",
-              description: "Get shift bookings within a date range. Useful for weekly/monthly summaries.",
-              parameters: {
-                type: "object",
-                properties: {
-                  startDate: { type: "string", description: "Start date in YYYY-MM-DD format" },
-                  endDate: { type: "string", description: "End date in YYYY-MM-DD format" }
-                },
-                required: ["startDate", "endDate"]
-              }
-            }
-          },
-          {
-            type: "function" as const,
-            function: {
-              name: "getSalesSummary",
-              description: "Get daily sales reports for a month. Returns sales data, transaction counts, and labor metrics.",
-              parameters: {
-                type: "object",
-                properties: {
-                  year: { type: "number", description: "Year (e.g. 2026)" },
-                  month: { type: "number", description: "Month (1-12)" }
-                },
-                required: ["year", "month"]
-              }
-            }
-          },
-          {
-            type: "function" as const,
-            function: {
-              name: "getCrossSystemSummary",
-              description: "Get a cross-system summary for a specific date. Returns shift count, sales data, and borrow transactions for that day.",
-              parameters: {
-                type: "object",
-                properties: {
-                  date: { type: "string", description: "Date in YYYY-MM-DD format" }
-                },
-                required: ["date"]
-              }
+                limit: {
+                  type: "number",
+                  description: "Number of rows to return (max 100)",
+                  default: 50
+                }
+              },
+              required: ["tableName"]
             }
           }
-        ];
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getShiftsForDate",
+            description: "Get all shift bookings for a specific date. Returns who is working and which shift group.",
+            parameters: {
+              type: "object",
+              properties: {
+                date: { type: "string", description: "Date in YYYY-MM-DD format" }
+              },
+              required: ["date"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getShiftsInRange",
+            description: "Get shift bookings within a date range. Useful for weekly/monthly summaries.",
+            parameters: {
+              type: "object",
+              properties: {
+                startDate: { type: "string", description: "Start date in YYYY-MM-DD format" },
+                endDate: { type: "string", description: "End date in YYYY-MM-DD format" }
+              },
+              required: ["startDate", "endDate"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getSalesSummary",
+            description: "Get daily sales reports for a month. Returns sales data, transaction counts, and labor metrics.",
+            parameters: {
+              type: "object",
+              properties: {
+                year: { type: "number", description: "Year (e.g. 2026)" },
+                month: { type: "number", description: "Month (1-12)" }
+              },
+              required: ["year", "month"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getCrossSystemSummary",
+            description: "Get a cross-system summary for a specific date. Returns shift count, sales data, and borrow transactions for that day.",
+            parameters: {
+              type: "object",
+              properties: {
+                date: { type: "string", description: "Date in YYYY-MM-DD format" }
+              },
+              required: ["date"]
+            }
+          }
+        }
+      ];
 
       async function handleToolCall(name: string, args: any): Promise<string> {
         switch (name) {
           case "getTableRows":
             return JSON.stringify(await storage.getTableRows(args.tableName, args.limit || 50));
           case "getShiftsForDate": {
-            const shifts = await storage.getShiftsInRange(args.date, args.date);
-            return JSON.stringify({ date: args.date, totalStaff: shifts.length, shifts });
+            const dateShifts = await storage.getShiftsInRange(args.date, args.date);
+            return JSON.stringify({ date: args.date, totalStaff: dateShifts.length, shifts: dateShifts });
           }
           case "getShiftsInRange":
             return JSON.stringify(await storage.getShiftsInRange(args.startDate, args.endDate));
@@ -320,42 +337,122 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       }
 
-      const response = await openai.chat.completions.create({
+      const firstResponse = await openai.chat.completions.create({
         model: "gpt-4o",
-        messages,
+        messages: aiMessages,
         max_completion_tokens: 2048,
         tools: channTools
       });
 
-      const toolCalls = response.choices[0]?.message?.tool_calls;
+      const toolCalls = firstResponse.choices[0]?.message?.tool_calls;
       if (toolCalls && toolCalls.length > 0) {
-        messages.push(response.choices[0].message);
+        aiMessages.push(firstResponse.choices[0].message);
         for (const toolCall of toolCalls) {
           const fnName = (toolCall as any).function?.name;
           const args = JSON.parse((toolCall as any).function.arguments);
           const result = await handleToolCall(fnName, args);
-          messages.push({
+          aiMessages.push({
             role: "tool",
             tool_call_id: toolCall.id,
             content: result
           });
         }
-
-        const secondResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages,
-          max_completion_tokens: 2048
-        });
-
-        const secondReply = secondResponse.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
-        return res.json({ ok: true, reply: secondReply });
       }
 
-      const reply = response.choices[0]?.message?.content || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
-      res.json({ ok: true, reply });
+      const hadToolCalls = toolCalls && toolCalls.length > 0;
+      if (!hadToolCalls) {
+        const directContent = firstResponse.choices[0]?.message?.content;
+        if (directContent) {
+          for (let i = 0; i < directContent.length; i += 20) {
+            const chunk = directContent.slice(i, i + 20);
+            res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+          }
+          await db.insert(channConversations).values({
+            username,
+            role: "assistant",
+            content: directContent,
+          });
+          res.write(`data: [DONE]\n\n`);
+          res.end();
+          return;
+        }
+      }
+
+      const streamResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: aiMessages,
+        max_completion_tokens: 2048,
+        stream: true,
+      });
+
+      let fullAiResponse = "";
+
+      for await (const chunk of streamResponse) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          fullAiResponse += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+
+      if (fullAiResponse) {
+        await db.insert(channConversations).values({
+          username,
+          role: "assistant",
+          content: fullAiResponse,
+        });
+      }
+
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+
     } catch (e: any) {
-      console.error("Chann AI error:", e);
-      res.json({ ok: false, message: e.message || "AI error" });
+      console.error("Chann AI stream error:", e);
+      try {
+        res.write(`data: ${JSON.stringify({ content: "\n\n[เกิดข้อผิดพลาดในการเชื่อมต่อ]" })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      } catch (_) {
+        // response already ended
+      }
+    }
+  });
+
+  // Chann AI: Load chat history
+  app.post("/api/chann/history", async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token) return res.json({ ok: false, message: "Token required" });
+
+      const session = await storage.getSession(token);
+      if (!session) return res.json({ ok: false, message: "Invalid session" });
+
+      const history = await db.select().from(channConversations)
+        .where(eq(channConversations.username, session.username))
+        .orderBy(desc(channConversations.createdAt))
+        .limit(50);
+
+      res.json({ ok: true, messages: history.reverse() });
+    } catch (e: any) {
+      console.error("Chann history error:", e);
+      res.json({ ok: false, message: "Failed to fetch history" });
+    }
+  });
+
+  // Chann AI: Clear chat history
+  app.post("/api/chann/clear", async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token) return res.json({ ok: false, message: "Token required" });
+
+      const session = await storage.getSession(token);
+      if (!session) return res.json({ ok: false, message: "Invalid session" });
+
+      await db.delete(channConversations).where(eq(channConversations.username, session.username));
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.error("Chann clear error:", e);
+      res.json({ ok: false, message: "Failed to clear history" });
     }
   });
 

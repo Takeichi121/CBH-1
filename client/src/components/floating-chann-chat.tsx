@@ -6,6 +6,7 @@ import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus } fro
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useChatCustomization, ChatCustomizationPanel } from "@/components/chat-customization";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -20,7 +21,9 @@ export function FloatingChannChat() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -29,13 +32,43 @@ export function FloatingChannChat() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && !historyLoaded) {
+      const fetchHistory = async () => {
+        try {
+          const token = localStorage.getItem("bk_token");
+          if (!token) return;
+          const res = await fetch("/api/chann/history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+          const data = await res.json();
+          if (data.ok && data.messages && data.messages.length > 0) {
+            setMessages(data.messages.map((m: any) => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.createdAt || new Date().toISOString(),
+              imageUrl: m.imageUrl || undefined,
+            })));
+          }
+          setHistoryLoaded(true);
+        } catch (error) {
+          console.error("Failed to load history:", error);
+          setHistoryLoaded(true);
+        }
+      };
+      fetchHistory();
+    }
+  }, [isOpen, historyLoaded]);
 
   const processImageFile = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -82,30 +115,32 @@ export function FloatingChannChat() {
   };
 
   const sendMessage = async () => {
-    if ((!message.trim() && !imagePreview) || isLoading) return;
+    if ((!message.trim() && !imagePreview) || isLoading || isStreaming) return;
 
     const token = localStorage.getItem("bk_token");
     if (!token) return;
 
     const currentImage = imagePreview;
+    const currentInput = message.trim() || (currentImage ? "ส่งรูปภาพ" : "");
+
     const userMessage: ChatMessage = {
       role: "user",
-      content: message.trim() || (currentImage ? "ส่งรูปภาพ" : ""),
+      content: currentInput,
       timestamp: new Date().toISOString(),
       imageUrl: currentImage || undefined,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [
+      ...prev,
+      userMessage,
+      { role: "assistant", content: "", timestamp: new Date().toISOString() }
+    ]);
     setMessage("");
     setImagePreview(null);
     setIsLoading(true);
 
     try {
-      const body: any = {
-        token,
-        message: userMessage.content,
-        history: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
-      };
+      const body: any = { token, message: currentInput };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -116,32 +151,77 @@ export function FloatingChannChat() {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      if (!res.body) throw new Error("No response body");
 
-      if (data.ok && data.reply) {
-        const aiMessage: ChatMessage = {
-          role: "assistant",
-          content: data.reply,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      } else {
-        const errorMessage: ChatMessage = {
-          role: "assistant",
-          content: data.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, errorMessage]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let hasStartedTyping = false;
+      let buffer = "";
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.replace("data: ", "");
+
+              if (dataStr.trim() === "[DONE]") {
+                setIsLoading(false);
+                setIsStreaming(false);
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.content) {
+                  if (!hasStartedTyping) {
+                    setIsLoading(false);
+                    setIsStreaming(true);
+                    hasStartedTyping = true;
+                  }
+
+                  setMessages((prev) => {
+                    const newMsgs = [...prev];
+                    const lastIndex = newMsgs.length - 1;
+                    newMsgs[lastIndex] = {
+                      ...newMsgs[lastIndex],
+                      content: newMsgs[lastIndex].content + parsed.content,
+                    };
+                    return newMsgs;
+                  });
+                }
+              } catch {
+                // ignore parse error for partial chunks
+              }
+            }
+          }
+        }
       }
-    } catch (error) {
-      const errorMessage: ChatMessage = {
-        role: "assistant",
-        content: "ไม่สามารถเชื่อมต่อกับ Chann ได้ กรุณาลองใหม่",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
+
       setIsLoading(false);
+      setIsStreaming(false);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages((prev) => {
+        const newMsgs = [...prev];
+        const lastIndex = newMsgs.length - 1;
+        if (newMsgs[lastIndex]?.role === "assistant" && !newMsgs[lastIndex].content) {
+          newMsgs[lastIndex] = {
+            ...newMsgs[lastIndex],
+            content: "ไม่สามารถเชื่อมต่อกับ Chann ได้ กรุณาลองใหม่",
+          };
+        }
+        return newMsgs;
+      });
+      setIsLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -150,16 +230,19 @@ export function FloatingChannChat() {
   const { getBubbleColorClass, getBubbleStyleClass, getAvatarStyleClass } = useChatCustomization();
 
   const summarizeChat = async () => {
-    if (messages.length === 0 || isSummarizing) return;
-    
+    if (messages.length === 0 || isSummarizing || isLoading || isStreaming) return;
+
     setIsSummarizing(true);
     try {
-      // For floating chat, we might not have a conversation ID if it's in-memory
-      // But let's check if there's a way to get one or use a generic summary endpoint
-      // Given the floating chat uses /api/chann with history, let's implement a quick summary via AI directly
-      
       const token = localStorage.getItem("bk_token");
       if (!token) return;
+
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย", timestamp: new Date().toISOString() },
+        { role: "assistant", content: "", timestamp: new Date().toISOString() }
+      ]);
+      setIsLoading(true);
 
       const res = await fetch("/api/chann", {
         method: "POST",
@@ -167,28 +250,65 @@ export function FloatingChannChat() {
         body: JSON.stringify({
           token,
           message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
-          history: messages.slice(-20),
         }),
       });
 
-      const data = await res.json();
-      if (data.ok && data.reply) {
-        const aiMessage: ChatMessage = {
-          role: "assistant",
-          content: `--- สรุปบทสนทนา ---\n${data.reply}`,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let rdDone = false;
+      let buf = "";
+      let started = false;
+
+      while (!rdDone) {
+        const { value, done: readerDone } = await reader.read();
+        rdDone = readerDone;
+        if (value) {
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n\n");
+          buf = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.replace("data: ", "");
+              if (dataStr.trim() === "[DONE]") break;
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.content) {
+                  if (!started) { setIsLoading(false); setIsStreaming(true); started = true; }
+                  setMessages((prev) => {
+                    const n = [...prev];
+                    n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content };
+                    return n;
+                  });
+                }
+              } catch {}
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Summary error:", error);
     } finally {
       setIsSummarizing(false);
+      setIsLoading(false);
+      setIsStreaming(false);
     }
   };
 
-  const clearHistory = () => {
+  const clearHistory = async () => {
     setMessages([]);
+    try {
+      const token = localStorage.getItem("bk_token");
+      if (!token) return;
+      await fetch("/api/chann/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+    } catch (error) {
+      console.error("Failed to clear history:", error);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -223,7 +343,9 @@ export function FloatingChannChat() {
               </div>
               <div>
                 <h3 className="font-bold" data-testid="text-chann-title">Chann AI</h3>
-                <p className="text-xs opacity-80" data-testid="text-chann-subtitle">ผู้ช่วยอัจฉริยะ</p>
+                <p className="text-xs opacity-80" data-testid="text-chann-subtitle">
+                  {isStreaming ? "กำลังพิมพ์..." : "ผู้ช่วยอัจฉริยะ"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -231,7 +353,7 @@ export function FloatingChannChat() {
                 variant="ghost"
                 size="icon"
                 onClick={summarizeChat}
-                disabled={messages.length === 0 || isSummarizing}
+                disabled={messages.length === 0 || isSummarizing || isLoading || isStreaming}
                 title="สรุปบทสนทนา"
                 data-testid="button-summarize-chann"
               >
@@ -254,6 +376,7 @@ export function FloatingChannChat() {
                 variant="ghost"
                 size="icon"
                 onClick={clearHistory}
+                disabled={isLoading || isStreaming}
                 title="ล้างประวัติ"
                 data-testid="button-clear-chann-history"
               >
@@ -284,7 +407,7 @@ export function FloatingChannChat() {
               <div
                 key={index}
                 className={cn(
-                  "flex gap-3",
+                  "flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300",
                   msg.role === "user" ? "justify-end" : "justify-start"
                 )}
                 data-testid={`message-chann-${msg.role}-${index}`}
@@ -304,7 +427,7 @@ export function FloatingChannChat() {
                       : cn("bg-muted text-foreground", getBubbleStyleClass())
                   )}
                 >
-                  {msg.imageUrl && (
+                  {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
                     <img
                       src={msg.imageUrl}
                       alt="sent"
@@ -314,7 +437,13 @@ export function FloatingChannChat() {
                     />
                   )}
                   {msg.content && msg.content !== "ส่งรูปภาพ" && (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    msg.role === "assistant" ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )
                   )}
                 </div>
                 {msg.role === "user" && (
@@ -327,18 +456,21 @@ export function FloatingChannChat() {
               </div>
             ))}
 
-            {isLoading && (
-              <div className="flex gap-3 justify-start" data-testid="container-chann-loading">
+            {isLoading && !isStreaming && (
+              <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid="container-chann-loading">
                 <Avatar className="w-8 h-8 flex-shrink-0">
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                     <Bot className="w-4 h-4" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Chann กำลังคิด...</span>
                   </div>
                 </div>
               </div>
@@ -371,7 +503,7 @@ export function FloatingChannChat() {
                 variant="ghost"
                 size="icon"
                 onClick={() => imageInputRef.current?.click()}
-                disabled={isLoading}
+                disabled={isLoading || isStreaming}
                 data-testid="button-chann-image-upload"
               >
                 <ImagePlus className="w-4 h-4" />
@@ -383,18 +515,18 @@ export function FloatingChannChat() {
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 placeholder="พิมพ์ข้อความ..."
-                disabled={isLoading}
+                disabled={isLoading || isStreaming}
                 className="flex-1 min-h-[40px] max-h-[120px] resize-none text-sm"
                 rows={1}
                 data-testid="input-chann-message"
               />
               <Button
                 onClick={sendMessage}
-                disabled={(!message.trim() && !imagePreview) || isLoading}
+                disabled={(!message.trim() && !imagePreview) || isLoading || isStreaming}
                 size="icon"
                 data-testid="button-send-chann-message"
               >
-                {isLoading ? (
+                {isLoading || isStreaming ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />
@@ -405,9 +537,9 @@ export function FloatingChannChat() {
         </div>
       )}
 
-      <ChatCustomizationPanel 
-        isOpen={showCustomization} 
-        onClose={() => setShowCustomization(false)} 
+      <ChatCustomizationPanel
+        isOpen={showCustomization}
+        onClose={() => setShowCustomization(false)}
       />
     </>
   );

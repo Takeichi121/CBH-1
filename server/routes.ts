@@ -132,6 +132,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const username = session.username;
+      const isAdmin = user.role === "admin";
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -444,7 +445,6 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       ];
 
-      const isAdmin = user.role === "admin";
       const channTools = isAdmin ? [...channReadTools, ...channWriteTools] : channReadTools;
 
       const writeToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "saveLaborSettings", "updateUserStatus", "updateUserRole"]);

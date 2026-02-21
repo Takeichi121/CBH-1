@@ -89,7 +89,7 @@ export function OnboardingTour() {
   const [hasSeenTour, setHasSeenTour] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user && !user.mustChangePassword) {
       const tourKey = `bk_onboarding_${user.username}`;
       const seen = localStorage.getItem(tourKey);
       if (!seen) {
@@ -133,6 +133,7 @@ export function OnboardingTour() {
 
   if (!user || hasSeenTour) return null;
   if (!isOpen) return null;
+  if (user.mustChangePassword) return null;
 
   const step = steps[currentStep];
   const isLast = currentStep === steps.length - 1;

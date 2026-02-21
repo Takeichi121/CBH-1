@@ -488,26 +488,44 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               return JSON.stringify({ error: "Invalid reportDate format. Use YYYY-MM-DD" });
             }
             const reportBy = user.nickName || user.fullName || username;
-            await storage.upsertDailySalesReportByDate({
+            const existing = await storage.getDailySalesReportByDate(args.reportDate);
+            const updateData: any = {
               reportDate: args.reportDate,
               reportBy,
-              workShift: "full",
-              actualSales: String(args.actualSales ?? "0"),
-              transactionCount: String(args.transactionCount ?? "0"),
-              recommendHours: String(args.recommendHours ?? "0"),
-              rosterCommit: String(args.rosterCommit ?? "0"),
-              actualHours: String(args.actualHours ?? "0"),
-              otHours: String(args.otHours ?? "0"),
-              wasteRawDaily: String(args.wasteDaily ?? "0"),
-              lastYearSales: String(args.lastYearSales ?? "0"),
-              forecastSales: String(args.forecastSales ?? "0"),
-              lastYearTc: String(args.lastYearTc ?? "0"),
-              targetTc: String(args.targetTc ?? "0"),
-              targetTa: String(args.targetTa ?? "0"),
-            } as any);
-            await storage.log("chann_save_daily_sales", username, `date=${args.reportDate} sales=${args.actualSales ?? 0}`);
-            toolActions.push(`บันทึกยอดขายวันที่ ${args.reportDate}`);
-            return JSON.stringify({ ok: true, message: `Saved daily sales for ${args.reportDate}` });
+              workShift: existing?.workShift || "full",
+            };
+            const fieldMap: Record<string, string> = {
+              actualSales: "actualSales",
+              transactionCount: "transactionCount",
+              recommendHours: "recommendHours",
+              rosterCommit: "rosterCommit",
+              actualHours: "actualHours",
+              otHours: "otHours",
+              wasteDaily: "wasteRawDaily",
+              lastYearSales: "lastYearSales",
+              forecastSales: "forecastSales",
+              lastYearTc: "lastYearTc",
+              targetTc: "targetTc",
+              targetTa: "targetTa",
+            };
+            const updatedFields: string[] = [];
+            for (const [argKey, dbKey] of Object.entries(fieldMap)) {
+              if (args[argKey] !== undefined && args[argKey] !== null) {
+                updateData[dbKey] = String(args[argKey]);
+                updatedFields.push(argKey);
+              }
+            }
+            if (updatedFields.length === 0) {
+              return JSON.stringify({ error: "No fields provided to update" });
+            }
+            if (existing) {
+              await storage.updateDailySalesReport(existing.id, updateData);
+            } else {
+              await storage.upsertDailySalesReportByDate(updateData);
+            }
+            await storage.log("chann_save_daily_sales", username, `date=${args.reportDate} fields=${updatedFields.join(",")}`);
+            toolActions.push(`บันทึกข้อมูล ${updatedFields.join(", ")} วันที่ ${args.reportDate}`);
+            return JSON.stringify({ ok: true, message: `Updated ${updatedFields.join(", ")} for ${args.reportDate}` });
           }
 
           case "saveDailyTarget": {

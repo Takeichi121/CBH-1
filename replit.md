@@ -187,6 +187,15 @@ Version is displayed in Settings page footer automatically.
 
 ## Recent Changes
 
+### Version 1.6.0 (February 21, 2026)
+- Chann AI: เพิ่มสิทธิ์การบันทึกข้อมูลสำหรับ Admin (write tools)
+- Write tools: saveDailySales, saveDailyTarget, saveShift, deleteShift, saveLaborSettings, updateUserStatus, updateUserRole
+- Server-side admin-only gating: tools only available when user.role === "admin"
+- Audit logging for all write operations via storage.log()
+- SSE toolActions events with green action badges in chat UI
+- Sales Settings: เพิ่ม 5 คอลัมน์ใหม่ (LY Sales, Forecast, LY TC, Target TC, Target TA) พร้อม 10 คอลัมน์คำนวณอัตโนมัติ
+- Export Excel button with auto-generated filename
+
 ### Version 1.5.0 (January 16, 2026)
 - เพิ่มระบบสมัครสมาชิกใหม่ให้ผู้ใช้กำหนด Username เองได้
 - เพิ่มช่อง Email, เบอร์โทร, ยืนยันรหัสผ่านในฟอร์มสมัคร

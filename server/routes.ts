@@ -187,7 +187,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - getCrossSystemSummary: สรุปภาพรวมทุกระบบในวันเดียว (กะ+ยอดขาย+แรงงาน+ยืมคืน)
 
 ใช้ getCrossSystemSummary เมื่อนายถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
+${isAdmin ? `
+[สิทธิ์พิเศษ - Admin Write Access]
+นายเป็น Admin ดังนั้นคุณมีสิทธิ์ในการ **บันทึก/แก้ไข** ข้อมูลในระบบได้:
+- saveDailySales: บันทึกยอดขายรายวัน (actualSales, TC, hours, waste ฯลฯ)
+- saveDailyTarget: ตั้งเป้ายอดขายรายวัน
+- saveShift: จองกะให้พนักงาน
+- deleteShift: ลบกะของพนักงาน
+- saveLaborSettings: อัปเดตค่า Labor (roster hours, PT rate ฯลฯ)
+- updateUserStatus: เปิด/ปิดใช้งานผู้ใช้
+- updateUserRole: เปลี่ยนบทบาทผู้ใช้ (staff/manager/admin)
 
+[กฎการเขียนข้อมูล]
+- เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
+- เมื่อบันทึกสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
+- ถ้าข้อมูลไม่ครบ ให้ถามนายเฉพาะส่วนที่ขาด
+- ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
+` : ''}
 ผู้ใช้ปัจจุบัน (นาย): ${user.nickName || user.fullName} (${user.role})
 
 ข้อมูลปัจจุบันในระบบ (Snapshot):
@@ -220,7 +236,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         };
       }
 
-      const channTools = [
+      const channReadTools = [
         {
           type: "function" as const,
           function: {
@@ -304,7 +320,141 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       ];
 
+      const channWriteTools = [
+        {
+          type: "function" as const,
+          function: {
+            name: "saveDailySales",
+            description: "Save daily sales data for a specific date. Use when admin asks to record or update actual sales, transaction count, hours, or waste for a day.",
+            parameters: {
+              type: "object",
+              properties: {
+                reportDate: { type: "string", description: "Date in YYYY-MM-DD format" },
+                actualSales: { type: "number", description: "Actual sales amount in Baht" },
+                transactionCount: { type: "number", description: "Number of transactions (TC)" },
+                actualHours: { type: "number", description: "Actual working hours" },
+                otHours: { type: "number", description: "Overtime hours" },
+                wasteDaily: { type: "number", description: "Daily waste amount in Baht" },
+                recommendHours: { type: "number", description: "Recommended hours" },
+                rosterCommit: { type: "number", description: "Roster committed hours" },
+                lastYearSales: { type: "number", description: "Last year sales for comparison" },
+                forecastSales: { type: "number", description: "Forecast sales" },
+                lastYearTc: { type: "number", description: "Last year transaction count" },
+                targetTc: { type: "number", description: "Target transaction count" },
+                targetTa: { type: "number", description: "Target transaction average" }
+              },
+              required: ["reportDate"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "saveDailyTarget",
+            description: "Set or update daily sales target for a specific date.",
+            parameters: {
+              type: "object",
+              properties: {
+                targetDate: { type: "string", description: "Date in YYYY-MM-DD format" },
+                targetSales: { type: "number", description: "Target sales amount in Baht" }
+              },
+              required: ["targetDate", "targetSales"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "saveShift",
+            description: "Book or update a shift for a staff member on a specific date.",
+            parameters: {
+              type: "object",
+              properties: {
+                username: { type: "string", description: "Staff username" },
+                date: { type: "string", description: "Date in YYYY-MM-DD format" },
+                shiftGroup: { type: "string", enum: ["open", "lunch", "dinner", "late"], description: "Shift group" }
+              },
+              required: ["username", "date", "shiftGroup"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "deleteShift",
+            description: "Remove a shift booking for a staff member on a specific date.",
+            parameters: {
+              type: "object",
+              properties: {
+                username: { type: "string", description: "Staff username" },
+                date: { type: "string", description: "Date in YYYY-MM-DD format" }
+              },
+              required: ["username", "date"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "saveLaborSettings",
+            description: "Update labor cost settings (roster hours, duty team hours, PT wage rate, fixed cost, close shift cost).",
+            parameters: {
+              type: "object",
+              properties: {
+                rosterHours: { type: "string", description: "Target roster hours per day" },
+                dutyTeamHours: { type: "string", description: "Fixed duty team hours per day" },
+                ptWageRate: { type: "string", description: "Part-time wage rate in Baht/hour" },
+                fixedCostDaily: { type: "string", description: "Daily fixed salary cost" },
+                closeShiftCost: { type: "string", description: "Daily closing shift transport cost" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "updateUserStatus",
+            description: "Activate or deactivate a user account.",
+            parameters: {
+              type: "object",
+              properties: {
+                username: { type: "string", description: "Username to update" },
+                active: { type: "number", enum: [0, 1], description: "1 = active, 0 = inactive" }
+              },
+              required: ["username", "active"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "updateUserRole",
+            description: "Change a user's role (staff, manager, admin).",
+            parameters: {
+              type: "object",
+              properties: {
+                username: { type: "string", description: "Username to update" },
+                role: { type: "string", enum: ["staff", "manager", "admin"], description: "New role" },
+                position: { type: "string", description: "Position title (optional)" }
+              },
+              required: ["username", "role"]
+            }
+          }
+        }
+      ];
+
+      const isAdmin = user.role === "admin";
+      const channTools = isAdmin ? [...channReadTools, ...channWriteTools] : channReadTools;
+
+      const writeToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "saveLaborSettings", "updateUserStatus", "updateUserRole"]);
+      const toolActions: string[] = [];
+
       async function handleToolCall(name: string, args: any): Promise<string> {
+        if (writeToolNames.has(name) && user.role !== "admin") {
+          return JSON.stringify({ error: "Permission denied: only admin can perform write operations" });
+        }
+
         switch (name) {
           case "getTableRows":
             return JSON.stringify(await storage.getTableRows(args.tableName, args.limit || 50));
@@ -332,6 +482,122 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               borrows: { total: dayBorrows.length, items: dayBorrows }
             });
           }
+
+          case "saveDailySales": {
+            if (!args.reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(args.reportDate)) {
+              return JSON.stringify({ error: "Invalid reportDate format. Use YYYY-MM-DD" });
+            }
+            const reportBy = user.nickName || user.fullName || username;
+            await storage.upsertDailySalesReportByDate({
+              reportDate: args.reportDate,
+              reportBy,
+              workShift: "full",
+              actualSales: String(args.actualSales ?? "0"),
+              transactionCount: String(args.transactionCount ?? "0"),
+              recommendHours: String(args.recommendHours ?? "0"),
+              rosterCommit: String(args.rosterCommit ?? "0"),
+              actualHours: String(args.actualHours ?? "0"),
+              otHours: String(args.otHours ?? "0"),
+              wasteRawDaily: String(args.wasteDaily ?? "0"),
+              lastYearSales: String(args.lastYearSales ?? "0"),
+              forecastSales: String(args.forecastSales ?? "0"),
+              lastYearTc: String(args.lastYearTc ?? "0"),
+              targetTc: String(args.targetTc ?? "0"),
+              targetTa: String(args.targetTa ?? "0"),
+            } as any);
+            await storage.log("chann_save_daily_sales", username, `date=${args.reportDate} sales=${args.actualSales ?? 0}`);
+            toolActions.push(`บันทึกยอดขายวันที่ ${args.reportDate}`);
+            return JSON.stringify({ ok: true, message: `Saved daily sales for ${args.reportDate}` });
+          }
+
+          case "saveDailyTarget": {
+            if (!args.targetDate || !/^\d{4}-\d{2}-\d{2}$/.test(args.targetDate)) {
+              return JSON.stringify({ error: "Invalid targetDate format. Use YYYY-MM-DD" });
+            }
+            await storage.upsertDailyTarget({
+              targetDate: args.targetDate,
+              targetSales: String(args.targetSales),
+            });
+            await storage.log("chann_save_daily_target", username, `date=${args.targetDate} target=${args.targetSales}`);
+            toolActions.push(`ตั้งเป้ายอดขายวันที่ ${args.targetDate}: ${Number(args.targetSales).toLocaleString()} บาท`);
+            return JSON.stringify({ ok: true, message: `Saved target ${args.targetSales} for ${args.targetDate}` });
+          }
+
+          case "saveShift": {
+            if (!args.username || !args.date || !args.shiftGroup) {
+              return JSON.stringify({ error: "Missing required fields: username, date, shiftGroup" });
+            }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
+              return JSON.stringify({ error: "Invalid date format. Use YYYY-MM-DD" });
+            }
+            const targetUser = await storage.getUser(args.username.toLowerCase());
+            if (!targetUser) {
+              return JSON.stringify({ error: `User '${args.username}' not found` });
+            }
+            await storage.upsertShift({
+              username: args.username.toLowerCase(),
+              date: args.date,
+              shiftGroup: args.shiftGroup,
+            });
+            await storage.log("chann_save_shift", username, `user=${args.username} date=${args.date} shift=${args.shiftGroup}`);
+            toolActions.push(`บันทึกกะ ${args.shiftGroup} ให้ ${args.username} วันที่ ${args.date}`);
+            return JSON.stringify({ ok: true, message: `Saved shift ${args.shiftGroup} for ${args.username} on ${args.date}` });
+          }
+
+          case "deleteShift": {
+            if (!args.username || !args.date) {
+              return JSON.stringify({ error: "Missing required fields: username, date" });
+            }
+            await storage.deleteShift(args.username.toLowerCase(), args.date);
+            await storage.log("chann_delete_shift", username, `user=${args.username} date=${args.date}`);
+            toolActions.push(`ลบกะของ ${args.username} วันที่ ${args.date}`);
+            return JSON.stringify({ ok: true, message: `Deleted shift for ${args.username} on ${args.date}` });
+          }
+
+          case "saveLaborSettings": {
+            const laborData: any = {};
+            if (args.rosterHours !== undefined) laborData.rosterHours = String(args.rosterHours);
+            if (args.dutyTeamHours !== undefined) laborData.dutyTeamHours = String(args.dutyTeamHours);
+            if (args.ptWageRate !== undefined) laborData.ptWageRate = String(args.ptWageRate);
+            if (args.fixedCostDaily !== undefined) laborData.fixedCostDaily = String(args.fixedCostDaily);
+            if (args.closeShiftCost !== undefined) laborData.closeShiftCost = String(args.closeShiftCost);
+            if (Object.keys(laborData).length === 0) {
+              return JSON.stringify({ error: "No labor settings fields provided" });
+            }
+            await storage.saveLaborSettings(laborData);
+            await storage.log("chann_save_labor_settings", username, JSON.stringify(laborData));
+            toolActions.push(`อัปเดตค่า Labor Settings: ${Object.keys(laborData).join(", ")}`);
+            return JSON.stringify({ ok: true, message: "Labor settings updated", updated: laborData });
+          }
+
+          case "updateUserStatus": {
+            if (!args.username || args.active === undefined) {
+              return JSON.stringify({ error: "Missing required fields: username, active" });
+            }
+            const targetU = await storage.getUser(args.username.toLowerCase());
+            if (!targetU) {
+              return JSON.stringify({ error: `User '${args.username}' not found` });
+            }
+            await storage.updateUserStatus(args.username.toLowerCase(), args.active);
+            await storage.log("chann_update_user_status", username, `user=${args.username} active=${args.active}`);
+            toolActions.push(`${args.active === 1 ? "เปิดใช้งาน" : "ปิดใช้งาน"} ผู้ใช้ ${args.username}`);
+            return JSON.stringify({ ok: true, message: `User ${args.username} ${args.active === 1 ? "activated" : "deactivated"}` });
+          }
+
+          case "updateUserRole": {
+            if (!args.username || !args.role) {
+              return JSON.stringify({ error: "Missing required fields: username, role" });
+            }
+            const roleTarget = await storage.getUser(args.username.toLowerCase());
+            if (!roleTarget) {
+              return JSON.stringify({ error: `User '${args.username}' not found` });
+            }
+            await storage.updateUserRole(args.username.toLowerCase(), args.role, args.position);
+            await storage.log("chann_update_user_role", username, `user=${args.username} role=${args.role} position=${args.position || ""}`);
+            toolActions.push(`เปลี่ยนบทบาท ${args.username} เป็น ${args.role}`);
+            return JSON.stringify({ ok: true, message: `User ${args.username} role updated to ${args.role}` });
+          }
+
           default:
             return JSON.stringify({ error: "Unknown function" });
         }
@@ -360,6 +626,11 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       }
 
       const hadToolCalls = toolCalls && toolCalls.length > 0;
+
+      if (toolActions.length > 0) {
+        res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
+      }
+
       if (!hadToolCalls) {
         const directContent = firstResponse.choices[0]?.message?.content;
         if (directContent) {

@@ -9,7 +9,16 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import path from "path";
 import fs from "fs";
-import { hashPass, generateUsernameBase, allocateUsername, isSystemClosed, getWeekRangeTuesday, DEFAULT_CAPACITY, SHIFT_GROUPS } from "./utils";
+import { 
+  hashPassword, 
+  comparePassword,
+  generateUsernameBase, 
+  allocateUsername, 
+  isSystemClosed, 
+  getWeekRangeTuesday, 
+  DEFAULT_CAPACITY, 
+  SHIFT_GROUPS 
+} from "./utils";
 import { db } from "./db";
 import { 
   users, 
@@ -1075,7 +1084,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     }
 
     await db.update(users)
-      .set({ passhash: hashPass(newPassword), mustChangePassword: 0 })
+      .set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 })
       .where(eq(users.username, otpRecord.username));
 
     await db.update(passwordResetOtps)
@@ -1420,9 +1429,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    if (hashPass(currentPassword) !== u.passhash) return res.json({ ok: false, message: "Current password incorrect" });
+    if (await comparePassword(currentPassword, u.passhash)) return res.json({ ok: false, message: "Current password incorrect" });
 
-    await db.update(users).set({ passhash: hashPass(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
+    await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
     await storage.log("change_password", u.username, "password updated");
     res.json({ ok: true });
   });
@@ -1436,7 +1445,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     if (u.mustChangePassword !== 1) return res.json({ ok: false, message: "Not required to change password" });
 
-    await db.update(users).set({ passhash: hashPass(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
+    await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
     await storage.log("force_change_password", u.username, "first-time password updated");
     res.json({ ok: true });
   });

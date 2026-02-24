@@ -338,7 +338,8 @@ export class DatabaseStorage implements IStorage {
 
   async getDailySalesReportsForMonth(year: number, month: number): Promise<DailySalesReport[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     return await db.select().from(dailySalesReports)
       .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate)))
       .orderBy(dailySalesReports.reportDate);
@@ -377,7 +378,9 @@ export class DatabaseStorage implements IStorage {
     otMtd: number;
   }> {
     const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = beforeDate || `${year}-${String(month).padStart(2, '0')}-31`;
+    // Fix: Correctly handle end of month string
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = beforeDate || `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     
     const reports = await db.select().from(dailySalesReports)
       .where(
@@ -435,7 +438,8 @@ export class DatabaseStorage implements IStorage {
   // Daily Targets
   async getDailyTargetsForMonth(year: number, month: number): Promise<DailyTarget[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     return await db.select().from(dailyTargets)
       .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, endDate)))
       .orderBy(dailyTargets.targetDate);

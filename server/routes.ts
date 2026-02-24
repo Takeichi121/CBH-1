@@ -1400,6 +1400,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (Object.keys(updateData).length === 0) return res.json({ ok: true, user: u });
 
     const [updated] = await db.update(users).set(updateData).where(eq(users.username, u.username)).returning();
+    if (!updated) return res.json({ ok: false, message: "Update failed" });
     res.json({ ok: true, user: updated });
   });
 
@@ -1431,9 +1432,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     if (await comparePassword(currentPassword, u.passhash)) return res.json({ ok: false, message: "Current password incorrect" });
 
-    await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
+    const [updated] = await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username)).returning();
     await storage.log("change_password", u.username, "password updated");
-    res.json({ ok: true });
+    res.json({ ok: true, user: updated });
   });
 
   app.post("/api/forceChangePassword", async (req, res) => {
@@ -1445,9 +1446,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     if (u.mustChangePassword !== 1) return res.json({ ok: false, message: "Not required to change password" });
 
-    await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username));
+    const [updated] = await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username)).returning();
     await storage.log("force_change_password", u.username, "first-time password updated");
-    res.json({ ok: true });
+    res.json({ ok: true, user: updated });
   });
 
   app.post("/api/updateUserStatus", async (req, res) => {
@@ -1544,9 +1545,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!username) return res.json({ ok: false, message: "Cannot create username" });
 
     await storage.createUser({
-      username, passhash: hashPass(password), role: role || "staff", fullName, fullNameTh: fullNameTh || "",
+      username, passhash: await hashPassword(password), role: role || "staff", fullName, fullNameTh: fullNameTh || "",
       nickName: nickName || "", phone: phone || "", email: email || "",
-      position: role === "manager" ? (position || "store_manager") : "Service Staff",
+      position: role === "manager" ? (position || "store_manager") : (position || "Service Staff"),
       active: 1, mustChangePassword: mustChangePassword ? 1 : 0, createdAt: new Date().toISOString()
     });
 

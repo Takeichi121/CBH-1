@@ -104,43 +104,43 @@ export default function SalesDashboardPage() {
       title: t.todaySales,
       value: loading ? "-" : (todaySales !== null ? `฿${todaySales.toLocaleString()}` : "-"),
       icon: DollarSign,
-      color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-950/30",
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
     },
     {
       title: t.monthToDate,
       value: loading ? "-" : (mtdData ? `฿${mtdData.mtdActual.toLocaleString()}` : "-"),
       icon: Target,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950/30",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-500/10",
     },
     {
       title: t.transactions,
       value: loading ? "-" : (todayTc !== null ? todayTc.toLocaleString() : "-"),
       icon: Users,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-950/30",
+      color: "text-violet-600 dark:text-violet-400",
+      bgColor: "bg-violet-50 dark:bg-violet-500/10",
     },
     {
       title: t.avgTicket,
       value: loading ? "-" : (avgTicket !== null ? `฿${avgTicket.toLocaleString()}` : "-"),
       icon: BarChart3,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50 dark:bg-orange-950/30",
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-50 dark:bg-amber-500/10",
     },
     {
       title: t.deliveryTotal,
       value: loading ? "-" : (deliverySales !== null ? `฿${deliverySales.toLocaleString()}` : "-"),
       icon: TrendingUp,
-      color: "text-red-600",
-      bgColor: "bg-red-50 dark:bg-red-950/30",
+      color: "text-rose-600 dark:text-rose-400",
+      bgColor: "bg-rose-50 dark:bg-rose-500/10",
     },
     {
       title: t.deliveryPercent,
       value: loading ? "-" : (deliveryPercent !== null ? `${deliveryPercent.toFixed(1)}%` : "-"),
       icon: BarChart3,
-      color: "text-cyan-600",
-      bgColor: "bg-cyan-50 dark:bg-cyan-950/30",
+      color: "text-sky-600 dark:text-sky-400",
+      bgColor: "bg-sky-50 dark:bg-sky-500/10",
     },
   ];
 
@@ -224,10 +224,10 @@ export default function SalesDashboardPage() {
                             variant="secondary"
                             className={`text-xs ${
                               achievement >= 100
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
                                 : achievement >= 90
-                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                                  : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+                                  : "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400"
                             }`}
                           >
                             {achievement.toFixed(0)}%

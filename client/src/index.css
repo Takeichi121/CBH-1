@@ -122,6 +122,10 @@ textarea:not([readonly]),
   padding: 4px;
 }
 
+.dark .bk-logo-container {
+  background: #292B38;
+}
+
 .bk-logo-blue-crescent {
   position: absolute;
   inset: 0;

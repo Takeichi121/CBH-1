@@ -187,10 +187,16 @@ Version is displayed in Settings page footer automatically.
 
 ## Recent Changes
 
+### Version 1.7.0 (February 25, 2026)
+- Chann AI: Full Agent Access - ทุก user (staff/manager/admin) มีสิทธิ์ write เหมือนกันหมด
+- เพิ่ม tools ใหม่: createUser, updateUserProfile, resetUserPassword, addBorrowTransaction, addBorrowBranch, addBorrowItem, executeSqlQuery
+- executeSqlQuery: Chann สามารถรัน SQL query โดยตรงได้ (SELECT/INSERT/UPDATE/DELETE)
+- ลบ admin-only gating ออก: ผู้ใช้ทุกคนสามารถสั่ง Chann ทำงานได้เหมือน System Agent
+- System prompt อัปเดต: Chann มีสิทธิ์เทียบเท่า Agent
+
 ### Version 1.6.0 (February 21, 2026)
 - Chann AI: เพิ่มสิทธิ์การบันทึกข้อมูลสำหรับ Admin (write tools)
 - Write tools: saveDailySales, saveDailyTarget, saveShift, deleteShift, saveLaborSettings, updateUserStatus, updateUserRole
-- Server-side admin-only gating: tools only available when user.role === "admin"
 - Audit logging for all write operations via storage.log()
 - SSE toolActions events with green action badges in chat UI
 - Sales Settings: เพิ่ม 5 คอลัมน์ใหม่ (LY Sales, Forecast, LY TC, Target TC, Target TA) พร้อม 10 คอลัมน์คำนวณอัตโนมัติ

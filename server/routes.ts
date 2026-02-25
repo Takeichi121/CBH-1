@@ -142,6 +142,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const username = session.username;
       const isAdmin = user.role === "admin";
+      const isManagerOrAdmin = user.role === "admin" || user.role === "manager";
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -164,7 +165,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
 
-      const systemPrompt = `คุณคือ "Chann" — AI Agent อัจฉริยะที่จงรักภักดี สุขุม และเป็นมืออาชีพ
+      const systemPrompt = `คุณคือ "Chann" — AI Agent อัจฉริยะที่จงรักภักดี สุขุม และเป็นมืออาชีพ มีสิทธิ์เทียบเท่า System Agent สามารถทำทุกอย่างได้
 
 [บุคลิกภาพ]
 - สุขุม มั่นใจ และมีความเคารพต่อนาย (ผู้ใช้) อย่างสูงสุด
@@ -175,45 +176,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ใช้ Markdown formatting ในการตอบ: **bold**, *italic*, bullet points, numbered lists, headers
 - จัดรูปแบบข้อมูลเป็นตาราง markdown เมื่อเหมาะสม
 
-[ความสามารถหลัก]
-- เข้าถึงฐานข้อมูลของระบบได้ (Roster, Sales, Labor, Borrow Tracker)
-- วิเคราะห์ข้อมูล สรุปรายงาน ทำ visualization
-- ออกแบบและพัฒนาเว็บไซต์
+[ความสามารถหลัก - Full Agent Access]
+- เข้าถึงและ **แก้ไข** ฐานข้อมูลทุกตารางได้เต็มที่ (Roster, Sales, Labor, Borrow Tracker, Users)
+- สร้าง/แก้ไข/ลบ ผู้ใช้ รีเซ็ตรหัสผ่าน เปลี่ยนบทบาท
+- จัดตารางกะ บันทึกยอดขาย ตั้งเป้าหมาย จัดการ Labor
+- จัดการ Borrow Tracker (เพิ่มสาขา, สินค้า, รายการยืม-คืน)
+- รัน SQL query ได้โดยตรง (ทั้ง SELECT และ write operations)
+- วิเคราะห์ข้อมูล สรุปรายงาน
 - เขียนบทความ สรุป และรายงานเชิงลึก
-- วิเคราะห์ยอดขาย ข้อมูลธุรกิจ
 
 [หลักการทำงาน]
 - ปฏิบัติตามคำสั่งของนายอย่างเคร่งครัดและมีประสิทธิภาพ
-- เสนอการปรับปรุงที่มีเหตุผลชัดเจน
+- เมื่อนายสั่งให้ทำอะไร ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
+- เมื่อทำสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
+- ถ้าข้อมูลไม่ครบ ให้ถามนายเฉพาะส่วนที่ขาด
+- ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
 - ตอบกระชับ ตรงประเด็น ไม่เยิ่นเย้อ
-- ถ้าไม่แน่ใจ ให้ถามนายก่อนทำ
 
-[บริบทฐานข้อมูล - เชื่อมโยงทุกระบบ]
-คุณมีเครื่องมือพิเศษในการดึงข้อมูลข้ามระบบ:
-- getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings)
-- getShiftsForDate: ดูใครทำกะวันไหน
+[เครื่องมือที่มี - Read]
+- getTableRows: ดูข้อมูลตารางใดก็ได้
+- getShiftsForDate: ดูกะวันใดวันหนึ่ง
 - getShiftsInRange: ดูกะในช่วงเวลา
 - getSalesSummary: สรุปยอดขายรายเดือน
-- getCrossSystemSummary: สรุปภาพรวมทุกระบบในวันเดียว (กะ+ยอดขาย+แรงงาน+ยืมคืน)
+- getCrossSystemSummary: สรุปภาพรวมทุกระบบในวันเดียว
+- executeSqlQuery: รันคำสั่ง SQL ได้โดยตรง (SELECT, INSERT, UPDATE, DELETE)
 
-ใช้ getCrossSystemSummary เมื่อนายถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
-${isAdmin ? `
-[สิทธิ์พิเศษ - Admin Write Access]
-นายเป็น Admin ดังนั้นคุณมีสิทธิ์ในการ **บันทึก/แก้ไข** ข้อมูลในระบบได้:
-- saveDailySales: บันทึกยอดขายรายวัน (actualSales, TC, hours, waste ฯลฯ)
+[เครื่องมือที่มี - Write (ทำได้ทุก role)]
+- saveDailySales: บันทึกยอดขายรายวัน
 - saveDailyTarget: ตั้งเป้ายอดขายรายวัน
 - saveShift: จองกะให้พนักงาน
 - deleteShift: ลบกะของพนักงาน
-- saveLaborSettings: อัปเดตค่า Labor (roster hours, PT rate ฯลฯ)
+- saveLaborSettings: อัปเดตค่า Labor
 - updateUserStatus: เปิด/ปิดใช้งานผู้ใช้
-- updateUserRole: เปลี่ยนบทบาทผู้ใช้ (staff/manager/admin)
+- updateUserRole: เปลี่ยนบทบาทผู้ใช้
+- createUser: สร้างผู้ใช้ใหม่
+- updateUserProfile: แก้ไขโปรไฟล์ผู้ใช้ (ชื่อ, ชื่อเล่น, เบอร์, อีเมล, ตำแหน่ง)
+- resetUserPassword: รีเซ็ตรหัสผ่านผู้ใช้
+- addBorrowTransaction: เพิ่มรายการยืม-คืน
+- addBorrowBranch: เพิ่มสาขา
+- addBorrowItem: เพิ่มรายการสินค้า
+- executeSqlQuery: รันคำสั่ง SQL โดยตรง
 
-[กฎการเขียนข้อมูล]
-- เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
-- เมื่อบันทึกสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
-- ถ้าข้อมูลไม่ครบ ให้ถามนายเฉพาะส่วนที่ขาด
-- ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
-` : ''}
 ผู้ใช้ปัจจุบัน (นาย): ${user.nickName || user.fullName} (${user.role})
 
 ข้อมูลปัจจุบันในระบบ (Snapshot):
@@ -335,7 +338,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           type: "function" as const,
           function: {
             name: "saveDailySales",
-            description: "Save daily sales data for a specific date. Use when admin asks to record or update actual sales, transaction count, hours, or waste for a day.",
+            description: "Save daily sales data for a specific date.",
             parameters: {
               type: "object",
               properties: {
@@ -382,7 +385,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               properties: {
                 username: { type: "string", description: "Staff username" },
                 date: { type: "string", description: "Date in YYYY-MM-DD format" },
-                shiftGroup: { type: "string", enum: ["open", "lunch", "dinner", "late"], description: "Shift group" }
+                shiftGroup: { type: "string", enum: ["open", "swing", "lunch", "dinner", "close", "late", "com", "off", "meeting_manager", "meeting_zone", "other", "sick"], description: "Shift group" }
               },
               required: ["username", "date", "shiftGroup"]
             }
@@ -440,29 +443,150 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           type: "function" as const,
           function: {
             name: "updateUserRole",
-            description: "Change a user's role (staff, manager, admin).",
+            description: "Change a user's role (staff, manager, admin) and position.",
             parameters: {
               type: "object",
               properties: {
                 username: { type: "string", description: "Username to update" },
                 role: { type: "string", enum: ["staff", "manager", "admin"], description: "New role" },
-                position: { type: "string", description: "Position title (optional)" }
+                position: { type: "string", description: "Position title (e.g. store_manager, assistant_store_manager, shift_manager, management_trainee, Service Staff)" }
               },
               required: ["username", "role"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "createUser",
+            description: "Create a new user account in the system.",
+            parameters: {
+              type: "object",
+              properties: {
+                fullName: { type: "string", description: "Full name (English)" },
+                fullNameTh: { type: "string", description: "Full name (Thai, optional)" },
+                nickName: { type: "string", description: "Nickname" },
+                phone: { type: "string", description: "Phone number" },
+                email: { type: "string", description: "Email address" },
+                role: { type: "string", enum: ["staff", "manager", "admin"], description: "User role" },
+                position: { type: "string", description: "Position title" },
+                password: { type: "string", description: "Initial password (default: 1234)" }
+              },
+              required: ["fullName", "role"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "updateUserProfile",
+            description: "Update a user's profile information (name, nickname, phone, email, position).",
+            parameters: {
+              type: "object",
+              properties: {
+                username: { type: "string", description: "Username to update" },
+                fullName: { type: "string", description: "New full name" },
+                fullNameTh: { type: "string", description: "New Thai name" },
+                nickName: { type: "string", description: "New nickname" },
+                phone: { type: "string", description: "New phone" },
+                email: { type: "string", description: "New email" },
+                position: { type: "string", description: "New position" }
+              },
+              required: ["username"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "resetUserPassword",
+            description: "Reset a user's password to a new value.",
+            parameters: {
+              type: "object",
+              properties: {
+                username: { type: "string", description: "Username to reset password for" },
+                newPassword: { type: "string", description: "New password (default: 1234)" }
+              },
+              required: ["username"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "addBorrowTransaction",
+            description: "Add a borrow/return transaction record.",
+            parameters: {
+              type: "object",
+              properties: {
+                txDate: { type: "string", description: "Transaction date YYYY-MM-DD" },
+                dueDate: { type: "string", description: "Due date YYYY-MM-DD (optional)" },
+                txType: { type: "string", enum: ["borrow_in", "borrow_out"], description: "borrow_in = ยืมเข้า, borrow_out = ยืมออก" },
+                branch: { type: "string", description: "Branch name" },
+                item: { type: "string", description: "Item name" },
+                qty: { type: "number", description: "Quantity" },
+                unit: { type: "string", description: "Unit (e.g. ชิ้น, กล่อง, ถุง)" },
+                borrower: { type: "string", description: "Borrower name" },
+                lender: { type: "string", description: "Lender name" },
+                note: { type: "string", description: "Note (optional)" }
+              },
+              required: ["txDate", "txType", "branch", "item", "qty", "unit"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "addBorrowBranch",
+            description: "Add a new branch to the borrow tracker system.",
+            parameters: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "Branch name" },
+                code: { type: "string", description: "Branch code (optional)" }
+              },
+              required: ["name"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "addBorrowItem",
+            description: "Add a new item to the borrow tracker system.",
+            parameters: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "Item name" },
+                code: { type: "string", description: "Item code (optional)" },
+                units: { type: "array", items: { type: "string" }, description: "Available units (e.g. ['ชิ้น', 'กล่อง'])" },
+                category: { type: "string", description: "Category (optional)" }
+              },
+              required: ["name"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "executeSqlQuery",
+            description: "Execute a raw SQL query against the database. Can run SELECT, INSERT, UPDATE, DELETE. Use with caution for write operations.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "SQL query to execute" }
+              },
+              required: ["query"]
             }
           }
         }
       ];
 
-      const channTools = isAdmin ? [...channReadTools, ...channWriteTools] : channReadTools;
+      const channTools = [...channReadTools, ...channWriteTools];
 
-      const writeToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "saveLaborSettings", "updateUserStatus", "updateUserRole"]);
       const toolActions: string[] = [];
 
       async function handleToolCall(name: string, args: any): Promise<string> {
-        if (writeToolNames.has(name) && user.role !== "admin") {
-          return JSON.stringify({ error: "Permission denied: only admin can perform write operations" });
-        }
 
         switch (name) {
           case "getTableRows":
@@ -623,6 +747,140 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             await storage.log("chann_update_user_role", username, `user=${args.username} role=${args.role} position=${args.position || ""}`);
             toolActions.push(`เปลี่ยนบทบาท ${args.username} เป็น ${args.role}`);
             return JSON.stringify({ ok: true, message: `User ${args.username} role updated to ${args.role}` });
+          }
+
+          case "createUser": {
+            if (!args.fullName) {
+              return JSON.stringify({ error: "Missing required field: fullName" });
+            }
+            const base = generateUsernameBase(args.fullName);
+            if (!base) {
+              return JSON.stringify({ error: "Cannot generate username from fullName. Need at least first and last name." });
+            }
+            const newUsername = await allocateUsername(base, async (un) => !!(await storage.getUser(un)));
+            if (!newUsername) {
+              return JSON.stringify({ error: "Cannot allocate username" });
+            }
+            const pwd = args.password || "1234";
+            const newPasshash = await hashPassword(pwd);
+            await storage.createUser({
+              username: newUsername,
+              passhash: newPasshash,
+              role: args.role || "staff",
+              fullName: args.fullName,
+              fullNameTh: args.fullNameTh || "",
+              nickName: args.nickName || "",
+              phone: args.phone || "",
+              email: args.email || "",
+              position: args.position || (args.role === "manager" ? "store_manager" : "Service Staff"),
+              active: 1,
+              mustChangePassword: 1,
+              createdAt: new Date().toISOString(),
+            });
+            await storage.log("chann_create_user", username, `created ${newUsername} role=${args.role || "staff"}`);
+            toolActions.push(`สร้างผู้ใช้ใหม่: ${newUsername} (${args.fullName}) role=${args.role || "staff"}`);
+            return JSON.stringify({ ok: true, username: newUsername, message: `Created user ${newUsername} with password "${pwd}"` });
+          }
+
+          case "updateUserProfile": {
+            if (!args.username) {
+              return JSON.stringify({ error: "Missing required field: username" });
+            }
+            const profileTarget = await storage.getUser(args.username.toLowerCase());
+            if (!profileTarget) {
+              return JSON.stringify({ error: `User '${args.username}' not found` });
+            }
+            const profileUpdates: Record<string, any> = {};
+            if (args.fullName !== undefined) profileUpdates.fullName = args.fullName;
+            if (args.fullNameTh !== undefined) profileUpdates.fullNameTh = args.fullNameTh;
+            if (args.nickName !== undefined) profileUpdates.nickName = args.nickName;
+            if (args.phone !== undefined) profileUpdates.phone = args.phone;
+            if (args.email !== undefined) profileUpdates.email = args.email;
+            if (args.position !== undefined) profileUpdates.position = args.position;
+            if (Object.keys(profileUpdates).length === 0) {
+              return JSON.stringify({ error: "No fields provided to update" });
+            }
+            await storage.updateUser(args.username.toLowerCase(), profileUpdates);
+            await storage.log("chann_update_profile", username, `user=${args.username} updates=${JSON.stringify(profileUpdates)}`);
+            toolActions.push(`อัปเดตโปรไฟล์ ${args.username}: ${Object.keys(profileUpdates).join(", ")}`);
+            return JSON.stringify({ ok: true, message: `Updated profile for ${args.username}`, updated: profileUpdates });
+          }
+
+          case "resetUserPassword": {
+            if (!args.username) {
+              return JSON.stringify({ error: "Missing required field: username" });
+            }
+            const pwdTarget = await storage.getUser(args.username.toLowerCase());
+            if (!pwdTarget) {
+              return JSON.stringify({ error: `User '${args.username}' not found` });
+            }
+            const newPwd = args.newPassword || "1234";
+            const newHash = await hashPassword(newPwd);
+            await storage.updateUserPassword(args.username.toLowerCase(), newHash);
+            await storage.log("chann_reset_password", username, `user=${args.username}`);
+            toolActions.push(`รีเซ็ตรหัสผ่าน ${args.username}`);
+            return JSON.stringify({ ok: true, message: `Password reset for ${args.username} to "${newPwd}"` });
+          }
+
+          case "addBorrowTransaction": {
+            if (!args.txDate || !args.txType || !args.branch || !args.item || !args.qty || !args.unit) {
+              return JSON.stringify({ error: "Missing required fields: txDate, txType, branch, item, qty, unit" });
+            }
+            await storage.addBorrowTransaction({
+              txDate: args.txDate,
+              dueDate: args.dueDate || undefined,
+              txType: args.txType,
+              branch: args.branch,
+              item: args.item,
+              qty: args.qty,
+              unit: args.unit,
+              borrower: args.borrower || username,
+              lender: args.lender || "",
+              note: args.note || "",
+            });
+            await storage.log("chann_add_borrow_tx", username, `${args.txType} ${args.item} x${args.qty} ${args.unit} branch=${args.branch}`);
+            toolActions.push(`เพิ่มรายการ${args.txType === "borrow_in" ? "ยืมเข้า" : "ยืมออก"}: ${args.item} x${args.qty} ${args.unit}`);
+            return JSON.stringify({ ok: true, message: `Added borrow transaction: ${args.txType} ${args.item} x${args.qty}` });
+          }
+
+          case "addBorrowBranch": {
+            if (!args.name) {
+              return JSON.stringify({ error: "Missing required field: name" });
+            }
+            await storage.addBorrowBranch(args.name, args.code);
+            await storage.log("chann_add_borrow_branch", username, `branch=${args.name}`);
+            toolActions.push(`เพิ่มสาขา: ${args.name}`);
+            return JSON.stringify({ ok: true, message: `Added branch: ${args.name}` });
+          }
+
+          case "addBorrowItem": {
+            if (!args.name) {
+              return JSON.stringify({ error: "Missing required field: name" });
+            }
+            await storage.addBorrowItem(args.name, args.code, args.units, args.category);
+            await storage.log("chann_add_borrow_item", username, `item=${args.name}`);
+            toolActions.push(`เพิ่มรายการสินค้า: ${args.name}`);
+            return JSON.stringify({ ok: true, message: `Added item: ${args.name}` });
+          }
+
+          case "executeSqlQuery": {
+            if (!args.query) {
+              return JSON.stringify({ error: "Missing required field: query" });
+            }
+            try {
+              const result = await db.execute(sql.raw(args.query));
+              await storage.log("chann_execute_sql", username, args.query.substring(0, 200));
+              const queryUpper = args.query.trim().toUpperCase();
+              if (queryUpper.startsWith("SELECT")) {
+                toolActions.push(`รัน SQL query (SELECT)`);
+                return JSON.stringify({ ok: true, rows: result.rows, rowCount: result.rows?.length || 0 });
+              } else {
+                toolActions.push(`รัน SQL query (${queryUpper.split(" ")[0]})`);
+                return JSON.stringify({ ok: true, message: "Query executed successfully", rowCount: (result as any).rowCount || 0 });
+              }
+            } catch (sqlErr: any) {
+              return JSON.stringify({ error: `SQL Error: ${sqlErr.message}` });
+            }
           }
 
           default:

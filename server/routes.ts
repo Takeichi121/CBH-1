@@ -3843,7 +3843,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const rosterHours = Number(cfg.rosterHours) || 88;
     const varianceHours = summaryHours - rosterHours;
 
-    const variableCost = (actual + ot) * (Number(cfg.ptWageRate) || 0);
+    const variableCost = (dutyHours + actual + ot) * (Number(cfg.ptWageRate) || 0);
     const fixedCost = (Number(cfg.fixedCostDaily) || 0) + (Number(cfg.closeShiftDailyCost) || 0);
     const laborCostTotal = fixedCost + variableCost;
 

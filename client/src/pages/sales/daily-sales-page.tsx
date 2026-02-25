@@ -1215,8 +1215,8 @@ ${v.staffRosterText || ""}
   // Total hours including duty for labor cost calculation only
   const totalHoursForCost = dutyDailyHours + actualHoursInput + otHoursInput;
   
-  // Labor Cost Total = Total Hours (including duty) × PPH
-  const computedLaborCost = totalHoursForCost * ptWageRate;
+  // Labor Cost Total = Total Hours (including duty) × PPH + fixed daily costs
+  const computedLaborCost = totalHoursForCost * ptWageRate + fixedCostDaily + closeShiftDailyCost;
   
   // COL% = Labor Cost / Sales * 100
   const computedColPercent = actualSales > 0 ? (computedLaborCost / actualSales) * 100 : 0;

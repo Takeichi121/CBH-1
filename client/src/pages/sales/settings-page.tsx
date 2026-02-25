@@ -91,6 +91,8 @@ export default function SalesSettingsPage() {
 
   const [dutyTeamHours, setDutyTeamHours] = useState("40");
   const [hourlyRate, setHourlyRate] = useState("84");
+  const [fixedCostDaily, setFixedCostDaily] = useState(0);
+  const [closeShiftDailyCost, setCloseShiftDailyCost] = useState(0);
 
   const [originalDailyTargets, setOriginalDailyTargets] = useState<Record<string, string>>({});
   const [originalSalesData, setOriginalSalesData] = useState<Record<string, any>>({});
@@ -216,7 +218,7 @@ export default function SalesSettingsPage() {
       runningWorkHours += summaryHours;
       const varianceHours = summaryHours - rosterCommit;
 
-      const colDaily = summaryHours * HOURLY_RATE;
+      const colDaily = summaryHours * HOURLY_RATE + fixedCostDaily + closeShiftDailyCost;
       runningCol += colDaily;
       const colPercent = actualSales > 0 ? (colDaily / actualSales) * 100 : 0;
       
@@ -272,7 +274,7 @@ export default function SalesSettingsPage() {
         varianceTa,
       };
     });
-  }, [monthDates, dailyTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE]);
+  }, [monthDates, dailyTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE, fixedCostDaily, closeShiftDailyCost]);
 
   const totals = useMemo(() => {
     const lastRow = tableData[tableData.length - 1];
@@ -309,18 +311,28 @@ export default function SalesSettingsPage() {
     const loadSettings = async () => {
       try {
         const token = localStorage.getItem("bk_token");
-        const res = await apiRequest("POST", "/api/sales/getSettings", { token });
-        const data = await res.json();
-        if (data.ok && data.settings) {
-          setStoreName(data.settings.storeName || "BK Grand Diamond");
-          setStoreCode(data.settings.storeCode || "BK001GDP");
-          setDefaultTarget(data.settings.dailyTarget?.toString() || "130000");
-          if (data.settings.dutyTeamHours) {
-            setDutyTeamHours(data.settings.dutyTeamHours.toString());
+        const [storeRes, laborRes] = await Promise.all([
+          apiRequest("POST", "/api/sales/getSettings", { token }),
+          apiRequest("POST", "/api/settings/get-labor", {}),
+        ]);
+        const storeData = await storeRes.json();
+        const laborData = await laborRes.json();
+        if (storeData.ok && storeData.settings) {
+          setStoreName(storeData.settings.storeName || "BK Grand Diamond");
+          setStoreCode(storeData.settings.storeCode || "BK001GDP");
+          setDefaultTarget(storeData.settings.dailyTarget?.toString() || "130000");
+          if (storeData.settings.dutyTeamHours) {
+            setDutyTeamHours(storeData.settings.dutyTeamHours.toString());
           }
-          if (data.settings.hourlyRate) {
-            setHourlyRate(data.settings.hourlyRate.toString());
+          if (storeData.settings.hourlyRate) {
+            setHourlyRate(storeData.settings.hourlyRate.toString());
           }
+        }
+        if (laborData.ok && laborData.settings) {
+          setDutyTeamHours(laborData.settings.dutyDailyHours?.toString() || "40");
+          setHourlyRate(laborData.settings.ptWageRate?.toString() || "45");
+          setFixedCostDaily(Number(laborData.settings.fixedCostDaily) || 0);
+          setCloseShiftDailyCost(Number(laborData.settings.closeShiftDailyCost) || 0);
         }
       } catch (error) {
         console.error("Failed to load settings:", error);

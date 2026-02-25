@@ -772,16 +772,16 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     }
 
     if (!await storage.getUser("admin")) {
-      await storage.createUser({ username: "admin", passhash: hashPass("1234"), role: "admin", fullName: "Admin", nickName: "", phone: "", email: "", position: "Admin", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "admin", passhash: await hashPassword("1234"), role: "admin", fullName: "Admin", nickName: "", phone: "", email: "", position: "Admin", active: 1, createdAt: new Date().toISOString() });
     }
     if (!await storage.getUser("manager")) {
-      await storage.createUser({ username: "manager", passhash: hashPass("1234"), role: "manager", fullName: "Manager", nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "manager", passhash: await hashPassword("1234"), role: "manager", fullName: "Manager", nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString() });
     }
     if (!await storage.getUser("staff")) {
-      await storage.createUser({ username: "staff", passhash: hashPass("1234"), role: "staff", fullName: "Staff", nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "staff", passhash: await hashPassword("1234"), role: "staff", fullName: "Staff", nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString() });
     }
     if (!await storage.getUser("devstaff")) {
-      await storage.createUser({ username: "devstaff", passhash: hashPass("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "devstaff", passhash: await hashPassword("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: new Date().toISOString() });
     }
 
     await storage.log("setup_ok", "system", "setup completed");
@@ -805,7 +805,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     }
 
     if (!u || !u.active) return res.json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });
-    if (hashPass(password) !== u.passhash) return res.json({ ok: false, message: "รหัสผ่านไม่ถูก" });
+    if (!(await comparePassword(password, u.passhash))) return res.json({ ok: false, message: "รหัสผ่านไม่ถูก" });
 
     const token = crypto.randomUUID().replace(/-/g, "");
     const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
@@ -857,7 +857,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
-      username: username.toLowerCase(), passhash: hashPass(password), role: "staff",
+      username: username.toLowerCase(), passhash: await hashPassword(password), role: "staff",
       fullName, nickName: "", phone, email, position: "Service Staff", active: 1, createdAt: new Date().toISOString()
     });
     await storage.log("register_staff", username.toLowerCase(), "fullName=" + fullName);
@@ -878,7 +878,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
-      username: username.toLowerCase(), passhash: hashPass(password), role: "manager",
+      username: username.toLowerCase(), passhash: await hashPassword(password), role: "manager",
       fullName, nickName: "", phone, email, position: "store_manager", active: 1, createdAt: new Date().toISOString()
     });
     await storage.log("register_manager", username.toLowerCase(), `fullName=${fullName}, position=store_manager`);
@@ -915,7 +915,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         return res.json({ ok: false, message: "Invalid session" });
       }
 
-      await storage.updateUserPassword(session.username, hashPass(newPassword));
+      await storage.updateUserPassword(session.username, await hashPassword(newPassword));
       await (storage as any).updateUser(session.username, { mustChangePassword: 0 });
       await storage.log("password_change_forced", session.username, "success");
 
@@ -2327,21 +2327,14 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
   app.post(api.devTools.resetPassword.path, async (req, res) => {
     const { token, devCode, username, newPassword } = req.body;
-
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.json(access);
 
     try {
-      // แนะนำ: ถ้าเป็นไปได้ควรย้าย import ไปไว้บรรทัดบนสุดของไฟล์
-      const { hashPassword } = await import("./utils");
-
-      // ✅ แก้ไข: เพิ่ม await ตรงนี้
       const passhash = await hashPassword(newPassword);
-
-      await storage.updateUserPassword(username, passhash);
+      const [updated] = await db.update(users).set({ passhash }).where(eq(users.username, username)).returning();
       await storage.log("dev_reset_password", access.user.username, `user=${username}`);
-
-      res.json({ ok: true, message: `Password reset for ${username}` });
+      res.json({ ok: true, user: updated, message: `Password reset for ${username}` });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to reset password" });
     }
@@ -2435,7 +2428,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         if (existing) { errors.push(`User ${username} already exists`); failed++; continue; }
 
         await storage.createUser({
-          username, passhash: hashPass(u.password), role: validRoles.includes(u.role) ? u.role : "staff",
+          username, passhash: await hashPassword(u.password), role: validRoles.includes(u.role) ? u.role : "staff",
           fullName: typeof u.fullName === "string" ? u.fullName.trim() : null,
           nickName: typeof u.nickName === "string" ? u.nickName.trim() : null,
           phone: typeof u.phone === "string" ? u.phone.trim() : null,
@@ -2984,7 +2977,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           // Create new employee
           await db.insert(users).values({
             username: emp.username.toLowerCase(),
-            passhash: hashPass(emp.password || "1234"),
+            passhash: await hashPassword(emp.password || "1234"),
             fullName: emp.fullName || emp.username,
             nickName: emp.nickName || null,
             role: "staff",

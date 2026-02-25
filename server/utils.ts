@@ -21,9 +21,9 @@ export async function comparePassword(supplied: string, stored: string) {
 }
 
 // (Legacy function - เก็บไว้เผื่อมีส่วนอื่นเรียกใช้ แต่แนะนำให้ใช้ hashPassword ด้านบนแทน)
-export function hashPass(password: string): string {
-  return createHash("sha256").update(SALT + "::" + String(password || "")).digest("hex");
-}
+// export function hashPass(password: string): string {
+//   return createHash("sha256").update(SALT + "::" + String(password || "")).digest("hex");
+// }
 
 // ✅ 2. Date & Time Helpers
 // ---------------------------------------------------------

@@ -62,11 +62,6 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* Mobile Header */}
       <header className="md:hidden h-16 flex items-center justify-between px-4 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
-          <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
-        </div>
-        
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -140,6 +135,11 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </SheetContent>
         </Sheet>
+
+        <div className="flex items-center gap-3">
+          <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
+          <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
+        </div>
       </header>
 
       {/* Desktop Header */}

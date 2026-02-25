@@ -137,6 +137,7 @@ export function FloatingChannChat() {
       { role: "assistant", content: "", timestamp: new Date().toISOString() }
     ]);
     setMessage("");
+    if (inputRef.current) inputRef.current.style.height = "36px";
     setImagePreview(null);
     setIsLoading(true);
 
@@ -269,6 +270,7 @@ export function FloatingChannChat() {
   const sendQuickAction = (prompt: string) => {
     setShowQuickActions(false);
     setMessage("");
+    if (inputRef.current) inputRef.current.style.height = "36px";
     const fakeEvent = prompt;
     const token = localStorage.getItem("bk_token");
     if (!token || isLoading || isStreaming) return;
@@ -689,12 +691,17 @@ export function FloatingChannChat() {
                 <Textarea
                   ref={inputRef}
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    const el = e.target;
+                    el.style.height = "0px";
+                    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                  }}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   placeholder="พิมพ์ข้อความ..."
                   disabled={isLoading || isStreaming}
-                  className="flex-1 min-h-[40px] max-h-[120px] resize-none text-sm"
+                  className="flex-1 min-h-[36px] max-h-[120px] resize-none text-sm overflow-y-auto"
                   rows={1}
                   data-testid="input-chann-message"
                 />

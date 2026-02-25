@@ -61,84 +61,88 @@ export function Layout({ children }: { children: ReactNode }) {
       <OfflineIndicator />
 
       {/* Mobile Header */}
-      <header className="md:hidden h-16 flex items-center justify-between px-4 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
-        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[280px] p-0 border-r-0 bg-background">
-            <div className="flex flex-col h-full">
-              <SheetHeader className="p-6 border-b text-left">
-                <div className="flex items-center gap-3">
-                  <SiBurgerking className="w-10 h-10 text-[#ED1C24]" />
-                  <SheetTitle className="text-xl font-bold font-display">BK Roster</SheetTitle>
+      <header className="md:hidden flex flex-col border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+        <div className="h-14 flex items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
+            <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
+          </div>
+        </div>
+        
+        <div className="px-4 pb-2">
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0 border-r-0 bg-background">
+              <div className="flex flex-col h-full">
+                <SheetHeader className="p-6 border-b text-left">
+                  <div className="flex items-center gap-3">
+                    <SiBurgerking className="w-10 h-10 text-[#ED1C24]" />
+                    <SheetTitle className="text-xl font-bold font-display">BK Roster</SheetTitle>
+                  </div>
+                </SheetHeader>
+                
+                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+                  {navItems.map((item) => {
+                    const isActive = location === item.href;
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <a 
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
+                            isActive 
+                              ? "bg-primary/10 text-primary font-bold shadow-sm" 
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+                          <span className="text-base">{item.label}</span>
+                        </a>
+                      </Link>
+                    );
+                  })}
                 </div>
-              </SheetHeader>
-              
-              <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-                {navItems.map((item) => {
-                  const isActive = location === item.href;
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <a 
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
-                          isActive 
-                            ? "bg-primary/10 text-primary font-bold shadow-sm" 
-                            : "text-muted-foreground hover:bg-muted/50"
-                        }`}
-                      >
-                        <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
-                        <span className="text-base">{item.label}</span>
-                      </a>
-                    </Link>
-                  );
-                })}
-              </div>
 
-              <div className="p-6 border-t space-y-4">
-                <div className="flex items-center gap-4 px-4">
-                  <Avatar className="h-10 w-10 border-2 border-primary/10">
-                    <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
-                    <AvatarFallback className="bg-primary/5 text-primary font-bold">
-                      {user.username.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col overflow-hidden">
-                    <p className="text-sm font-bold truncate">{user.fullName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.username}</p>
+                <div className="p-6 border-t space-y-4">
+                  <div className="flex items-center gap-4 px-4">
+                    <Avatar className="h-10 w-10 border-2 border-primary/10">
+                      <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
+                      <AvatarFallback className="bg-primary/5 text-primary font-bold">
+                        {user.username.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden">
+                      <p className="text-sm font-bold truncate">{user.fullName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.username}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-primary/10 hover:bg-primary/5"
+                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    >
+                      {theme === "dark" ? <Sun className="w-5 h-5 text-[#F5EB16]" /> : <Moon className="w-5 h-5 text-[#0033A0]" />}
+                      <span className="text-[10px] font-bold">Theme</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-destructive/10 hover:bg-destructive/5 text-destructive"
+                      onClick={() => logoutMutation.mutate()}
+                      data-testid="button-logout-mobile"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span className="text-[10px] font-bold">{t("logout")}</span>
+                    </Button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-primary/10 hover:bg-primary/5"
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  >
-                    {theme === "dark" ? <Sun className="w-5 h-5 text-[#F5EB16]" /> : <Moon className="w-5 h-5 text-[#0033A0]" />}
-                    <span className="text-[10px] font-bold">Theme</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-destructive/10 hover:bg-destructive/5 text-destructive"
-                    onClick={() => logoutMutation.mutate()}
-                    data-testid="button-logout-mobile"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">{t("logout")}</span>
-                  </Button>
-                </div>
               </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex items-center gap-3">
-          <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
-          <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 

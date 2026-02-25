@@ -634,10 +634,10 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               type: "object",
               properties: {
                 rosterHours: { type: "string", description: "Target roster hours per day" },
-                dutyTeamHours: { type: "string", description: "Fixed duty team hours per day" },
+                dutyDailyHours: { type: "string", description: "Fixed duty team hours per day" },
                 ptWageRate: { type: "string", description: "Part-time wage rate in Baht/hour" },
                 fixedCostDaily: { type: "string", description: "Daily fixed salary cost" },
-                closeShiftCost: { type: "string", description: "Daily closing shift transport cost" }
+                closeShiftDailyCost: { type: "string", description: "Daily closing shift transport cost" }
               },
               required: []
             }
@@ -891,14 +891,14 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           type: "function" as const,
           function: {
             name: "setWasteTarget",
-            description: "Set waste target for a specific month (daily target, meal target, monthly target).",
+            description: "Set waste target for a specific month. mtdAmount = monthly waste target, mealAmount = meal waste target, rawAmount = raw ingredient waste target.",
             parameters: {
               type: "object",
               properties: {
                 targetMonth: { type: "string", description: "Month in YYYY-MM format" },
-                dailyTarget: { type: "string", description: "Daily waste target in Baht" },
-                mealTarget: { type: "string", description: "Meal waste target in Baht" },
-                monthlyTarget: { type: "string", description: "Monthly waste target in Baht" }
+                mtdAmount: { type: "string", description: "Monthly waste target amount in Baht" },
+                mealAmount: { type: "string", description: "Meal waste target amount in Baht" },
+                rawAmount: { type: "string", description: "Raw ingredient waste target amount in Baht" }
               },
               required: ["targetMonth"]
             }
@@ -908,13 +908,14 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           type: "function" as const,
           function: {
             name: "updateStoreSettings",
-            description: "Update store settings (branch name, timezone, etc.).",
+            description: "Update store settings (store name, store code, daily sales target, MTD target).",
             parameters: {
               type: "object",
               properties: {
-                branchName: { type: "string", description: "Branch/store name" },
-                branchCode: { type: "string", description: "Branch code" },
-                timezone: { type: "string", description: "Timezone (default: Asia/Bangkok)" }
+                storeName: { type: "string", description: "Store/branch name" },
+                storeCode: { type: "string", description: "Store/branch code" },
+                dailyTarget: { type: "string", description: "Daily sales target in Baht" },
+                mtdTarget: { type: "string", description: "Month-to-date sales target in Baht" }
               },
               required: []
             }
@@ -1193,10 +1194,10 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           case "saveLaborSettings": {
             const laborData: any = {};
             if (args.rosterHours !== undefined) laborData.rosterHours = String(args.rosterHours);
-            if (args.dutyTeamHours !== undefined) laborData.dutyTeamHours = String(args.dutyTeamHours);
+            if (args.dutyDailyHours !== undefined) laborData.dutyDailyHours = String(args.dutyDailyHours);
             if (args.ptWageRate !== undefined) laborData.ptWageRate = String(args.ptWageRate);
             if (args.fixedCostDaily !== undefined) laborData.fixedCostDaily = String(args.fixedCostDaily);
-            if (args.closeShiftCost !== undefined) laborData.closeShiftCost = String(args.closeShiftCost);
+            if (args.closeShiftDailyCost !== undefined) laborData.closeShiftDailyCost = String(args.closeShiftDailyCost);
             if (Object.keys(laborData).length === 0) {
               return JSON.stringify({ error: "No labor settings fields provided" });
             }
@@ -1384,12 +1385,17 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             if (!args.startDate || !args.endDate || args.targetSales === undefined) {
               return JSON.stringify({ error: "Missing required fields: startDate, endDate, targetSales" });
             }
+            const getNextDayStr = (d: string) => {
+              const [y, m, day] = d.split("-").map(Number);
+              const obj = new Date(y, m - 1, day);
+              obj.setDate(obj.getDate() + 1);
+              return `${obj.getFullYear()}-${String(obj.getMonth() + 1).padStart(2, "0")}-${String(obj.getDate()).padStart(2, "0")}`;
+            };
             const targets: InsertDailyTarget[] = [];
-            const start = new Date(args.startDate);
-            const end = new Date(args.endDate);
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-              const dateStr = d.toISOString().split("T")[0];
-              targets.push({ date: dateStr, targetSales: String(args.targetSales) } as InsertDailyTarget);
+            let cur = args.startDate as string;
+            while (cur <= args.endDate) {
+              targets.push({ targetDate: cur, targetSales: String(args.targetSales) } as InsertDailyTarget);
+              cur = getNextDayStr(cur);
             }
             await storage.bulkUpsertDailyTargets(targets);
             await storage.log("chann_bulk_targets", username, `${args.startDate}~${args.endDate} = ${args.targetSales}`);
@@ -1435,9 +1441,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           case "setWasteTarget": {
             if (!args.targetMonth) return JSON.stringify({ error: "Missing required field: targetMonth" });
             const wtData: any = {};
-            if (args.dailyTarget !== undefined) wtData.dailyTarget = args.dailyTarget;
-            if (args.mealTarget !== undefined) wtData.mealTarget = args.mealTarget;
-            if (args.monthlyTarget !== undefined) wtData.monthlyTarget = args.monthlyTarget;
+            if (args.mtdAmount !== undefined) wtData.mtdAmount = String(args.mtdAmount);
+            if (args.mealAmount !== undefined) wtData.mealAmount = String(args.mealAmount);
+            if (args.rawAmount !== undefined) wtData.rawAmount = String(args.rawAmount);
             const wtResult = await storage.upsertWasteTarget(args.targetMonth, wtData);
             await storage.log("chann_set_waste_target", username, `month=${args.targetMonth}`);
             toolActions.push(`ตั้งเป้า Waste เดือน ${args.targetMonth}`);
@@ -1451,9 +1457,10 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
           case "updateStoreSettings": {
             const ssData: any = {};
-            if (args.branchName) ssData.branchName = args.branchName;
-            if (args.branchCode) ssData.branchCode = args.branchCode;
-            if (args.timezone) ssData.timezone = args.timezone;
+            if (args.storeName) ssData.storeName = args.storeName;
+            if (args.storeCode) ssData.storeCode = args.storeCode;
+            if (args.dailyTarget !== undefined) ssData.dailyTarget = String(args.dailyTarget);
+            if (args.mtdTarget !== undefined) ssData.mtdTarget = String(args.mtdTarget);
             const ssResult = await storage.updateStoreSettings(ssData);
             await storage.log("chann_update_store_settings", username, JSON.stringify(ssData));
             toolActions.push(`อัปเดตการตั้งค่าร้าน`);

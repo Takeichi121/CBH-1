@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation, Link } from "wouter";
-import { Calendar, BarChart3, Package, MessageCircle, Settings, Briefcase, X, Menu } from "lucide-react";
+import { Calendar, BarChart3, Package, MessageCircle, Settings, Briefcase, X, LayoutGrid } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 
@@ -216,7 +216,7 @@ export function BottomNav() {
           {isOpen ? (
             <X className="w-5 h-5" />
           ) : (
-            <Menu className="w-5 h-5 opacity-60" />
+            <LayoutGrid className="w-5 h-5 opacity-60" />
           )}
         </div>
       </div>

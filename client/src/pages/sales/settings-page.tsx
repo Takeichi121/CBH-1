@@ -606,56 +606,219 @@ export default function SalesSettingsPage() {
 
   const handleExportExcel = () => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const dataForExcel = tableData.map(row => ({
-      "Date": row.displayDate,
-      "Target Sales": row.targetSales,
-      "Actual Sales": row.actualSales,
-      "Sales MTD": row.actualSalesMtd,
-      "LY Sales": row.lastYearSales,
-      "LY Sales MTD": row.lastYearSalesMtd,
-      "Forecast": row.forecastSales,
-      "Forecast MTD": row.forecastMtd,
-      "Achieve %": parseFloat(row.achievePercent.toFixed(2)),
-      "Comp Sales %": parseFloat(row.compSalesPercent.toFixed(2)),
-      "Actual TC": row.actualTc,
-      "TC MTD": row.actualTcMtd,
-      "LY TC": row.lastYearTc,
-      "LY TC MTD": row.lastYearTcMtd,
-      "Target TC": row.targetTc,
-      "Target TC MTD": row.targetTcMtd,
-      "Comp TC %": parseFloat(row.compTcPercent.toFixed(2)),
-      "LY TA": parseFloat(row.lastYearTa.toFixed(2)),
-      "Target TA": row.targetTa,
-      "Actual TA": parseFloat(row.actualTa.toFixed(2)),
-      "Variance TA": parseFloat(row.varianceTa.toFixed(2)),
-      "Recommend Hr": row.recommendHours,
-      "Roster Commit": row.rosterCommit,
-      "MTD Roster": row.mtdRoster,
-      "Duty Team": row.dutyTeam,
-      "Actual Hr": row.actualHours,
-      "OT Hr": row.otHours,
-      "Summary Hr": parseFloat(row.summaryHours.toFixed(2)),
-      "MTD Hr": parseFloat(row.mtdWorkingHours.toFixed(2)),
-      "Variance Hr": parseFloat(row.varianceHours.toFixed(2)),
-      "COL (฿)": parseFloat(row.colDaily.toFixed(0)),
-      "MTD COL": parseFloat(row.mtdCol.toFixed(0)),
-      "COL %": parseFloat(row.colPercent.toFixed(2)),
-      "TCMH": parseFloat(row.tcmh.toFixed(2)),
-      "Waste (฿)": row.wasteDaily,
-      "Waste MTD": row.wasteMtd,
-      "Waste %": parseFloat(row.wastePercent.toFixed(2)),
-    }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+    const toExcelDate = (year: number, month: number, day: number): number => {
+      const d = new Date(Date.UTC(year, month - 1, day));
+      const epoch = new Date(Date.UTC(1899, 11, 30));
+      return Math.floor((d.getTime() - epoch.getTime()) / 86400000);
+    };
+
+    const exl = (v: number | string, blank = true): number | string => {
+      if (blank && (v === 0 || v === "")) return "";
+      return v;
+    };
+
+    const dutyTeamCount = Math.round(DUTY_TEAM_HOURS / 8);
+    const targetWastePct = wasteTargets.rawPercent || "0.75";
+    const targetTcmh = 4.4;
+
+    const row1 = Array(60).fill("");
+    row1[2] = "Store name : ";
+    row1[3] = storeName;
+    row1[17] = `Target Waste ${targetWastePct}%`;
+    row1[30] = "จำนวน Duty Team ที่มีอยู่ที่ร้าน ==>>";
+    row1[34] = dutyTeamCount;
+    row1[37] = "PPH ค่าชั่วโมงเฉลี่ยที่จ่ายต่อชั่วโมง ==>>";
+    row1[42] = HOURLY_RATE;
+    row1[44] = `Target TCMH ${targetTcmh}`;
+
+    const row2 = Array(60).fill("");
+    row2[0] = "Day"; row2[1] = "Month"; row2[2] = "Sales";
+    row2[19] = "TC"; row2[28] = "TA"; row2[32] = dutyTeamCount;
+    row2[45] = "Promotion ";
+
+    const row3 = [
+      "Day", "Month",
+      "Last Year Sales\n(Daily)", "Last Year Sales\nMTD",
+      "Target Sales\n(Incentive) \nDaily", "Target Sales MTD\n(Incentive)",
+      "Forecast Sales\nFrom NBO", "Actual Sales\n(Daily)", "Actual Sales\nMTD",
+      "Varaince From \nTarget", "Varaince \nMTD",
+      "Sales Delivery (Daily)", "Sales Delivery MTD",
+      "Achive Incentive Target%", "Varaince From \nForecast", "%", "Comp \nSales %",
+      "Waste Daily (Bath)", "Waste Daily (%)",
+      "Last year TC\n(Daily)", "Last year TC\nMTD",
+      "Target TC\n(Daily)", "Target TC\nMTD",
+      "Actual TC\n(Daily)", "Actual TC\nMTD",
+      "Varaince From  Target", "Varaince From \nLast year", "Comp TC %",
+      "Last year TA", "Target TA", "Actual TA", "Variance Target VS Actual",
+      " Recommend Hours \n(ชั่วโมงจากระบบ NBO)",
+      "Roster\nCommit \nFrom Area", "MTD Roster\nWorking Hours",
+      "ชั่วโมงการทำงาน Duty Team \n(ห้ามแก้ไข)",
+      "Actual \nHours\n(PT+FT)", "OT\nHours",
+      "Summary Hours Total", "MTD \nWorking Hours", "Variance\n Hours",
+      "COL(Bath)", "MTD COL", "COL(%)", "Actual\nTCMH",
+      "Value Meal Set", "MTD\nValue\nMeal", "%Value Meal",
+      "UP Size", "MTD\nUP Size", "%UP Size",
+      "Add Cheese (จำนวนแผ่น)", "MTD\nAdd Cheese", "%Add Cheese",
+      "Other \n (New promotion)", "MTD", "%",
+      "Other \n(New promotion)", "MTD", "%",
+    ];
+
+    let runningMtdPtHours = 0;
+
+    const dataRows = tableData.map((row, idx) => {
+      const d = toExcelDate(selectedYear, selectedMonth, row.day);
+      const ptSummary = row.actualHours + row.otHours;
+      runningMtdPtHours += ptSummary;
+      const fullSummary = DUTY_TEAM_HOURS + row.actualHours + row.otHours;
+      const colBath = fullSummary * HOURLY_RATE;
+      const colMtd = tableData.slice(0, idx + 1).reduce((s, r) => s + (DUTY_TEAM_HOURS + r.actualHours + r.otHours) * HOURLY_RATE, 0);
+      const colPct = row.actualSales > 0 ? colBath / row.actualSales : "";
+      const tcmhXl = ptSummary > 0 ? row.actualTc / ptSummary : "";
+      const varFromTarget = row.actualSales > 0 ? row.actualSales - row.targetSales : "";
+      const varMtd = row.actualSalesMtd > 0 ? row.actualSalesMtd - (tableData.slice(0, idx + 1).reduce((s, r) => s + r.targetSales, 0)) : "";
+      const achievePct = row.targetSales > 0 && row.actualSales > 0 ? (row.actualSales - row.targetSales) / row.targetSales : "";
+      const varFromForecast = row.forecastSales > 0 && row.actualSales > 0 ? row.actualSales - row.forecastSales : (row.actualSales > 0 ? row.actualSales : "");
+      const compSalesPct = row.lastYearSales > 0 && row.actualSales > 0 ? (row.actualSales / row.lastYearSales) - 1 : "";
+      const varTcFromTarget = row.actualTc > 0 ? row.actualTc - row.targetTc : "";
+      const varTcFromLy = row.actualTc > 0 ? row.actualTc - row.lastYearTc : "";
+      const compTcPct = row.lastYearTc > 0 && row.actualTc > 0 ? (row.actualTc / row.lastYearTc) - 1 : "";
+      const varianceHrsXl = row.rosterCommit > 0 || ptSummary > 0 ? ptSummary - row.rosterCommit : "";
+      const wastePct = row.actualSales > 0 && row.wasteDaily > 0 ? row.wasteDaily / row.actualSales : "";
+
+      const r = Array(60).fill("");
+      r[0] = d; r[1] = d;
+      r[2] = exl(row.lastYearSales); r[3] = exl(row.lastYearSalesMtd);
+      r[4] = exl(row.targetSales); r[5] = exl(tableData.slice(0, idx + 1).reduce((s, rr) => s + rr.targetSales, 0));
+      r[6] = exl(row.forecastSales);
+      r[7] = exl(row.actualSales); r[8] = exl(row.actualSalesMtd);
+      r[9] = varFromTarget; r[10] = varMtd;
+      r[11] = ""; r[12] = "";
+      r[13] = achievePct; r[14] = varFromForecast; r[15] = 0; r[16] = compSalesPct;
+      r[17] = exl(row.wasteDaily); r[18] = wastePct;
+      r[19] = exl(row.lastYearTc); r[20] = exl(row.lastYearTcMtd);
+      r[21] = exl(row.targetTc); r[22] = exl(row.targetTcMtd);
+      r[23] = exl(row.actualTc); r[24] = exl(row.actualTcMtd);
+      r[25] = varTcFromTarget; r[26] = varTcFromLy; r[27] = compTcPct;
+      r[28] = exl(row.lastYearTa); r[29] = exl(row.targetTa); r[30] = exl(row.actualTa);
+      r[31] = row.actualTa > 0 ? row.varianceTa : "";
+      r[32] = exl(row.recommendHours); r[33] = exl(row.rosterCommit); r[34] = exl(row.mtdRoster);
+      r[35] = DUTY_TEAM_HOURS;
+      r[36] = exl(row.actualHours); r[37] = exl(row.otHours, false);
+      r[38] = exl(ptSummary); r[39] = exl(runningMtdPtHours); r[40] = varianceHrsXl;
+      r[41] = exl(colBath); r[42] = exl(colMtd); r[43] = colPct; r[44] = tcmhXl;
+      return r;
+    });
+
+    const totRow = Array(60).fill("");
+    totRow[0] = "Total";
+    const tLySales = tableData.reduce((s, r) => s + r.lastYearSales, 0);
+    const tTarget = tableData.reduce((s, r) => s + r.targetSales, 0);
+    const tActual = tableData.reduce((s, r) => s + r.actualSales, 0);
+    const tActualMtd = tableData[tableData.length - 1]?.actualSalesMtd || 0;
+    const tLyTc = tableData.reduce((s, r) => s + r.lastYearTc, 0);
+    const tTargetTc = tableData.reduce((s, r) => s + r.targetTc, 0);
+    const tActualTc = tableData.reduce((s, r) => s + r.actualTc, 0);
+    const tWaste = tableData.reduce((s, r) => s + r.wasteDaily, 0);
+    const tRecommend = tableData.reduce((s, r) => s + r.recommendHours, 0);
+    const tRoster = tableData.reduce((s, r) => s + r.rosterCommit, 0);
+    const tActualHrs = tableData.reduce((s, r) => s + r.actualHours, 0);
+    const tOtHrs = tableData.reduce((s, r) => s + r.otHours, 0);
+    const tDutyHrs = DUTY_TEAM_HOURS * tableData.length;
+    const tPtSummary = tActualHrs + tOtHrs;
+    const tFullSummary = tDutyHrs + tPtSummary;
+    const tColBath = tFullSummary * HOURLY_RATE;
+    const tColPct = tActual > 0 ? tColBath / tActual : "";
+    const tTcmh = tPtSummary > 0 ? tActualTc / tPtSummary : "";
+    totRow[2] = tLySales; totRow[3] = tLySales;
+    totRow[4] = tTarget; totRow[5] = tTarget;
+    totRow[7] = tActual; totRow[8] = tActualMtd;
+    totRow[9] = tActual - tTarget;
+    totRow[17] = tWaste;
+    totRow[18] = tActual > 0 ? tWaste / tActual : "";
+    totRow[19] = tLyTc; totRow[20] = tLyTc;
+    totRow[21] = tTargetTc; totRow[22] = tTargetTc;
+    totRow[23] = tActualTc; totRow[24] = tActualTc;
+    totRow[32] = tRecommend; totRow[33] = tRoster; totRow[34] = tRoster;
+    totRow[35] = tDutyHrs;
+    totRow[36] = tActualHrs; totRow[37] = tOtHrs;
+    totRow[38] = tPtSummary; totRow[39] = tPtSummary; totRow[40] = tPtSummary - tRoster;
+    totRow[41] = tColBath; totRow[43] = tColPct; totRow[44] = tTcmh;
+
+    const aoa = [row1, row2, row3, ...dataRows, totRow];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = Array(60).fill(null).map((_, i) => ({ wch: i < 2 ? 8 : 15 }));
+
+    const colDailyBudget = 0.14;
+    const cdRow1 = Array(18).fill(""); cdRow1[0] = "Labour control sheet";
+    const cdRow2 = Array(18).fill("");
+    cdRow2[0] = "Month :  "; cdRow2[2] = toExcelDate(selectedYear, selectedMonth, 1);
+    cdRow2[3] = "Budget"; cdRow2[4] = colDailyBudget;
+    const cdRow3 = Array(18).fill("");
+    const cdRow4 = Array(18).fill("");
+    cdRow4[0] = "Avg. per hour"; cdRow4[4] = HOURLY_RATE;
+    cdRow4[5] = "ค่ารถ Close shift"; cdRow4[6] = closeShiftDailyCost;
+    const cdHeaders = ["Date","Day","Fix cost (Full time)","Total Hrs (Part Time)","Cost ",
+      "จำนวนคนปิดร้าน","Close shift","COL(day)","Accum. COL","","Sales(day)","Sales MTD",
+      "% Daily","MTD % total","VAR","","",""];
+    const cdDataRows = tableData.map((row) => {
+      const d = toExcelDate(selectedYear, selectedMonth, row.day);
+      const ptCost = row.actualHours * HOURLY_RATE;
+      const colDay = fixedCostDaily + ptCost + closeShiftDailyCost;
+      const colMtdFull = row.mtdCol;
+      const pctDaily = row.actualSales > 0 ? colDay / row.actualSales : "";
+      const pctMtd = row.actualSalesMtd > 0 ? colMtdFull / row.actualSalesMtd : "";
+      const varFromBudget = typeof pctMtd === "number" ? pctMtd - colDailyBudget : "";
+      const r = Array(18).fill("");
+      r[0] = d; r[1] = d;
+      r[2] = fixedCostDaily; r[3] = row.actualHours; r[4] = ptCost;
+      r[5] = 0; r[6] = closeShiftDailyCost;
+      r[7] = exl(colDay); r[8] = exl(colMtdFull);
+      r[9] = "";
+      r[10] = exl(row.actualSales); r[11] = exl(row.actualSalesMtd);
+      r[12] = pctDaily; r[13] = pctMtd; r[14] = varFromBudget;
+      return r;
+    });
+    const cdAoa = [cdRow1, cdRow2, cdRow3, cdRow4, cdHeaders, ...cdDataRows];
+    const cdWs = XLSX.utils.aoa_to_sheet(cdAoa);
+    cdWs["!cols"] = Array(18).fill(null).map(() => ({ wch: 14 }));
+
+    const gsiHeaders = ["Date","GSI","OSAT","","Google Review","","Delivery Rating","","Check By"];
+    const gsiRow1 = Array(9).fill(""); gsiRow1[0] = " GSI Ratings ";
+    const gsiRow2 = Array(9).fill(""); gsiRow2[0] = "Store Name:"; gsiRow2[1] = storeName;
+    const gsiDataRows = tableData.map((row) => {
+      const d = toExcelDate(selectedYear, selectedMonth, row.day);
+      const r = Array(9).fill(""); r[0] = d;
+      return r;
+    });
+    const gsiAoa = [gsiRow1, gsiRow2, gsiHeaders, ...gsiDataRows];
+    const gsiWs = XLSX.utils.aoa_to_sheet(gsiAoa);
+    gsiWs["!cols"] = Array(9).fill(null).map(() => ({ wch: 14 }));
+
+    const bySegRow1 = Array(26).fill("");
+    const bySegRow2 = ["Day","Date","Dine In","","Take Away","","BK Delivery","","Drive Thru ","",
+      "1112Delivery","","lalamove","","foodpanda","","Line Man","","GrabFood","","GET","","honestbee","",
+      "Grand Total TC","Grand Total Sales"];
+    const bySegRow3 = Array(26).fill("");
+    ["TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales","TC","Sales"].forEach((v,i) => { bySegRow3[i+2] = v; });
+    const bySegData = tableData.map((row) => {
+      const d = toExcelDate(selectedYear, selectedMonth, row.day);
+      const r = Array(26).fill(""); r[0] = row.day; r[1] = d;
+      r[24] = exl(row.actualTc, false); r[25] = exl(row.actualSales);
+      return r;
+    });
+    const bySegAoa = [bySegRow1, bySegRow2, bySegRow3, ...bySegData];
+    const bySegWs = XLSX.utils.aoa_to_sheet(bySegAoa);
+    bySegWs["!cols"] = Array(26).fill(null).map(() => ({ wch: 12 }));
+
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Report");
+    XLSX.utils.book_append_sheet(workbook, ws, "Sales Management Sheet");
+    XLSX.utils.book_append_sheet(workbook, cdWs, "COL Daily");
+    XLSX.utils.book_append_sheet(workbook, gsiWs, " GSI สาขาที่มี Delivery");
+    XLSX.utils.book_append_sheet(workbook, bySegWs, "BY SEG");
 
-    worksheet['!cols'] = Array(37).fill(null).map((_, i) => ({
-      wch: i === 0 ? 10 : 14
-    }));
-
-    const cleanStoreName = storeName.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `Sales_${cleanStoreName}_${monthNames[selectedMonth - 1]}${selectedYear}.xlsx`;
+    const cleanStoreName = storeName.replace(/[^a-zA-Z0-9]/g, "_");
+    const fileName = `Sales_Management_Sheet_${cleanStoreName}_${monthNames[selectedMonth - 1]}${selectedYear}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     toast({
       title: language === "th" ? "สำเร็จ" : "Success",

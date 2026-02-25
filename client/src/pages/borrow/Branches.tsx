@@ -54,9 +54,13 @@ export default function Branches() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // ✅ Fetch Branches (Update endpoint)
   const { data: branches, isLoading } = useQuery<BorrowBranch[]>({
     queryKey: ["/api/borrow/branches"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/borrow/branches", { token: localStorage.getItem("bk_token") });
+      const data = await res.json();
+      return data.branches || [];
+    },
   });
 
   // ✅ Add Branch Mutation (Update endpoint)

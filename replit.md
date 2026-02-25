@@ -196,6 +196,14 @@ Version is displayed in Settings page footer automatically.
 - Role-based permissions: managerWriteToolNames / adminOnlyWriteToolNames แยกชัดเจน
 - Read tools ย้ายออกจาก writeTools ไปเป็น readTools ที่ทุก role เข้าถึงได้
 
+### Version 1.7.1 (February 25, 2026) — Code Audit & Bug Fixes
+- **Bug Fix**: Borrow pages (Items, Branches, Dashboard) were using default GET queryFn but backend expects POST — fixed by adding proper queryFn with token
+- **Bug Fix**: Duplicate `<Toaster />` in App.tsx removed (was rendered both in Router and App)
+- **Bug Fix**: `throwIfResNotOk` now parses JSON error responses to show clean messages instead of raw JSON strings
+- **Security**: Added path prefix validation to code-proposals/review endpoint to prevent file writes outside allowed directories
+- **Feature**: Code Proposals API endpoints (`/api/code-proposals/list`, `/api/code-proposals/review`) for Chann code edit system
+- **Feature**: Chann system prompt updated with code editing tools documentation
+
 ### Version 1.7.0 (February 25, 2026)
 - Chann AI: Full Agent Access - role-based write permissions (Admin=all, Manager=roster+reports, Staff=read-only)
 - เพิ่ม tools ใหม่: createUser, updateUserProfile, resetUserPassword, addBorrowTransaction, addBorrowBranch, addBorrowItem, executeSqlQuery

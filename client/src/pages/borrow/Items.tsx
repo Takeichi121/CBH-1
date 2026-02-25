@@ -59,9 +59,13 @@ export default function Items() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // ✅ ใช้ Endpoint ให้ตรงกับ routes.ts (/api/borrow/items)
   const { data: items, isLoading } = useQuery<BorrowItem[]>({
     queryKey: ["/api/borrow/items"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/borrow/items", { token: localStorage.getItem("bk_token") });
+      const data = await res.json();
+      return data.items || [];
+    },
   });
 
   const getCategoryLabel = (catId: string | null | undefined) => {

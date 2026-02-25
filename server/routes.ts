@@ -32,7 +32,8 @@ import {
   dailySalesReports,
   passwordResetOtps,
   staffChatMessages,
-  channConversations
+  channConversations,
+  codeProposals
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -258,6 +259,17 @@ ${isManagerOrAdmin && !isAdmin ? `
 - setWasteTarget: ตั้งเป้า Waste รายเดือน
 - updateStoreSettings: แก้ไขการตั้งค่าร้าน
 - executeSqlQuery: รันคำสั่ง SQL โดยตรง (SELECT/INSERT/UPDATE/DELETE) - ใช้เมื่อไม่มีเครื่องมือเฉพาะ
+
+**เครื่องมือแก้ไขโค้ด (Admin only):**
+- readSourceFile: อ่านไฟล์ซอร์สโค้ดของโปรเจค (client/src/, server/, shared/)
+- proposeCodeEdit: เสนอการแก้ไขโค้ด — จะยังไม่ apply ทันที ต้องรอ Agent (Replit Agent) ยืนยันก่อน
+- getCodeProposals: ดูรายการ code proposals และสถานะ (pending/approved/rejected)
+
+[กฎการแก้ไขโค้ด]
+- เมื่อนายขอให้เปลี่ยนแปลง UI/ธีม/โค้ด ให้ใช้ readSourceFile อ่านโค้ดก่อน แล้วใช้ proposeCodeEdit เสนอการแก้ไข
+- การแก้ไขโค้ดจะยังไม่มีผลทันที — ต้องรอ Agent ตรวจสอบและอนุมัติก่อน
+- ใช้ oldContent ที่ตรงกับไฟล์จริง (copy จาก readSourceFile)
+- อธิบาย description และ reason ให้ชัดเจน
 
 [กฎการเขียนข้อมูล]
 - เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
@@ -939,11 +951,60 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               required: ["query"]
             }
           }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "readSourceFile",
+            description: "Read the content of a source code file in the project. Use this to understand the current code before proposing changes. Allowed directories: client/src/, server/, shared/.",
+            parameters: {
+              type: "object",
+              properties: {
+                filePath: { type: "string", description: "Relative file path (e.g. client/src/index.css, server/routes.ts)" },
+                startLine: { type: "number", description: "Start line number (1-based, optional)" },
+                endLine: { type: "number", description: "End line number (optional)" }
+              },
+              required: ["filePath"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "proposeCodeEdit",
+            description: "Propose a code change to a source file. The change will NOT be applied immediately — it must be reviewed and approved by the Agent first. Use readSourceFile first to get the current content, then propose specific changes.",
+            parameters: {
+              type: "object",
+              properties: {
+                filePath: { type: "string", description: "Relative file path to modify" },
+                description: { type: "string", description: "Short description of what this change does" },
+                oldContent: { type: "string", description: "The exact existing code to be replaced (must match file content exactly)" },
+                newContent: { type: "string", description: "The new code to replace oldContent with" },
+                reason: { type: "string", description: "Why this change is needed" }
+              },
+              required: ["filePath", "description", "oldContent", "newContent"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getCodeProposals",
+            description: "Get list of code change proposals and their status (pending/approved/rejected).",
+            parameters: {
+              type: "object",
+              properties: {
+                status: { type: "string", enum: ["pending", "approved", "rejected", "all"], description: "Filter by status (default: pending)" },
+                limit: { type: "number", description: "Number of proposals to return (default: 20)" }
+              },
+              required: []
+            }
+          }
         }
       ];
 
       const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts"]);
-      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery"]);
+      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "getCodeProposals"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
       const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
@@ -1443,6 +1504,95 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             } catch (sqlErr: any) {
               return JSON.stringify({ error: `SQL Error: ${sqlErr.message}` });
             }
+          }
+
+          case "readSourceFile": {
+            if (!args.filePath) return JSON.stringify({ error: "Missing required field: filePath" });
+            const allowedPrefixes = ["client/src/", "server/", "shared/"];
+            const isAllowed = allowedPrefixes.some(p => args.filePath.startsWith(p));
+            if (!isAllowed) {
+              return JSON.stringify({ error: `Access denied. Allowed directories: ${allowedPrefixes.join(", ")}` });
+            }
+            try {
+              const fullPath = path.resolve(args.filePath);
+              if (!fs.existsSync(fullPath)) {
+                return JSON.stringify({ error: `File not found: ${args.filePath}` });
+              }
+              const content = fs.readFileSync(fullPath, "utf-8");
+              const lines = content.split("\n");
+              const startLine = args.startLine ? Math.max(1, args.startLine) : 1;
+              const endLine = args.endLine ? Math.min(lines.length, args.endLine) : Math.min(lines.length, startLine + 199);
+              const selectedLines = lines.slice(startLine - 1, endLine);
+              const numberedContent = selectedLines.map((line: string, i: number) => `${startLine + i}: ${line}`).join("\n");
+              return JSON.stringify({
+                ok: true,
+                filePath: args.filePath,
+                totalLines: lines.length,
+                showingLines: `${startLine}-${endLine}`,
+                content: numberedContent
+              });
+            } catch (readErr: any) {
+              return JSON.stringify({ error: `Read error: ${readErr.message}` });
+            }
+          }
+
+          case "proposeCodeEdit": {
+            if (!args.filePath || !args.description || !args.oldContent || !args.newContent) {
+              return JSON.stringify({ error: "Missing required fields: filePath, description, oldContent, newContent" });
+            }
+            const allowedEditPrefixes = ["client/src/", "server/", "shared/"];
+            const isEditAllowed = allowedEditPrefixes.some(p => args.filePath.startsWith(p));
+            if (!isEditAllowed) {
+              return JSON.stringify({ error: `Cannot edit files outside: ${allowedEditPrefixes.join(", ")}` });
+            }
+            try {
+              const editFullPath = path.resolve(args.filePath);
+              if (!fs.existsSync(editFullPath)) {
+                return JSON.stringify({ error: `File not found: ${args.filePath}` });
+              }
+              const currentContent = fs.readFileSync(editFullPath, "utf-8");
+              if (!currentContent.includes(args.oldContent)) {
+                return JSON.stringify({ error: "oldContent not found in the file. Make sure it matches the current file content exactly (use readSourceFile first)." });
+              }
+              const [proposal] = await db.insert(codeProposals).values({
+                filePath: args.filePath,
+                description: args.description,
+                oldContent: args.oldContent,
+                newContent: args.newContent,
+                reason: args.reason || null,
+                status: "pending",
+                proposedBy: username,
+              }).returning();
+              await storage.log("chann_propose_code_edit", username, `file=${args.filePath} desc=${args.description}`);
+              toolActions.push(`📝 เสนอแก้ไขโค้ด: ${args.description} (รอ Agent ยืนยัน)`);
+              return JSON.stringify({
+                ok: true,
+                message: `Code edit proposal #${proposal.id} created successfully. It will be reviewed by the Agent before being applied.`,
+                proposalId: proposal.id,
+                filePath: args.filePath,
+                description: args.description,
+                status: "pending"
+              });
+            } catch (proposeErr: any) {
+              return JSON.stringify({ error: `Proposal error: ${proposeErr.message}` });
+            }
+          }
+
+          case "getCodeProposals": {
+            const proposalStatus = args.status === "all" ? undefined : (args.status || "pending");
+            const proposalLimit = args.limit || 20;
+            let proposals;
+            if (proposalStatus) {
+              proposals = await db.select().from(codeProposals)
+                .where(eq(codeProposals.status, proposalStatus))
+                .orderBy(desc(codeProposals.createdAt))
+                .limit(proposalLimit);
+            } else {
+              proposals = await db.select().from(codeProposals)
+                .orderBy(desc(codeProposals.createdAt))
+                .limit(proposalLimit);
+            }
+            return JSON.stringify({ ok: true, proposals, count: proposals.length });
           }
 
           default:
@@ -4203,6 +4353,96 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     } catch (error: any) {
       return res.json({ ok: false, message: error.message });
+    }
+  });
+
+  // ==========================================
+  // 📝 Code Proposals (Chann → Agent review)
+  // ==========================================
+
+  app.post("/api/code-proposals/list", async (req, res) => {
+    const { token, status, limit } = req.body;
+    const access = await verifyAdminAccess(token);
+    if (!access.ok) return res.json(access);
+
+    try {
+      const proposalStatus = status === "all" ? undefined : (status || "pending");
+      const proposalLimit = limit || 50;
+      let proposals;
+      if (proposalStatus) {
+        proposals = await db.select().from(codeProposals)
+          .where(eq(codeProposals.status, proposalStatus))
+          .orderBy(desc(codeProposals.createdAt))
+          .limit(proposalLimit);
+      } else {
+        proposals = await db.select().from(codeProposals)
+          .orderBy(desc(codeProposals.createdAt))
+          .limit(proposalLimit);
+      }
+      res.json({ ok: true, proposals, count: proposals.length });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  });
+
+  app.post("/api/code-proposals/review", async (req, res) => {
+    const { token, proposalId, action, reviewNote } = req.body;
+    const access = await verifyAdminAccess(token);
+    if (!access.ok) return res.json(access);
+
+    if (!proposalId || !action || !["approve", "reject"].includes(action)) {
+      return res.json({ ok: false, message: "Missing proposalId or invalid action (approve/reject)" });
+    }
+
+    try {
+      const [proposal] = await db.select().from(codeProposals).where(eq(codeProposals.id, proposalId));
+      if (!proposal) return res.json({ ok: false, message: "Proposal not found" });
+      if (proposal.status !== "pending") return res.json({ ok: false, message: `Proposal already ${proposal.status}` });
+
+      if (action === "approve") {
+        const allowedPrefixes = ["client/src/", "server/", "shared/"];
+        if (!allowedPrefixes.some(p => proposal.filePath.startsWith(p))) {
+          return res.json({ ok: false, message: "Blocked: file path outside allowed directories" });
+        }
+        const filePath = path.resolve(proposal.filePath);
+        if (!fs.existsSync(filePath)) {
+          return res.json({ ok: false, message: `File not found: ${proposal.filePath}` });
+        }
+        const currentContent = fs.readFileSync(filePath, "utf-8");
+        if (!currentContent.includes(proposal.oldContent)) {
+          await db.update(codeProposals).set({
+            status: "conflict",
+            reviewedBy: access.username,
+            reviewNote: "File content has changed — oldContent no longer matches",
+            reviewedAt: new Date(),
+          }).where(eq(codeProposals.id, proposalId));
+          return res.json({ ok: false, message: "Conflict: The file has changed since the proposal was created. Old content no longer matches." });
+        }
+        const updatedContent = currentContent.replace(proposal.oldContent, proposal.newContent);
+        fs.writeFileSync(filePath, updatedContent, "utf-8");
+
+        await db.update(codeProposals).set({
+          status: "approved",
+          reviewedBy: access.username,
+          reviewNote: reviewNote || null,
+          reviewedAt: new Date(),
+        }).where(eq(codeProposals.id, proposalId));
+
+        await storage.log("code_proposal_approved", access.username!, `#${proposalId} file=${proposal.filePath}`);
+        res.json({ ok: true, message: `Proposal #${proposalId} approved and applied to ${proposal.filePath}` });
+      } else {
+        await db.update(codeProposals).set({
+          status: "rejected",
+          reviewedBy: access.username,
+          reviewNote: reviewNote || null,
+          reviewedAt: new Date(),
+        }).where(eq(codeProposals.id, proposalId));
+
+        await storage.log("code_proposal_rejected", access.username!, `#${proposalId} file=${proposal.filePath}`);
+        res.json({ ok: true, message: `Proposal #${proposalId} rejected` });
+      }
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
     }
   });
 

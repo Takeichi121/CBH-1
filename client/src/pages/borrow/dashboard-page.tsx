@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,10 +42,20 @@ export default function BorrowDashboardPage() {
 
   const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/borrow/dashboard"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/borrow/dashboard", { token: localStorage.getItem("bk_token") });
+      const data = await res.json();
+      return data;
+    },
   });
 
   const { data: transactions } = useQuery<BorrowTransaction[]>({
     queryKey: ["/api/borrow/transactions"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/borrow/transactions", { token: localStorage.getItem("bk_token") });
+      const data = await res.json();
+      return data.transactions || [];
+    },
   });
 
   const trendData = useMemo(() => {

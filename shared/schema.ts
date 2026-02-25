@@ -607,3 +607,25 @@ export const channConversations = pgTable("chann_conversations", {
 
 export type ChannConversation = typeof channConversations.$inferSelect;
 export type InsertChannConversation = typeof channConversations.$inferInsert;
+
+// ==========================================
+// 📝 Code Proposals (Chann → Agent)
+// ==========================================
+
+export const codeProposals = pgTable("code_proposals", {
+  id: serial("id").primaryKey(),
+  filePath: text("file_path").notNull(),
+  description: text("description").notNull(),
+  oldContent: text("old_content").notNull(),
+  newContent: text("new_content").notNull(),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"),
+  proposedBy: text("proposed_by").notNull(),
+  reviewedBy: text("reviewed_by"),
+  reviewNote: text("review_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export type CodeProposal = typeof codeProposals.$inferSelect;
+export type InsertCodeProposal = typeof codeProposals.$inferInsert;

@@ -187,7 +187,6 @@ function App() {
           <AuthProvider>
             <Router />
             <PWAInstallPrompt />
-            <Toaster />
           </AuthProvider>
         </I18nProvider>
       </QueryClientProvider>

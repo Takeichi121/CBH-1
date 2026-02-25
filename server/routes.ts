@@ -191,11 +191,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
 [บริบทฐานข้อมูล - เชื่อมโยงทุกระบบ]
 คุณมีเครื่องมือพิเศษในการดึงข้อมูลข้ามระบบ:
+
+**เครื่องมือ Read (ทุก role ใช้ได้):**
 - getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings)
 - getShiftsForDate: ดูใครทำกะวันไหน
 - getShiftsInRange: ดูกะในช่วงเวลา
 - getSalesSummary: สรุปยอดขายรายเดือน
 - getCrossSystemSummary: สรุปภาพรวมทุกระบบในวันเดียว (กะ+ยอดขาย+แรงงาน+ยืมคืน)
+- getWasteTarget: ดูเป้า Waste ของเดือนนั้น
+- getStoreSettings: ดูการตั้งค่าร้าน
+- getSystemLogs: ดู audit log (ใครทำอะไรเมื่อไหร่)
+- getSwapRequests: ดูคำขอสลับกะ
+- getBorrowTransactions: ดูรายการยืม-คืนทั้งหมด
+- getBorrowBranches: ดูรายชื่อสาขาที่ยืมได้
+- getBorrowItems: ดูรายการสินค้าที่ยืมได้
+- getMtdSummary: ดูสรุป MTD ยอดขาย, TC, เป้า, Waste, OT ของเดือน
+- getDailyTargetsForMonth: ดูเป้ายอดขายรายวันทั้งเดือน
+- getDailySalesReportsForMonth: ดูรายงานยอดขายรายวันทั้งเดือน
+- getLaborSettings: ดูค่า Labor settings (PT rate, FT rate ฯลฯ)
 
 ใช้ getCrossSystemSummary เมื่อนายถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
 ${isManagerOrAdmin && !isAdmin ? `
@@ -203,8 +216,11 @@ ${isManagerOrAdmin && !isAdmin ? `
 นายเป็น Manager ดังนั้นคุณมีสิทธิ์ในการ **แก้ไขตารางงานและรีพอร์ต** ได้:
 - saveDailySales: บันทึกยอดขายรายวัน (actualSales, TC, hours, waste ฯลฯ)
 - saveDailyTarget: ตั้งเป้ายอดขายรายวัน
+- bulkSaveDailyTargets: ตั้งเป้ายอดขายหลายวันพร้อมกัน
 - saveShift: จองกะให้พนักงาน
 - deleteShift: ลบกะของพนักงาน
+- bulkSaveShifts: จองกะหลายคน/หลายวันพร้อมกัน
+- saveDailyLabor: บันทึกชั่วโมงแรงงานรายวัน (actual + OT)
 
 [กฎการเขียนข้อมูล]
 - เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
@@ -215,11 +231,16 @@ ${isManagerOrAdmin && !isAdmin ? `
 [สิทธิ์พิเศษ - Admin Full Agent Access]
 นายเป็น Admin ดังนั้นคุณมีสิทธิ์เต็มรูปแบบเทียบเท่า System Agent:
 
-**เครื่องมือ Write:**
+**เครื่องมือ Write (Manager level):**
 - saveDailySales: บันทึกยอดขายรายวัน (actualSales, TC, hours, waste ฯลฯ)
 - saveDailyTarget: ตั้งเป้ายอดขายรายวัน
+- bulkSaveDailyTargets: ตั้งเป้ายอดขายหลายวันพร้อมกัน (ระบุช่วงวัน + จำนวน)
 - saveShift: จองกะให้พนักงาน
 - deleteShift: ลบกะของพนักงาน
+- bulkSaveShifts: จองกะหลายคน/หลายวันพร้อมกัน
+- saveDailyLabor: บันทึกชั่วโมงแรงงานรายวัน (actual + OT)
+
+**เครื่องมือ Write (Admin only):**
 - saveLaborSettings: อัปเดตค่า Labor (roster hours, PT rate ฯลฯ)
 - updateUserStatus: เปิด/ปิดใช้งานผู้ใช้
 - updateUserRole: เปลี่ยนบทบาทผู้ใช้ (staff/manager/admin)
@@ -229,7 +250,14 @@ ${isManagerOrAdmin && !isAdmin ? `
 - addBorrowTransaction: เพิ่มรายการยืม-คืน
 - addBorrowBranch: เพิ่มสาขา
 - addBorrowItem: เพิ่มรายการสินค้า
-- executeSqlQuery: รันคำสั่ง SQL โดยตรง (SELECT/INSERT/UPDATE/DELETE)
+- deleteBorrowTransaction: ลบรายการยืม-คืน
+- toggleBorrowTransaction: สลับสถานะยืม/คืน (pending ↔ returned)
+- deleteBorrowBranch: ลบสาขา
+- deleteBorrowItem: ลบรายการสินค้า
+- deleteDailySalesReport: ลบรายงานยอดขาย
+- setWasteTarget: ตั้งเป้า Waste รายเดือน
+- updateStoreSettings: แก้ไขการตั้งค่าร้าน
+- executeSqlQuery: รันคำสั่ง SQL โดยตรง (SELECT/INSERT/UPDATE/DELETE) - ใช้เมื่อไม่มีเครื่องมือเฉพาะ
 
 [กฎการเขียนข้อมูล]
 - เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
@@ -348,6 +376,157 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
                 date: { type: "string", description: "Date in YYYY-MM-DD format" }
               },
               required: ["date"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getWasteTarget",
+            description: "Get waste target for a specific month.",
+            parameters: {
+              type: "object",
+              properties: {
+                targetMonth: { type: "string", description: "Month in YYYY-MM format" }
+              },
+              required: ["targetMonth"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getStoreSettings",
+            description: "Get current store settings (branch name, logo, etc.).",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getSystemLogs",
+            description: "Get system audit logs. Useful for checking who did what and when.",
+            parameters: {
+              type: "object",
+              properties: {
+                limit: { type: "number", description: "Number of logs to return (default: 50)" },
+                action: { type: "string", description: "Filter by action type (optional)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getSwapRequests",
+            description: "Get pending or all shift swap requests.",
+            parameters: {
+              type: "object",
+              properties: {
+                status: { type: "string", enum: ["pending", "approved", "rejected", "all"], description: "Filter by status (default: all)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getBorrowTransactions",
+            description: "Get borrow/return transaction history.",
+            parameters: {
+              type: "object",
+              properties: {
+                limit: { type: "number", description: "Number of transactions to return (default: 50)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getBorrowBranches",
+            description: "Get list of all branches in the borrow tracker system.",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getBorrowItems",
+            description: "Get list of all items/products in the borrow tracker system.",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getMtdSummary",
+            description: "Get month-to-date (MTD) sales summary for a specific month. Returns total actual sales, TC, target, waste totals, and OT.",
+            parameters: {
+              type: "object",
+              properties: {
+                year: { type: "number", description: "Year (e.g. 2026)" },
+                month: { type: "number", description: "Month (1-12)" },
+                beforeDate: { type: "string", description: "Optional: only count reports before this date (YYYY-MM-DD)" }
+              },
+              required: ["year", "month"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getDailyTargetsForMonth",
+            description: "Get all daily sales targets for a specific month.",
+            parameters: {
+              type: "object",
+              properties: {
+                year: { type: "number", description: "Year (e.g. 2026)" },
+                month: { type: "number", description: "Month (1-12)" }
+              },
+              required: ["year", "month"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getDailySalesReportsForMonth",
+            description: "Get all daily sales reports for a specific month. Returns full report data including sales, TC, hours, waste, etc.",
+            parameters: {
+              type: "object",
+              properties: {
+                year: { type: "number", description: "Year (e.g. 2026)" },
+                month: { type: "number", description: "Month (1-12)" }
+              },
+              required: ["year", "month"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getLaborSettings",
+            description: "Get current labor settings (PT rate, FT rate, roster hours, etc.).",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: []
             }
           }
         }
@@ -589,8 +768,169 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         {
           type: "function" as const,
           function: {
+            name: "deleteBorrowTransaction",
+            description: "Delete a borrow transaction by its ID.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "string", description: "Transaction ID to delete" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "toggleBorrowTransaction",
+            description: "Toggle a borrow transaction status between pending and returned.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "string", description: "Transaction ID to toggle" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "deleteBorrowBranch",
+            description: "Delete a branch from the borrow tracker system.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "string", description: "Branch ID to delete" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "deleteBorrowItem",
+            description: "Delete an item from the borrow tracker system.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "string", description: "Item ID to delete" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "bulkSaveDailyTargets",
+            description: "Set daily sales targets for multiple days at once. Useful for setting a whole month's targets.",
+            parameters: {
+              type: "object",
+              properties: {
+                startDate: { type: "string", description: "Start date YYYY-MM-DD" },
+                endDate: { type: "string", description: "End date YYYY-MM-DD" },
+                targetSales: { type: "number", description: "Target sales amount in Baht for each day" }
+              },
+              required: ["startDate", "endDate", "targetSales"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "deleteDailySalesReport",
+            description: "Delete a daily sales report by its ID.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "Report ID to delete" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "saveDailyLabor",
+            description: "Save daily labor hours (actual hours and OT hours) for a specific date.",
+            parameters: {
+              type: "object",
+              properties: {
+                date: { type: "string", description: "Date in YYYY-MM-DD format" },
+                actualHours: { type: "number", description: "Actual working hours" },
+                otHours: { type: "number", description: "Overtime hours" }
+              },
+              required: ["date", "actualHours"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "setWasteTarget",
+            description: "Set waste target for a specific month (daily target, meal target, monthly target).",
+            parameters: {
+              type: "object",
+              properties: {
+                targetMonth: { type: "string", description: "Month in YYYY-MM format" },
+                dailyTarget: { type: "string", description: "Daily waste target in Baht" },
+                mealTarget: { type: "string", description: "Meal waste target in Baht" },
+                monthlyTarget: { type: "string", description: "Monthly waste target in Baht" }
+              },
+              required: ["targetMonth"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "updateStoreSettings",
+            description: "Update store settings (branch name, timezone, etc.).",
+            parameters: {
+              type: "object",
+              properties: {
+                branchName: { type: "string", description: "Branch/store name" },
+                branchCode: { type: "string", description: "Branch code" },
+                timezone: { type: "string", description: "Timezone (default: Asia/Bangkok)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "bulkSaveShifts",
+            description: "Book shifts for multiple staff or multiple dates at once.",
+            parameters: {
+              type: "object",
+              properties: {
+                shifts: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      username: { type: "string" },
+                      date: { type: "string" },
+                      shiftGroup: { type: "string" }
+                    },
+                    required: ["username", "date", "shiftGroup"]
+                  },
+                  description: "Array of shifts to save"
+                }
+              },
+              required: ["shifts"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
             name: "executeSqlQuery",
-            description: "Execute a raw SQL query against the database. Can run SELECT, INSERT, UPDATE, DELETE. Use with caution for write operations.",
+            description: "Execute a raw SQL query against the database. Can run SELECT, INSERT, UPDATE, DELETE. Use with caution for write operations. Use this as a last resort when no specific tool is available.",
             parameters: {
               type: "object",
               properties: {
@@ -602,8 +942,8 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       ];
 
-      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift"]);
-      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "executeSqlQuery"]);
+      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts"]);
+      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
       const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
@@ -652,6 +992,44 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               labor: laborData || null,
               borrows: { total: dayBorrows.length, items: dayBorrows }
             });
+          }
+
+          case "getBorrowTransactions": {
+            const btxs = await storage.getBorrowTransactions(args.limit || 50);
+            return JSON.stringify({ ok: true, transactions: btxs, count: btxs.length });
+          }
+
+          case "getBorrowBranches": {
+            const branches = await storage.getBorrowBranches();
+            return JSON.stringify({ ok: true, branches, count: branches.length });
+          }
+
+          case "getBorrowItems": {
+            const items = await storage.getBorrowItems();
+            return JSON.stringify({ ok: true, items, count: items.length });
+          }
+
+          case "getMtdSummary": {
+            if (!args.year || !args.month) return JSON.stringify({ error: "Missing required fields: year, month" });
+            const mtd = await storage.getMtdSummary(args.year, args.month, args.beforeDate);
+            return JSON.stringify({ ok: true, data: mtd });
+          }
+
+          case "getDailyTargetsForMonth": {
+            if (!args.year || !args.month) return JSON.stringify({ error: "Missing required fields: year, month" });
+            const monthTargets = await storage.getDailyTargetsForMonth(args.year, args.month);
+            return JSON.stringify({ ok: true, targets: monthTargets, count: monthTargets.length });
+          }
+
+          case "getDailySalesReportsForMonth": {
+            if (!args.year || !args.month) return JSON.stringify({ error: "Missing required fields: year, month" });
+            const monthReports = await storage.getDailySalesReportsForMonth(args.year, args.month);
+            return JSON.stringify({ ok: true, reports: monthReports, count: monthReports.length });
+          }
+
+          case "getLaborSettings": {
+            const ls = await storage.getLaborSettings();
+            return JSON.stringify({ ok: true, data: ls || null });
           }
 
           case "saveDailySales": {
@@ -899,6 +1277,152 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             await storage.log("chann_add_borrow_item", username, `item=${args.name}`);
             toolActions.push(`เพิ่มรายการสินค้า: ${args.name}`);
             return JSON.stringify({ ok: true, message: `Added item: ${args.name}` });
+          }
+
+          case "deleteBorrowTransaction": {
+            if (!args.id) return JSON.stringify({ error: "Missing required field: id" });
+            await storage.deleteBorrowTransaction(args.id);
+            await storage.log("chann_delete_borrow_tx", username, `id=${args.id}`);
+            toolActions.push(`ลบรายการยืม/คืน ID: ${args.id}`);
+            return JSON.stringify({ ok: true, message: `Deleted borrow transaction: ${args.id}` });
+          }
+
+          case "toggleBorrowTransaction": {
+            if (!args.id) return JSON.stringify({ error: "Missing required field: id" });
+            const toggleResult = await storage.toggleBorrowTransaction(args.id);
+            await storage.log("chann_toggle_borrow_tx", username, `id=${args.id} status=${toggleResult.status}`);
+            toolActions.push(`สลับสถานะยืม/คืน ID: ${args.id} → ${toggleResult.status}`);
+            return JSON.stringify(toggleResult);
+          }
+
+          case "deleteBorrowBranch": {
+            if (!args.id) return JSON.stringify({ error: "Missing required field: id" });
+            await storage.deleteBorrowBranch(args.id);
+            await storage.log("chann_delete_borrow_branch", username, `id=${args.id}`);
+            toolActions.push(`ลบสาขา ID: ${args.id}`);
+            return JSON.stringify({ ok: true, message: `Deleted branch: ${args.id}` });
+          }
+
+          case "deleteBorrowItem": {
+            if (!args.id) return JSON.stringify({ error: "Missing required field: id" });
+            await storage.deleteBorrowItem(args.id);
+            await storage.log("chann_delete_borrow_item", username, `id=${args.id}`);
+            toolActions.push(`ลบรายการสินค้า ID: ${args.id}`);
+            return JSON.stringify({ ok: true, message: `Deleted item: ${args.id}` });
+          }
+
+          case "bulkSaveDailyTargets": {
+            if (!args.startDate || !args.endDate || args.targetSales === undefined) {
+              return JSON.stringify({ error: "Missing required fields: startDate, endDate, targetSales" });
+            }
+            const targets: InsertDailyTarget[] = [];
+            const start = new Date(args.startDate);
+            const end = new Date(args.endDate);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              const dateStr = d.toISOString().split("T")[0];
+              targets.push({ date: dateStr, targetSales: String(args.targetSales) } as InsertDailyTarget);
+            }
+            await storage.bulkUpsertDailyTargets(targets);
+            await storage.log("chann_bulk_targets", username, `${args.startDate}~${args.endDate} = ${args.targetSales}`);
+            toolActions.push(`ตั้งเป้ายอดขาย ${args.startDate} ถึง ${args.endDate}: ${args.targetSales} บาท/วัน (${targets.length} วัน)`);
+            return JSON.stringify({ ok: true, message: `Set target ${args.targetSales} for ${targets.length} days`, count: targets.length });
+          }
+
+          case "deleteDailySalesReport": {
+            if (!args.id) return JSON.stringify({ error: "Missing required field: id" });
+            const deleted = await storage.deleteDailySalesReport(args.id);
+            if (!deleted) return JSON.stringify({ ok: false, message: "Report not found" });
+            await storage.log("chann_delete_report", username, `id=${args.id}`);
+            toolActions.push(`ลบรายงานยอดขาย ID: ${args.id}`);
+            return JSON.stringify({ ok: true, message: `Deleted report ID: ${args.id}` });
+          }
+
+          case "saveDailyLabor": {
+            if (!args.date || args.actualHours === undefined) {
+              return JSON.stringify({ error: "Missing required fields: date, actualHours" });
+            }
+            try {
+              const laborResult = await calculateLaborLogic(args.date, { actualHours: args.actualHours, otHours: args.otHours || 0 });
+              const existingLabor = await db.select().from(dailyLabor).where(eq(dailyLabor.date, args.date)).limit(1);
+              if (existingLabor.length > 0) {
+                await db.update(dailyLabor).set({ ...laborResult, updatedAt: new Date().toISOString() }).where(eq(dailyLabor.id, existingLabor[0].id));
+              } else {
+                await db.insert(dailyLabor).values({ date: args.date, ...laborResult, updatedAt: new Date().toISOString() });
+              }
+              await storage.log("chann_save_labor", username, `date=${args.date} hours=${args.actualHours} ot=${args.otHours || 0}`);
+              toolActions.push(`บันทึกชั่วโมงแรงงาน ${args.date}: ${args.actualHours}ชม. OT=${args.otHours || 0}ชม.`);
+              return JSON.stringify({ ok: true, data: laborResult });
+            } catch (laborErr: any) {
+              return JSON.stringify({ error: laborErr.message });
+            }
+          }
+
+          case "getWasteTarget": {
+            if (!args.targetMonth) return JSON.stringify({ error: "Missing required field: targetMonth" });
+            const wt = await storage.getWasteTarget(args.targetMonth);
+            return JSON.stringify({ ok: true, data: wt || null });
+          }
+
+          case "setWasteTarget": {
+            if (!args.targetMonth) return JSON.stringify({ error: "Missing required field: targetMonth" });
+            const wtData: any = {};
+            if (args.dailyTarget !== undefined) wtData.dailyTarget = args.dailyTarget;
+            if (args.mealTarget !== undefined) wtData.mealTarget = args.mealTarget;
+            if (args.monthlyTarget !== undefined) wtData.monthlyTarget = args.monthlyTarget;
+            const wtResult = await storage.upsertWasteTarget(args.targetMonth, wtData);
+            await storage.log("chann_set_waste_target", username, `month=${args.targetMonth}`);
+            toolActions.push(`ตั้งเป้า Waste เดือน ${args.targetMonth}`);
+            return JSON.stringify({ ok: true, data: wtResult });
+          }
+
+          case "getStoreSettings": {
+            const ss = await storage.getStoreSettings();
+            return JSON.stringify({ ok: true, data: ss || null });
+          }
+
+          case "updateStoreSettings": {
+            const ssData: any = {};
+            if (args.branchName) ssData.branchName = args.branchName;
+            if (args.branchCode) ssData.branchCode = args.branchCode;
+            if (args.timezone) ssData.timezone = args.timezone;
+            const ssResult = await storage.updateStoreSettings(ssData);
+            await storage.log("chann_update_store_settings", username, JSON.stringify(ssData));
+            toolActions.push(`อัปเดตการตั้งค่าร้าน`);
+            return JSON.stringify({ ok: true, data: ssResult });
+          }
+
+          case "getSystemLogs": {
+            const logLimit = args.limit || 50;
+            const logs = await storage.getSystemLogs(logLimit, args.action);
+            return JSON.stringify({ ok: true, logs, count: logs.length });
+          }
+
+          case "bulkSaveShifts": {
+            if (!args.shifts || !Array.isArray(args.shifts) || args.shifts.length === 0) {
+              return JSON.stringify({ error: "Missing or empty shifts array" });
+            }
+            const results = [];
+            for (const s of args.shifts) {
+              if (!s.username || !s.date || !s.shiftGroup) {
+                results.push({ username: s.username, date: s.date, error: "Missing required fields" });
+                continue;
+              }
+              try {
+                await storage.upsertShift({ username: s.username, date: s.date, shiftGroup: s.shiftGroup });
+                results.push({ username: s.username, date: s.date, ok: true });
+              } catch (shiftErr: any) {
+                results.push({ username: s.username, date: s.date, error: shiftErr.message });
+              }
+            }
+            await storage.log("chann_bulk_shifts", username, `count=${args.shifts.length}`);
+            toolActions.push(`จองกะจำนวนมาก: ${args.shifts.length} รายการ`);
+            return JSON.stringify({ ok: true, results, total: args.shifts.length, succeeded: results.filter(r => r.ok).length });
+          }
+
+          case "getSwapRequests": {
+            const swapStatus = args.status === "all" ? undefined : args.status;
+            const swaps = await storage.getSwapRequests(swapStatus);
+            return JSON.stringify({ ok: true, swaps, count: swaps.length });
           }
 
           case "executeSqlQuery": {

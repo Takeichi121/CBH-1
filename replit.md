@@ -187,12 +187,20 @@ Version is displayed in Settings page footer automatically.
 
 ## Recent Changes
 
+### Version 1.8.0 (February 25, 2026)
+- Chann AI: เพิ่มเครื่องมือจำนวนมาก ครอบคลุมทุก storage operation
+- **Read tools ใหม่ (ทุก role)**: getWasteTarget, getStoreSettings, getSystemLogs, getSwapRequests, getBorrowTransactions, getBorrowBranches, getBorrowItems, getMtdSummary, getDailyTargetsForMonth, getDailySalesReportsForMonth, getLaborSettings
+- **Write tools ใหม่ (Manager)**: bulkSaveDailyTargets, saveDailyLabor, bulkSaveShifts
+- **Write tools ใหม่ (Admin)**: deleteBorrowTransaction, toggleBorrowTransaction, deleteBorrowBranch, deleteBorrowItem, deleteDailySalesReport, setWasteTarget, updateStoreSettings
+- Quick actions เพิ่ม: คำขอสลับกะ, Waste เดือนนี้, ตั้งค่าร้าน, Audit Log, สร้างผู้ใช้, Labor Settings
+- Role-based permissions: managerWriteToolNames / adminOnlyWriteToolNames แยกชัดเจน
+- Read tools ย้ายออกจาก writeTools ไปเป็น readTools ที่ทุก role เข้าถึงได้
+
 ### Version 1.7.0 (February 25, 2026)
-- Chann AI: Full Agent Access - ทุก user (staff/manager/admin) มีสิทธิ์ write เหมือนกันหมด
+- Chann AI: Full Agent Access - role-based write permissions (Admin=all, Manager=roster+reports, Staff=read-only)
 - เพิ่ม tools ใหม่: createUser, updateUserProfile, resetUserPassword, addBorrowTransaction, addBorrowBranch, addBorrowItem, executeSqlQuery
 - executeSqlQuery: Chann สามารถรัน SQL query โดยตรงได้ (SELECT/INSERT/UPDATE/DELETE)
-- ลบ admin-only gating ออก: ผู้ใช้ทุกคนสามารถสั่ง Chann ทำงานได้เหมือน System Agent
-- System prompt อัปเดต: Chann มีสิทธิ์เทียบเท่า Agent
+- System prompt อัปเดต: Chann มีสิทธิ์ตาม role
 
 ### Version 1.6.0 (February 21, 2026)
 - Chann AI: เพิ่มสิทธิ์การบันทึกข้อมูลสำหรับ Admin (write tools)

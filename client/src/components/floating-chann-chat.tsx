@@ -253,11 +253,17 @@ export function FloatingChannChat() {
     { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles, show: true },
     { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar, show: true },
     { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList, show: true },
-    { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
+    { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3, show: isManagerOrAdmin },
     { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users, show: true },
     { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
     { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
     { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar, show: isManagerOrAdmin },
+    { label: "คำขอสลับกะ", prompt: "ดูคำขอสลับกะที่รอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
+    { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
+    { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database, show: isAdmin },
+    { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList, show: isAdmin },
+    { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users, show: isAdmin },
+    { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3, show: isAdmin },
   ].filter(a => a.show);
 
   const sendQuickAction = (prompt: string) => {

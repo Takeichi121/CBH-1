@@ -4492,7 +4492,8 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       };
 
       const templatePath = path.join(process.cwd(), "attached_assets", "Sales_Management_Sheet_&_GSI_(Update)_1772056449386.xlsx");
-      const wb = XLSX.readFile(templatePath, { cellStyles: true });
+      const templateBuf = fs.readFileSync(templatePath);
+      const wb = XLSX.read(templateBuf, { type: "buffer", cellStyles: true });
 
       // ── Sales Management Sheet ──
       const ws = wb.Sheets["Sales Management Sheet"];

@@ -25,6 +25,7 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
+    timeZone: "Asia/Bangkok",
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",

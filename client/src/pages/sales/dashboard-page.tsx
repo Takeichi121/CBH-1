@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/hooks/use-i18n";
+import { todayBangkok } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, Users, Target, BarChart3, Loader2, Calendar } from "lucide-react";
@@ -41,7 +42,7 @@ export default function SalesDashboardPage() {
       try {
         setLoading(true);
         const token = localStorage.getItem("bk_token");
-        const today = new Date().toISOString().split('T')[0];
+        const today = todayBangkok();
         const [year, month] = today.split('-');
 
         const todayRes = await apiRequest("POST", "/api/sales/getReportByDate", { token, date: today });

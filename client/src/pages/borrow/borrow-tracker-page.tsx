@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Settings, RefreshCw, Search, ChevronsUpDown, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, todayBangkok } from "@/lib/utils";
 import { format, subDays, startOfDay, isSameDay } from "date-fns";
 import { 
   BarChart, 
@@ -53,7 +53,7 @@ export default function BorrowTrackerPage() {
   const [newBranch, setNewBranch] = useState({ name: "", code: "" });
   const [newItem, setNewItem] = useState({ name: "", code: "", unit: "" });
   const [newTx, setNewTx] = useState({
-    txDate: format(new Date(), "yyyy-MM-dd"),
+    txDate: todayBangkok(),
     dueDate: "",
     txType: "borrow_out" as "borrow_in" | "borrow_out",
     branch: "",
@@ -199,7 +199,7 @@ export default function BorrowTrackerPage() {
     const res = await fetch("/api/borrow/transactions/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, ...newTx }) }).then(r => r.json());
     if (res.ok) {
       toast({ title: language === "th" ? "เพิ่มธุรกรรมแล้ว" : "Transaction added" });
-      setNewTx({ txDate: format(new Date(), "yyyy-MM-dd"), dueDate: "", txType: "borrow_out", branch: "", item: "", qty: 1, unit: "", borrower: "", lender: "", note: "" });
+      setNewTx({ txDate: todayBangkok(), dueDate: "", txType: "borrow_out", branch: "", item: "", qty: 1, unit: "", borrower: "", lender: "", note: "" });
       setShowAddDialog(false);
       fetchData();
     } else {
@@ -239,7 +239,7 @@ export default function BorrowTrackerPage() {
 
   const isOverdue = (tx: BorrowTransaction) => {
     if (tx.status !== "pending" || !tx.dueDate) return false;
-    return tx.dueDate < format(new Date(), "yyyy-MM-dd");
+    return tx.dueDate < todayBangkok();
   };
 
   const trendData = useMemo(() => {

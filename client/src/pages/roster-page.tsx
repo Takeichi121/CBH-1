@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
+import { todayBangkok, nowBangkok } from "@/lib/utils";
 import { useRoster, useSetShiftForUser, useDeleteShiftForUser } from "@/hooks/use-shifts";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuth } from "@/hooks/use-auth";
@@ -199,8 +200,8 @@ export default function RosterPage() {
             </Button>
           </div>
           {(() => {
-            const todayStr = format(new Date(), "yyyy-MM-dd");
-            const tomorrowStr = format(addDays(new Date(), 1), "yyyy-MM-dd");
+            const todayStr = todayBangkok();
+            const tomorrowStr = format(addDays(nowBangkok(), 1), "yyyy-MM-dd");
             const mobileDays = [todayStr, tomorrowStr];
             
             // Filter users for mobile based on showAllStaff toggle

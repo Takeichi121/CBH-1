@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
+import { todayBangkok } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addMonths, subMonths, startOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -317,7 +318,7 @@ function CreateRequestForm({
   t: (key: any) => string;
 }) {
   const [requestType, setRequestType] = useState("");
-  const [requestDate, setRequestDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [requestDate, setRequestDate] = useState(todayBangkok());
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [dayOffReason, setDayOffReason] = useState("");

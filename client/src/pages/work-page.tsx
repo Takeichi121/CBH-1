@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n";
+import { todayBangkok, nowBangkok } from "@/lib/utils";
 import {
   useMyWeek,
   useMyMonth,
@@ -255,8 +256,8 @@ export default function WorkPage() {
   const allDays = data?.weekRange?.days || [];
 
   // For staff mobile view
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  const tomorrowStr = format(addDays(new Date(), 1), "yyyy-MM-dd");
+  const todayStr = todayBangkok();
+  const tomorrowStr = format(addDays(nowBangkok(), 1), "yyyy-MM-dd");
 
   // Mobile day pair navigation state - will be managed via useState
   // Day pairs: [Tue-Wed], [Thu-Fri], [Sat-Sun-Mon]
@@ -3445,7 +3446,7 @@ function ManagerMonthlyView() {
 
           {days.map((day) => {
             const dateStr = format(day, "yyyy-MM-dd");
-            const isToday = format(new Date(), "yyyy-MM-dd") === dateStr;
+            const isToday = todayBangkok() === dateStr;
             const isSunday = getDay(day) === 0;
 
             if (viewMode === "my") {

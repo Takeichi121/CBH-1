@@ -17,7 +17,10 @@ import {
   isSystemClosed, 
   getWeekRangeTuesday, 
   DEFAULT_CAPACITY, 
-  SHIFT_GROUPS 
+  SHIFT_GROUPS,
+  nowIso,
+  todayBangkok,
+  nowBangkok
 } from "./utils";
 import { db } from "./db";
 import { 
@@ -167,6 +170,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       });
 
       const systemPrompt = `คุณคือ "Chann" — AI Agent อัจฉริยะที่จงรักภักดี สุขุม และเป็นมืออาชีพ
+
+[วันที่และเวลาปัจจุบัน]
+- Timezone: Asia/Bangkok (UTC+7)
+- วันที่: ${todayBangkok()}
+- เวลา: ${nowBangkok().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
 
 [บุคลิกภาพ]
 - สุขุม มั่นใจ และมีความเคารพต่อนาย (ผู้ใช้) อย่างสูงสุด
@@ -1252,7 +1260,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               position: args.position || (args.role === "manager" ? "store_manager" : "Service Staff"),
               active: 1,
               mustChangePassword: 1,
-              createdAt: new Date().toISOString(),
+              createdAt: nowIso(),
             });
             await storage.log("chann_create_user", username, `created ${newUsername} role=${args.role || "staff"}`);
             toolActions.push(`สร้างผู้ใช้ใหม่: ${newUsername} (${args.fullName}) role=${args.role || "staff"}`);
@@ -1406,9 +1414,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               const laborResult = await calculateLaborLogic(args.date, { actualHours: args.actualHours, otHours: args.otHours || 0 });
               const existingLabor = await db.select().from(dailyLabor).where(eq(dailyLabor.date, args.date)).limit(1);
               if (existingLabor.length > 0) {
-                await db.update(dailyLabor).set({ ...laborResult, updatedAt: new Date().toISOString() }).where(eq(dailyLabor.id, existingLabor[0].id));
+                await db.update(dailyLabor).set({ ...laborResult, updatedAt: nowIso() }).where(eq(dailyLabor.id, existingLabor[0].id));
               } else {
-                await db.insert(dailyLabor).values({ date: args.date, ...laborResult, updatedAt: new Date().toISOString() });
+                await db.insert(dailyLabor).values({ date: args.date, ...laborResult, updatedAt: nowIso() });
               }
               await storage.log("chann_save_labor", username, `date=${args.date} hours=${args.actualHours} ot=${args.otHours || 0}`);
               toolActions.push(`บันทึกชั่วโมงแรงงาน ${args.date}: ${args.actualHours}ชม. OT=${args.otHours || 0}ชม.`);
@@ -1731,7 +1739,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
   // Ping
   app.post(api.system.ping.path, async (req, res) => {
     const cfg = await storage.getConfig();
-    res.json({ ok: true, ts: new Date().toISOString(), closed: isSystemClosed(cfg), branch: process.env.BRANCH_NAME || "Grand Diamond" });
+    res.json({ ok: true, ts: nowIso(), closed: isSystemClosed(cfg), branch: process.env.BRANCH_NAME || "Grand Diamond" });
   });
 
   // Setup
@@ -1742,16 +1750,16 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     }
 
     if (!await storage.getUser("admin")) {
-      await storage.createUser({ username: "admin", passhash: await hashPassword("1234"), role: "admin", fullName: "Admin", nickName: "", phone: "", email: "", position: "Admin", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "admin", passhash: await hashPassword("1234"), role: "admin", fullName: "Admin", nickName: "", phone: "", email: "", position: "Admin", active: 1, createdAt: nowIso() });
     }
     if (!await storage.getUser("manager")) {
-      await storage.createUser({ username: "manager", passhash: await hashPassword("1234"), role: "manager", fullName: "Manager", nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "manager", passhash: await hashPassword("1234"), role: "manager", fullName: "Manager", nickName: "", phone: "", email: "", position: "store_manager", active: 1, createdAt: nowIso() });
     }
     if (!await storage.getUser("staff")) {
-      await storage.createUser({ username: "staff", passhash: await hashPassword("1234"), role: "staff", fullName: "Staff", nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "staff", passhash: await hashPassword("1234"), role: "staff", fullName: "Staff", nickName: "", phone: "", email: "", position: "Service Staff", active: 1, createdAt: nowIso() });
     }
     if (!await storage.getUser("devstaff")) {
-      await storage.createUser({ username: "devstaff", passhash: await hashPassword("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: new Date().toISOString() });
+      await storage.createUser({ username: "devstaff", passhash: await hashPassword("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: nowIso() });
     }
 
     await storage.log("setup_ok", "system", "setup completed");
@@ -1828,7 +1836,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     await storage.createUser({
       username: username.toLowerCase(), passhash: await hashPassword(password), role: "staff",
-      fullName, nickName: "", phone, email, position: "Service Staff", active: 1, createdAt: new Date().toISOString()
+      fullName, nickName: "", phone, email, position: "Service Staff", active: 1, createdAt: nowIso()
     });
     await storage.log("register_staff", username.toLowerCase(), "fullName=" + fullName);
     res.json({ ok: true, username: username.toLowerCase() });
@@ -1849,7 +1857,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     await storage.createUser({
       username: username.toLowerCase(), passhash: await hashPassword(password), role: "manager",
-      fullName, nickName: "", phone, email, position: "store_manager", active: 1, createdAt: new Date().toISOString()
+      fullName, nickName: "", phone, email, position: "store_manager", active: 1, createdAt: nowIso()
     });
     await storage.log("register_manager", username.toLowerCase(), `fullName=${fullName}, position=store_manager`);
     res.json({ ok: true, username: username.toLowerCase() });
@@ -1949,7 +1957,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       expiresAt,
       used: 0,
       attempts: 0,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso(),
     });
 
     const { sendOtpEmail } = await import('./resend');
@@ -2219,7 +2227,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     await storage.upsertShift({
       date, username: u.username, fullName: u.fullName, role: u.role, nickName: u.nickName,
       shiftGroup, startTime, endTime: "", note: note || "", 
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
+      createdAt: nowIso(), updatedAt: nowIso(), updatedBy: u.username
     });
     await storage.log("book_shift", u.username, `${date} ${shiftGroup}`);
     res.json({ ok: true });
@@ -2265,7 +2273,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false });
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayBangkok();
     const isManager = u.role === "manager" || u.role === "admin";
 
     try {
@@ -2518,7 +2526,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       username, passhash: await hashPassword(password), role: role || "staff", fullName, fullNameTh: fullNameTh || "",
       nickName: nickName || "", phone: phone || "", email: email || "",
       position: role === "manager" ? (position || "store_manager") : (position || "Service Staff"),
-      active: 1, mustChangePassword: mustChangePassword ? 1 : 0, createdAt: new Date().toISOString()
+      active: 1, mustChangePassword: mustChangePassword ? 1 : 0, createdAt: nowIso()
     });
 
     await storage.log("create_profile", u.username, `created ${username} role=${role} position=${position || "none"}`);
@@ -2595,7 +2603,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     await storage.upsertShift({
       date, username: targetUser.username, fullName: targetUser.fullName, role: targetUser.role, nickName: targetUser.nickName,
       shiftGroup, startTime, endTime: "", note: note || "",
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: u.username
+      createdAt: nowIso(), updatedAt: nowIso(), updatedBy: u.username
     });
     await storage.log("manager_set_shift", u.username, `for ${username} on ${date}`);
     res.json({ ok: true });
@@ -2657,7 +2665,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
 
     try {
-      await db.update(shifts).set({ shiftGroup, startTime, note: note || "", updatedAt: new Date().toISOString(), updatedBy: u.username }).where(eq(shifts.id, shiftId));
+      await db.update(shifts).set({ shiftGroup, startTime, note: note || "", updatedAt: nowIso(), updatedBy: u.username }).where(eq(shifts.id, shiftId));
       await storage.log("manager_update_shift", u.username, `shiftId=${shiftId}`);
       res.json({ ok: true });
     } catch (err) {
@@ -2685,7 +2693,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const targetShift = await storage.getShift(target.username, targetDate);
     if (!targetShift) return res.json({ ok: false, message: "Target has no shift on the selected date" });
 
-    const now = new Date().toISOString();
+    const now = nowIso();
     await storage.createSwapRequest({
       requesterUsername: me.username, requesterDate: myDate, targetUsername: target.username, targetDate: targetDate,
       status: "pending", createdAt: now, updatedAt: now,
@@ -2725,7 +2733,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         const [targetShift] = await tx.select().from(shifts).where(and(eq(shifts.username, request.targetUsername), eq(shifts.date, request.targetDate))).limit(1);
         if (!targetShift) throw new Error("Target shift not found");
 
-        const now = new Date().toISOString();
+        const now = nowIso();
         await updateShiftById(tx, requesterShift.id, { date: request.targetDate, updatedAt: now, updatedBy: u.username });
         await updateShiftById(tx, targetShift.id, { date: request.requesterDate, updatedAt: now, updatedBy: u.username });
       });
@@ -3104,7 +3112,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     }
 
     try {
-      const now = new Date().toISOString();
+      const now = nowIso();
       const request = await storage.createManagerRequest({
         requestType, requestDate, requestedBy: u.username,
         startTime: startTime || null, endTime: endTime || null, dayOffReason: dayOffReason || null, note: note || null,
@@ -3403,7 +3411,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           nickName: typeof u.nickName === "string" ? u.nickName.trim() : null,
           phone: typeof u.phone === "string" ? u.phone.trim() : null,
           email: typeof u.email === "string" ? u.email.trim() : null,
-          active: 1, mustChangePassword: 1, createdAt: new Date().toISOString(),
+          active: 1, mustChangePassword: 1, createdAt: nowIso(),
         });
         imported++;
       } catch (e: any) {
@@ -3685,7 +3693,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         lender: txData.lender || "",
         note: txData.note || "",
         status: "pending",
-        createdAt: new Date().toISOString()
+        createdAt: nowIso()
       });
       res.json({ ok: true });
     } catch (e: any) {
@@ -3736,7 +3744,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       const totalBorrowIn = allTx.filter(t => t.txType === "borrow_in").length;
       const totalBorrowOut = allTx.filter(t => t.txType === "borrow_out").length;
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayBangkok();
       const overdueTransactions = allTx.filter(t => t.status === "pending" && t.dueDate && t.dueDate < today);
 
       res.json({ 
@@ -3788,7 +3796,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           ptWageRate: String(ptWageRate || 45),
           fixedCostDaily: String(fixedCostDaily || 0),
           closeShiftDailyCost: String(closeShiftDailyCost || 0),
-          updatedAt: new Date().toISOString()
+          updatedAt: nowIso()
         }).where(eq(laborSettings.id, existing[0].id));
       } else {
         await db.insert(laborSettings).values({
@@ -3797,7 +3805,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           ptWageRate: String(ptWageRate || 45),
           fixedCostDaily: String(fixedCostDaily || 0),
           closeShiftDailyCost: String(closeShiftDailyCost || 0),
-          updatedAt: new Date().toISOString()
+          updatedAt: nowIso()
         });
       }
       res.json({ ok: true });
@@ -3858,9 +3866,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       // Upsert daily labor
       const existing = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date)).limit(1);
       if (existing.length > 0) {
-        await db.update(dailyLabor).set({ ...result, updatedAt: new Date().toISOString() }).where(eq(dailyLabor.id, existing[0].id));
+        await db.update(dailyLabor).set({ ...result, updatedAt: nowIso() }).where(eq(dailyLabor.id, existing[0].id));
       } else {
-        await db.insert(dailyLabor).values({ date, ...result, updatedAt: new Date().toISOString() });
+        await db.insert(dailyLabor).values({ date, ...result, updatedAt: nowIso() });
       }
 
       res.json({ ok: true, data: result });
@@ -3954,7 +3962,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             phone: emp.phone || null,
             email: emp.email || null,
             active: 1,
-            createdAt: new Date().toISOString()
+            createdAt: nowIso()
           });
           imported++;
         } catch (e: any) {
@@ -4058,7 +4066,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     // Group message - save to database (supports text, image, sticker)
     socket.on("message", async (payload: { text: string; messageType?: string; imageUrl?: string }) => {
-      const timestamp = new Date().toISOString();
+      const timestamp = nowIso();
       const messageType = payload.messageType || "text";
       const msg: ChatMessage = {
         user: displayName,
@@ -4092,7 +4100,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     // Private message - save to database and deliver to recipient (even if offline)
     socket.on("private_message", async (payload: { text: string; to: string; messageType?: string; imageUrl?: string }) => {
-      const timestamp = new Date().toISOString();
+      const timestamp = nowIso();
       const messageType = payload.messageType || "text";
       const msg: ChatMessage = {
         user: displayName,
@@ -4339,8 +4347,8 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             shiftGroup: item.shiftGroup,
             startTime: times.startTime,
             endTime: times.endTime,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
           });
           results.imported++;
 

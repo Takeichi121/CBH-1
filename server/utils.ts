@@ -28,11 +28,32 @@ export async function comparePassword(supplied: string, stored: string) {
 //   return createHash("sha256").update(SALT + "::" + String(password || "")).digest("hex");
 // }
 
-// ✅ 2. Date & Time Helpers
+// ✅ 2. Date & Time Helpers (Asia/Bangkok = UTC+7)
 // ---------------------------------------------------------
 
+const TZ = "Asia/Bangkok";
+
+export function nowBangkok(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: TZ }));
+}
+
 export function nowIso() {
-  return new Date().toISOString();
+  return toBangkokIso(new Date());
+}
+
+export function toBangkokIso(d: Date): string {
+  const bkk = new Date(d.toLocaleString("en-US", { timeZone: TZ }));
+  const yyyy = bkk.getFullYear();
+  const MM = String(bkk.getMonth() + 1).padStart(2, "0");
+  const dd = String(bkk.getDate()).padStart(2, "0");
+  const hh = String(bkk.getHours()).padStart(2, "0");
+  const mm = String(bkk.getMinutes()).padStart(2, "0");
+  const ss = String(bkk.getSeconds()).padStart(2, "0");
+  return `${yyyy}-${MM}-${dd}T${hh}:${mm}:${ss}+07:00`;
+}
+
+export function todayBangkok(): string {
+  return toYMD(nowBangkok());
 }
 
 export function toYMD(d: Date) {
@@ -133,27 +154,9 @@ export function isSystemClosed(config?: Record<string, string>): boolean {
 }
 
 function isInMaintenanceWindow(startDay: number, startTime: string, endDay: number, endTime: string): boolean {
-  // Get current time in Thailand timezone (UTC+7)
-  const now = new Date();
-  const thailandOffset = 7 * 60; // Thailand is UTC+7
-  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-  const thailandMinutes = utcMinutes + thailandOffset;
-
-  // Calculate Thailand day/time
-  let thailandDay = now.getUTCDay();
-  let adjustedMinutes = thailandMinutes;
-
-  if (thailandMinutes >= 24 * 60) {
-    adjustedMinutes = thailandMinutes - 24 * 60;
-    thailandDay = (thailandDay + 1) % 7;
-  } else if (thailandMinutes < 0) {
-    adjustedMinutes = thailandMinutes + 24 * 60;
-    thailandDay = (thailandDay + 6) % 7;
-  }
-
-  const currentHour = Math.floor(adjustedMinutes / 60);
-  const currentMinute = adjustedMinutes % 60;
-  const currentTimeMinutes = currentHour * 60 + currentMinute;
+  const bkk = nowBangkok();
+  const thailandDay = bkk.getDay();
+  const currentTimeMinutes = bkk.getHours() * 60 + bkk.getMinutes();
 
   const [startH, startM] = startTime.split(":").map(Number);
   const [endH, endM] = endTime.split(":").map(Number);

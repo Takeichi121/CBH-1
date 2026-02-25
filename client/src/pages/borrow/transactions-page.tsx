@@ -22,7 +22,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Search, X, Plus, Minus, Trash2, Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, todayBangkok } from "@/lib/utils";
 
 // Type definitions for Cart
 interface CartItem {
@@ -62,7 +62,7 @@ export default function NewTransaction() {
   const [txType, setTxType] = useState<"borrow_in" | "borrow_out">("borrow_in");
   const [branch, setBranch] = useState("");
   const [branchOpen, setBranchOpen] = useState(false);
-  const [txDate, setTxDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [txDate, setTxDate] = useState(() => todayBangkok());
   const [dueDate, setDueDate] = useState("");
   const [borrower, setBorrower] = useState("");
   const [lender, setLender] = useState("");

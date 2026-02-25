@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
+import { todayBangkok } from "@/lib/utils";
 import { SalesChart } from "@/components/dashboard/sales-chart";
 import { DailyTip } from "@/components/dashboard/daily-tip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,7 +80,7 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayBangkok();
   const myUpcomingShifts = myShifts?.shifts?.filter((s: any) => s.date >= today) || [];
 
   const shiftGroupLabel = (group: string) => {

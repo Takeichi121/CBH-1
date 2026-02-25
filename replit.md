@@ -196,6 +196,14 @@ Version is displayed in Settings page footer automatically.
 - Role-based permissions: managerWriteToolNames / adminOnlyWriteToolNames แยกชัดเจน
 - Read tools ย้ายออกจาก writeTools ไปเป็น readTools ที่ทุก role เข้าถึงได้
 
+### Version 1.7.2 (February 26, 2026) — Timezone Fix (Asia/Bangkok)
+- **Timezone**: All server-side dates/timestamps now use Asia/Bangkok (UTC+7) via `nowIso()`, `todayBangkok()`, `nowBangkok()`
+- **Timezone**: Server logs display Bangkok time
+- **Timezone**: Frontend `todayBangkok()` utility in `@/lib/utils` — all pages use consistent Bangkok date
+- **Timezone**: Chann system prompt includes current Bangkok date/time
+- **Timezone**: Maintenance window calculation simplified to use `nowBangkok()`
+- Files updated: `server/utils.ts`, `server/index.ts`, `server/routes.ts`, `client/src/lib/utils.ts`, + 9 page components
+
 ### Version 1.7.1 (February 25, 2026) — Code Audit & Bug Fixes
 - **Bug Fix**: Borrow pages (Items, Branches, Dashboard) were using default GET queryFn but backend expects POST — fixed by adding proper queryFn with token
 - **Bug Fix**: Duplicate `<Toaster />` in App.tsx removed (was rendered both in Router and App)

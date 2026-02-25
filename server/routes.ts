@@ -198,7 +198,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - getCrossSystemSummary: สรุปภาพรวมทุกระบบในวันเดียว (กะ+ยอดขาย+แรงงาน+ยืมคืน)
 
 ใช้ getCrossSystemSummary เมื่อนายถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
-${isAdmin ? `
+${isManagerOrAdmin && !isAdmin ? `
+[สิทธิ์ Manager - แก้ไขตารางงานและรีพอร์ต]
+นายเป็น Manager ดังนั้นคุณมีสิทธิ์ในการ **แก้ไขตารางงานและรีพอร์ต** ได้:
+- saveDailySales: บันทึกยอดขายรายวัน (actualSales, TC, hours, waste ฯลฯ)
+- saveDailyTarget: ตั้งเป้ายอดขายรายวัน
+- saveShift: จองกะให้พนักงาน
+- deleteShift: ลบกะของพนักงาน
+
+[กฎการเขียนข้อมูล]
+- เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
+- เมื่อบันทึกสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
+- ถ้าข้อมูลไม่ครบ ให้ถามนายเฉพาะส่วนที่ขาด
+- ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
+` : ''}${isAdmin ? `
 [สิทธิ์พิเศษ - Admin Full Agent Access]
 นายเป็น Admin ดังนั้นคุณมีสิทธิ์เต็มรูปแบบเทียบเท่า System Agent:
 
@@ -589,14 +602,28 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       ];
 
-      const channTools = isAdmin ? [...channReadTools, ...channWriteTools] : channReadTools;
+      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift"]);
+      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "executeSqlQuery"]);
+      const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
-      const writeToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "executeSqlQuery"]);
+      const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
+
+      const channTools = isAdmin
+        ? [...channReadTools, ...channWriteTools]
+        : isManagerOrAdmin
+          ? [...channReadTools, ...channManagerWriteTools]
+          : channReadTools;
+
       const toolActions: string[] = [];
 
       async function handleToolCall(name: string, args: any): Promise<string> {
-        if (writeToolNames.has(name) && user.role !== "admin") {
-          return JSON.stringify({ error: "Permission denied: only admin can perform write operations" });
+        if (allWriteToolNames.has(name)) {
+          if (adminOnlyWriteToolNames.has(name) && user.role !== "admin") {
+            return JSON.stringify({ error: "Permission denied: only admin can perform this operation" });
+          }
+          if (managerWriteToolNames.has(name) && user.role !== "admin" && user.role !== "manager") {
+            return JSON.stringify({ error: "Permission denied: only admin or manager can perform this operation" });
+          }
         }
 
         switch (name) {

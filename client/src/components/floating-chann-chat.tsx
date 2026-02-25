@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus, CheckCircle2 } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useChatCustomization, ChatCustomizationPanel } from "@/components/chat-customization";
@@ -243,7 +243,99 @@ export function FloatingChannChat() {
 
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const { getBubbleColorClass, getBubbleStyleClass, getAvatarStyleClass } = useChatCustomization();
+
+  const isManagerOrAdmin = user?.role === "manager" || user?.role === "admin";
+  const isAdmin = user?.role === "admin";
+
+  const quickActions = [
+    { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles, show: true },
+    { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar, show: true },
+    { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList, show: true },
+    { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
+    { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users, show: true },
+    { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
+    { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
+    { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar, show: isManagerOrAdmin },
+  ].filter(a => a.show);
+
+  const sendQuickAction = (prompt: string) => {
+    setShowQuickActions(false);
+    setMessage("");
+    const fakeEvent = prompt;
+    const token = localStorage.getItem("bk_token");
+    if (!token || isLoading || isStreaming) return;
+
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: fakeEvent,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg, { role: "assistant", content: "", timestamp: new Date().toISOString() }]);
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/chann", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, message: fakeEvent }),
+        });
+        if (!res.body) throw new Error("No response body");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let done = false;
+        let hasStarted = false;
+        let buf = "";
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) {
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split("\n\n");
+            buf = lines.pop() || "";
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const dataStr = line.replace("data: ", "");
+                if (dataStr.trim() === "[DONE]") break;
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
+                    setMessages(prev => {
+                      const n = [...prev];
+                      n.splice(n.length - 1, 0, { role: "assistant", content: "", timestamp: new Date().toISOString(), toolActions: parsed.toolActions });
+                      return n;
+                    });
+                  }
+                  if (parsed.content) {
+                    if (!hasStarted) { setIsLoading(false); setIsStreaming(true); hasStarted = true; }
+                    setMessages(prev => {
+                      const n = [...prev];
+                      n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content };
+                      return n;
+                    });
+                  }
+                } catch {}
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Quick action error:", err);
+        setMessages(prev => {
+          const n = [...prev];
+          if (n[n.length - 1]?.role === "assistant" && !n[n.length - 1].content) {
+            n[n.length - 1] = { ...n[n.length - 1], content: "ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่" };
+          }
+          return n;
+        });
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+      }
+    })();
+  };
 
   const summarizeChat = async () => {
     if (messages.length === 0 || isSummarizing || isLoading || isStreaming) return;
@@ -411,11 +503,24 @@ export function FloatingChannChat() {
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="container-chann-messages">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground" data-testid="container-chann-empty">
-                <Bot className="w-16 h-16 mb-4 opacity-30" />
-                <p className="font-medium">สวัสดีครับ! ผมชื่อ Chann</p>
-                <p className="text-sm mt-1">ผู้ช่วยอัจฉริยะพร้อมช่วยเหลือคุณ</p>
-                <p className="text-xs mt-2 opacity-70">ถามอะไรก็ได้ครับ</p>
+              <div className="flex flex-col items-center justify-center h-full text-center" data-testid="container-chann-empty">
+                <Bot className="w-14 h-14 mb-3 text-primary/30" />
+                <p className="font-bold text-foreground">สวัสดีครับ! ผมชื่อ Chann</p>
+                <p className="text-sm text-muted-foreground mt-1">เลือกคำสั่งด่วนหรือพิมพ์ข้อความได้เลยครับ</p>
+                <div className="grid grid-cols-2 gap-2 mt-4 w-full max-w-xs">
+                  {quickActions.slice(0, 4).map((action) => (
+                    <button
+                      key={action.label}
+                      onClick={() => sendQuickAction(action.prompt)}
+                      disabled={isLoading || isStreaming}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-muted/30 hover:bg-primary/10 hover:border-primary/30 transition-all text-left group"
+                      data-testid={`button-quick-${action.label}`}
+                    >
+                      <action.icon className="w-4 h-4 text-primary/60 group-hover:text-primary flex-shrink-0" />
+                      <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -513,61 +618,94 @@ export function FloatingChannChat() {
             )}
           </div>
 
-          <div className="p-3 border-t border-border">
-            {imagePreview && (
-              <div className="mb-2 relative inline-block">
-                <img src={imagePreview} alt="preview" className="max-h-20 rounded-md border" />
-                <button
-                  onClick={removeImagePreview}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
-                  data-testid="button-remove-image-preview"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+          <div className="border-t border-border">
+            {showQuickActions && (
+              <div className="p-2 border-b border-border bg-muted/30 overflow-x-auto">
+                <div className="flex gap-1.5 flex-wrap">
+                  {quickActions.map((action) => (
+                    <button
+                      key={action.label}
+                      onClick={() => sendQuickAction(action.prompt)}
+                      disabled={isLoading || isStreaming}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-border/60 bg-background hover:bg-primary/10 hover:border-primary/30 transition-all text-xs font-medium text-muted-foreground hover:text-foreground whitespace-nowrap"
+                      data-testid={`button-quickbar-${action.label}`}
+                    >
+                      <action.icon className="w-3 h-3" />
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageSelect}
-              data-testid="input-chann-image"
-            />
-            <div className="flex items-end gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isLoading || isStreaming}
-                data-testid="button-chann-image-upload"
-              >
-                <ImagePlus className="w-4 h-4" />
-              </Button>
-              <Textarea
-                ref={inputRef}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                placeholder="พิมพ์ข้อความ..."
-                disabled={isLoading || isStreaming}
-                className="flex-1 min-h-[40px] max-h-[120px] resize-none text-sm"
-                rows={1}
-                data-testid="input-chann-message"
+            <div className="p-3">
+              {imagePreview && (
+                <div className="mb-2 relative inline-block">
+                  <img src={imagePreview} alt="preview" className="max-h-20 rounded-md border" />
+                  <button
+                    onClick={removeImagePreview}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                    data-testid="button-remove-image-preview"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageSelect}
+                data-testid="input-chann-image"
               />
-              <Button
-                onClick={sendMessage}
-                disabled={(!message.trim() && !imagePreview) || isLoading || isStreaming}
-                size="icon"
-                data-testid="button-send-chann-message"
-              >
-                {isLoading || isStreaming ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
+              <div className="flex items-end gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-9 w-9 rounded-full transition-colors", showQuickActions && "bg-primary/10 text-primary")}
+                  onClick={() => setShowQuickActions(!showQuickActions)}
+                  disabled={isLoading || isStreaming}
+                  title="คำสั่งด่วน"
+                  data-testid="button-chann-quick-actions"
+                >
+                  <Zap className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isLoading || isStreaming}
+                  data-testid="button-chann-image-upload"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                </Button>
+                <Textarea
+                  ref={inputRef}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder="พิมพ์ข้อความ..."
+                  disabled={isLoading || isStreaming}
+                  className="flex-1 min-h-[40px] max-h-[120px] resize-none text-sm"
+                  rows={1}
+                  data-testid="input-chann-message"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={(!message.trim() && !imagePreview) || isLoading || isStreaming}
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  data-testid="button-send-chann-message"
+                >
+                  {isLoading || isStreaming ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

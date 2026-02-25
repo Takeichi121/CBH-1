@@ -67,6 +67,12 @@ export function Layout({ children }: { children: ReactNode }) {
             <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
             <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
           </div>
+          <Avatar className="h-9 w-9 border-2 border-primary/10" data-testid="avatar-mobile-header">
+            <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
+            <AvatarFallback className="bg-primary/5 text-primary font-bold text-sm">
+              {user.username.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
         </div>
         
         <div className="px-4 pb-2">

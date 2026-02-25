@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useChatCustomization, ChatCustomizationPanel } from "@/components/chat-customization";
@@ -25,9 +26,12 @@ export function FloatingChannChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -115,18 +119,74 @@ export function FloatingChannChat() {
     setImagePreview(null);
   };
 
+  const removeFile = () => {
+    setFileContent(null);
+    setFileName(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2MB)");
+      removeFile();
+      return;
+    }
+    setFileName(file.name);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const reader = new FileReader();
+    if (ext === "txt" || ext === "csv") {
+      reader.onload = (event) => {
+        setFileContent(event.target?.result as string);
+      };
+      reader.readAsText(file);
+    } else if (ext === "xlsx" || ext === "xls") {
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          let allText = "";
+          workbook.SheetNames.forEach((sheetName) => {
+            const ws = workbook.Sheets[sheetName];
+            allText += `\n--- Sheet: ${sheetName} ---\n`;
+            allText += XLSX.utils.sheet_to_csv(ws) + "\n";
+          });
+          setFileContent(allText);
+        } catch {
+          alert("ไม่สามารถอ่านไฟล์ Excel ได้");
+          removeFile();
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      alert("รองรับเฉพาะไฟล์ .txt, .csv, .xlsx, .xls เท่านั้น");
+      removeFile();
+    }
+  };
+
   const sendMessage = async () => {
-    if ((!message.trim() && !imagePreview) || isLoading || isStreaming) return;
+    if ((!message.trim() && !imagePreview && !fileContent) || isLoading || isStreaming) return;
 
     const token = localStorage.getItem("bk_token");
     if (!token) return;
 
     const currentImage = imagePreview;
-    const currentInput = message.trim() || (currentImage ? "ส่งรูปภาพ" : "");
+    const currentFile = fileContent;
+    const currentFileName = fileName;
+    const currentInput = message.trim() || (currentImage ? "ส่งรูปภาพ" : currentFile ? "โปรดวิเคราะห์ไฟล์นี้" : "");
+
+    const displayContent = currentFile && currentFileName
+      ? `📎 ${currentFileName}${message.trim() ? " — " + message.trim() : ""}`
+      : currentInput;
+
+    const contextMessage = currentFile && currentFileName
+      ? `[ไฟล์แนบ: ${currentFileName}]\n\`\`\`\n${currentFile.slice(0, 12000)}\n\`\`\`\n\nคำถามจากผู้ใช้: ${currentInput}`
+      : currentInput;
 
     const userMessage: ChatMessage = {
       role: "user",
-      content: currentInput,
+      content: displayContent,
       timestamp: new Date().toISOString(),
       imageUrl: currentImage || undefined,
     };
@@ -139,10 +199,11 @@ export function FloatingChannChat() {
     setMessage("");
     if (inputRef.current) inputRef.current.style.height = "36px";
     setImagePreview(null);
+    removeFile();
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: currentInput };
+      const body: any = { token, message: contextMessage };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -658,6 +719,20 @@ export function FloatingChannChat() {
                   </button>
                 </div>
               )}
+              {fileName && (
+                <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm w-fit max-w-[80%]">
+                  <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                  <span className="truncate text-xs font-medium text-slate-700 dark:text-slate-300">{fileName}</span>
+                  <button
+                    onClick={removeFile}
+                    className="ml-1 hover:bg-slate-200 dark:hover:bg-slate-700 p-0.5 rounded-full transition-colors"
+                    title="ลบไฟล์"
+                    data-testid="button-remove-file-preview"
+                  >
+                    <X className="w-3 h-3 text-slate-500" />
+                  </button>
+                </div>
+              )}
               <input
                 ref={imageInputRef}
                 type="file"
@@ -665,6 +740,14 @@ export function FloatingChannChat() {
                 className="hidden"
                 onChange={handleImageSelect}
                 data-testid="input-chann-image"
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.csv,.xlsx,.xls"
+                className="hidden"
+                onChange={handleFileSelect}
+                data-testid="input-chann-file"
               />
               <div className="flex items-end gap-1.5">
                 <Button
@@ -688,6 +771,17 @@ export function FloatingChannChat() {
                 >
                   <ImagePlus className="w-4 h-4" />
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-9 w-9 rounded-full", fileName && "text-blue-500")}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || isStreaming}
+                  title="แนบไฟล์ (.txt, .csv, .xlsx)"
+                  data-testid="button-chann-file-upload"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
                 <Textarea
                   ref={inputRef}
                   value={message}
@@ -707,7 +801,7 @@ export function FloatingChannChat() {
                 />
                 <Button
                   onClick={sendMessage}
-                  disabled={(!message.trim() && !imagePreview) || isLoading || isStreaming}
+                  disabled={(!message.trim() && !imagePreview && !fileContent) || isLoading || isStreaming}
                   size="icon"
                   className="h-9 w-9 rounded-full"
                   data-testid="button-send-chann-message"

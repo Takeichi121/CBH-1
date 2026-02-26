@@ -1,6 +1,84 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
+
+// ── LINE Messaging API ──────────────────────────────
+async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
+  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${channelToken}`,
+    },
+    body: JSON.stringify({ to: targetId, messages }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`LINE API error ${res.status}: ${err}`);
+  }
+  return await res.json();
+}
+
+function lineRow(label: string, value: string, valueColor = "#333333") {
+  return {
+    type: "box", layout: "horizontal",
+    contents: [
+      { type: "text", text: label, size: "sm", color: "#555555", flex: 3 },
+      { type: "text", text: value, size: "sm", color: valueColor, align: "end", flex: 2, weight: "bold" }
+    ]
+  };
+}
+
+function buildDailyReportFlex(report: any, storeName: string) {
+  const date = new Date(report.reportDate + "T00:00:00+07:00").toLocaleDateString("th-TH", {
+    year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Bangkok"
+  });
+  const target = Number(report.dailyTarget) || 0;
+  const actual = Number(report.actualSales) || 0;
+  const pct = target > 0 ? ((actual / target) * 100).toFixed(1) : "—";
+  const pctColor = actual >= target ? "#27AE60" : "#E74C3C";
+  const col = Number(report.colPercent) || 0;
+  const colColor = col > 8 ? "#E74C3C" : col > 6 ? "#F39C12" : "#27AE60";
+  const fmt = (n: number) => n.toLocaleString("th-TH");
+  const mtd = Number(report.mtdActual) || 0;
+  const waste = Number(report.wasteRawDaily) || 0;
+  const hours = Number(report.actualHours) || 0;
+  const tc = Number(report.transactionCount) || 0;
+
+  return {
+    type: "flex",
+    altText: `📊 Daily Report ${date} — ยอดขาย ${fmt(actual)} ฿`,
+    contents: {
+      type: "bubble",
+      header: {
+        type: "box", layout: "vertical", backgroundColor: "#D35400",
+        contents: [
+          { type: "text", text: "📊 Daily Report", color: "#FFFFFF", size: "xl", weight: "bold" },
+          { type: "text", text: storeName, color: "#FFD7B5", size: "sm" }
+        ]
+      },
+      body: {
+        type: "box", layout: "vertical", spacing: "sm",
+        contents: [
+          { type: "text", text: `📅 ${date}`, size: "sm", color: "#555555" },
+          { type: "separator" },
+          lineRow("💰 ยอดขาย", `${fmt(actual)} ฿`),
+          lineRow("🎯 เทียบเป้า", `${pct}%`, pctColor),
+          lineRow("🧾 TC", `${fmt(tc)} ราย`),
+          lineRow("👥 COL%", `${Number(col).toFixed(2)}%`, colColor),
+          lineRow("⏱️ แรงงาน", `${Number(hours).toFixed(1)} ชม.`),
+          lineRow("♻️ Waste", `${fmt(waste)} ฿`),
+          { type: "separator" },
+          lineRow("📈 MTD", `${fmt(mtd)} ฿`),
+        ]
+      },
+      footer: {
+        type: "box", layout: "vertical", backgroundColor: "#F5F5F5",
+        contents: [{ type: "text", text: "รายงานโดย Chann AI 🤖", size: "xs", color: "#AAAAAA", align: "center" }]
+      }
+    }
+  };
+}
 import { storage, transaction, updateShiftById } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -1009,11 +1087,27 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               required: []
             }
           }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "sendLineNotification",
+            description: "ส่งข้อความแจ้งเตือนหรือ report ไปยัง LINE group ผ่าน LINE OA Bot (ต้องตั้งค่า Channel Token และ Target ID ก่อน)",
+            parameters: {
+              type: "object",
+              properties: {
+                message: { type: "string", description: "ข้อความที่ต้องการส่ง" },
+                includeReport: { type: "boolean", description: "ถ้า true จะแนบรายงานยอดขายประจำวันเป็น Flex Message" },
+                reportDate: { type: "string", description: "วันที่ของ report ในรูปแบบ YYYY-MM-DD (ถ้าไม่ระบุใช้วันนี้)" }
+              },
+              required: ["message"]
+            }
+          }
         }
       ];
 
       const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts"]);
-      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "getCodeProposals"]);
+      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "getCodeProposals", "sendLineNotification"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
       const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
@@ -1608,6 +1702,39 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
                 .limit(proposalLimit);
             }
             return JSON.stringify({ ok: true, proposals, count: proposals.length });
+          }
+
+          case "sendLineNotification": {
+            const lineCfg = await storage.getConfig();
+            const lineChannelToken = lineCfg["LINE_CHANNEL_TOKEN"];
+            const lineTargetId = lineCfg["LINE_TARGET_ID"];
+            if (!lineChannelToken || !lineTargetId) {
+              return JSON.stringify({ ok: false, error: "ยังไม่ได้ตั้งค่า LINE Channel Token หรือ Target ID — แจ้ง Admin ให้ตั้งค่าก่อน" });
+            }
+            const lineMessages: any[] = [];
+            if (args.includeReport) {
+              const rDate = args.reportDate || new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+              const [rY, rM] = rDate.split("-");
+              const rReports = await storage.getDailySalesReportsForMonth(parseInt(rY), parseInt(rM));
+              const rReport = rReports.find(r => r.reportDate === rDate);
+              if (rReport) {
+                const lineStoreCfg = await storage.getStoreSettings();
+                const lineStoreName = lineStoreCfg?.storeName || "Burger King Grand Diamond";
+                lineMessages.push(buildDailyReportFlex(rReport, lineStoreName));
+              }
+            }
+            if (args.message) {
+              lineMessages.push({ type: "text", text: args.message });
+            }
+            if (lineMessages.length === 0) {
+              return JSON.stringify({ ok: false, error: "ไม่มีข้อความหรือ report ที่จะส่ง" });
+            }
+            try {
+              await sendLineMessage(lineChannelToken, lineTargetId, lineMessages);
+              return JSON.stringify({ ok: true, sent: lineMessages.length, message: "ส่งข้อความไปยัง LINE สำเร็จแล้ว" });
+            } catch (lineErr: any) {
+              return JSON.stringify({ ok: false, error: lineErr.message });
+            }
           }
 
           default:
@@ -4704,6 +4831,75 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       "@odata.context": `${baseUrl}/api/odata/$metadata#DailySales`,
       value: value,
     });
+  });
+
+  // ── LINE OA Configuration ────────────────────────────────
+  app.post("/api/settings/save-line-config", async (req, res) => {
+    const { token, channelToken, targetId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+    if (channelToken) await storage.setConfig("LINE_CHANNEL_TOKEN", channelToken);
+    if (targetId) await storage.setConfig("LINE_TARGET_ID", targetId);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/settings/get-line-config", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || user.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+    const cfg = await storage.getConfig();
+    const t = cfg["LINE_CHANNEL_TOKEN"] || "";
+    res.json({ ok: true, maskedToken: t ? `...${t.slice(-4)}` : "", targetId: cfg["LINE_TARGET_ID"] || "" });
+  });
+
+  app.post("/api/settings/test-line", async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || user.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+    const cfg = await storage.getConfig();
+    const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+    const targetId = cfg["LINE_TARGET_ID"];
+    if (!channelToken || !targetId) return res.json({ ok: false, message: "ยังไม่ได้ตั้งค่า Channel Token หรือ Target ID" });
+    try {
+      await sendLineMessage(channelToken, targetId, [{ type: "text", text: "✅ ทดสอบระบบแจ้งเตือนสำเร็จ! จาก BK Grand Diamond 🍔" }]);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.json({ ok: false, message: err.message });
+    }
+  });
+
+  app.post("/api/line/send-daily-report", async (req, res) => {
+    const { token, date } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
+    const cfg = await storage.getConfig();
+    const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+    const targetId = cfg["LINE_TARGET_ID"];
+    if (!channelToken || !targetId) return res.json({ ok: false, message: "ยังไม่ได้ตั้งค่า LINE Configuration" });
+    const targetDate = date || new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    const [yearStr, monthStr] = targetDate.split("-");
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr);
+    const reports = await storage.getDailySalesReportsForMonth(year, month);
+    const report = reports.find(r => r.reportDate === targetDate);
+    if (!report) return res.json({ ok: false, message: `ไม่พบข้อมูลของวันที่ ${targetDate}` });
+    const storeCfg = await storage.getStoreSettings();
+    const storeName = storeCfg?.storeName || "Burger King Grand Diamond";
+    try {
+      const flex = buildDailyReportFlex(report, storeName);
+      await sendLineMessage(channelToken, targetId, [flex]);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.json({ ok: false, message: err.message });
+    }
   });
 
   return httpServer;

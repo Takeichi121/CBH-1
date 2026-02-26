@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
 type DailyTarget = {
@@ -65,6 +66,16 @@ export default function SalesSettingsPage() {
   const [isSavingWaste, setIsSavingWaste] = useState(false);
   const [isSavingParams, setIsSavingParams] = useState(false);
   const [exportKey, setExportKey] = useState("");
+
+  const [lineToken, setLineToken] = useState("");
+  const [lineTargetId, setLineTargetId] = useState("");
+  const [lineMaskedToken, setLineMaskedToken] = useState("");
+  const [lineSavedTargetId, setLineSavedTargetId] = useState("");
+  const [lineStatus, setLineStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [lineStatusMsg, setLineStatusMsg] = useState("");
+  const [lineReportStatus, setLineReportStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [isTestingLine, setIsTestingLine] = useState(false);
+  const [isSendingReport, setIsSendingReport] = useState(false);
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -365,6 +376,25 @@ export default function SalesSettingsPage() {
   }, [user]);
 
   useEffect(() => {
+    if (user?.role !== "admin") return;
+    const bkToken = localStorage.getItem("bk_token");
+    fetch("/api/settings/get-line-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: bkToken })
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          setLineMaskedToken(d.maskedToken);
+          setLineSavedTargetId(d.targetId);
+          setLineTargetId(d.targetId);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
     const loadDailyTargets = async () => {
       try {
         const token = localStorage.getItem("bk_token");
@@ -624,6 +654,71 @@ export default function SalesSettingsPage() {
 
   const fmtNum = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const fmtDec = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const handleSaveLineConfig = async () => {
+    const bkToken = localStorage.getItem("bk_token");
+    const res = await fetch("/api/settings/save-line-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: bkToken, channelToken: lineToken, targetId: lineTargetId })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      toast({ title: "บันทึกสำเร็จ", description: "ตั้งค่า LINE OA เรียบร้อยแล้ว" });
+      if (lineToken) { setLineMaskedToken(`...${lineToken.slice(-4)}`); setLineToken(""); }
+      if (lineTargetId) setLineSavedTargetId(lineTargetId);
+    } else {
+      toast({ title: "เกิดข้อผิดพลาด", description: data.message, variant: "destructive" });
+    }
+  };
+
+  const handleTestLine = async () => {
+    setIsTestingLine(true);
+    setLineStatus("idle");
+    const bkToken = localStorage.getItem("bk_token");
+    try {
+      const res = await fetch("/api/settings/test-line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: bkToken })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setLineStatus("ok");
+        toast({ title: "ทดสอบสำเร็จ", description: "ส่งข้อความเข้า LINE เรียบร้อยแล้ว ✅" });
+      } else {
+        setLineStatus("error");
+        setLineStatusMsg(data.message);
+        toast({ title: "ส่งไม่สำเร็จ", description: data.message, variant: "destructive" });
+      }
+    } finally {
+      setIsTestingLine(false);
+    }
+  };
+
+  const handleSendDailyReport = async () => {
+    setIsSendingReport(true);
+    setLineReportStatus("idle");
+    const bkToken = localStorage.getItem("bk_token");
+    const targetDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    try {
+      const res = await fetch("/api/line/send-daily-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: bkToken, date: targetDate })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setLineReportStatus("ok");
+        toast({ title: "ส่ง Report สำเร็จ ✅", description: "ตรวจสอบได้ใน LINE Group" });
+      } else {
+        setLineReportStatus("error");
+        toast({ title: "ไม่สามารถส่ง Report ได้", description: data.message, variant: "destructive" });
+      }
+    } finally {
+      setIsSendingReport(false);
+    }
+  };
 
   const handleRegenerateKey = async () => {
     if (!confirm("การสร้าง Key ใหม่จะทำให้ Excel เดิมที่เชื่อมต่อไว้ใช้งานไม่ได้ ต้องการดำเนินการต่อหรือไม่?")) return;
@@ -1029,6 +1124,116 @@ export default function SalesSettingsPage() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {(user?.role === "admin" || user?.role === "manager") && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-green-500" />
+                LINE Official Account
+              </CardTitle>
+              <CardDescription>
+                เชื่อมต่อ LINE OA เพื่อส่ง report และ alert อัตโนมัติ —{" "}
+                <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline hover:text-blue-700">
+                  รับ Channel Access Token ที่ LINE Developers Console
+                </a>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {user?.role === "admin" && (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-sm">Channel Access Token</Label>
+                    {lineMaskedToken && (
+                      <p className="text-xs text-slate-500">Token ที่บันทึกไว้: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">{lineMaskedToken}</span></p>
+                    )}
+                    <Input
+                      type="password"
+                      placeholder="วาง Channel Access Token ที่นี่..."
+                      value={lineToken}
+                      onChange={e => setLineToken(e.target.value)}
+                      className="font-mono text-sm"
+                      data-testid="input-line-channel-token"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Target ID (Group ID หรือ User ID)</Label>
+                    {lineSavedTargetId && (
+                      <p className="text-xs text-slate-500">บันทึกไว้: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">{lineSavedTargetId}</span></p>
+                    )}
+                    <Input
+                      placeholder="C... (Group ID) หรือ U... (User ID)"
+                      value={lineTargetId}
+                      onChange={e => setLineTargetId(e.target.value)}
+                      className="font-mono text-sm"
+                      data-testid="input-line-target-id"
+                    />
+                    <p className="text-[11px] text-slate-500">วิธีหา Group ID: เพิ่ม Bot เข้า group แล้วดู webhook event หรือใช้ <a href="https://notify-bot.line.me/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">LINE Notify</a> เพื่อเริ่มต้น</p>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      onClick={handleSaveLineConfig}
+                      disabled={!lineToken && !lineTargetId}
+                      size="sm"
+                      data-testid="button-save-line-config"
+                    >
+                      <Save className="w-4 h-4 mr-1.5" />
+                      บันทึก Config
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestLine}
+                      disabled={isTestingLine}
+                      data-testid="button-test-line"
+                    >
+                      {isTestingLine ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
+                      ทดสอบการส่ง
+                    </Button>
+                    {lineStatus === "ok" && (
+                      <Badge variant="outline" className="text-green-600 border-green-400 gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> ส่งสำเร็จ
+                      </Badge>
+                    )}
+                    {lineStatus === "error" && (
+                      <Badge variant="outline" className="text-red-600 border-red-400 gap-1 max-w-xs truncate">
+                        <XCircle className="w-3 h-3" /> {lineStatusMsg}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                <p className="text-sm font-medium mb-2">ส่งรายงานประจำวัน</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendDailyReport}
+                    disabled={isSendingReport}
+                    className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
+                    data-testid="button-send-line-daily-report"
+                  >
+                    {isSendingReport ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <MessageSquare className="w-4 h-4 mr-1.5" />}
+                    📊 ส่ง Daily Report ไป LINE
+                  </Button>
+                  {lineReportStatus === "ok" && (
+                    <Badge variant="outline" className="text-green-600 border-green-400 gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> ส่งแล้ว
+                    </Badge>
+                  )}
+                  {lineReportStatus === "error" && (
+                    <Badge variant="outline" className="text-red-600 border-red-400 gap-1">
+                      <XCircle className="w-3 h-3" /> ล้มเหลว
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">จะส่งข้อมูลของวันนี้เป็น Flex Message ไปยัง LINE group ที่ตั้งค่าไว้</p>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -2459,6 +2459,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         return acc;
       }, {});
 
+      const userMap = Object.fromEntries(allUsers.map((u: any) => [u.username, u]));
       const activeStaff = allUsers.filter((u: any) => u.active === 1).length;
       const pendingBorrows = borrowTxs.filter((t: any) => t.status === "pending").length;
 
@@ -2468,7 +2469,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         shifts: {
           total: todayShifts.length,
           byGroup: shiftsByGroup,
-          staff: todayShifts.map((s: any) => ({ username: s.username, nickName: s.nickName, shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime }))
+          staff: todayShifts.map((s: any) => ({ username: s.username, fullName: userMap[s.username]?.fullName, nickName: userMap[s.username]?.nickName || s.nickName, shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime }))
         },
         sales: salesReport ? {
           actualSales: salesReport.actualSales,

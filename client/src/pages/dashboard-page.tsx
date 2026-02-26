@@ -15,7 +15,7 @@ interface UnifiedDashboardData {
   shifts: {
     total: number;
     byGroup: Record<string, number>;
-    staff: Array<{ username: string; nickName?: string; shiftGroup: string; startTime?: string; endTime?: string }>;
+    staff: Array<{ username: string; fullName?: string; nickName?: string; shiftGroup: string; startTime?: string; endTime?: string }>;
   } | null;
   sales: {
     actualSales: number;
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                       {shifts.staff.slice(0, 8).map((member, i) => (
                         <div key={i} className="flex items-center justify-between gap-2 text-sm" data-testid={`row-staff-${i}`}>
-                          <span className="truncate">{member.nickName || member.username}</span>
+                          <span className="truncate">{member.fullName || member.nickName || member.username}</span>
                           <Badge variant="secondary">{shiftGroupLabel(member.shiftGroup)}</Badge>
                         </div>
                       ))}

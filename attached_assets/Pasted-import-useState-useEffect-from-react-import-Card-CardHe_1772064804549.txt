@@ -1,0 +1,85 @@
+import { useState, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+
+// ... ภายใน Component SettingsPage ...
+const { toast } = useToast();
+const [lineToken, setLineToken] = useState("");
+const [lineTargetId, setLineTargetId] = useState("");
+const [lineMaskedToken, setLineMaskedToken] = useState("");
+const [lineStatus, setLineStatus] = useState<"idle"|"ok"|"error">("idle");
+const [lineStatusMsg, setLineStatusMsg] = useState("");
+
+useEffect(() => {
+  if (user?.role !== "admin") return;
+  const bkToken = localStorage.getItem("bk_token");
+  fetch("/api/settings/get-line-config", { 
+    method: "POST", 
+    headers: { "Content-Type": "application/json" }, 
+    body: JSON.stringify({ token: bkToken }) 
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { 
+        setLineMaskedToken(d.maskedToken); 
+        setLineTargetId(d.targetId); 
+      }
+    });
+}, [user]);
+
+const handleSaveLineConfig = async () => {
+  const bkToken = localStorage.getItem("bk_token");
+  const res = await fetch("/api/settings/save-line-config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: bkToken, channelToken: lineToken, targetId: lineTargetId })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    toast({ title: "บันทึกสำเร็จ", description: "ตั้งค่า LINE OA เรียบร้อยแล้ว" });
+    setLineToken(""); // Clear input
+    setLineMaskedToken(`...${lineToken.slice(-4)}`);
+  } else {
+    toast({ title: "เกิดข้อผิดพลาด", description: data.message, variant: "destructive" });
+  }
+};
+
+const handleTestLine = async () => {
+  setLineStatus("idle");
+  const bkToken = localStorage.getItem("bk_token");
+  const res = await fetch("/api/settings/test-line", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: bkToken })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    setLineStatus("ok");
+    toast({ title: "ทดสอบสำเร็จ", description: "ส่งข้อความเข้า LINE เรียบร้อยแล้ว" });
+  } else {
+    setLineStatus("error");
+    setLineStatusMsg(data.message);
+  }
+};
+
+const handleSendDailyReport = async () => {
+  const bkToken = localStorage.getItem("bk_token");
+  // ดึงวันที่ล่าสุดที่มีใน Table Data หรือใช้วันนี้
+  const targetDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }); 
+  
+  const res = await fetch("/api/line/send-daily-report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: bkToken, date: targetDate })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    toast({ title: "ส่ง Report สำเร็จ", description: "ตรวจสอบได้ใน LINE Group" });
+  } else {
+    toast({ title: "ไม่สามารถส่ง Report ได้", description: data.message, variant: "destructive" });
+  }
+};

@@ -50,6 +50,7 @@ import {
   X,
   Settings,
   ClipboardPaste,
+  MessageSquare,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
@@ -252,6 +253,7 @@ export default function DailySalesPage() {
   const { language } = useI18n();
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showAutoSave, setShowAutoSave] = useState(false);
+  const [isSendingLineReport, setIsSendingLineReport] = useState(false);
   const [addonDialogOpen, setAddonDialogOpen] = useState(false);
   const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
   const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
@@ -1008,6 +1010,33 @@ export default function DailySalesPage() {
       clearData();
       form.reset();
       markAsSaved();
+    }
+  };
+
+  const handleSendLineReport = async () => {
+    const reportDate = form.getValues("reportDate");
+    if (!reportDate) {
+      toast({ title: "กรุณาเลือกวันที่ก่อน", variant: "destructive" });
+      return;
+    }
+    setIsSendingLineReport(true);
+    const token = localStorage.getItem("bk_token");
+    try {
+      const res = await fetch("/api/line/send-daily-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, date: reportDate })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "ส่งรายงานไป LINE แล้ว ✅", description: `รายงานวันที่ ${reportDate}` });
+      } else {
+        toast({ title: "ส่งไม่สำเร็จ", description: data.message || "เกิดข้อผิดพลาด", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", description: "ไม่สามารถเชื่อมต่อได้", variant: "destructive" });
+    } finally {
+      setIsSendingLineReport(false);
     }
   };
 
@@ -3267,6 +3296,21 @@ ${v.staffRosterText || ""}
                     <Save className="w-4 h-4" />
                     {language === "th" ? "บันทึกลงฐานข้อมูล" : "Save to DB"}
                   </Button>
+                  {isManager && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSendLineReport}
+                      disabled={isSendingLineReport}
+                      className="gap-2 border-green-400 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-400"
+                      data-testid="button-send-line-report"
+                    >
+                      {isSendingLineReport
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <MessageSquare className="w-4 h-4" />}
+                      ส่ง Daily Report ไป LINE
+                    </Button>
+                  )}
                 </div>
               </form>
             </Form>

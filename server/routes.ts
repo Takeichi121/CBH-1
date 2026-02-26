@@ -29,55 +29,88 @@ function lineRow(label: string, value: string, valueColor = "#333333") {
   };
 }
 
-function buildDailyReportFlex(report: any, storeName: string) {
-  const date = new Date(report.reportDate + "T00:00:00+07:00").toLocaleDateString("th-TH", {
-    year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Bangkok"
-  });
-  const target = Number(report.dailyTarget) || 0;
-  const actual = Number(report.actualSales) || 0;
-  const pct = target > 0 ? ((actual / target) * 100).toFixed(1) : "—";
-  const pctColor = actual >= target ? "#27AE60" : "#E74C3C";
-  const col = Number(report.colPercent) || 0;
-  const colColor = col > 8 ? "#E74C3C" : col > 6 ? "#F39C12" : "#27AE60";
-  const fmt = (n: number) => n.toLocaleString("th-TH");
-  const mtd = Number(report.mtdActual) || 0;
-  const waste = Number(report.wasteRawDaily) || 0;
-  const hours = Number(report.actualHours) || 0;
-  const tc = Number(report.transactionCount) || 0;
+function buildDailyReportText(report: any, _storeName: string) {
+  const parts = (report.reportDate || "").split("-");
+  const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : report.reportDate;
 
-  return {
-    type: "flex",
-    altText: `📊 Daily Report ${date} — ยอดขาย ${fmt(actual)} ฿`,
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box", layout: "vertical", backgroundColor: "#D35400",
-        contents: [
-          { type: "text", text: "📊 Daily Report", color: "#FFFFFF", size: "xl", weight: "bold" },
-          { type: "text", text: storeName, color: "#FFD7B5", size: "sm" }
-        ]
-      },
-      body: {
-        type: "box", layout: "vertical", spacing: "sm",
-        contents: [
-          { type: "text", text: `📅 ${date}`, size: "sm", color: "#555555" },
-          { type: "separator" },
-          lineRow("💰 ยอดขาย", `${fmt(actual)} ฿`),
-          lineRow("🎯 เทียบเป้า", `${pct}%`, pctColor),
-          lineRow("🧾 TC", `${fmt(tc)} ราย`),
-          lineRow("👥 COL%", `${Number(col).toFixed(2)}%`, colColor),
-          lineRow("⏱️ แรงงาน", `${Number(hours).toFixed(1)} ชม.`),
-          lineRow("♻️ Waste", `${fmt(waste)} ฿`),
-          { type: "separator" },
-          lineRow("📈 MTD", `${fmt(mtd)} ฿`),
-        ]
-      },
-      footer: {
-        type: "box", layout: "vertical", backgroundColor: "#F5F5F5",
-        contents: [{ type: "text", text: "รายงานโดย Chann AI 🤖", size: "xs", color: "#AAAAAA", align: "center" }]
-      }
-    }
-  };
+  const fmt = (n: number) => Math.round(n).toLocaleString("th-TH");
+  const pct = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";
+
+  const actual   = Number(report.actualSales) || 0;
+  const target   = Number(report.dailyTarget) || 0;
+  const mtdAct   = Number(report.mtdActual) || 0;
+  const mtdTgt   = Number(report.mtdTarget) || 0;
+  const tc       = Number(report.transactionCount) || 0;
+  const mtdTc    = Number(report.mtdTc) || 0;
+  const dailyTa  = tc > 0 ? Math.round(actual / tc) : 0;
+  const mtdTa    = mtdTc > 0 ? Math.round(mtdAct / mtdTc) : 0;
+
+  const dineIn   = Number(report.dineIn) || 0;
+  const takeAway = Number(report.takeAway) || 0;
+  const grab     = Number(report.grabfood) || 0;
+  const lineman  = Number(report.lineman) || 0;
+  const shopee   = Number(report.shopee) || 0;
+  const bkapp    = Number(report.bkapp) || 0;
+  const robin    = Number(report.robin) || 0;
+  const gokoo    = Number(report.gokoo) || 0;
+  const delivery = grab + lineman + shopee + bkapp + robin + gokoo;
+
+  const sosD     = Number(report.sosDaily) || 0;
+  const sosMd    = Number(report.sosMtd) || 0;
+
+  const wasteD    = Number(report.wasteRawDaily) || 0;
+  const wasteDPct = Number(report.wasteRawDailyPercent) || 0;
+  const wasteMtd  = Number(report.wasteRawMtd) || 0;
+  const wasteMPct = Number(report.wasteRawMtdPercent) || 0;
+
+  const hours = Number(report.actualHours) || 0;
+  const osat  = report.osat || "0";
+
+  const managerRoster = report.managerRosterText || "-";
+  const staffRoster   = report.staffRosterText || "-";
+  const reportBy      = report.reportBy || "";
+
+  const text = [
+    `🗓️${dateStr}`,
+    ``,
+    `💵Daily Sales=${fmt(actual)}/${fmt(target)}`,
+    `MTD Sale=${fmt(mtdAct)}/${fmt(mtdTgt)}`,
+    ``,
+    `👨‍👩‍👧‍👦Daily TC =${fmt(tc)}`,
+    `👨‍👩‍👧‍👦MTD TC =${fmt(mtdTc)}`,
+    `👑 Daily TA =${fmt(dailyTa)}`,
+    `👑 MTD TA =${fmt(mtdTa)}`,
+    ``,
+    `🍽 Dinein :${fmt(dineIn)}/${pct(dineIn, actual)}%`,
+    `🛍Takeaway :${fmt(takeAway)}/${pct(takeAway, actual)}%`,
+    `🛵Delivery :${fmt(delivery)}/${pct(delivery, actual)}%`,
+    ``,
+    `🛵Grab Food :${fmt(grab)}/${pct(grab, actual)}%`,
+    `🛵Line Man :${fmt(lineman)}/${pct(lineman, actual)}%`,
+    `🛵Shopeefood:${fmt(shopee)}/${pct(shopee, actual)}%`,
+    `🛵BK App:${fmt(bkapp)}/${pct(bkapp, actual)}%`,
+    `🛵Robin:${fmt(robin)}/${pct(robin, actual)}%`,
+    `🛵GoKOO:${fmt(gokoo)}/${pct(gokoo, actual)}%`,
+    ``,
+    `🏃🏻‍♀️SOS =${sosD}`,
+    `🏃🏻MTD SOS =${sosMd}`,
+    ``,
+    `🗑WasteDaily :${wasteD.toLocaleString("th-TH")}/${wasteDPct.toFixed(2)}%`,
+    `🗑WasteMTD:${wasteMtd.toLocaleString("th-TH")}/${wasteMPct.toFixed(2)}%`,
+    ``,
+    `🕰Work Hour :${hours.toFixed(1)}`,
+    `📝OSAT:${osat}`,
+    ``,
+    `👨‍💼 Roster Manager`,
+    managerRoster,
+    ``,
+    `👥 Roster Staff`,
+    staffRoster,
+    ``,
+    `📝 Report by ${reportBy}`,
+  ].join("\n");
+
+  return { type: "text", text };
 }
 import { storage, transaction, updateShiftById } from "./storage";
 import { api } from "@shared/routes";
@@ -1720,7 +1753,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               if (rReport) {
                 const lineStoreCfg = await storage.getStoreSettings();
                 const lineStoreName = lineStoreCfg?.storeName || "Burger King Grand Diamond";
-                lineMessages.push(buildDailyReportFlex(rReport, lineStoreName));
+                lineMessages.push(buildDailyReportText(rReport, lineStoreName));
               }
             }
             if (args.message) {
@@ -4901,7 +4934,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const storeCfg = await storage.getStoreSettings();
     const storeName = storeCfg?.storeName || "Burger King Grand Diamond";
     try {
-      const flex = buildDailyReportFlex(report, storeName);
+      const flex = buildDailyReportText(report, storeName);
       await sendLineMessage(channelToken, targetId, [flex]);
       res.json({ ok: true });
     } catch (err: any) {

@@ -79,6 +79,8 @@ export default function SalesSettingsPage() {
   const [detectedGroupId, setDetectedGroupId] = useState("");
   const [detectedGroupTs, setDetectedGroupTs] = useState("");
   const [isRefreshingGroup, setIsRefreshingGroup] = useState(false);
+  const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+  const [lineReportDate, setLineReportDate] = useState(todayStr);
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -705,12 +707,11 @@ export default function SalesSettingsPage() {
     setIsSendingReport(true);
     setLineReportStatus("idle");
     const bkToken = localStorage.getItem("bk_token");
-    const targetDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
     try {
       const res = await fetch("/api/line/send-daily-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: bkToken, date: targetDate })
+        body: JSON.stringify({ token: bkToken, date: lineReportDate })
       });
       const data = await res.json();
       if (data.ok) {
@@ -1276,14 +1277,25 @@ export default function SalesSettingsPage() {
                 </div>
               )}
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
-                <p className="text-sm font-medium mb-2">ส่งรายงานประจำวัน</p>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                <p className="text-sm font-medium">ส่งรายงานประจำวัน</p>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-slate-500 shrink-0">เลือกวันที่</Label>
+                  <Input
+                    type="date"
+                    value={lineReportDate}
+                    max={todayStr}
+                    onChange={e => setLineReportDate(e.target.value)}
+                    className="w-40 h-8 text-sm"
+                    data-testid="input-line-report-date"
+                  />
+                </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleSendDailyReport}
-                    disabled={isSendingReport}
+                    disabled={isSendingReport || !lineReportDate}
                     className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
                     data-testid="button-send-line-daily-report"
                   >
@@ -1301,7 +1313,7 @@ export default function SalesSettingsPage() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">จะส่งข้อมูลของวันนี้เป็น Flex Message ไปยัง LINE group ที่ตั้งค่าไว้</p>
+                <p className="text-[11px] text-slate-500">ส่งข้อมูลของวันที่เลือกเป็น text message ไปยัง LINE group ที่ตั้งค่าไว้</p>
               </div>
             </CardContent>
           </Card>

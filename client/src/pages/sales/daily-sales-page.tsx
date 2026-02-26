@@ -336,6 +336,7 @@ export default function DailySalesPage() {
     null,
   );
   const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoadingRef = useRef(false);
   const [isSavingToServer, setIsSavingToServer] = useState(false);
 
   const saveToServer = useCallback(async (values: FormData) => {
@@ -451,7 +452,9 @@ export default function DailySalesPage() {
       if (values.reportDate && values.reportBy) {
         markAsChanged();
         debouncedSave(values as FormData);
-        debouncedServerSave(values as FormData);
+        if (!isLoadingRef.current) {
+          debouncedServerSave(values as FormData);
+        }
       }
     });
     return () => {
@@ -662,6 +665,9 @@ export default function DailySalesPage() {
         const date = new Date(reportDate);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
+
+        // Block autosave during DB load to prevent "0" values overwriting real data
+        isLoadingRef.current = true;
 
         // Reset daily fields first to prevent data from other dates mixing in
         const dailyFieldsToReset = {
@@ -880,6 +886,9 @@ export default function DailySalesPage() {
         }
       } catch (error) {
         console.error("Failed to load daily target and MTD:", error);
+      } finally {
+        // Wait for React re-render + staffRosterEntries useEffect to finish before re-enabling autosave
+        setTimeout(() => { isLoadingRef.current = false; }, 300);
       }
     };
     loadDailyTargetAndMtd();

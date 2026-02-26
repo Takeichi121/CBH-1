@@ -63,8 +63,9 @@ function buildDailyReportText(report: any, _storeName: string) {
   const wasteMtd  = Number(report.wasteRawMtd) || 0;
   const wasteMPct = Number(report.wasteRawMtdPercent) || 0;
 
-  const hours = Number(report.actualHours) || 0;
-  const osat  = report.osat || "0";
+  const hours       = Number(report.actualHours) || 0;
+  const osat        = report.osat || "0";
+  const surveyCount = report.surveyCount || "0";
 
   const managerRoster = report.managerRosterText || "-";
   const staffRoster   = report.staffRosterText || "-";
@@ -100,6 +101,7 @@ function buildDailyReportText(report: any, _storeName: string) {
     ``,
     `🕰Work Hour :${hours.toFixed(1)}`,
     `📝OSAT:${osat}`,
+    `📝Survey Count:${surveyCount}`,
     ``,
     `👨‍💼 Roster Manager`,
     managerRoster,

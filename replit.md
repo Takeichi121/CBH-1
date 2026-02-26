@@ -187,6 +187,18 @@ Version is displayed in Settings page footer automatically.
 
 ## Recent Changes
 
+### Version 1.8.1 (February 26, 2026) — Code Audit & Bug Fixes
+- **Bug Fix**: Waste double-counting — settings-page save now resets `wasteMealDaily` to "0" alongside `wasteRawDaily=total`, preventing compounding on repeated saves
+- **Bug Fix**: `rosterCommit` and `recommendHours` added to settings-page save filter so rows with only planning data are no longer silently skipped
+- **Bug Fix**: OData endpoint used `t.targetAmount` (non-existent) → fixed to `t.targetSales`; used `r.wasteAmount` → fixed to `r.wasteRawDaily` (both caused zeros in exported data)
+- **Bug Fix**: `/api/code-proposals/list` and `/api/code-proposals/review` used `verifyAdminAccess` (undefined) → corrected to `verifyDevAccess`; access.username → access.user?.username
+- **Bug Fix**: Arithmetic on `pct()` return which could be `""` string → wrapped with `Number()` to prevent NaN
+- **Bug Fix**: Chann tool dispatch used `user.role` without null safety inside nested function → added `!` assertions
+- **Bug Fix**: Chann `upsertDailyTarget` / `upsertShift` / `bulkUpsertDailyTargets` calls missing required TS fields → cast to `any`
+- **Cleanup**: Removed orphaned stub files causing TypeScript errors (`client/src/db/database.ts`, `client/src/lib/stream.ts`, `client/src/services/memory.ts`, `client/src/services/llm-router.ts`, `server/src/chat.routes.ts`)
+- **Fix**: `bottom-nav.tsx` position state now typed as `{ x: number; y: number }` eliminating implicit `any` TS error
+- TypeScript: 0 errors across entire codebase after this audit
+
 ### Version 1.8.0 (February 25, 2026)
 - Chann AI: เพิ่มเครื่องมือจำนวนมาก ครอบคลุมทุก storage operation
 - **Read tools ใหม่ (ทุก role)**: getWasteTarget, getStoreSettings, getSystemLogs, getSwapRequests, getBorrowTransactions, getBorrowBranches, getBorrowItems, getMtdSummary, getDailyTargetsForMonth, getDailySalesReportsForMonth, getLaborSettings

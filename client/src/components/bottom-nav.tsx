@@ -10,7 +10,7 @@ export function BottomNav() {
   const [location, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const [position, setPosition] = useState(() => {
+  const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     const saved = localStorage.getItem("assistTouch_pos");
     if (saved) {
       try {

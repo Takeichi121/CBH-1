@@ -1122,10 +1122,10 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
       async function handleToolCall(name: string, args: any): Promise<string> {
         if (allWriteToolNames.has(name)) {
-          if (adminOnlyWriteToolNames.has(name) && user.role !== "admin") {
+          if (adminOnlyWriteToolNames.has(name) && user!.role !== "admin") {
             return JSON.stringify({ error: "Permission denied: only admin can perform this operation" });
           }
-          if (managerWriteToolNames.has(name) && user.role !== "admin" && user.role !== "manager") {
+          if (managerWriteToolNames.has(name) && user!.role !== "admin" && user!.role !== "manager") {
             return JSON.stringify({ error: "Permission denied: only admin or manager can perform this operation" });
           }
         }
@@ -1200,7 +1200,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             if (!args.reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(args.reportDate)) {
               return JSON.stringify({ error: "Invalid reportDate format. Use YYYY-MM-DD" });
             }
-            const reportBy = user.nickName || user.fullName || username;
+            const reportBy = user!.nickName || user!.fullName || username;
             const existing = await storage.getDailySalesReportByDate(args.reportDate);
             const updateData: any = {
               reportDate: args.reportDate,
@@ -1248,7 +1248,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
             await storage.upsertDailyTarget({
               targetDate: args.targetDate,
               targetSales: String(args.targetSales),
-            });
+            } as any);
             await storage.log("chann_save_daily_target", username, `date=${args.targetDate} target=${args.targetSales}`);
             toolActions.push(`ตั้งเป้ายอดขายวันที่ ${args.targetDate}: ${Number(args.targetSales).toLocaleString()} บาท`);
             return JSON.stringify({ ok: true, message: `Saved target ${args.targetSales} for ${args.targetDate}` });
@@ -1269,7 +1269,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               username: args.username.toLowerCase(),
               date: args.date,
               shiftGroup: args.shiftGroup,
-            });
+            } as any);
             await storage.log("chann_save_shift", username, `user=${args.username} date=${args.date} shift=${args.shiftGroup}`);
             toolActions.push(`บันทึกกะ ${args.shiftGroup} ให้ ${args.username} วันที่ ${args.date}`);
             return JSON.stringify({ ok: true, message: `Saved shift ${args.shiftGroup} for ${args.username} on ${args.date}` });
@@ -1485,10 +1485,10 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
               obj.setDate(obj.getDate() + 1);
               return `${obj.getFullYear()}-${String(obj.getMonth() + 1).padStart(2, "0")}-${String(obj.getDate()).padStart(2, "0")}`;
             };
-            const targets: InsertDailyTarget[] = [];
+            const targets: any[] = [];
             let cur = args.startDate as string;
             while (cur <= args.endDate) {
-              targets.push({ targetDate: cur, targetSales: String(args.targetSales) } as InsertDailyTarget);
+              targets.push({ targetDate: cur, targetSales: String(args.targetSales) });
               cur = getNextDayStr(cur);
             }
             await storage.bulkUpsertDailyTargets(targets);
@@ -1578,7 +1578,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
                 continue;
               }
               try {
-                await storage.upsertShift({ username: s.username, date: s.date, shiftGroup: s.shiftGroup });
+                await storage.upsertShift({ username: s.username, date: s.date, shiftGroup: s.shiftGroup } as any);
                 results.push({ username: s.username, date: s.date, ok: true });
               } catch (shiftErr: any) {
                 results.push({ username: s.username, date: s.date, error: shiftErr.message });
@@ -3210,6 +3210,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           actualHours: String(data.actualHours ?? "0"),
           otHours: String(data.otHours ?? "0"),
           wasteRawDaily: String(data.wasteDaily ?? "0"),
+          wasteMealDaily: "0",
           lastYearSales: String(data.lastYearSales ?? "0"),
           forecastSales: String(data.forecastSales ?? "0"),
           lastYearTc: String(data.lastYearTc ?? "0"),
@@ -4504,7 +4505,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
   app.post("/api/code-proposals/list", async (req, res) => {
     const { token, status, limit } = req.body;
-    const access = await verifyAdminAccess(token);
+    const access = await verifyDevAccess(token);
     if (!access.ok) return res.json(access);
 
     try {
@@ -4529,7 +4530,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
   app.post("/api/code-proposals/review", async (req, res) => {
     const { token, proposalId, action, reviewNote } = req.body;
-    const access = await verifyAdminAccess(token);
+    const access = await verifyDevAccess(token);
     if (!access.ok) return res.json(access);
 
     if (!proposalId || !action || !["approve", "reject"].includes(action)) {
@@ -4554,7 +4555,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         if (!currentContent.includes(proposal.oldContent)) {
           await db.update(codeProposals).set({
             status: "conflict",
-            reviewedBy: access.username,
+            reviewedBy: access.user?.username,
             reviewNote: "File content has changed — oldContent no longer matches",
             reviewedAt: new Date(),
           }).where(eq(codeProposals.id, proposalId));
@@ -4565,22 +4566,22 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
         await db.update(codeProposals).set({
           status: "approved",
-          reviewedBy: access.username,
+          reviewedBy: access.user?.username,
           reviewNote: reviewNote || null,
           reviewedAt: new Date(),
         }).where(eq(codeProposals.id, proposalId));
 
-        await storage.log("code_proposal_approved", access.username!, `#${proposalId} file=${proposal.filePath}`);
+        await storage.log("code_proposal_approved", access.user?.username ?? "unknown", `#${proposalId} file=${proposal.filePath}`);
         res.json({ ok: true, message: `Proposal #${proposalId} approved and applied to ${proposal.filePath}` });
       } else {
         await db.update(codeProposals).set({
           status: "rejected",
-          reviewedBy: access.username,
+          reviewedBy: access.user?.username,
           reviewNote: reviewNote || null,
           reviewedAt: new Date(),
         }).where(eq(codeProposals.id, proposalId));
 
-        await storage.log("code_proposal_rejected", access.username!, `#${proposalId} file=${proposal.filePath}`);
+        await storage.log("code_proposal_rejected", access.user?.username ?? "unknown", `#${proposalId} file=${proposal.filePath}`);
         res.json({ ok: true, message: `Proposal #${proposalId} rejected` });
       }
     } catch (e: any) {
@@ -4670,7 +4671,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
           AB: has(row.lastYearTc) && has(row.actualTc) ? row.actualTc / row.lastYearTc - 1 : "",
           AC: pct(row.lastYearSales, row.lastYearTc), AD: pct(row.targetSales, row.targetTc),
           AE: pct(row.actualSales, row.actualTc),
-          AF: has(row.actualTc) ? pct(row.actualSales, row.actualTc) - pct(row.targetSales, row.targetTc) : "",
+          AF: has(row.actualTc) ? Number(pct(row.actualSales, row.actualTc)) - Number(pct(row.targetSales, row.targetTc)) : "",
           AG: row.recommendHours || "", AH: row.rosterCommit || "",
           AI: row.mtdRoster || "", AJ: dutyDailyHours || 0,
           AK: row.actualHours || "", AL: row.otHours || 0,
@@ -4788,7 +4789,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     ]);
 
     const targetMap: Record<string, number> = {};
-    targets.forEach(t => { targetMap[t.targetDate] = Number(t.targetAmount || 0); });
+    targets.forEach(t => { targetMap[t.targetDate] = Number(t.targetSales || 0); });
 
     const dutyHrs = Number(laborCfg?.dutyDailyHours || 40);
     const pph     = Number(laborCfg?.ptWageRate || 84);
@@ -4818,7 +4819,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         OTHours:        otHrs,
         DutyHours:      dutyHrs,
         RosterCommit:   Number(r.rosterCommit || 0),
-        WasteDaily:     Number(r.wasteAmount || 0),
+        WasteDaily:     Number(r.wasteRawDaily || 0),
         COLDaily:       colD,
         COLPercent:     actual > 0 ? colD / actual : 0,
         RecommendHours: Number(r.recommendHours || 0),

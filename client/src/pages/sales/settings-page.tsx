@@ -596,7 +596,7 @@ export default function SalesSettingsPage() {
           targetTc: parseFloat(editable.targetTc) || 0,
           targetTa: parseFloat(editable.targetTa) || 0,
         };
-      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0 || d.lastYearSales > 0 || d.forecastSales > 0 || d.lastYearTc > 0 || d.targetTc > 0 || d.targetTa > 0);
+      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0 || d.lastYearSales > 0 || d.forecastSales > 0 || d.lastYearTc > 0 || d.targetTc > 0 || d.targetTa > 0 || d.rosterCommit > 0 || d.recommendHours > 0);
       
       const res = await apiRequest("POST", "/api/sales/saveDailySalesData", {
         token,

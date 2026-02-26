@@ -76,6 +76,9 @@ export default function SalesSettingsPage() {
   const [lineReportStatus, setLineReportStatus] = useState<"idle" | "ok" | "error">("idle");
   const [isTestingLine, setIsTestingLine] = useState(false);
   const [isSendingReport, setIsSendingReport] = useState(false);
+  const [detectedGroupId, setDetectedGroupId] = useState("");
+  const [detectedGroupTs, setDetectedGroupTs] = useState("");
+  const [isRefreshingGroup, setIsRefreshingGroup] = useState(false);
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -389,6 +392,8 @@ export default function SalesSettingsPage() {
           setLineMaskedToken(d.maskedToken);
           setLineSavedTargetId(d.targetId);
           setLineTargetId(d.targetId);
+          setDetectedGroupId(d.lastGroupId || "");
+          setDetectedGroupTs(d.lastGroupTs || "");
         }
       })
       .catch(() => {});
@@ -717,6 +722,25 @@ export default function SalesSettingsPage() {
       }
     } finally {
       setIsSendingReport(false);
+    }
+  };
+
+  const handleRefreshGroupId = async () => {
+    setIsRefreshingGroup(true);
+    const bkToken = localStorage.getItem("bk_token");
+    try {
+      const res = await fetch("/api/settings/get-line-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: bkToken })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setDetectedGroupId(data.lastGroupId || "");
+        setDetectedGroupTs(data.lastGroupTs || "");
+      }
+    } finally {
+      setIsRefreshingGroup(false);
     }
   };
 
@@ -1203,6 +1227,51 @@ export default function SalesSettingsPage() {
                         <XCircle className="w-3 h-3" /> {lineStatusMsg}
                       </Badge>
                     )}
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">Group ID ที่ตรวจพบจาก Webhook</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRefreshGroupId}
+                        disabled={isRefreshingGroup}
+                        className="h-7 px-2 text-xs"
+                        data-testid="button-refresh-group-id"
+                      >
+                        {isRefreshingGroup ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        <span className="ml-1">รีเฟรช</span>
+                      </Button>
+                    </div>
+                    {detectedGroupId ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono" data-testid="text-detected-group-id">{detectedGroupId}</code>
+                        {detectedGroupTs && (
+                          <span className="text-[11px] text-slate-400">จับได้เมื่อ {new Date(detectedGroupTs).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs border-green-400 text-green-700 hover:bg-green-50"
+                          onClick={() => { setLineTargetId(detectedGroupId); }}
+                          data-testid="button-use-group-id"
+                        >
+                          ใช้ ID นี้
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-[12px] text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-md px-3 py-2">
+                        <p className="font-medium text-slate-600 dark:text-slate-400 mb-1">วิธีรับ Group ID อัตโนมัติ:</p>
+                        <ol className="list-decimal list-inside space-y-0.5">
+                          <li>ตั้ง Webhook URL ใน LINE Developers Console → <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-[11px]">{window.location.origin}/api/line/webhook</code></li>
+                          <li>เพิ่ม Bot Chann เข้ากลุ่ม LINE</li>
+                          <li>ส่งข้อความใดก็ได้ในกลุ่ม</li>
+                          <li>กด "รีเฟรช" ด้านบน — Group ID จะปรากฏที่นี่</li>
+                        </ol>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-slate-400">Webhook URL: <span className="font-mono">{window.location.origin}/api/line/webhook</span></p>
                   </div>
                 </div>
               )}

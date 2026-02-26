@@ -4854,7 +4854,13 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!user || user.role !== "admin") return res.json({ ok: false, message: "Admin only" });
     const cfg = await storage.getConfig();
     const t = cfg["LINE_CHANNEL_TOKEN"] || "";
-    res.json({ ok: true, maskedToken: t ? `...${t.slice(-4)}` : "", targetId: cfg["LINE_TARGET_ID"] || "" });
+    res.json({
+      ok: true,
+      maskedToken: t ? `...${t.slice(-4)}` : "",
+      targetId: cfg["LINE_TARGET_ID"] || "",
+      lastGroupId: cfg["LINE_LAST_GROUP_ID"] || "",
+      lastGroupTs: cfg["LINE_LAST_GROUP_TS"] || ""
+    });
   });
 
   app.post("/api/settings/test-line", async (req, res) => {
@@ -4901,6 +4907,28 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     } catch (err: any) {
       res.json({ ok: false, message: err.message });
     }
+  });
+
+  app.get("/api/line/webhook", (req, res) => {
+    const challenge = req.query["hub.challenge"];
+    if (challenge) return res.send(challenge);
+    res.send("LINE Webhook OK");
+  });
+
+  app.post("/api/line/webhook", async (req, res) => {
+    res.json({ ok: true });
+    try {
+      const events: any[] = req.body?.events || [];
+      for (const event of events) {
+        if (event?.source?.type === "group" && event.source.groupId) {
+          const groupId: string = event.source.groupId;
+          const ts = new Date().toISOString();
+          await storage.setConfig("LINE_LAST_GROUP_ID", groupId);
+          await storage.setConfig("LINE_LAST_GROUP_TS", ts);
+          break;
+        }
+      }
+    } catch (_) {}
   });
 
   return httpServer;

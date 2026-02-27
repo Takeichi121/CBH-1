@@ -1,7 +1,10 @@
-import { BookOpen, LogIn, CalendarDays, Users, LayoutDashboard, ClipboardList, BarChart2, CalendarRange, Database, ArrowLeftRight, MessageSquare, Bot, Settings, History, ChevronDown, ShieldCheck, Star } from "lucide-react";
+import { BookOpen, LogIn, CalendarDays, Users, LayoutDashboard, ClipboardList, BarChart2, CalendarRange, Database, ArrowLeftRight, MessageSquare, Bot, Settings, History, ChevronDown, ShieldCheck, Star, BookMarked } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
+import { APP_VERSION } from "@shared/version";
 
 const STAFF_BADGE = <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950 text-xs">พนักงาน</Badge>;
 const MANAGER_BADGE = <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950 text-xs">ผู้จัดการ</Badge>;
@@ -201,14 +204,27 @@ const labelText: Record<string, string> = {
 };
 
 export default function HandbookPage() {
+  const { user } = useAuth();
+  const isManagerLike = user?.role === "manager" || user?.role === "admin" || user?.role === "area";
+
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-4xl pb-24">
-      <div className="flex items-center gap-3 mb-2">
-        <BookOpen className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">คู่มือการใช้งานระบบ</h1>
-          <p className="text-sm text-muted-foreground">Burger King Grand Diamond — ฉบับล่าสุด v1.8.2</p>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center gap-3">
+          <BookOpen className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">คู่มือการใช้งานระบบ</h1>
+            <p className="text-sm text-muted-foreground">Burger King Grand Diamond — ฉบับล่าสุด v{APP_VERSION}</p>
+          </div>
         </div>
+        {isManagerLike && (
+          <Link href="/manager-manual">
+            <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow hover:opacity-90 transition-opacity" data-testid="link-manager-manual">
+              <BookMarked className="w-4 h-4" />
+              คู่มือผู้จัดการ
+            </button>
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm">

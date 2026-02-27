@@ -28,6 +28,7 @@ import BorrowSettingsPage from "@/pages/borrow/settings-page";
 import BorrowHelpPage from "@/pages/borrow/help-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
+import ManagerManualPage from "@/pages/manager-manual-page";
 import DevToolboxPage from "@/pages/dev-toolbox-page";
 import ForgotPasswordPage from "@/pages/forgot-password-page";
 import DashboardPage from "@/pages/dashboard-page";
@@ -154,6 +155,10 @@ function Router() {
           
           <Route path="/handbook">
             <ProtectedRoute component={HandbookPage} path="/handbook" />
+          </Route>
+          
+          <Route path="/manager-manual">
+            <ProtectedRoute component={ManagerManualPage} path="/manager-manual" />
           </Route>
           
           <Route path="/dev-toolbox">

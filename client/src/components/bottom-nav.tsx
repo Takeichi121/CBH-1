@@ -96,7 +96,7 @@ export function BottomNav() {
 
   if (!user) return null;
 
-  const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
+  const isManagerOrAdmin = user.role === "manager" || user.role === "admin" || user.role === "area";
 
   const chatLabel = language === "th" ? "แชท" : "Chat";
 

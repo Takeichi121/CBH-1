@@ -10,6 +10,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useAreaLock } from "@/hooks/use-area-lock";
+import { AreaLockBanner } from "@/components/area-lock-banner";
 
 type DailyTarget = {
   id?: number;
@@ -56,6 +58,8 @@ export default function SalesSettingsPage() {
   const { language } = useI18n();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isAreaUser, isUnlocked } = useAreaLock();
+  const areaLocked = isAreaUser && !isUnlocked;
 
   const [storeName, setStoreName] = useState("BK Grand Diamond");
   const [storeCode, setStoreCode] = useState("BK001GDP");
@@ -839,6 +843,7 @@ export default function SalesSettingsPage() {
   return (
     <SalesLayout>
       <div className="space-y-6">
+        <AreaLockBanner />
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-settings-title">{t.title}</h1>
           <p className="text-muted-foreground text-sm">{t.subtitle}</p>
@@ -860,7 +865,7 @@ export default function SalesSettingsPage() {
               </div>
             </div>
             <div className="pt-2 flex justify-end">
-              <Button onClick={handleSaveStore} disabled={isSaving} data-testid="button-save-store">
+              <Button onClick={handleSaveStore} disabled={isSaving || areaLocked} data-testid="button-save-store">
                 {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.saving}</> : <><Save className="w-4 h-4 mr-2" />{t.save}</>}
               </Button>
             </div>
@@ -886,7 +891,7 @@ export default function SalesSettingsPage() {
               </div>
             </div>
             <div className="pt-2 flex justify-end">
-              <Button onClick={handleSaveParams} disabled={isSavingParams} data-testid="button-save-params">
+              <Button onClick={handleSaveParams} disabled={isSavingParams || areaLocked} data-testid="button-save-params">
                 {isSavingParams ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.saving}</> : <><Save className="w-4 h-4 mr-2" />{t.save}</>}
               </Button>
             </div>
@@ -1084,11 +1089,11 @@ export default function SalesSettingsPage() {
               <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
                 {t.applyAll}
               </Button>
-              <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets} data-testid="button-save-targets">
+              <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets || areaLocked} data-testid="button-save-targets">
                 {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
                 {language === "th" ? "บันทึกเป้า" : "Save Targets"}
               </Button>
-              <Button onClick={handleSaveSalesData} disabled={isSavingSales} data-testid="button-save-data">
+              <Button onClick={handleSaveSalesData} disabled={isSavingSales || areaLocked} data-testid="button-save-data">
                 {isSavingSales ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
                 {language === "th" ? "บันทึกข้อมูล" : "Save Data"}
               </Button>

@@ -154,7 +154,11 @@ import {
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
+const AREA_VERIFY_CODE = (process.env.AREA_VERIFY_CODE || "bkarea").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
+
+const isManagerLike = (role?: string | null) =>
+  role === "admin" || role === "manager" || role === "area";
 
 // ตั้งค่า Multer สำหรับอัปโหลดไฟล์
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -204,7 +208,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const user = await db.select().from(users).where(eq(users.username, session[0].username)).limit(1);
     if (user.length === 0) return { ok: false as const, message: "User not found" };
 
-    if (user[0].role !== "admin" && user[0].role !== "manager") {
+    if (!isManagerLike(user[0].role)) {
       return { ok: false as const, message: "No permission" };
     }
     return { ok: true as const, user: user[0] };
@@ -259,7 +263,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const username = session.username;
       const isAdmin = user.role === "admin";
-      const isManagerOrAdmin = user.role === "admin" || user.role === "manager";
+      const isManagerOrAdmin = isManagerLike(user.role);
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -1930,6 +1934,9 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!await storage.getUser("devstaff")) {
       await storage.createUser({ username: "devstaff", passhash: await hashPassword("dev1234"), role: "staff", fullName: "Developer Mode", nickName: "Dev", phone: "", email: "", position: "Developer", active: 1, createdAt: nowIso() });
     }
+    if (!await storage.getUser("kitti01")) {
+      await storage.createUser({ username: "kitti01", passhash: await hashPassword("1234"), role: "area", fullName: "Kitti", nickName: "", phone: "", email: "", position: "area_manager", active: 1, mustChangePassword: 1, createdAt: nowIso() });
+    }
 
     await storage.log("setup_ok", "system", "setup completed");
     res.json({ ok: true, message: "setup ok" });
@@ -1945,7 +1952,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
 
     const isCreator = u && (u.username.toLowerCase().includes("chan") || (u.fullName && u.fullName.toLowerCase().includes("chanon")));
     const isAdmin = u && u.role === "admin";
-    const isManager = u && (u.role === "manager" || u.role === "admin");
+    const isManager = u && (isManagerLike(u.role));
 
     if (isSystemClosed(cfg) && !developerMode && !isCreator && !isAdmin && !isManager) {
       return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
@@ -2030,6 +2037,43 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     });
     await storage.log("register_manager", username.toLowerCase(), `fullName=${fullName}, position=store_manager`);
     res.json({ ok: true, username: username.toLowerCase() });
+  });
+
+  // Register Area Manager
+  app.post("/api/registerArea", async (req, res) => {
+    const cfg = await storage.getConfig();
+    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
+    const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
+    if (String(verifyCode || "").trim().toLowerCase() !== AREA_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
+    if (!username || !fullName || !email || !phone || !password) return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
+    if (password !== confirmPassword) return res.json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
+
+    const existing = await storage.getUser(username.toLowerCase());
+    if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
+
+    await storage.createUser({
+      username: username.toLowerCase(), passhash: await hashPassword(password), role: "area",
+      fullName, nickName: "", phone, email, position: "area_manager", active: 1, createdAt: nowIso()
+    });
+    await storage.log("register_area", username.toLowerCase(), `fullName=${fullName}, position=area_manager`);
+    res.json({ ok: true, username: username.toLowerCase() });
+  });
+
+  // Verify Password (for Area lock unlock)
+  app.post("/api/auth/verify-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+      if (!token || !password) return res.json({ ok: false });
+      const session = await storage.getSession(token);
+      if (!session) return res.json({ ok: false, message: "Session หมดอายุ" });
+      const u = await storage.getUser(session.username);
+      if (!u) return res.json({ ok: false, message: "ไม่พบผู้ใช้" });
+      const valid = await comparePassword(password, u.passhash);
+      res.json({ ok: valid });
+    } catch {
+      res.json({ ok: false });
+    }
   });
 
   // Complete Profile
@@ -2276,7 +2320,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false });
 
     if (capacity) {
       for (const k of Object.keys(capacity)) {
@@ -2314,7 +2358,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const myShifts = shifts.filter(s => s.username === u.username);
 
     const cfg = await storage.getConfig();
-    const isManager = u.role === "admin" || u.role === "manager";
+    const isManager = isManagerLike(u.role);
     const closed = !isManager && isSystemClosed(cfg);
 
     res.json({ ok: true, weekRange: range, shifts: myShifts, items: myShifts, closed });
@@ -2344,14 +2388,14 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    if (u.role !== "manager" && u.role !== "admin") return res.json({ ok: false, message: "Permission denied" });
+    if (!isManagerLike(u.role)) return res.json({ ok: false, message: "Permission denied" });
 
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const allUsers = await storage.getUsers();
-    const managers = allUsers.filter(user => (user.role === "manager" || user.role === "admin") && user.active === 1);
+    const managers = allUsers.filter(user => (isManagerLike(user.role)) && user.active === 1);
     const shifts = await storage.getShiftsInRange(startDate, endDate);
     const managerUsernames = managers.map(m => m.username);
     const managerShifts = shifts.filter(s => managerUsernames.includes(s.username));
@@ -2372,7 +2416,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!u) return res.json({ ok: false });
 
     const cfg = await storage.getConfig();
-    const isManager = u.role === "admin" || u.role === "manager";
+    const isManager = isManagerLike(u.role);
     if (!isManager && isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ (System maintenance in progress)" });
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.json({ ok: false, message: "Date invalid" });
@@ -2410,7 +2454,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!u) return res.json({ ok: false });
 
     const cfg = await storage.getConfig();
-    const isManager = u.role === "admin" || u.role === "manager";
+    const isManager = isManagerLike(u.role);
     if (!isManager && isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ (System maintenance in progress)" });
 
     await storage.deleteShift(u.username, date);
@@ -2443,7 +2487,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!u) return res.json({ ok: false });
 
     const today = todayBangkok();
-    const isManager = u.role === "manager" || u.role === "admin";
+    const isManager = isManagerLike(u.role);
 
     try {
       const [todayShifts, salesReport, borrowTxs, allUsers, laborData] = await Promise.all([
@@ -2604,7 +2648,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     await storage.updateUserStatus(username, active);
     await storage.log("update_user_status", u.username, `set ${username} active=${active}`);
@@ -2616,7 +2660,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
@@ -2633,7 +2677,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
@@ -2765,7 +2809,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     const targetUser = await storage.getUser(username);
     if (!targetUser) return res.json({ ok: false, message: "User not found" });
@@ -2784,7 +2828,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     await storage.deleteShift(username, date);
     await storage.log("manager_delete_shift", u.username, `for ${username} on ${date}`);
@@ -2796,7 +2840,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
       await db.delete(shifts).where(eq(shifts.id, shiftId));
@@ -2812,7 +2856,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     if (!days || !Array.isArray(days) || days.length === 0) {
       return res.json({ ok: false, message: "No days specified" });
@@ -2832,7 +2876,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
       await db.update(shifts).set({ shiftGroup, startTime, note: note || "", updatedAt: nowIso(), updatedBy: u.username }).where(eq(shifts.id, shiftId));
@@ -2880,7 +2924,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    const isManager = u.role === "admin" || u.role === "manager";
+    const isManager = isManagerLike(u.role);
     const requests = await storage.getSwapRequests(isManager ? "pending" : undefined);
     const filteredRequests = isManager ? requests : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
     res.json({ ok: true, requests: filteredRequests });
@@ -2891,7 +2935,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     const request = await storage.getSwapRequestById(requestId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
@@ -2921,7 +2965,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     const request = await storage.getSwapRequestById(requestId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
@@ -2949,7 +2993,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
       const created = await storage.createDailySalesReport(report);
@@ -2982,7 +3026,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
       const updated = await storage.updateDailySalesReport(id, report);
@@ -2998,7 +3042,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     const deleted = await storage.deleteDailySalesReport(id);
     if (!deleted) return res.json({ ok: false, message: "Report not found" });
@@ -3011,7 +3055,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
       const saved = await storage.upsertDailySalesReportByDate(report);
@@ -3054,7 +3098,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
       const updated = await storage.updateStoreSettings(settings);
@@ -3082,7 +3126,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
     try {
       await storage.bulkUpsertDailyTargets(targets);
       await storage.log("save_daily_targets", u.username, `count=${targets.length}`);
@@ -3135,7 +3179,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     if (!session) return res.json({ ok: false, message: "Session expired" });
     
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) {
+    if (!u || !(isManagerLike(u.role))) {
       return res.json({ ok: false, message: "No permission" });
     }
     
@@ -3160,7 +3204,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
     try {
       const saved = await storage.upsertWeeklySalesReport(report);
       res.json({ ok: true, report: saved });
@@ -3207,7 +3251,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !(u.role === "admin" || u.role === "manager")) return res.json({ ok: false, message: "No permission" });
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
     try {
       const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
       await storage.upsertWasteTarget(targetMonth, wasteTarget);
@@ -3228,7 +3272,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       if (!session) return res.json({ ok: false, message: "Session expired" });
 
       const u = await storage.getUser(session.username);
-      if (!u || !(u.role === "admin" || u.role === "manager")) {
+      if (!u || !(isManagerLike(u.role))) {
         return res.json({ ok: false, message: "No permission" });
       }
 
@@ -3285,7 +3329,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || (u.role !== "manager" && u.role !== "admin")) return res.json({ ok: false, message: "Only managers can create requests" });
+    if (!u || (!isManagerLike(u.role))) return res.json({ ok: false, message: "Only managers can create requests" });
 
     if (!requestType || !requestDate) return res.json({ ok: false, message: "Request type and date are required" });
 

@@ -1,6 +1,17 @@
-export const APP_VERSION = "1.8.2";
+export const APP_VERSION = "1.9.0";
 
 export const CHANGELOG = [
+  {
+    version: "1.9.0",
+    date: "2026-02-27",
+    changes: [
+      "เพิ่ม Role 'Area Manager' (role=area) — อ่านข้อมูลได้เหมือน Manager",
+      "ระบบปลดล็อก 30 นาที: กรอกรหัสผ่านก่อนแก้ไขข้อมูล",
+      "AreaLockBanner แสดงสถานะล็อก/ปลดล็อกบนหน้า Daily Sales และ Settings",
+      "สร้างบัญชี kitti01 (Area Manager) — ต้องเปลี่ยนรหัสผ่านครั้งแรก",
+      "เพิ่มตัวเลือก 'Area' ในหน้าสมัครสมาชิก (ใช้ verify code แยก)",
+    ],
+  },
   {
     version: "1.8.2",
     date: "2026-02-26",

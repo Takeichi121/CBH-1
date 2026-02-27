@@ -19,6 +19,8 @@ import { api } from "@shared/routes";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { managerPositions, type ManagerPosition } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function AuthPage() {
   const { user, isLoading, loginMutation } = useAuth();
@@ -327,7 +329,23 @@ function LoginForm() {
 function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   const { registerStaffMutation, registerManagerMutation } = useAuth();
   const { t, language } = useI18n();
-  const [role, setRole] = useState<"staff" | "manager">("staff");
+  const { toast } = useToast();
+  const [role, setRole] = useState<"staff" | "manager" | "area">("staff");
+
+  const registerAreaMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/registerArea", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.ok) {
+        toast({ title: language === "th" ? "สมัครสำเร็จ" : "Registered", description: data.username });
+        onSuccess?.();
+      } else {
+        toast({ title: "Error", description: data.message, variant: "destructive" });
+      }
+    },
+  });
 
   const form = useForm({
     defaultValues: {
@@ -344,12 +362,14 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   function onSubmit(data: any) {
     if (role === "staff") {
       registerStaffMutation.mutate(data, { onSuccess: () => onSuccess?.() });
+    } else if (role === "area") {
+      registerAreaMutation.mutate(data);
     } else {
       registerManagerMutation.mutate(data, { onSuccess: () => onSuccess?.() });
     }
   }
 
-  const isPending = registerStaffMutation.isPending || registerManagerMutation.isPending;
+  const isPending = registerStaffMutation.isPending || registerManagerMutation.isPending || registerAreaMutation.isPending;
 
   return (
     <Card className="glass-card border-none shadow-2xl">
@@ -361,6 +381,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
         <div className="flex gap-2 mb-4">
           <Button type="button" variant={role === "staff" ? "default" : "outline"} onClick={() => setRole("staff")} className="flex-1">{t("staff")}</Button>
           <Button type="button" variant={role === "manager" ? "default" : "outline"} onClick={() => setRole("manager")} className="flex-1">{t("manager")}</Button>
+          <Button type="button" variant={role === "area" ? "default" : "outline"} onClick={() => setRole("area")} className="flex-1">{language === "th" ? "Area" : "Area"}</Button>
         </div>
 
         <Form {...form}>
@@ -407,7 +428,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
                 <FormMessage />
               </FormItem>
             )} />
-            {role === "manager" && (
+            {(role === "manager" || role === "area") && (
               <FormField control={form.control} name="verifyCode" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="select-none">{language === "th" ? "โค้ดยืนยัน" : "Verification Code"}</FormLabel>
@@ -418,7 +439,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
             )}
             <Button type="submit" className="w-full mt-3 h-11 shadow-lg shadow-primary/20" disabled={isPending}>
               {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {t("registerButton")} {role === "manager" ? t("manager") : t("staff")}
+              {t("registerButton")} {role === "manager" ? t("manager") : role === "area" ? "Area Manager" : t("staff")}
             </Button>
           </form>
         </Form>

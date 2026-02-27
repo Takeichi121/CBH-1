@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
+import { useAreaLock } from "@/hooks/use-area-lock";
+import { AreaLockBanner } from "@/components/area-lock-banner";
 import { todayBangkok } from "@/lib/utils";
 import {
   Card,
@@ -258,7 +260,9 @@ export default function DailySalesPage() {
   const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
   const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
 
-  const isManager = user?.role === "manager" || user?.role === "admin";
+  const isManager = user?.role === "manager" || user?.role === "admin" || user?.role === "area";
+  const { isAreaUser, isUnlocked } = useAreaLock();
+  const areaLocked = isAreaUser && !isUnlocked;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -437,6 +441,7 @@ export default function DailySalesPage() {
 
   const debouncedServerSave = useCallback(
     (values: FormData) => {
+      if (isAreaUser && !isUnlocked) return;
       if (serverSaveTimerRef.current) {
         clearTimeout(serverSaveTimerRef.current);
       }
@@ -444,7 +449,7 @@ export default function DailySalesPage() {
         saveToServer(values);
       }, 1500);
     },
-    [saveToServer],
+    [saveToServer, isAreaUser, isUnlocked],
   );
 
   useEffect(() => {
@@ -1619,6 +1624,7 @@ ${v.staffRosterText || ""}
   return (
     <SalesLayout>
       <div className="space-y-6 pb-20">
+        <AreaLockBanner />
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -3303,6 +3309,7 @@ ${v.staffRosterText || ""}
                     onClick={handleSaveReport}
                     className="gap-2 bg-green-600 hover:bg-green-700 text-white"
                     data-testid="button-save-report"
+                    disabled={areaLocked}
                   >
                     <Save className="w-4 h-4" />
                     {language === "th" ? "บันทึกลงฐานข้อมูล" : "Save to DB"}

@@ -59,13 +59,20 @@ function buildDailyReportText(report: any, _storeName: string) {
   const sosMd    = Number(report.sosMtd) || 0;
 
   const wasteD    = Number(report.wasteRawDaily) || 0;
-  const wasteDPct = Number(report.wasteRawDailyPercent) || 0;
   const wasteMtd  = Number(report.wasteRawMtd) || 0;
-  const wasteMPct = Number(report.wasteRawMtdPercent) || 0;
+  const wasteDPct = actual > 0 ? (wasteD / actual) * 100 : 0;
+  const wasteMPct = mtdAct > 0 ? (wasteMtd / mtdAct) * 100 : 0;
 
   const hours       = Number(report.actualHours) || 0;
   const osat        = report.osat || "0";
   const surveyCount = report.surveyCount || "0";
+
+  const addCheeseN   = Number(report.addCheeseCount) || 0;
+  const addCheesePct = tc > 0 ? (addCheeseN / tc) * 100 : 0;
+  const vMealN       = Number(report.vMealCount) || 0;
+  const vMealPct     = tc > 0 ? (vMealN / tc) * 100 : 0;
+  const upSizeN      = Number(report.upSizeCount) || 0;
+  const upSizePct    = tc > 0 ? (upSizeN / tc) * 100 : 0;
 
   const managerRoster = report.managerRosterText || "-";
   const staffRoster   = report.staffRosterText || "-";
@@ -95,6 +102,10 @@ function buildDailyReportText(report: any, _storeName: string) {
     ``,
     `🏃🏻‍♀️SOS =${sosD}`,
     `🏃🏻MTD SOS =${sosMd}`,
+    ``,
+    `🧀Add Cheese :${fmt(addCheeseN)}/${addCheesePct.toFixed(2)}%`,
+    `🥗V-meal :${fmt(vMealN)}/${vMealPct.toFixed(2)}%`,
+    `📦Up Size :${fmt(upSizeN)}/${upSizePct.toFixed(2)}%`,
     ``,
     `🗑WasteDaily :${wasteD.toLocaleString("th-TH")}/${wasteDPct.toFixed(2)}%`,
     `🗑WasteMTD:${wasteMtd.toLocaleString("th-TH")}/${wasteMPct.toFixed(2)}%`,

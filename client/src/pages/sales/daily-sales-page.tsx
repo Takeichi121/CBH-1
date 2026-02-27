@@ -774,6 +774,8 @@ export default function DailySalesPage() {
           // --- Load labor fields ---
           form.setValue("actualHours", r.actualHours || "0");
           form.setValue("otHours", r.otHours || "0");
+          form.setValue("recommendHours", r.recommendHours || "0");
+          form.setValue("rosterCommit", r.rosterCommit || "0");
           form.setValue("otMtd", r.otMtd || "0");
           form.setValue("laborCost", r.laborCost || "0");
           form.setValue("colPercent", r.colPercent || "0");

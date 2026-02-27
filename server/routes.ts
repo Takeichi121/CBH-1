@@ -3233,26 +3233,41 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       }
 
       for (const data of salesData) {
-        if (!data.reportDate) continue; 
+        if (!data.reportDate) continue;
+
+        const existing = await storage.getDailySalesReportByDate(data.reportDate);
+
+        const incomingActual    = Number(data.actualSales ?? 0);
+        const incomingTc        = Number(data.transactionCount ?? 0);
+        const incomingActHours  = Number(data.actualHours ?? 0);
+        const incomingOtHours   = Number(data.otHours ?? 0);
+        const incomingWaste     = Number(data.wasteDaily ?? 0);
+
+        const safeActual   = incomingActual   > 0 ? String(incomingActual)   : (existing?.actualSales   ?? "0");
+        const safeTc       = incomingTc       > 0 ? String(incomingTc)       : (existing?.transactionCount ?? "0");
+        const safeActHours = incomingActHours > 0 ? String(incomingActHours) : (existing?.actualHours   ?? "0");
+        const safeOtHours  = incomingOtHours  > 0 ? String(incomingOtHours)  : (existing?.otHours       ?? "0");
+        const safeWaste    = incomingWaste    > 0 ? String(incomingWaste)    : (existing?.wasteRawDaily  ?? "0");
+        const safeMealWaste = existing?.wasteMealDaily ?? "0";
 
         await storage.upsertDailySalesReportByDate({
           reportDate: data.reportDate,
           reportBy: u.nickName || u.fullName || u.username,
           workShift: "full",
-          actualSales: String(data.actualSales ?? "0"),
-          transactionCount: String(data.transactionCount ?? "0"),
+          actualSales: safeActual,
+          transactionCount: safeTc,
           recommendHours: String(data.recommendHours ?? "0"),
           rosterCommit: String(data.rosterCommit ?? "0"),
-          actualHours: String(data.actualHours ?? "0"),
-          otHours: String(data.otHours ?? "0"),
-          wasteRawDaily: String(data.wasteDaily ?? "0"),
-          wasteMealDaily: "0",
+          actualHours: safeActHours,
+          otHours: safeOtHours,
+          wasteRawDaily: safeWaste,
+          wasteMealDaily: safeMealWaste,
           lastYearSales: String(data.lastYearSales ?? "0"),
           forecastSales: String(data.forecastSales ?? "0"),
           lastYearTc: String(data.lastYearTc ?? "0"),
           targetTc: String(data.targetTc ?? "0"),
           targetTa: String(data.targetTa ?? "0"),
-        } as any); 
+        } as any);
       } // <--- [2] FOR LOOP ENDS
 
       await storage.log("save_daily_sales_data", u.username, `count=${salesData.length}`);

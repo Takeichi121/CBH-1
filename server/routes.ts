@@ -246,7 +246,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, imageBase64 } = req.body;
+      const { token, message, imageBase64, pageContext } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.json({ ok: false, message: "Token and message required" });
       }
@@ -405,7 +405,10 @@ ${isManagerOrAdmin && !isAdmin ? `
 ผู้ใช้ปัจจุบัน (นาย): ${user.nickName || user.fullName} (${user.role})
 
 ข้อมูลปัจจุบันในระบบ (Snapshot):
-${JSON.stringify(await storage.getTableList(), null, 2)}`;
+${JSON.stringify(await storage.getTableList(), null, 2)}${pageContext ? `
+
+[Context: หน้าที่ผู้ใช้กำลังดูอยู่]
+${pageContext}` : ''}`;
 
       const aiMessages: any[] = [
         { role: "system", content: systemPrompt }
@@ -414,7 +417,7 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
       const recentHistory = await db.select().from(channConversations)
         .where(eq(channConversations.username, username))
         .orderBy(desc(channConversations.createdAt))
-        .limit(10);
+        .limit(20);
 
       recentHistory.reverse().forEach((msg) => {
         if (msg.role === "user" || msg.role === "assistant") {
@@ -1781,56 +1784,73 @@ ${JSON.stringify(await storage.getTableList(), null, 2)}`;
         }
       }
 
-      const firstResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: aiMessages,
-        max_completion_tokens: 2048,
-        tools: channTools
-      });
+      // Agentic loop — up to 5 rounds of tool calling
+      const MAX_ROUNDS = 5;
+      let rounds = 0;
+      let hadAnyToolCalls = false;
 
-      const toolCalls = firstResponse.choices[0]?.message?.tool_calls;
-      if (toolCalls && toolCalls.length > 0) {
-        aiMessages.push(firstResponse.choices[0].message);
-        for (const toolCall of toolCalls) {
-          const fnName = (toolCall as any).function?.name;
-          const args = JSON.parse((toolCall as any).function.arguments);
-          const result = await handleToolCall(fnName, args);
-          aiMessages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: result
-          });
+      while (rounds < MAX_ROUNDS) {
+        rounds++;
+        const loopResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: aiMessages,
+          max_completion_tokens: 4096,
+          tools: channTools,
+        });
+
+        const loopChoice = loopResponse.choices[0];
+        const loopToolCalls = loopChoice?.message?.tool_calls;
+
+        if (loopToolCalls && loopToolCalls.length > 0) {
+          hadAnyToolCalls = true;
+          aiMessages.push(loopChoice.message);
+          for (const toolCall of loopToolCalls) {
+            const fnName = (toolCall as any).function?.name;
+            const args = JSON.parse((toolCall as any).function.arguments);
+            const result = await handleToolCall(fnName, args);
+            aiMessages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: result,
+            });
+          }
+          // Continue loop to allow chained tool calls
+        } else {
+          // No tool calls — check for direct text response (no-tool case)
+          if (!hadAnyToolCalls) {
+            if (toolActions.length > 0) {
+              res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
+            }
+            const directContent = loopChoice?.message?.content;
+            if (directContent) {
+              for (let i = 0; i < directContent.length; i += 20) {
+                const chunk = directContent.slice(i, i + 20);
+                res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+              }
+              await db.insert(channConversations).values({
+                username,
+                role: "assistant",
+                content: directContent,
+              });
+            }
+            res.write(`data: [DONE]\n\n`);
+            res.end();
+            return;
+          }
+          break; // Tool calls done, fall through to streaming final answer
         }
       }
 
-      const hadToolCalls = toolCalls && toolCalls.length > 0;
-
+      // Send accumulated tool actions
       if (toolActions.length > 0) {
         res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
       }
 
-      if (!hadToolCalls) {
-        const directContent = firstResponse.choices[0]?.message?.content;
-        if (directContent) {
-          for (let i = 0; i < directContent.length; i += 20) {
-            const chunk = directContent.slice(i, i + 20);
-            res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
-          }
-          await db.insert(channConversations).values({
-            username,
-            role: "assistant",
-            content: directContent,
-          });
-          res.write(`data: [DONE]\n\n`);
-          res.end();
-          return;
-        }
-      }
-
+      // Stream final answer after tool calls
       const streamResponse = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: aiMessages,
-        max_completion_tokens: 2048,
+        max_completion_tokens: 4096,
         stream: true,
       });
 

@@ -165,6 +165,16 @@ export function FloatingChannChat() {
     }
   };
 
+  const buildPageContext = (): string => {
+    const path = window.location.pathname;
+    const pageDate = localStorage.getItem("chann_page_date");
+    const pageMonth = localStorage.getItem("chann_page_month");
+    const lines = [`- Path: ${path}`];
+    if (pageDate) lines.push(`- วันที่ที่เลือก: ${pageDate}`);
+    if (pageMonth) lines.push(`- เดือนที่ดูอยู่: ${pageMonth}`);
+    return lines.join("\n");
+  };
+
   const sendMessage = async () => {
     if ((!message.trim() && !imagePreview && !fileContent) || isLoading || isStreaming) return;
 
@@ -203,7 +213,7 @@ export function FloatingChannChat() {
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: contextMessage };
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext() };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -316,6 +326,7 @@ export function FloatingChannChat() {
     { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar, show: true },
     { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList, show: true },
     { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3, show: isManagerOrAdmin },
+    { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap, show: isManagerOrAdmin },
     { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users, show: true },
     { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
     { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
@@ -349,7 +360,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: fakeEvent }),
+          body: JSON.stringify({ token, message: fakeEvent, pageContext: buildPageContext() }),
         });
         if (!res.body) throw new Error("No response body");
         const reader = res.body.getReader();

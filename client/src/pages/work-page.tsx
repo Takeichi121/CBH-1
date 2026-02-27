@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { todayBangkok, nowBangkok } from "@/lib/utils";
 import {
@@ -197,6 +197,10 @@ export default function WorkPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
+  useEffect(() => {
+    const m = format(currentDate, "yyyy-MM");
+    localStorage.setItem("chann_page_month", m);
+  }, [currentDate]);
   const [mobileDayPairIndex, setMobileDayPairIndex] = useState(0); // 0: Tue-Wed, 1: Thu-Fri, 2: Sat-Sun-Mon
   const [showAll7Days, setShowAll7Days] = useState(true); // View All mode - default to all 7 days
   // Format date as YYYY-MM-DD for API

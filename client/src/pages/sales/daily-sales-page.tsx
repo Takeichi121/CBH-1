@@ -650,6 +650,10 @@ export default function DailySalesPage() {
   const reportDate = form.watch("reportDate");
 
   useEffect(() => {
+    if (reportDate) localStorage.setItem("chann_page_date", reportDate);
+  }, [reportDate]);
+
+  useEffect(() => {
     const loadShiftCount = async () => {
       if (!reportDate) return;
       try {

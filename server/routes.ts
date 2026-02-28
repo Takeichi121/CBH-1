@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import { setSocketIO } from "./socket";
 
 // ── LINE Messaging API ──────────────────────────────
 async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
@@ -4247,6 +4248,7 @@ ${pageContext}` : ''}`;
   // 💬 Socket.IO Chat System (Persistent)
   // ==========================================
   const io = new SocketIOServer(httpServer);
+  setSocketIO(io);
 
   interface ChatMessage {
     id?: number;

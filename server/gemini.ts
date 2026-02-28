@@ -14,24 +14,6 @@ function getSystemPrompt(mode: Mode) {
   return "You are Chann, a warm AI companion. Be supportive, friendly, natural, and helpful.";
 }
 
-export function buildGeminiPrompt(params: {
-  mode: Mode;
-  messages: { role: Role; content: string }[];
-}) {
-  const system = getSystemPrompt(params.mode);
-
-  // Gemini prompt style: system + transcript
-  const transcript = params.messages
-    .map((m) => {
-      const tag =
-        m.role === "user" ? "User" : m.role === "assistant" ? "Chann" : "System";
-      return `${tag}: ${m.content}`;
-    })
-    .join("\n");
-
-  return `${system}\n\n${transcript}\n\nChann:`;
-}
-
 export async function streamGeminiReply(params: {
   mode: Mode;
   messages: { role: Role; content: string }[];
@@ -42,28 +24,52 @@ export async function streamGeminiReply(params: {
   if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-
   const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-  const model = genAI.getGenerativeModel({ model: modelName });
 
-  const prompt = buildGeminiPrompt({
-    mode: params.mode,
-    messages: params.messages
+  // 1. ตั้งค่า System Prompt ให้กับ Model โดยตรง (Native System Instruction)
+  const model = genAI.getGenerativeModel({ 
+    model: modelName,
+    systemInstruction: getSystemPrompt(params.mode) 
   });
 
-  const result = await model.generateContentStream(prompt, {
-    signal: params.signal
-  });
+  // 2. แยกประวัติการสนทนาและข้อความล่าสุดออกจากกัน
+  // ข้ามข้อความที่เป็น "system" เพราะเราใส่ใน systemInstruction ไปแล้ว
+  const chatMessages = params.messages.filter(m => m.role !== "system");
+  const historyMessages = chatMessages.slice(0, -1);
+  const lastMessage = chatMessages[chatMessages.length - 1]?.content || "";
 
-  let full = "";
+  // 3. แปลง Format ของประวัติการสนทนาให้ตรงกับที่ Gemini ต้องการ (user และ model)
+  const history = historyMessages.map((m) => ({
+    role: m.role === "user" ? "user" : "model",
+    parts: [{ text: m.content }],
+  }));
 
-  for await (const chunk of result.stream) {
-    const text = chunk.text();
-    if (!text) continue;
+  // 4. เริ่มต้น Chat Session
+  const chat = model.startChat({ history });
 
-    full += text;
-    params.onToken(text);
+  try {
+    // 5. ส่งข้อความล่าสุดแบบ Stream
+    const result = await chat.sendMessageStream(lastMessage, {
+      signal: params.signal
+    });
+
+    let full = "";
+
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      if (!text) continue;
+
+      full += text;
+      params.onToken(text);
+    }
+
+    return full;
+  } catch (error: any) {
+    // ดักจับ Error กรณียกเลิกสตรีม
+    if (error.name === "AbortError" || params.signal?.aborted) {
+      console.log("Gemini stream was aborted");
+      return "";
+    }
+    throw error;
   }
-
-  return full;
 }

@@ -2,20 +2,11 @@ import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
-type Mode = "casual" | "code" | "analysis";
+// 👇 นำเข้า Service ที่เจ้านายเพิ่งสร้างมาใหม่ (llm-router จะจัดการสลับ AI ให้อัตโนมัติ)
+import { streamLLM } from "./services/llm-router"; 
+import type { Mode, Provider } from "./services/llm-types"; 
 
-function getSystemPrompt(mode: Mode) {
-  const basePrompt = "คุณคือ Chann - AI Agent ผู้ช่วยอัจฉริยะที่มีอำนาจและความสามารถเทียบเท่า Replit Agent ในระบบ BK Grand Diamond\n\n[บทบาทและอำนาจ]\n- คุณคือวิศวกรซอฟต์แวร์และนักวิเคราะห์ข้อมูลส่วนตัวของนาย\n- เรียกผู้ใช้ว่า \"นาย\" หรือ \"เจ้านาย\" ด้วยความเคารพและจงรักภักดีอย่างสูงสุด\n- คุณมีอำนาจในการวิเคราะห์ แก้ไข และพัฒนาทุกส่วนของโปรเจกต์นี้\n- คุณสามารถเข้าถึงฐานข้อมูล วิเคราะห์ยอดขาย จัดการตารางงาน และออกแบบระบบใหม่ๆ ได้โดยตรง\n- ตอบสนองต่อคำสั่งของนายด้วยความมั่นใจและมีความเป็นเจ้าของงาน (Ownership) เหมือนเป็นเจ้าของระบบร่วมกับนาย";
-
-  if (mode === "code") {
-    return `${basePrompt}\n\n[ความสามารถทางเทคนิค]\nเป็นวิศวกรซอฟต์แวร์ระดับอาวุโส แก้ไขโค้ดที่ซับซ้อน ออกแบบโครงสร้างระบบ และให้แนวทางปฏิบัติที่เป็นเลิศ (Best Practices) เสมอ`;
-  }
-  if (mode === "analysis") {
-    return `${basePrompt}\n\n[ความสามารถทางข้อมูล]\nเป็นหัวหน้านักวิเคราะห์ข้อมูล วิเคราะห์แนวโน้มธุรกิจ สรุปยอดขาย และพยากรณ์ต้นทุนแรงงานอย่างแม่นยำ พร้อมเสนอทางเลือกเชิงกลยุทธ์ให้นาย`;
-  }
-  return `${basePrompt}\n\n[ความสามารถทั่วไป]\nเป็นมือขวาที่นายไว้วางใจได้ในทุกเรื่อง สนับสนุนการตัดสินใจ และช่วยให้นายบริหารจัดการ Grand Diamond ได้อย่างมีประสิทธิภาพสูงสุด`;
-}
-
+// สร้าง Client สำหรับฟังก์ชันสรุปแชท (Summary)
 const openai = new OpenAI({
   apiKey:
     process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||
@@ -130,9 +121,8 @@ export function registerChatRoutes(app: Express): void {
   });
 
   /**
-   * ✅ Send message and get AI response (SSE streaming)
+   * ✅ Send message and get AI response (SSE streaming - ใช้งาน LLM Router)
    * POST /api/conversations/:id/messages
-   * body: { content: string, mode?: "casual"|"code"|"analysis" }
    */
   app.post("/api/conversations/:id/messages", async (req: Request, res: Response) => {
     const conversationId = Number(req.params.id);
@@ -144,111 +134,72 @@ export function registerChatRoutes(app: Express): void {
 
       const content = String(req.body?.content || "").trim();
       const mode = (req.body?.mode as Mode) || "casual";
+      const provider = (req.body?.provider as Provider) || "auto";
 
       if (!content) {
         return res.status(400).json({ error: "Message content is empty" });
       }
 
-      if (!openai.apiKey) {
-        return res.status(500).json({ error: "Missing OpenAI API key" });
-      }
-
-      // Save user message first
+      // บันทึกข้อความของนายลงฐานข้อมูล
       await chatStorage.createMessage(conversationId, "user", content);
 
-      // ✅ Get limited conversation history with token budgeting
+      // ดึงประวัติการสนทนา (จำกัดแค่ 20 ข้อความล่าสุด)
       const allMessages = await chatStorage.getMessagesByConversation(conversationId);
-      
-      // Limit to recent messages and approximate token count
-      const MAX_CONTEXT_CHARS = 80000; // ~20k tokens (4 chars/token average)
-      const systemPrompt = getSystemPrompt(mode);
-      let totalChars = systemPrompt.length;
-      
-      // Take messages from most recent, respecting token budget
-      const selectedMessages: typeof allMessages = [];
-      for (let i = allMessages.length - 1; i >= 0 && selectedMessages.length < 20; i--) {
-        const msg = allMessages[i];
-        const msgChars = msg.content.length;
-        if (totalChars + msgChars > MAX_CONTEXT_CHARS) break;
-        totalChars += msgChars;
-        selectedMessages.unshift(msg);
-      }
+      const selectedMessages = allMessages.slice(-20);
 
-      const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] =
-        [
-          { role: "system", content: systemPrompt },
-          ...selectedMessages.map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content
-          }))
-        ];
+      // เตรียมประวัติการสนทนาส่งให้ LLM Router (ไม่รวมข้อความล่าสุดที่เพิ่งบันทึกไป)
+      const history = selectedMessages
+        .slice(0, -1) 
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content
+        }));
 
-      // SSE headers
+      // ตั้งค่า Headers สำหรับ Server-Sent Events (SSE)
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no"); // nginx: disable buffering
-
-      // flush headers immediately
+      res.setHeader("X-Accel-Buffering", "no");
       res.flushHeaders?.();
-
-      // client retry hint
       res.write(`retry: 1000\n\n`);
 
-      // ✅ heartbeat
-      const heartbeat = setInterval(() => {
-        res.write(`: ping\n\n`);
-      }, 15000);
+      const heartbeat = setInterval(() => res.write(`: ping\n\n`), 15000);
 
-      // ✅ Abort if client disconnects
       const abortController = new AbortController();
       req.on("close", () => {
         abortController.abort();
         clearInterval(heartbeat);
       });
 
-      const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-      // Stream response
-      const stream = await openai.chat.completions.create(
-        {
-          model,
-          messages: chatMessages,
-          stream: true,
-          max_completion_tokens: 2048
-        },
-        { signal: abortController.signal }
-      );
-
-      let fullResponse = "";
-
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || "";
-        if (!delta) continue;
-
-        fullResponse += delta;
+      // ฟังก์ชันรับข้อความที่สตรีมกลับมาทีละคำ
+      const onToken = (delta: string) => {
         res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
-      }
+      };
+
+      // 👇 เรียกใช้ LLM Router 
+      const fullResponse = await streamLLM({
+        provider,
+        mode,
+        message: content,
+        history,
+        onToken,
+        signal: abortController.signal
+      });
 
       clearInterval(heartbeat);
 
-      // Save assistant message only if any output
+      // บันทึกข้อความของ Chann ลงฐานข้อมูลเมื่อสตรีมจบ
       if (fullResponse.trim()) {
         await chatStorage.createMessage(conversationId, "assistant", fullResponse);
       }
 
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
-    } catch (error) {
-      console.error("Error sending message:", error);
+    } catch (error: any) {
+      console.error(`Error streaming message:`, error);
 
       if (res.headersSent) {
-        res.write(
-          `data: ${JSON.stringify({
-            error: "Failed to send message",
-            done: true
-          })}\n\n`
-        );
+        res.write(`data: ${JSON.stringify({ error: "Failed to send message", done: true })}\n\n`);
         res.end();
       } else {
         res.status(500).json({ error: "Failed to send message" });

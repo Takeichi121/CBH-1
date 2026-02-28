@@ -27,8 +27,11 @@ export const chatStorage: IChatStorage = {
   },
 
   async deleteConversation(id: number) {
-    await db.delete(messages).where(eq(messages.conversationId, id));
-    await db.delete(conversations).where(eq(conversations.id, id));
+    // 💡 ใช้ Transaction เพื่อรับประกันความถูกต้องของข้อมูล
+    await db.transaction(async (tx) => {
+      await tx.delete(messages).where(eq(messages.conversationId, id));
+      await tx.delete(conversations).where(eq(conversations.id, id));
+    });
   },
 
   async getMessagesByConversation(conversationId: number) {
@@ -40,4 +43,3 @@ export const chatStorage: IChatStorage = {
     return message;
   },
 };
-

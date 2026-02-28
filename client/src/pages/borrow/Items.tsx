@@ -101,6 +101,7 @@ export default function Items() {
       setDeleteId(null);
       toast({ title: t.common.success });
     },
+    onError: () => toast({ title: t.common.error, variant: "destructive" }),
   });
 
   // ✅ Delete All (ตรงกับ routes.ts: /api/borrow/items/delete-all)

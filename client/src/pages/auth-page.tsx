@@ -345,6 +345,7 @@ function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
         toast({ title: "Error", description: data.message, variant: "destructive" });
       }
     },
+    onError: () => toast({ title: "Network error", variant: "destructive" }),
   });
 
   const form = useForm({

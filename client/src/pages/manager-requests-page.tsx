@@ -94,6 +94,7 @@ export default function ManagerRequestsPage() {
         toast({ title: res.message || "Failed to create request", variant: "destructive" });
       }
     },
+    onError: () => toast({ title: "Network error", variant: "destructive" }),
   });
 
   const approveMutation = useMutation({
@@ -110,6 +111,7 @@ export default function ManagerRequestsPage() {
         toast({ title: res.message || "Failed to approve request", variant: "destructive" });
       }
     },
+    onError: () => toast({ title: "Network error", variant: "destructive" }),
   });
 
   const rejectMutation = useMutation({
@@ -129,6 +131,7 @@ export default function ManagerRequestsPage() {
         toast({ title: res.message || "Failed to reject request", variant: "destructive" });
       }
     },
+    onError: () => toast({ title: "Network error", variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -146,6 +149,7 @@ export default function ManagerRequestsPage() {
         toast({ title: res.message || "Failed to delete request", variant: "destructive" });
       }
     },
+    onError: () => toast({ title: "Network error", variant: "destructive" }),
   });
 
   const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));

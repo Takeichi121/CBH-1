@@ -67,7 +67,7 @@ export default function SettingsPage() {
     }
   });
 
-  const capacityForm = useForm();
+  const capacityForm = useForm({ defaultValues: {} as Record<string, any> });
   const maintenanceForm = useForm({
     defaultValues: {
       enabled: false,

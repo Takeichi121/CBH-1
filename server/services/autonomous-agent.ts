@@ -29,10 +29,10 @@ export async function runChannTask(taskDescription: string) {
       provider: "openai",
       mode: "code",
       message: `งานของนายคือ: ${taskDescription}
-ข้อมูลที่มี:
-- NBO (SQL Server) ผ่าน getNBOSalesAuto() ใช้รหัส bk1040
-- Aloha (DBF) ผ่าน getAlohaSalesRaw() ตาม ALOHA_DBF_PATH
-- shell command (อ่านข้อมูลเท่านั้น เช่น ls, cat, echo)
+เครื่องมือที่มี:
+1. nbo: ดึงยอดจาก SQL Server (รหัส bk1040)
+2. aloha: อ่านไฟล์ DBF (Path: ${process.env.ALOHA_DBF_PATH || "ไม่ได้ตั้งค่า"})
+3. shell: รันคำสั่ง terminal อ่านข้อมูลเท่านั้น (ls, cat, echo, grep, find, head, tail)
 ${lastError ? `รอบก่อนหน้าพลาด Error: ${lastError}` : ""}
 ตอบกลับเป็น JSON เท่านั้น ไม่มีคำอธิบายเพิ่มเติม:
 { "tool": "nbo" | "aloha" | "shell", "command": "string (สำหรับ shell เท่านั้น)" }`,
@@ -63,7 +63,7 @@ ${lastError ? `รอบก่อนหน้าพลาด Error: ${lastError}
       console.log(`✅ [Chann] งานสำเร็จ: ${taskDescription}`);
       pushToBoss("chann-task-complete", {
         message: `✅ งานสำเร็จแล้วครับนาย: ${taskDescription}`,
-        result,
+        details: result,
       });
       return result;
     } catch (error: any) {
@@ -80,3 +80,5 @@ ${lastError ? `รอบก่อนหน้าพลาด Error: ${lastError}
   });
   return null;
 }
+
+export const channExecuteTask = runChannTask;

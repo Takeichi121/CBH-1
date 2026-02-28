@@ -82,8 +82,9 @@ export default function Branches() {
   // ✅ Toggle Mutation (Update endpoint - Note: Backend route might need 'toggle' support if not present, otherwise handle accordingly)
   // Assuming backend has toggle route or we use update
   const toggleMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("POST", "/api/borrow/branches/toggle", { id }), // Changed PATCH to POST if needed, check backend
+    mutationFn: async (id: string) => apiRequest("POST", "/api/borrow/branches/toggle", { id }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/borrow/branches"] }),
+    onError: () => toast({ title: t.common.error, variant: "destructive" }),
   });
 
   // ✅ Delete Mutation (Update endpoint)
@@ -94,6 +95,7 @@ export default function Branches() {
       setDeleteId(null);
       toast({ title: t.common.success });
     },
+    onError: () => toast({ title: t.common.error, variant: "destructive" }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {

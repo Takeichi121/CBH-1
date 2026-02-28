@@ -218,6 +218,7 @@ const SHIFT_OPTIONS = [
   { value: "13:00-22:00", label: "13:00-22:00" },
   { value: "14:00-23:00", label: "14:00-23:00" },
   { value: "15:00-00:00", label: "15:00-00:00" },
+  { value: "16:00-01:00", label: "16:00-01:00" },
   { value: "19:00-04:00", label: "19:00-04:00" },
   { value: "22:00-07:00", label: "22:00-07:00" },
   { value: "OFF", label: "OFF" },
@@ -225,13 +226,7 @@ const SHIFT_OPTIONS = [
   { value: "Vacation", label: "Vacation" },
   { value: "QSNCC", label: "QSNCC" },
   { value: "Training", label: "Training" },
-  { value: "CUSTOM", label: "กำหนดเอง" },
 ] as const;
-
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
-  const hour = i.toString().padStart(2, "0");
-  return `${hour}:00`;
-});
 
 const STAFF_SHIFT_GROUPS = [
   { value: "07:00-16:00", label: "07:00-16:00" },

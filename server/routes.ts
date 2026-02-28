@@ -285,12 +285,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
 
-      await db.insert(channConversations).values({
+      db.insert(channConversations).values({
         username,
         role: "user",
         content: userContent,
         imageUrl: imageBase64 ? "(image attached)" : null,
-      });
+      }).catch(console.error);
 
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({
@@ -429,7 +429,7 @@ ${pageContext}` : ''}`;
       const recentHistory = await db.select().from(channConversations)
         .where(eq(channConversations.username, username))
         .orderBy(desc(channConversations.createdAt))
-        .limit(20);
+        .limit(10);
 
       recentHistory.reverse().forEach((msg) => {
         if (msg.role === "user" || msg.role === "assistant") {
@@ -1796,15 +1796,17 @@ ${pageContext}` : ''}`;
         }
       }
 
-      // Agentic loop — up to 5 rounds of tool calling
-      const MAX_ROUNDS = 5;
+      // Agentic loop — up to 3 rounds of tool calling
+      const TOOL_MODEL = "gpt-4o-mini";
+      const FINAL_MODEL = "gpt-4o";
+      const MAX_ROUNDS = 3;
       let rounds = 0;
       let hadAnyToolCalls = false;
 
       while (rounds < MAX_ROUNDS) {
         rounds++;
         const loopResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: TOOL_MODEL,
           messages: aiMessages,
           max_completion_tokens: 4096,
           tools: channTools,
@@ -1816,16 +1818,14 @@ ${pageContext}` : ''}`;
         if (loopToolCalls && loopToolCalls.length > 0) {
           hadAnyToolCalls = true;
           aiMessages.push(loopChoice.message);
-          for (const toolCall of loopToolCalls) {
-            const fnName = (toolCall as any).function?.name;
-            const args = JSON.parse((toolCall as any).function.arguments);
-            const result = await handleToolCall(fnName, args);
-            aiMessages.push({
-              role: "tool",
+          const toolResults = await Promise.all(
+            loopToolCalls.map(async (toolCall: any) => ({
+              role: "tool" as const,
               tool_call_id: toolCall.id,
-              content: result,
-            });
-          }
+              content: await handleToolCall(toolCall.function?.name, JSON.parse(toolCall.function.arguments)),
+            }))
+          );
+          aiMessages.push(...toolResults);
           // Continue loop to allow chained tool calls
         } else {
           // No tool calls — check for direct text response (no-tool case)
@@ -1858,9 +1858,9 @@ ${pageContext}` : ''}`;
         res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
       }
 
-      // Stream final answer after tool calls
+      // Stream final answer after tool calls (use smarter model for summarizing)
       const streamResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: FINAL_MODEL,
         messages: aiMessages,
         max_completion_tokens: 4096,
         stream: true,
@@ -1877,11 +1877,11 @@ ${pageContext}` : ''}`;
       }
 
       if (fullAiResponse) {
-        await db.insert(channConversations).values({
+        db.insert(channConversations).values({
           username,
           role: "assistant",
           content: fullAiResponse,
-        });
+        }).catch(console.error);
       }
 
       res.write(`data: [DONE]\n\n`);

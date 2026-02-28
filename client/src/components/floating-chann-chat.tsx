@@ -77,8 +77,8 @@ export function FloatingChannChat() {
 
   const processImageFile = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 4 * 1024 * 1024) {
-      alert("ไฟล์ใหญ่เกินไป (สูงสุด 4MB)");
+    if (file.size > 20 * 1024 * 1024) {
+      alert("ไฟล์ใหญ่เกินไป (สูงสุด 20MB)");
       return;
     }
     try {
@@ -128,8 +128,8 @@ export function FloatingChannChat() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2MB)");
+    if (file.size > 20 * 1024 * 1024) {
+      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 20MB)");
       removeFile();
       return;
     }

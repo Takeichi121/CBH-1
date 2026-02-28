@@ -224,6 +224,8 @@ const SHIFT_OPTIONS = [
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
   { value: "QSNCC", label: "QSNCC" },
+  { value: "Training", label: "Training" },
+  { value: "CUSTOM", label: "กำหนดเอง" },
 ] as const;
 
 const STAFF_SHIFT_GROUPS = [

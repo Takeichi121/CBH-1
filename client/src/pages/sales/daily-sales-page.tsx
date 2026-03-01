@@ -53,6 +53,7 @@ import {
   Settings,
   ClipboardPaste,
   MessageSquare,
+  ChevronDown,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
@@ -261,6 +262,17 @@ export default function DailySalesPage() {
   const [addonDialogOpen, setAddonDialogOpen] = useState(false);
   const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
   const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem("chann_collapsed_sections") || "{}"); }
+    catch { return {}; }
+  });
+  const toggleSection = (key: string) => {
+    setCollapsedSections(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem("chann_collapsed_sections", JSON.stringify(next));
+      return next;
+    });
+  };
 
   const isManager = user?.role === "manager" || user?.role === "admin" || user?.role === "area";
   const { isAreaUser, isUnlocked } = useAreaLock();
@@ -1749,8 +1761,16 @@ ${v.staffRosterText || ""}
                         </div>
                       </DialogContent>
                     </Dialog>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("basicInfo")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-basicInfo"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["basicInfo"] ? "-rotate-90" : ""}`} />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${collapsedSections["basicInfo"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="reportDate"
@@ -1827,8 +1847,16 @@ ${v.staffRosterText || ""}
                       <Save className="w-3 h-3 mr-1" />
                       {language === "th" ? "บันทึก" : "Save"}
                     </Button>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("daily")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-daily"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["daily"] ? "-rotate-90" : ""}`} />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${collapsedSections["daily"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="dailyTarget"
@@ -1903,10 +1931,20 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <div className="bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.mtd}
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.mtd}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("mtd")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-mtd"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["mtd"] ? "-rotate-90" : ""}`} />
+                    </button>
+                  </div>
+                  <div className={`grid grid-cols-2 md:grid-cols-5 gap-3 ${collapsedSections["mtd"] ? "hidden" : ""}`}>
                     <div>
                       <FormLabel className="text-xs">{t.mtdTarget}</FormLabel>
                       <div className="relative">
@@ -1969,10 +2007,20 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <div className="bg-orange-50 dark:bg-orange-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.inStore}
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.inStore}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("inStore")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-inStore"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["inStore"] ? "-rotate-90" : ""}`} />
+                    </button>
+                  </div>
+                  <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 ${collapsedSections["inStore"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="dineIn"
@@ -2096,9 +2144,17 @@ ${v.staffRosterText || ""}
                         <p className="text-[10px] text-muted-foreground uppercase font-bold leading-none">%</p>
                         <p className="text-sm font-bold text-primary">{deliveryPercent.toFixed(2)}%</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection("delivery")}
+                        className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                        data-testid="button-toggle-delivery"
+                      >
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["delivery"] ? "-rotate-90" : ""}`} />
+                      </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${collapsedSections["delivery"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="grabfood"
@@ -2309,10 +2365,20 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <div className="bg-yellow-50 dark:bg-yellow-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.performance}
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.performance}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("performance")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-performance"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["performance"] ? "-rotate-90" : ""}`} />
+                    </button>
+                  </div>
+                  <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${collapsedSections["performance"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="osat"
@@ -2550,8 +2616,16 @@ ${v.staffRosterText || ""}
                         </div>
                       </DialogContent>
                     </Dialog>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("addons")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-addons"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["addons"] ? "-rotate-90" : ""}`} />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                  <div className={`grid grid-cols-2 md:grid-cols-6 gap-3 ${collapsedSections["addons"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="addCheeseCount"
@@ -2739,8 +2813,16 @@ ${v.staffRosterText || ""}
                         </div>
                       </DialogContent>
                     </Dialog>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("waste")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-waste"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["waste"] ? "-rotate-90" : ""}`} />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${collapsedSections["waste"] ? "hidden" : ""}`}>
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-xs font-medium text-muted-foreground">
@@ -2953,10 +3035,20 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.labor}
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.labor}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("labor")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-labor"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["labor"] ? "-rotate-90" : ""}`} />
+                    </button>
+                  </div>
+                  <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 ${collapsedSections["labor"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="recommendHours"
@@ -3095,10 +3187,20 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <div className="bg-teal-50 dark:bg-teal-950/30 p-3 md:p-4 rounded-lg">
-                  <h3 className="text-sm md:text-base font-medium mb-3">
-                    {t.roster}
-                  </h3>
-                  <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {t.roster}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("roster")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-roster"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["roster"] ? "-rotate-90" : ""}`} />
+                    </button>
+                  </div>
+                  <div className={`space-y-4 ${collapsedSections["roster"] ? "hidden" : ""}`}>
                     <FormField
                       control={form.control}
                       name="managerRosterDate"

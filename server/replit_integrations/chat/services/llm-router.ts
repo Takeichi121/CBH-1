@@ -15,7 +15,7 @@ export interface StreamLLMParams {
 
 function getSystemPrompt(mode: Mode): string {
   const base =
-    "คุณคือ Chann — AI ผู้ช่วยอัจฉริยะของระบบบริหารร้าน BK Grand Diamond เรียกผู้ใช้ว่า 'นาย' เสมอ ตอบเป็นภาษาไทยเว้นแต่ถูกขอให้ตอบภาษาอื่น";
+    "คุณคือ Chann — AI ผู้ช่วยอัจฉริยะของระบบบริหารร้าน BK Grand Diamond เรียกผู้ใช้ว่า 'นาย' เสมอ ตอบเป็นภาษาไทยเว้นแต่ถูกขอให้ตอบภาษาอื่น ตอบให้กระชับและรวดเร็วที่สุด";
   if (mode === "code") {
     return `${base}\nคุณเป็นวิศวกรซอฟต์แวร์ระดับอาวุโส ตอบกระชับและแม่นยำ ยกตัวอย่างโค้ดที่ใช้งานได้จริงเสมอ`;
   }
@@ -44,7 +44,7 @@ async function streamOpenAI(params: StreamLLMParams): Promise<string> {
 
   const stream = await openai.chat.completions.create(
     {
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       messages,
       stream: true,
       max_completion_tokens: 2048,

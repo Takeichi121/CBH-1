@@ -1797,7 +1797,7 @@ ${pageContext}` : ''}`;
       }
 
       // Agentic loop — up to 3 rounds of tool calling
-      const TOOL_MODEL = "gpt-4o-mini";
+      const TOOL_MODEL = "gpt-4o";
       const FINAL_MODEL = "gpt-4o";
       const MAX_ROUNDS = 3;
       let rounds = 0;

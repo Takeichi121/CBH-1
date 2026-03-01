@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
-import { APP_VERSION } from "@shared/version";
+import { APP_VERSION, CHANGELOG } from "@shared/version";
 
 const STAFF_BADGE = <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950 text-xs">พนักงาน</Badge>;
 const MANAGER_BADGE = <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950 text-xs">ผู้จัดการ</Badge>;
@@ -47,160 +47,27 @@ function VersionBadge({ version }: { version: string }) {
   );
 }
 
-const changelog = [
-  {
-    version: "1.8.2",
-    date: "26 กุมภาพันธ์ 2569",
-    label: "feature",
-    changes: [
-      "เพิ่ม Survey Count ในรายงาน LINE Daily Report ต่อจากบรรทัด OSAT",
-    ],
-  },
-  {
-    version: "1.8.1",
-    date: "26 กุมภาพันธ์ 2569",
-    label: "bugfix",
-    changes: [
-      "แก้ไข Waste double-counting — settings-page save รีเซ็ต wasteMealDaily เป็น 0 ถูกต้อง",
-      "แก้ไข OData endpoint ใช้ field ชื่อผิด (targetAmount → targetSales, wasteAmount → wasteRawDaily) ทำให้ค่าออกมา 0",
-      "แก้ไข code-proposals API ใช้ verifyAdminAccess ที่ไม่ได้นิยาม → เปลี่ยนเป็น verifyDevAccess",
-      "แก้ไข Chann tool dispatch null safety สำหรับ user.role",
-      "ลบไฟล์ stub ที่ไม่ได้ใช้งาน ทำให้ TypeScript 0 errors",
-    ],
-  },
-  {
-    version: "1.8.0",
-    date: "25 กุมภาพันธ์ 2569",
-    label: "feature",
-    changes: [
-      "Chann AI: เพิ่ม tools ครอบคลุมทุก storage operation (read + write)",
-      "Read tools ใหม่: getWasteTarget, getStoreSettings, getSystemLogs, getBorrowTransactions, getMtdSummary, getLaborSettings ฯลฯ",
-      "Write tools ใหม่ (Manager): bulkSaveDailyTargets, saveDailyLabor, bulkSaveShifts",
-      "Write tools ใหม่ (Admin): deleteBorrowTransaction, setWasteTarget, updateStoreSettings ฯลฯ",
-      "Quick actions เพิ่ม: คำขอสลับกะ, Waste เดือนนี้, ตั้งค่าร้าน, Audit Log",
-    ],
-  },
-  {
-    version: "1.7.2",
-    date: "26 กุมภาพันธ์ 2569",
-    label: "bugfix",
-    changes: [
-      "Timezone: ระบบทั้งหมดใช้ Asia/Bangkok (UTC+7) อย่างสอดคล้องกัน",
-      "เพิ่ม nowIso(), todayBangkok(), nowBangkok() ใน server/utils.ts",
-      "Frontend ใช้ todayBangkok() แทน new Date() ทุกหน้า",
-      "Chann system prompt แสดงเวลาปัจจุบันของกรุงเทพ",
-    ],
-  },
-  {
-    version: "1.7.1",
-    date: "25 กุมภาพันธ์ 2569",
-    label: "bugfix",
-    changes: [
-      "แก้ไข Borrow pages (Items, Branches, Dashboard) ใช้ GET queryFn แต่ backend ต้องการ POST",
-      "ลบ Toaster ซ้ำใน App.tsx",
-      "throwIfResNotOk แสดง error message สะอาดขึ้น",
-      "เพิ่ม path prefix validation สำหรับ code-proposals/review",
-    ],
-  },
-  {
-    version: "1.7.0",
-    date: "25 กุมภาพันธ์ 2569",
-    label: "feature",
-    changes: [
-      "Chann AI: Full Agent Access — role-based write permissions",
-      "tools ใหม่: createUser, updateUserProfile, resetUserPassword, addBorrowTransaction, executeSqlQuery",
-      "Chann สามารถรัน SQL query โดยตรงได้ (Admin เท่านั้น)",
-    ],
-  },
-  {
-    version: "1.6.0",
-    date: "21 กุมภาพันธ์ 2569",
-    label: "feature",
-    changes: [
-      "Chann AI: เพิ่ม write tools สำหรับ Admin",
-      "Sales Settings: เพิ่ม 5 คอลัมน์ (LY Sales, Forecast, LY TC, Target TC, Target TA) + 10 คอลัมน์คำนวณอัตโนมัติ",
-      "LINE OA integration: ส่งรายงาน Daily Report ข้อความ emoji ไป LINE",
-      "Export Excel button พร้อม auto filename",
-      "Audit logging สำหรับ write operations ทุกอัน",
-    ],
-  },
-  {
-    version: "1.5.0",
-    date: "16 มกราคม 2569",
-    label: "feature",
-    changes: [
-      "ระบบสมัครสมาชิกใหม่: ผู้ใช้กำหนด Username เองได้",
-      "เพิ่มช่อง Email, เบอร์โทร, ยืนยันรหัสผ่านในฟอร์มสมัคร",
-      "Validation Username (ตัวอักษร/ตัวเลข/_ เท่านั้น)",
-      "ตรวจสอบ Username ซ้ำอัตโนมัติ",
-    ],
-  },
-  {
-    version: "1.4.0",
-    date: "16 มกราคม 2569",
-    label: "feature",
-    changes: [
-      "ระบบ Reset Password ผ่าน OTP ทาง Email",
-      "ใช้ Resend Email API สำหรับส่ง OTP",
-      "OTP หมดอายุใน 10 นาที",
-    ],
-  },
-  {
-    version: "1.3.0",
-    date: "16 มกราคม 2569",
-    label: "feature",
-    changes: [
-      "ระบบ Staff Chat แบบ Real-time ด้วย Socket.IO",
-      "Floating Chat Widget (ล่างขวา) เข้าถึงได้จากทุกหน้า",
-      "Group chat และ Private chat (1-on-1)",
-      "แสดงสถานะ Online/Offline ของผู้ใช้",
-    ],
-  },
-  {
-    version: "1.2.0",
-    date: "ธันวาคม 2568",
-    label: "feature",
-    changes: [
-      "ระบบยืม-คืนวัตถุดิบระหว่างสาขา (Borrow Tracker)",
-      "Dashboard ภาพรวม Borrow, ประวัติ Transaction, จัดการสาขา/รายการสินค้า",
-      "Import สาขาและรายการสินค้าจาก Excel/CSV",
-    ],
-  },
-  {
-    version: "1.1.0",
-    date: "พฤศจิกายน 2568",
-    label: "feature",
-    changes: [
-      "ระบบรายงานยอดขายประจำวัน (Daily Sales Report)",
-      "คำนวณ Labor Cost, COL%, TCMH อัตโนมัติ",
-      "ระบบติดตาม Waste (Raw + Meal)",
-      "OSAT และ Survey Count tracking",
-      "Chann AI Assistant (ผู้ช่วย AI ของร้าน)",
-    ],
-  },
-  {
-    version: "1.0.0",
-    date: "ตุลาคม 2568",
-    label: "release",
-    changes: [
-      "Launch ระบบจัดการตารางงาน (Roster & Shift Booking)",
-      "สมัครสมาชิก, เข้าสู่ระบบ, สิทธิ์ Staff/Manager",
-      "จองกะงาน 4 ประเภท: Open, Lunch, Dinner, Late",
-      "ผู้จัดการ: ดูตาราง Roster ทีมทั้งหมด, Import ตาราง",
-      "รองรับ 2 ภาษา (ไทย/อังกฤษ)",
-    ],
-  },
-];
+function formatDateThai(dateStr: string): string {
+  const months = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const day = parseInt(parts[2], 10);
+  const month = months[parseInt(parts[1], 10) - 1];
+  const year = parseInt(parts[0], 10) + 543;
+  return `${day} ${month} ${year}`;
+}
 
 const labelColor: Record<string, string> = {
-  feature: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400",
-  bugfix:  "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
-  release: "bg-primary/10 text-primary",
+  feature:     "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400",
+  bugfix:      "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
+  release:     "bg-primary/10 text-primary",
+  improvement: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400",
 };
 const labelText: Record<string, string> = {
-  feature: "ฟีเจอร์ใหม่",
-  bugfix:  "แก้ไข Bug",
-  release: "เปิดตัว",
+  feature:     "ฟีเจอร์ใหม่",
+  bugfix:      "แก้ไข Bug",
+  release:     "เปิดตัว",
+  improvement: "ปรับปรุง",
 };
 
 export default function HandbookPage() {
@@ -591,7 +458,7 @@ export default function HandbookPage() {
             <SectionHeader icon={History} title="14. ประวัติการอัพเดทเวอร์ชัน" badges={[STAFF_BADGE]} />
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
-            {changelog.map((entry) => (
+            {CHANGELOG.map((entry) => (
               <div key={entry.version} className="flex gap-3">
                 <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-1">
                   <VersionBadge version={entry.version} />
@@ -599,10 +466,10 @@ export default function HandbookPage() {
                 </div>
                 <div className="pb-4 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${labelColor[entry.label]}`}>
-                      {labelText[entry.label]}
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${labelColor[entry.label] ?? "bg-muted text-muted-foreground"}`}>
+                      {labelText[entry.label] ?? entry.label}
                     </span>
-                    <span className="text-xs text-muted-foreground">{entry.date}</span>
+                    <span className="text-xs text-muted-foreground">{formatDateThai(entry.date)}</span>
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     {entry.changes.map((c, i) => (
@@ -622,7 +489,7 @@ export default function HandbookPage() {
 
       <div className="text-center text-xs text-muted-foreground pt-4 pb-2">
         <p className="font-semibold">Burger King Grand Diamond Branch</p>
-        <p>เอกสารภายใน — อัพเดทล่าสุด กุมภาพันธ์ 2569 · v1.8.2</p>
+        <p>เอกสารภายใน — อัพเดทล่าสุด {CHANGELOG[0] ? formatDateThai(CHANGELOG[0].date) : ""} · v{APP_VERSION}</p>
       </div>
     </div>
   );

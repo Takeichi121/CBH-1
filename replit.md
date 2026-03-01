@@ -179,13 +179,41 @@ Real-time chat system for staff communication using Socket.IO.
 
 ## Version Tracking
 
-Version history is maintained in `shared/version.ts`:
-- `APP_VERSION`: Current version number
-- `CHANGELOG`: Array of version entries with date and changes
+Version history is maintained in `shared/version.ts` as the **single source of truth**:
+- `APP_VERSION`: Current version number (string, e.g. "2.0.0")
+- `CHANGELOG`: Typed array of `ChangelogEntry` objects — `{ version, date, label, changes }`
+- `label` options: `"feature"` | `"bugfix"` | `"release"` | `"improvement"`
+- `date` format: `"YYYY-MM-DD"` (ISO format — converted to Thai Buddhist Era in UI)
 
-Version is displayed in Settings page footer automatically.
+Version is displayed automatically in:
+- Settings page System Information section (shows latest entry + link to full history)
+- Handbook page changelog section (auto-synced, no hardcoded data)
+
+### MANDATORY CHANGELOG UPDATE RULE
+
+**Every time any code change is made, `shared/version.ts` MUST be updated:**
+1. Increment `APP_VERSION` (patch: x.x.1 for bugfix, minor: x.1.0 for feature, major: 1.0.0 for breaking)
+2. Add a new entry to the TOP of `CHANGELOG` array with:
+   - `version`: new version string
+   - `date`: today's date in `"YYYY-MM-DD"` format
+   - `label`: `"feature"` | `"bugfix"` | `"improvement"` | `"release"`
+   - `changes`: array of Thai-language description strings explaining what changed
+3. Update `replit.md` Recent Changes section to match
+
+This ensures the handbook and settings page always reflect the latest state automatically.
 
 ## Recent Changes
+
+### Version 2.0.0 (March 1, 2026) — AI Upgrade & Auto Changelog
+- Upgraded Chann AI from gpt-4o-mini to gpt-4o across entire system
+- Added automatic changelog tracking via shared/version.ts (single source of truth)
+- Handbook page now auto-syncs from version.ts — no more hardcoded changelog
+- Settings page shows latest update summary with link to full history
+- Added `ChangelogLabel` type and `label` field to all changelog entries
+
+### Version 1.9.0 (February 27, 2026)
+- Added Area Manager role (role=area)
+- 30-minute unlock system for data editing
 
 ### Version 1.8.1 (February 26, 2026) — Code Audit & Bug Fixes
 - **Bug Fix**: Waste double-counting — settings-page save now resets `wasteMealDaily` to "0" alongside `wasteRawDaily=total`, preventing compounding on repeated saves

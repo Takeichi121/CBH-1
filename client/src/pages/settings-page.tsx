@@ -627,7 +627,7 @@ export default function SettingsPage() {
               <CardDescription>{t("aboutSystem")}</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-sm">{t("version")}</Label>
@@ -642,6 +642,40 @@ export default function SettingsPage() {
                 <p className="font-medium text-foreground" data-testid="text-developer">Chanon</p>
               </div>
             </div>
+
+            {CHANGELOG[0] && (
+              <div className="border border-border/50 rounded-xl p-4 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">อัพเดทล่าสุด — v{CHANGELOG[0].version}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      CHANGELOG[0].label === "improvement" ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" :
+                      CHANGELOG[0].label === "bugfix" ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" :
+                      CHANGELOG[0].label === "release" ? "bg-primary/10 text-primary" :
+                      "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
+                    }`}>
+                      {CHANGELOG[0].label === "improvement" ? "ปรับปรุง" :
+                       CHANGELOG[0].label === "bugfix" ? "แก้ไข Bug" :
+                       CHANGELOG[0].label === "release" ? "เปิดตัว" : "ฟีเจอร์ใหม่"}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{CHANGELOG[0].date}</span>
+                </div>
+                <ul className="space-y-1">
+                  {CHANGELOG[0].changes.slice(0, 4).map((c, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-muted-foreground">
+                      <span className="text-primary mt-0.5 flex-shrink-0">•</span>
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/handbook">
+                  <button className="text-xs text-primary hover:underline mt-1" data-testid="link-full-changelog">
+                    ดูประวัติการอัพเดททั้งหมด →
+                  </button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

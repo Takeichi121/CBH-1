@@ -1,9 +1,31 @@
-export const APP_VERSION = "1.9.0";
+export const APP_VERSION = "2.0.0";
 
-export const CHANGELOG = [
+export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
+
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  label: ChangelogLabel;
+  changes: string[];
+}
+
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.0",
+    date: "2026-03-01",
+    label: "improvement",
+    changes: [
+      "อัพเกรด Chann AI เป็น gpt-4o ทั้งระบบ (จาก gpt-4o-mini) — ฉลาดและแม่นยำขึ้น",
+      "ปรับ system prompt ให้ Chann ตอบกระชับและรวดเร็วขึ้น",
+      "เพิ่มระบบประวัติอัพเดทอัตโนมัติ — ทุกการแก้ไขบันทึกใน shared/version.ts",
+      "Handbook page ซิงค์กับ version.ts โดยอัตโนมัติ ไม่มี hardcoded changelog แยก",
+      "Settings page แสดงการอัพเดทล่าสุดพร้อมลิงก์ไปประวัติทั้งหมด",
+    ],
+  },
   {
     version: "1.9.0",
     date: "2026-02-27",
+    label: "feature",
     changes: [
       "เพิ่ม Role 'Area Manager' (role=area) — อ่านข้อมูลได้เหมือน Manager",
       "ระบบปลดล็อก 30 นาที: กรอกรหัสผ่านก่อนแก้ไขข้อมูล",
@@ -15,6 +37,7 @@ export const CHANGELOG = [
   {
     version: "1.8.2",
     date: "2026-02-26",
+    label: "feature",
     changes: [
       "เพิ่ม Survey Count ในรายงาน LINE Daily Report ต่อจากบรรทัด OSAT",
       "แสดงชื่อจริง (fullName) แทน username ใน Staff Working Today บน Dashboard",
@@ -24,6 +47,7 @@ export const CHANGELOG = [
   {
     version: "1.8.1",
     date: "2026-02-26",
+    label: "bugfix",
     changes: [
       "แก้ไข Waste double-counting — settings-page save รีเซ็ต wasteMealDaily เป็น 0 ถูกต้อง",
       "แก้ไข OData endpoint ใช้ field ชื่อผิด (targetAmount → targetSales, wasteAmount → wasteRawDaily)",
@@ -35,6 +59,7 @@ export const CHANGELOG = [
   {
     version: "1.8.0",
     date: "2026-02-25",
+    label: "feature",
     changes: [
       "Chann AI: เพิ่ม tools ครอบคลุมทุก storage operation (read + write)",
       "Read tools ใหม่: getWasteTarget, getStoreSettings, getSystemLogs, getBorrowTransactions, getMtdSummary, getLaborSettings ฯลฯ",
@@ -46,6 +71,7 @@ export const CHANGELOG = [
   {
     version: "1.7.2",
     date: "2026-02-26",
+    label: "bugfix",
     changes: [
       "Timezone: ระบบทั้งหมดใช้ Asia/Bangkok (UTC+7) อย่างสอดคล้องกัน",
       "เพิ่ม nowIso(), todayBangkok(), nowBangkok() ใน server/utils.ts",
@@ -56,6 +82,7 @@ export const CHANGELOG = [
   {
     version: "1.7.1",
     date: "2026-02-25",
+    label: "bugfix",
     changes: [
       "แก้ไข Borrow pages (Items, Branches, Dashboard) ใช้ GET queryFn แต่ backend ต้องการ POST",
       "ลบ Toaster ซ้ำใน App.tsx",
@@ -66,6 +93,7 @@ export const CHANGELOG = [
   {
     version: "1.7.0",
     date: "2026-02-25",
+    label: "feature",
     changes: [
       "Chann AI: Full Agent Access — role-based write permissions (Admin=all, Manager=roster+reports, Staff=read-only)",
       "tools ใหม่: createUser, updateUserProfile, resetUserPassword, addBorrowTransaction, executeSqlQuery",
@@ -75,6 +103,7 @@ export const CHANGELOG = [
   {
     version: "1.6.0",
     date: "2026-02-21",
+    label: "feature",
     changes: [
       "Chann AI: เพิ่ม write tools สำหรับ Admin (saveDailySales, saveDailyTarget, saveShift ฯลฯ)",
       "Sales Settings: เพิ่ม 5 คอลัมน์ใหม่ (LY Sales, Forecast, LY TC, Target TC, Target TA) + 10 คอลัมน์คำนวณ",
@@ -86,6 +115,7 @@ export const CHANGELOG = [
   {
     version: "1.5.0",
     date: "2026-01-16",
+    label: "feature",
     changes: [
       "เพิ่มระบบสมัครสมาชิกใหม่ให้ผู้ใช้กำหนด Username เองได้",
       "เพิ่มช่อง Email, เบอร์โทร, ยืนยันรหัสผ่านในฟอร์มสมัคร",
@@ -96,6 +126,7 @@ export const CHANGELOG = [
   {
     version: "1.4.0",
     date: "2026-01-16",
+    label: "feature",
     changes: [
       "เพิ่มระบบ Reset Password ผ่าน OTP ทาง Email",
       "ใช้ Resend สำหรับส่ง OTP Email",
@@ -105,6 +136,7 @@ export const CHANGELOG = [
   {
     version: "1.3.0",
     date: "2026-01-16",
+    label: "feature",
     changes: [
       "เพิ่มระบบ Staff Chat แบบ Real-time ด้วย Socket.IO",
       "เพิ่ม Floating Chat Widget ใช้งานได้ทุกหน้า",
@@ -114,6 +146,7 @@ export const CHANGELOG = [
   {
     version: "1.2.0",
     date: "2026-01-16",
+    label: "feature",
     changes: [
       "เพิ่มระบบ Borrow Tracker สำหรับยืม-คืนอุปกรณ์ระหว่างสาขา",
       "รองรับ Import Excel/CSV สำหรับ Branches และ Items",
@@ -123,6 +156,7 @@ export const CHANGELOG = [
   {
     version: "1.1.0",
     date: "2026-01-15",
+    label: "feature",
     changes: [
       "เพิ่มระบบ Labor Cost Management",
       "เพิ่มหน้า Daily Sales Report",
@@ -132,6 +166,7 @@ export const CHANGELOG = [
   {
     version: "1.0.0",
     date: "2026-01-01",
+    label: "release",
     changes: [
       "ระบบจองกะเริ่มต้น",
       "ระบบ Login/Logout",

@@ -461,6 +461,14 @@ export const api = {
         200: z.object({ ok: z.boolean(), reports: z.array(z.any()).optional() }),
       },
     },
+    getDailySummaryForWeek: {
+      method: "POST",
+      path: "/api/sales/getDailySummaryForWeek",
+      input: z.object({ token: z.string(), weekStartDate: z.string(), weekEndDate: z.string() }),
+      responses: {
+        200: z.object({ ok: z.boolean(), totalSale: z.number().optional(), totalTc: z.number().optional(), totalWaste: z.number().optional(), wastePercent: z.string().optional(), message: z.string().optional() }),
+      },
+    },
   },
   managerRequests: {
     create: {

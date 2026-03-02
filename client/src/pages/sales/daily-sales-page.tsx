@@ -1639,10 +1639,36 @@ ${v.staffRosterText || ""}
     shiftEvening: language === "th" ? "เย็น" : "Evening",
   };
 
+  const dailyDueBanner = (() => {
+    const now = new Date();
+    const bangkokStr = now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+    const bangkokDate = new Date(bangkokStr);
+    const hour = bangkokDate.getHours();
+    if (hour >= 20) return null;
+    const yesterday = new Date(bangkokDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dd = String(yesterday.getDate()).padStart(2, "0");
+    const mm = String(yesterday.getMonth() + 1).padStart(2, "0");
+    const yyyy = yesterday.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  })();
+
   return (
     <SalesLayout>
       <div className="space-y-6 pb-20">
         <AreaLockBanner />
+        {dailyDueBanner && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+            <span className="text-lg">⏰</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">
+                📋 ต้องส่งรายงานวันที่ {dailyDueBanner}
+              </p>
+              <p className="text-xs opacity-75 mt-0.5">กรุณาส่งรายงานประจำวันภายใน 20:00 น.</p>
+            </div>
+            <span className="text-xs font-bold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-200 px-2 py-1 rounded-full whitespace-nowrap">ก่อน 20:00</span>
+          </div>
+        )}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

@@ -3265,6 +3265,22 @@ ${pageContext}` : ''}`;
     }
   });
 
+  app.post(api.sales.getDailySummaryForWeek.path, async (req, res) => {
+    const { token, weekStartDate, weekEndDate } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    try {
+      const reports = await storage.getDailySalesReportsByDateRange(weekStartDate, weekEndDate);
+      const totalSale = reports.reduce((sum, r) => sum + (Number(r.actualSales) || 0), 0);
+      const totalTc = reports.reduce((sum, r) => sum + (Number(r.transactionCount) || 0), 0);
+      const totalWaste = reports.reduce((sum, r) => sum + (parseFloat(r.wasteRawDaily || "0") || 0), 0);
+      const wastePercent = totalSale > 0 ? ((totalWaste / totalSale) * 100).toFixed(2) + "%" : "0.00%";
+      res.json({ ok: true, totalSale, totalTc, totalWaste: Math.round(totalWaste), wastePercent });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to get weekly daily summary" });
+    }
+  });
+
   app.post(api.sales.getWasteTargets.path, async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);

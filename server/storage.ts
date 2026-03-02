@@ -69,6 +69,7 @@ export interface IStorage {
   getDailySalesReportByDate(date: string): Promise<DailySalesReport | undefined>;
   getDailySalesReports(date?: string, limit?: number): Promise<DailySalesReport[]>;
   getDailySalesReportsForMonth(year: number, month: number): Promise<DailySalesReport[]>;
+  getDailySalesReportsByDateRange(startDate: string, endDate: string): Promise<DailySalesReport[]>;
   updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport>;
   upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport>;
   deleteDailySalesReport(id: number): Promise<boolean>;
@@ -340,6 +341,12 @@ export class DatabaseStorage implements IStorage {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return await db.select().from(dailySalesReports)
+      .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate)))
+      .orderBy(dailySalesReports.reportDate);
+  }
+
+  async getDailySalesReportsByDateRange(startDate: string, endDate: string): Promise<DailySalesReport[]> {
     return await db.select().from(dailySalesReports)
       .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate)))
       .orderBy(dailySalesReports.reportDate);

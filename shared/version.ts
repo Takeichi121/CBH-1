@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.1";
+export const APP_VERSION = "2.0.2";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.2",
+    date: "2026-03-02",
+    label: "feature",
+    changes: [
+      "Daily Sales: แสดง banner แจ้งเตือนส่งรายงานเมื่อวาน (ก่อน 20:00 น.)",
+      "Weekly Sales: แสดง banner แจ้งเตือนสัปดาห์ที่ต้องส่ง (วันอังคารก่อน 20:00 น.)",
+      "Weekly Sales: ปุ่ม 'ดึงยอดจาก Daily' — auto-populate Sale/TC/Waste จากรายงานประจำวัน",
+      "Weekly Sales: ช่อง TA คำนวณอัตโนมัติจาก Sale ÷ TC (ตลอดเวลา)",
+      "Weekly Sales: เพิ่ม Report History แสดงรายงาน 12 สัปดาห์ล่าสุด — คลิกเพื่อดูข้อมูล",
+    ],
+  },
   {
     version: "2.0.1",
     date: "2026-03-02",

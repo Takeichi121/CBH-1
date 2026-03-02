@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X } from "lucide-react";
+import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import {
   Popover,
@@ -155,6 +155,9 @@ export default function WeeklySalesPage() {
   const [wasteSelections, setWasteSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
   const [unacSelections, setUnacSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
   const [openCombobox, setOpenCombobox] = useState<{ type: 'waste' | 'unac'; index: number } | null>(null);
+  const [historyReports, setHistoryReports] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [autoPopulating, setAutoPopulating] = useState(false);
 
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
@@ -164,6 +167,51 @@ export default function WeeklySalesPage() {
   useEffect(() => {
     loadWeeklyReport();
   }, [weekStartStr]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const res = await apiRequest("POST", "/api/sales/getWeeklyReports", { token, limit: 12 });
+        const data = await res.json();
+        if (data.ok && data.reports) setHistoryReports(data.reports);
+      } catch {}
+      setHistoryLoading(false);
+    };
+    loadHistory();
+  }, []);
+
+  const autoPopulateFromDaily = async () => {
+    setAutoPopulating(true);
+    try {
+      const res = await apiRequest("POST", "/api/sales/getDailySummaryForWeek", {
+        token, weekStartDate: weekStartStr, weekEndDate: weekEndStr,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const fmt = (n: number) => {
+          const s = String(n);
+          return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+        const saleNum = data.totalSale || 0;
+        const tcNum = data.totalTc || 0;
+        const ta = tcNum > 0 ? Math.round(saleNum / tcNum) : 0;
+        setForm(prev => ({
+          ...prev,
+          sale: fmt(saleNum),
+          tc: fmt(tcNum),
+          ta: fmt(ta),
+          waste: data.wastePercent || prev.waste,
+        }));
+        toast({ title: "ดึงข้อมูลจาก Daily สำเร็จ ✅" });
+      } else {
+        toast({ variant: "destructive", title: data.message || "ไม่พบข้อมูล Daily" });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "ไม่สามารถดึงข้อมูลได้" });
+    }
+    setAutoPopulating(false);
+  };
 
   useEffect(() => {
     const text = selectionsToText(wasteSelections);
@@ -294,6 +342,29 @@ export default function WeeklySalesPage() {
     }
   };
 
+  useEffect(() => {
+    const saleNum = parseFloat(form.sale.replace(/,/g, "")) || 0;
+    const tcNum = parseFloat(form.tc.replace(/,/g, "")) || 0;
+    if (saleNum > 0 && tcNum > 0) {
+      const ta = Math.round(saleNum / tcNum);
+      const taStr = String(ta).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      setForm(prev => ({ ...prev, ta: taStr }));
+    }
+  }, [form.sale, form.tc]);
+
+  const weeklyDueBanner = (() => {
+    const now = new Date();
+    const bangkokStr = now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+    const bangkokDate = new Date(bangkokStr);
+    const hour = bangkokDate.getHours();
+    const dayOfWeek = bangkokDate.getDay();
+    if (dayOfWeek !== 2 || hour >= 20) return null;
+    const prevWeekStart = startOfWeek(subWeeks(bangkokDate, 1), { weekStartsOn: 2 });
+    const prevWeekEnd = endOfWeek(prevWeekStart, { weekStartsOn: 2 });
+    const fmt = (d: Date) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+    return `${fmt(prevWeekStart)} - ${fmt(prevWeekEnd)}`;
+  })();
+
   const numericFields = new Set<keyof WeeklyFormData>(["sale", "tc", "ta", "sos"]);
 
   const formatWithCommas = (val: string) => {
@@ -356,12 +427,12 @@ export default function WeeklySalesPage() {
     detailPlaceholder: language === "th" ? "รายละเอียด (เช่น 500 บาท)" : "Detail (e.g. 500 Baht)",
   };
 
-  const fields: Array<{ key: keyof WeeklyFormData; label: string; placeholder?: string }> = [
-    { key: "sale", label: "Sale", placeholder: "e.g. 750,000" },
-    { key: "tc", label: "TC", placeholder: "e.g. 2,500" },
-    { key: "ta", label: "TA", placeholder: "e.g. 300" },
+  const fields: Array<{ key: keyof WeeklyFormData; label: string; placeholder?: string; readOnly?: boolean; autoLabel?: string }> = [
+    { key: "sale", label: "Sale", placeholder: "e.g. 750,000", autoLabel: "Daily" },
+    { key: "tc", label: "TC", placeholder: "e.g. 2,500", autoLabel: "Daily" },
+    { key: "ta", label: "TA", placeholder: "คำนวณอัตโนมัติ", readOnly: true },
     { key: "cog", label: "COG", placeholder: "e.g. 35%" },
-    { key: "waste", label: "Waste", placeholder: "e.g. 1.2%" },
+    { key: "waste", label: "Waste", placeholder: "e.g. 1.2%", autoLabel: "Daily" },
     { key: "unac", label: "Unac", placeholder: "e.g. 0.5%" },
     { key: "sos", label: "SOS", placeholder: "e.g. 180" },
     { key: "gsi", label: "GSI", placeholder: "e.g. 95%" },
@@ -463,6 +534,17 @@ export default function WeeklySalesPage() {
   return (
     <SalesLayout>
       <div className="max-w-3xl mx-auto space-y-4 pb-20">
+        {weeklyDueBanner && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+            <span className="text-lg">⏰</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">📋 ต้องส่งรายงานสัปดาห์ที่แล้ว</p>
+              <p className="text-xs opacity-75 mt-0.5">{weeklyDueBanner} — กรุณาส่งภายใน 20:00 น.</p>
+            </div>
+            <span className="text-xs font-bold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-200 px-2 py-1 rounded-full whitespace-nowrap">ก่อน 20:00</span>
+          </div>
+        )}
+
         <div>
           <h2 className="text-xl font-bold" data-testid="text-weekly-title">{t.title}</h2>
           <p className="text-sm text-muted-foreground">{t.subtitle}</p>
@@ -501,24 +583,52 @@ export default function WeeklySalesPage() {
           <>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  {language === "th" ? "กรอกข้อมูล" : "Enter Data"}
-                </CardTitle>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    {language === "th" ? "กรอกข้อมูล" : "Enter Data"}
+                  </CardTitle>
+                  {isManager && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={autoPopulateFromDaily}
+                      disabled={autoPopulating}
+                      className="gap-1.5 text-xs h-8"
+                      data-testid="button-auto-populate"
+                    >
+                      {autoPopulating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      ดึงยอดจาก Daily
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {fields.map((f) => (
                     <div key={f.key}>
-                      <Label className="text-xs font-medium text-muted-foreground mb-1 block">
-                        {f.label}
-                      </Label>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          {f.label}
+                        </Label>
+                        {f.autoLabel && (
+                          <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1 rounded">
+                            {f.autoLabel}
+                          </span>
+                        )}
+                        {f.readOnly && (
+                          <span className="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1 rounded">
+                            Auto
+                          </span>
+                        )}
+                      </div>
                       <Input
                         value={form[f.key]}
-                        onChange={(e) => update(f.key, e.target.value)}
+                        onChange={(e) => !f.readOnly && update(f.key, e.target.value)}
                         placeholder={f.placeholder}
-                        className="text-sm"
-                        disabled={!isManager}
+                        className={cn("text-sm", f.readOnly && "bg-muted/50 text-muted-foreground cursor-not-allowed")}
+                        disabled={!isManager || f.readOnly}
+                        readOnly={f.readOnly}
                         data-testid={`input-weekly-${f.key}`}
                       />
                     </div>
@@ -573,6 +683,56 @@ export default function WeeklySalesPage() {
             </Card>
           </>
         )}
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="w-4 h-4" />
+              {language === "th" ? "ประวัติรายงานสัปดาห์" : "Weekly Report History"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {historyLoading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : historyReports.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">ยังไม่มีรายงาน</p>
+            ) : (
+              <div className="space-y-1">
+                <div className="grid grid-cols-5 gap-2 text-xs font-medium text-muted-foreground px-2 pb-1 border-b">
+                  <span className="col-span-2">สัปดาห์</span>
+                  <span className="text-right">Sale</span>
+                  <span className="text-right">TC</span>
+                  <span className="text-right">Waste</span>
+                </div>
+                {historyReports.map((r) => {
+                  const startD = new Date(r.weekStartDate + "T00:00:00");
+                  const endD = new Date(r.weekEndDate + "T00:00:00");
+                  const fmtD = (d: Date) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+                  const rangeLabel = `${fmtD(startD)}-${fmtD(endD)}`;
+                  const isCurrentWeek = r.weekStartDate === weekStartStr;
+                  return (
+                    <button
+                      key={r.id}
+                      className={cn(
+                        "w-full grid grid-cols-5 gap-2 text-xs px-2 py-2 rounded-md text-left hover:bg-muted/50 transition-colors",
+                        isCurrentWeek && "bg-primary/10 font-semibold"
+                      )}
+                      onClick={() => setCurrentDate(new Date(r.weekStartDate + "T12:00:00"))}
+                      data-testid={`row-history-${r.id}`}
+                    >
+                      <span className="col-span-2 text-foreground truncate">{rangeLabel}</span>
+                      <span className="text-right text-foreground">{r.sale ? Number(r.sale.replace(/,/g,"")).toLocaleString() : "-"}</span>
+                      <span className="text-right text-foreground">{r.tc || "-"}</span>
+                      <span className="text-right text-muted-foreground">{r.waste || "-"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </SalesLayout>
   );

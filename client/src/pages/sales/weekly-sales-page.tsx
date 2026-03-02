@@ -26,6 +26,41 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
+const BK_WASTE_CATEGORIES = [
+  "BK-CR-Alcohol",
+  "BK-CR-Bacon",
+  "BK-CR-Bag",
+  "BK-CR-BEEF",
+  "BK-CR-Box(carton)",
+  "BK-CR-BUN",
+  "BK-CR-BUN EXPORT",
+  "BK-CR-Carbonate",
+  "BK-CR-CARBONATE-CAN",
+  "BK-CR-CHEESY PATTIES",
+  "BK-CR-CHEMICAL",
+  "BK-CR-Chicken",
+  "BK-CR-Cleaning",
+  "BK-CR-Condiment",
+  "BK-CR-Cup&Lid",
+  "BK-CR-Dessert",
+  "BK-CR-Fish",
+  "BK-CR-Fried",
+  "BK-CR-ICE CREAM",
+  "BK-CR-INGREDIENT",
+  "BK-CR-Napkin",
+  "BK-CR-Non-Carbonate",
+  "BK-CR-NON-CARBONATE - BOTTLE",
+  "BK-CR-Paper",
+  "BK-CR-PIE",
+  "BK-CR-Plastic Utensil",
+  "BK-CR-PORK",
+  "BK-CR-Premium",
+  "BK-CR-Shortening",
+  "BK-CR-VEGETABLE",
+  "BK-CR-VEGETABLE PATTY",
+  "BK-CR-Wrap",
+];
+
 function getWeekRange(date: Date) {
   const start = startOfWeek(date, { weekStartsOn: 2 });
   const end = endOfWeek(date, { weekStartsOn: 2 });
@@ -117,7 +152,6 @@ export default function WeeklySalesPage() {
   const [saving, setSaving] = useState(false);
   const [hasData, setHasData] = useState(false);
 
-  const [borrowItems, setBorrowItems] = useState<{ id: number; name: string }[]>([]);
   const [wasteSelections, setWasteSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
   const [unacSelections, setUnacSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
   const [openCombobox, setOpenCombobox] = useState<{ type: 'waste' | 'unac'; index: number } | null>(null);
@@ -126,21 +160,6 @@ export default function WeeklySalesPage() {
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekEndStr = format(weekEnd, "yyyy-MM-dd");
   const weekLabel = `${format(weekStart, "dd/MM/yyyy")} - ${format(weekEnd, "dd/MM/yyyy")}`;
-
-  useEffect(() => {
-    const fetchBorrowItems = async () => {
-      try {
-        const res = await apiRequest("POST", "/api/borrow/items", { token });
-        const data = await res.json();
-        if (data.ok && data.items) {
-          setBorrowItems(data.items.map((item: any) => ({ id: item.id, name: item.name })));
-        }
-      } catch {
-        console.error("Failed to fetch borrow items");
-      }
-    };
-    fetchBorrowItems();
-  }, []);
 
   useEffect(() => {
     loadWeeklyReport();
@@ -389,10 +408,10 @@ export default function WeeklySalesPage() {
                   <CommandList>
                     <CommandEmpty>{t.noItems}</CommandEmpty>
                     <CommandGroup>
-                      {borrowItems.map((item) => (
+                      {BK_WASTE_CATEGORIES.map((name) => (
                         <CommandItem
-                          key={item.id}
-                          value={item.name}
+                          key={name}
+                          value={name}
                           onSelect={(currentValue) => {
                             updateSelection(type, index, 'itemName', currentValue === row.itemName ? "" : currentValue);
                             setOpenCombobox(null);
@@ -401,10 +420,10 @@ export default function WeeklySalesPage() {
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              row.itemName === item.name ? "opacity-100" : "opacity-0"
+                              row.itemName === name ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {item.name}
+                          {name}
                         </CommandItem>
                       ))}
                     </CommandGroup>

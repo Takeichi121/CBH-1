@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.2";
+export const APP_VERSION = "2.0.3";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.3",
+    date: "2026-03-02",
+    label: "improvement",
+    changes: [
+      "Weekly Sales: Unaccounted Top 3 ดึงรายการจากระบบยืมคืน (Borrow Items) แทนการใช้ BK-CR categories",
+    ],
+  },
   {
     version: "2.0.2",
     date: "2026-03-02",

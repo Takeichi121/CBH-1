@@ -158,6 +158,7 @@ export default function WeeklySalesPage() {
   const [historyReports, setHistoryReports] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [autoPopulating, setAutoPopulating] = useState(false);
+  const [borrowItemNames, setBorrowItemNames] = useState<string[]>([]);
 
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
@@ -179,6 +180,21 @@ export default function WeeklySalesPage() {
       setHistoryLoading(false);
     };
     loadHistory();
+
+    const loadBorrowItems = async () => {
+      try {
+        const res = await apiRequest("POST", "/api/borrow/items", { token });
+        const data = await res.json();
+        if (data.ok && data.items) {
+          const names: string[] = data.items
+            .filter((it: any) => it.isActive !== 0)
+            .map((it: any) => it.name as string)
+            .sort((a: string, b: string) => a.localeCompare(b, "th"));
+          setBorrowItemNames(names);
+        }
+      } catch {}
+    };
+    loadBorrowItems();
   }, []);
 
   const autoPopulateFromDaily = async () => {
@@ -444,7 +460,8 @@ export default function WeeklySalesPage() {
 
   const renderTop3Selectors = (
     type: 'waste' | 'unac',
-    selections: ItemSelection[]
+    selections: ItemSelection[],
+    categories: string[]
   ) => {
     return (
       <div className="space-y-2 border rounded-md p-3 bg-muted/20">
@@ -479,7 +496,7 @@ export default function WeeklySalesPage() {
                   <CommandList>
                     <CommandEmpty>{t.noItems}</CommandEmpty>
                     <CommandGroup>
-                      {BK_WASTE_CATEGORIES.map((name) => (
+                      {categories.map((name) => (
                         <CommandItem
                           key={name}
                           value={name}
@@ -639,14 +656,19 @@ export default function WeeklySalesPage() {
                   <Label className="text-xs font-medium text-muted-foreground mb-1 block">
                     {t.wasteTop3}
                   </Label>
-                  {renderTop3Selectors('waste', wasteSelections)}
+                  {renderTop3Selectors('waste', wasteSelections, BK_WASTE_CATEGORIES)}
                 </div>
 
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground mb-1 block">
-                    {t.unaccountedTop3}
-                  </Label>
-                  {renderTop3Selectors('unac', unacSelections)}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      {t.unaccountedTop3}
+                    </Label>
+                    <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1 rounded">
+                      ยืมคืน
+                    </span>
+                  </div>
+                  {renderTop3Selectors('unac', unacSelections, borrowItemNames.length > 0 ? borrowItemNames : BK_WASTE_CATEGORIES)}
                 </div>
 
                 {isManager && (

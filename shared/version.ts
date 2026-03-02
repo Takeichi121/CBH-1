@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.3";
+export const APP_VERSION = "2.0.4";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.4",
+    date: "2026-03-02",
+    label: "bugfix",
+    changes: [
+      "Daily Sales: แก้ไขบั๊ก ส่งผ่านไลน์ไม่แสดงข้อมูลตารางงาน — ระบบจะบันทึกฟอร์มอัตโนมัติก่อนส่งไปไลน์ทุกครั้ง",
+    ],
+  },
   {
     version: "2.0.3",
     date: "2026-03-02",

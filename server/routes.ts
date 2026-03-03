@@ -2545,7 +2545,7 @@ ${pageContext}` : ''}`;
         shifts: {
           total: todayShifts.length,
           byGroup: shiftsByGroup,
-          staff: todayShifts.map((s: any) => ({ username: s.username, fullName: userMap[s.username]?.fullName, nickName: userMap[s.username]?.nickName || s.nickName, shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime }))
+          staff: todayShifts.map((s: any) => ({ username: s.username, fullName: userMap[s.username]?.fullName, nickName: userMap[s.username]?.nickName || s.nickName, role: userMap[s.username]?.role || "staff", shiftGroup: s.shiftGroup, startTime: s.startTime, endTime: s.endTime }))
         },
         sales: salesReport ? {
           actualSales: salesReport.actualSales,

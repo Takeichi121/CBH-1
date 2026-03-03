@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.5";
+export const APP_VERSION = "2.0.6";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.6",
+    date: "2026-03-03",
+    label: "improvement",
+    changes: [
+      "Dashboard: การ์ดบนซ้ายแสดงทีมผู้จัดการ, การ์ดขวาล่างแสดงพนักงาน — แสดงชื่อจริง (ชื่อเล่น) + กะงาน",
+    ],
+  },
   {
     version: "2.0.5",
     date: "2026-03-03",

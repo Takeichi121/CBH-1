@@ -15,7 +15,7 @@ interface UnifiedDashboardData {
   shifts: {
     total: number;
     byGroup: Record<string, number>;
-    staff: Array<{ username: string; fullName?: string; nickName?: string; shiftGroup: string; startTime?: string; endTime?: string }>;
+    staff: Array<{ username: string; fullName?: string; nickName?: string; role?: string; shiftGroup: string; startTime?: string; endTime?: string }>;
   } | null;
   sales: {
     actualSales: number;
@@ -175,36 +175,30 @@ export default function DashboardPage() {
             <Card data-testid="card-shift-summary">
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {language === "th" ? "พนักงานวันนี้" : "Staff Today"}
+                  {language === "th" ? "ทีมผู้จัดการวันนี้" : "Manager Team Today"}
                 </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                {shifts ? (
-                  <>
-                    <div className="text-2xl font-bold" data-testid="text-shift-total">{shifts.total}</div>
-                    <div className="mt-2 space-y-1">
-                      {Object.entries(
-                        (shifts.staff || []).reduce((acc: Record<string, typeof shifts.staff>, m) => {
-                          if (!acc[m.shiftGroup]) acc[m.shiftGroup] = [];
-                          acc[m.shiftGroup]!.push(m);
-                          return acc;
-                        }, {})
-                      ).map(([group, members]) => (
-                        <div key={group} className="flex items-start gap-1 flex-wrap">
-                          <span className="text-xs text-muted-foreground shrink-0 mt-0.5">
-                            {shiftGroupLabel(group)}:
+                {shifts ? (() => {
+                  const managers = (shifts.staff || []).filter(m => m.role !== "staff");
+                  return managers.length > 0 ? (
+                    <div className="space-y-2">
+                      {managers.map((m, i) => (
+                        <div key={m.username} className="flex items-center justify-between gap-2 text-sm" data-testid={`row-manager-${i}`}>
+                          <span className="truncate">
+                            {m.fullName || m.username}{m.nickName ? ` (${m.nickName})` : ""}
                           </span>
-                          {(members as typeof shifts.staff)!.map((m) => (
-                            <Badge key={m.username} variant="secondary" className="text-xs px-1.5 py-0" data-testid={`badge-staff-${m.username}`}>
-                              {m.nickName || m.fullName?.split(" ")[0] || m.username}
-                            </Badge>
-                          ))}
+                          <Badge variant="secondary" className="shrink-0">{shiftGroupLabel(m.shiftGroup)}</Badge>
                         </div>
                       ))}
                     </div>
-                  </>
-                ) : (
+                  ) : (
+                    <p className="text-sm text-muted-foreground" data-testid="text-no-manager-today">
+                      {language === "th" ? "ไม่มีผู้จัดการวันนี้" : "No managers today"}
+                    </p>
+                  );
+                })() : (
                   <p className="text-sm text-muted-foreground" data-testid="text-no-shift-data">
                     {language === "th" ? "ไม่มีข้อมูลกะวันนี้" : "No shift data today"}
                   </p>
@@ -312,30 +306,35 @@ export default function DashboardPage() {
               <Card data-testid="card-staff-today">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    {language === "th" ? "รายชื่อพนักงานวันนี้" : "Staff Working Today"}
+                    {language === "th" ? "พนักงานวันนี้" : "Staff Working Today"}
                   </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  {shifts && shifts.staff && shifts.staff.length > 0 ? (
-                    <div className="space-y-2">
-                      {shifts.staff.slice(0, 8).map((member, i) => (
-                        <div key={i} className="flex items-center justify-between gap-2 text-sm" data-testid={`row-staff-${i}`}>
-                          <span className="truncate">{member.fullName || member.nickName || member.username}</span>
-                          <Badge variant="secondary">{shiftGroupLabel(member.shiftGroup)}</Badge>
-                        </div>
-                      ))}
-                      {shifts.staff.length > 8 && (
-                        <p className="text-xs text-muted-foreground" data-testid="text-more-staff">
-                          +{shifts.staff.length - 8} {language === "th" ? "คนเพิ่มเติม" : "more"}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground" data-testid="text-no-staff-today">
-                      {language === "th" ? "ไม่มีพนักงานวันนี้" : "No staff scheduled today"}
-                    </p>
-                  )}
+                  {(() => {
+                    const staffOnly = (shifts?.staff || []).filter(m => m.role === "staff");
+                    return staffOnly.length > 0 ? (
+                      <div className="space-y-2">
+                        {staffOnly.slice(0, 10).map((member, i) => (
+                          <div key={member.username} className="flex items-center justify-between gap-2 text-sm" data-testid={`row-staff-${i}`}>
+                            <span className="truncate">
+                              {member.fullName || member.username}{member.nickName ? ` (${member.nickName})` : ""}
+                            </span>
+                            <Badge variant="secondary">{shiftGroupLabel(member.shiftGroup)}</Badge>
+                          </div>
+                        ))}
+                        {staffOnly.length > 10 && (
+                          <p className="text-xs text-muted-foreground" data-testid="text-more-staff">
+                            +{staffOnly.length - 10} {language === "th" ? "คนเพิ่มเติม" : "more"}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground" data-testid="text-no-staff-today">
+                        {language === "th" ? "ไม่มีพนักงานวันนี้" : "No staff scheduled today"}
+                      </p>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 

@@ -52,5 +52,46 @@ export function initProactiveChann() {
     { timezone: "Asia/Bangkok" }
   );
 
+  scheduleOneTimeAlert22h45();
+
   console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน");
+}
+
+function scheduleOneTimeAlert22h45() {
+  const nowUtcMs = Date.now();
+  const bangkokOffsetMs = 7 * 60 * 60 * 1000;
+
+  const nowBangkokMs = nowUtcMs + bangkokOffsetMs;
+  const nowBangkokDate = new Date(nowBangkokMs);
+
+  const year = nowBangkokDate.getUTCFullYear();
+  const month = nowBangkokDate.getUTCMonth();
+  const day = nowBangkokDate.getUTCDate();
+
+  const target22h45UtcMs = Date.UTC(year, month, day, 22, 45, 0) - bangkokOffsetMs;
+
+  const delayMs = target22h45UtcMs - nowUtcMs;
+
+  if (delayMs <= 0) {
+    console.log("[Chann] ⏰ 22:45 alert — เลยเวลาแล้ว ไม่ schedule");
+    return;
+  }
+
+  const minutesLeft = Math.round(delayMs / 60000);
+  console.log(`[Chann] ⏰ ตั้ง 22:45 alert ไว้แล้ว (อีก ${minutesLeft} นาที)`);
+
+  setTimeout(() => {
+    pushToBoss("chann-alert", {
+      title: "📋 Chann แจ้งเตือน — งานค้างรอดำเนินการ",
+      message:
+        "1️⃣ Session Plan ยังค้างอยู่\n" +
+        "• banner แจ้งกำหนดส่งรายงาน (Daily & Weekly)\n" +
+        "• auto-populate ยอด Sale/TC/Waste จาก Daily\n" +
+        "• ประวัติรายงาน Weekly (History)\n\n" +
+        "2️⃣ Aloha DBF Integration\n" +
+        "• รอตัวอย่างไฟล์ .DBF จากเครื่อง Back Office\n" +
+        "• ส่งมาเพื่อวิเคราะห์โครงสร้างก่อน build",
+    });
+    console.log("[Chann] ✅ ส่ง 22:45 alert เรียบร้อย");
+  }, delayMs);
 }

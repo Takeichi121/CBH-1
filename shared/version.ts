@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.4";
+export const APP_VERSION = "2.0.5";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.5",
+    date: "2026-03-03",
+    label: "feature",
+    changes: [
+      "Chann: ตั้งเวลาแจ้งเตือนอัตโนมัติ 22:45 น. — แจ้งงานค้างที่รอดำเนินการ (in-app notification)",
+    ],
+  },
   {
     version: "2.0.4",
     date: "2026-03-02",

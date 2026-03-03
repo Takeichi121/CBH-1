@@ -183,11 +183,24 @@ export default function DashboardPage() {
                 {shifts ? (
                   <>
                     <div className="text-2xl font-bold" data-testid="text-shift-total">{shifts.total}</div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {Object.entries(shifts.byGroup || {}).map(([group, count]) => (
-                        <Badge key={group} variant="secondary" data-testid={`badge-group-${group}`}>
-                          {shiftGroupLabel(group)}: {count as number}
-                        </Badge>
+                    <div className="mt-2 space-y-1">
+                      {Object.entries(
+                        (shifts.staff || []).reduce((acc: Record<string, typeof shifts.staff>, m) => {
+                          if (!acc[m.shiftGroup]) acc[m.shiftGroup] = [];
+                          acc[m.shiftGroup]!.push(m);
+                          return acc;
+                        }, {})
+                      ).map(([group, members]) => (
+                        <div key={group} className="flex items-start gap-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground shrink-0 mt-0.5">
+                            {shiftGroupLabel(group)}:
+                          </span>
+                          {(members as typeof shifts.staff)!.map((m) => (
+                            <Badge key={m.username} variant="secondary" className="text-xs px-1.5 py-0" data-testid={`badge-staff-${m.username}`}>
+                              {m.nickName || m.fullName?.split(" ")[0] || m.username}
+                            </Badge>
+                          ))}
+                        </div>
                       ))}
                     </div>
                   </>

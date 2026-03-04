@@ -646,18 +646,21 @@ export function FloatingChannChat() {
               </div>
               <div>
                 <h3 className="font-bold" data-testid="text-chann-title">Chann AI</h3>
-                <Select value={selectedModel} onValueChange={(v) => setSelectedModel(v as any)}>
-                  <SelectTrigger className="h-5 text-[10px] w-36 border-white/30 bg-white/10 text-white px-2 py-0" data-testid="select-chann-model">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gpt-4o">⚡ GPT-4o</SelectItem>
-                    <SelectItem value="gemini-2.5-pro">🧠 Gemini 2.5 Pro</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-xs opacity-80" data-testid="text-chann-subtitle">
+                  {isStreaming ? "กำลังพิมพ์..." : "ผู้ช่วยอัจฉริยะ"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <Select value={selectedModel} onValueChange={(v) => setSelectedModel(v as any)}>
+                <SelectTrigger className="h-7 text-[11px] w-32 border-white/30 bg-white/10 text-white px-2" data-testid="select-chann-model">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gpt-4o">⚡ GPT-4o</SelectItem>
+                  <SelectItem value="gemini-2.5-pro">🧠 Gemini 2.5 Pro</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 size="icon"

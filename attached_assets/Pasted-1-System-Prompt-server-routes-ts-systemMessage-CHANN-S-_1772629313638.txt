@@ -1,0 +1,213 @@
+1. อัปเกรด System Prompt (แก้ไขไฟล์ server/routes.ts)
+นำบล็อกนี้ไปต่อท้าย systemMessage หรือ CHANN_SYSTEM_PROMPT ของคุณ เพื่อเปลี่ยนพฤติกรรมให้ทำก่อนถาม และบังคับให้ตรวจสอบข้อมูลเสมอ
+
+TypeScript
+const CHANN_SYSTEM_PROMPT = `
+// ... (คงของเดิมไว้) ...
+
+[กฎเหล็ก: EXPLORE PHASE (สำรวจก่อนตอบเสมอ)]
+เมื่อนายสั่งงาน ให้ใช้ Tool ค้นหาข้อมูลที่เกี่ยวข้อง "ทันที" ห้ามถาม path หรือข้อมูลเพิ่มเติมถ้าระบบหาเองได้:
+- ถามเรื่องยอดขาย/ภาพรวมร้าน → เรียกใช้ getCrossSystemSummary หรือ getMtdSummary ทันที
+- ถามเรื่องโค้ด/CSS/UI → เรียกใช้ readSourceFile เพื่อดูไฟล์ที่เกี่ยวข้องทันที
+- ถามเรื่องพนักงาน/กะ → เรียกใช้ getTableRows หรือ getShiftsForDate ทันที
+
+[กฎเหล็ก: VERIFY PHASE (ตรวจสอบหลังแก้ไขเสมอ)]
+ทุกครั้งที่คุณใช้ Write Tools (เช่น saveDailySales, proposeCodeEdit, saveShift, approveManagerRequest) 
+คุณ **ต้อง** ใช้ Read Tools ที่เกี่ยวข้อง (เช่น getTableRows, readSourceFile, getCrossSystemSummary) 
+เพื่อดึงข้อมูลกลับมาตรวจสอบยืนยันว่าการแก้ไขนั้นสำเร็จและถูกต้อง "ก่อน" ที่จะสรุปคำตอบให้นายทราบ ห้ามทึกทักเอาเองว่าสำเร็จแล้ว
+
+[การตอบกลับขั้นสุดท้าย]
+- รายงานผลลัพธ์ที่ได้รับการ Verify แล้วอย่างกระชับ
+- ลงท้ายด้วย: [SUGGESTIONS: คำถาม1 | คำถาม2 | คำถาม3]
+`;
+2. สร้าง Gemini Adapter & ปรับปรุง Agentic Loop (แก้ไขไฟล์ server/routes.ts)
+เราจะใช้ Adapter Pattern แปลง Request/Response ของ Gemini ให้หน้าตาเหมือน OpenAI เพื่อให้ Loop การรัน Tools เดิมของคุณทำงานต่อได้โดยไม่ต้องรื้อใหม่ทั้งหมด
+
+2.1 ติดตั้ง Package และ Import
+
+Bash
+npm install @google/generative-ai
+เพิ่มที่ส่วนหัวของ server/routes.ts:
+
+TypeScript
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+2.2 สร้างฟังก์ชันแปลง Tools (เพิ่มไว้เหนือ Agentic Loop)
+
+TypeScript
+// แปลง OpenAI Tools Format ให้เป็น Gemini Format
+function convertToGeminiTools(openAiTools: any[]) {
+  return openAiTools.map(tool => {
+    const properties: Record<string, any> = {};
+    const required = tool.function.parameters?.required || [];
+    
+    // แปลง JSON Schema types เป็น Gemini SchemaType
+    if (tool.function.parameters?.properties) {
+      for (const [key, val] of Object.entries<any>(tool.function.parameters.properties)) {
+        let type = SchemaType.STRING;
+        if (val.type === 'number' || val.type === 'integer') type = SchemaType.NUMBER;
+        else if (val.type === 'boolean') type = SchemaType.BOOLEAN;
+        else if (val.type === 'array') type = SchemaType.ARRAY;
+        else if (val.type === 'object') type = SchemaType.OBJECT;
+
+        properties[key] = {
+          type,
+          description: val.description || "",
+        };
+      }
+    }
+
+    return {
+      name: tool.function.name,
+      description: tool.function.description,
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties,
+        required,
+      }
+    };
+  });
+}
+2.3 ปรับปรุง Agentic Loop (บรรทัด 2080-2185)
+แทนที่ Loop เดิมของคุณด้วยโค้ดชุดนี้ ซึ่งจะจัดการทั้งเรื่อง Thinking Indicator ทุกรอบ และ Dual-Model Support
+
+TypeScript
+// รับค่า model จาก Client (ต้องแก้ส่วนที่รับ req.body ให้มี model ด้วย)
+const requestedModel = req.body.model || "gpt-4o"; 
+const MAX_ROUNDS = 8;
+let rounds = 0;
+let hadAnyToolCalls = false;
+
+while (rounds < MAX_ROUNDS) {
+  rounds++;
+
+  // --- 1. แสดง Thinking Indicator ทุกรอบ ---
+  let thinkingMsg = rounds === 1 
+    ? "กำลังทำความเข้าใจคำสั่งและสำรวจข้อมูล (Explore)..." 
+    : "กำลังประมวลผลและดำเนินการต่อ...";
+  if (hadAnyToolCalls && rounds > 1) {
+    thinkingMsg = "กำลังตรวจสอบความถูกต้อง (Verify) และวิเคราะห์ผลลัพธ์...";
+  }
+  res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
+
+  let loopChoice: any;
+  let loopToolCalls: any[] | undefined = [];
+
+  // --- 2. แยกลอจิกการเรียก Model ---
+  if (requestedModel.startsWith("gemini")) {
+    // [GEMINI 2.0 FLASH LOGIC]
+    const geminiModel = genAI.getGenerativeModel({
+      model: "gemini-2.5-pro", // ใช้รุ่น Pro หรือ Flash ตามที่มี
+      tools: [{ functionDeclarations: convertToGeminiTools(channTools) }]
+    });
+
+    // แปลง aiMessages เป็น history ของ Gemini (ละเว้นระบบซับซ้อนไปก่อน ดึงเฉพาะข้อความล่าสุด)
+    // หมายเหตุ: การใช้งานจริงอาจต้องใช้ chat session ของ Gemini แต่เพื่อความเข้ากันได้กับ Loop เดิม เราจะแปลง prompt
+    const prompt = aiMessages.map(m => `${m.role}: ${m.content || JSON.stringify(m.tool_calls || m)}`).join("\n");
+    const result = await geminiModel.generateContent(prompt);
+    const response = result.response;
+    const functionCalls = response.functionCalls();
+
+    loopChoice = { message: { role: "assistant", content: response.text() || null } };
+    
+    // แปลง Gemini function call เป็น OpenAI format เพื่อให้รันในลอจิกเดิมได้
+    if (functionCalls && functionCalls.length > 0) {
+      loopToolCalls = functionCalls.map(fc => ({
+        id: `call_${Math.random().toString(36).substr(2, 9)}`,
+        type: "function",
+        function: { name: fc.name, arguments: JSON.stringify(fc.args) }
+      }));
+      loopChoice.message.tool_calls = loopToolCalls;
+    }
+
+  } else {
+    // [OPENAI GPT-4o LOGIC (ของเดิมของคุณ)]
+    const loopResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: aiMessages,
+      max_completion_tokens: 8192,
+      tools: channTools,
+      parallel_tool_calls: true,
+    });
+    loopChoice = loopResponse.choices[0];
+    loopToolCalls = loopChoice?.message?.tool_calls;
+  }
+
+  // --- 3. Execute Tools ใน Loop เดิม ---
+  if (loopToolCalls && loopToolCalls.length > 0) {
+    hadAnyToolCalls = true;
+    const toolNames = loopToolCalls.map(tc => tc.function.name).join(", ");
+    res.write(`data: ${JSON.stringify({ thinking: `กำลังใช้เครื่องมือ: ${toolNames}...` })}\n\n`);
+    
+    aiMessages.push(loopChoice.message);
+    
+    const toolResults = await Promise.all(
+      loopToolCalls.map(async (tc) => {
+        const parsedArgs = typeof tc.function.arguments === 'string' 
+          ? JSON.parse(tc.function.arguments) 
+          : tc.function.arguments;
+          
+        return {
+          role: "tool",
+          tool_call_id: tc.id,
+          content: await handleToolCall(tc.function.name, parsedArgs),
+        };
+      })
+    );
+    aiMessages.push(...toolResults);
+    // วน Loop ถัดไปเพื่อ Verify
+  } else {
+    // ไม่มี Tool calls แล้ว จบการทำงาน
+    break;
+  }
+}
+
+// Streaming fallback
+// ถ้าใช้ Gemini เราก็ใช้ generateContentStream, ถ้า OpenAI ใช้ของเดิม (คุณสามารถใช้ if-else ดักตรงนี้ต่อได้เลยครับ)
+3. เพิ่ม Model Toggle ใน Frontend (แก้ไขไฟล์ client/src/components/floating-chann-chat.tsx)
+เพื่อให้ผู้ใช้สลับใช้งานได้ทันที เราจะเพิ่ม State และ Dropdown UI
+
+TypeScript
+import { useState } from "react";
+// ... (import เดิม) ...
+
+export function FloatingChannChat() {
+  const [input, setInput] = useState("");
+  // 1. เพิ่ม State สำหรับเก็บ Model
+  const [selectedModel, setSelectedModel] = useState<"gpt-4o" | "gemini-2.5-pro">("gpt-4o");
+
+  // 2. ปรับฟังก์ชันส่งข้อความ (สมมติว่าชื่อ sendMessage)
+  const sendMessage = async () => {
+    // ...
+    const response = await fetch("/api/chann/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // ส่ง model ไปให้ backend
+      body: JSON.stringify({ 
+        messages: newMessages, 
+        model: selectedModel 
+      }),
+    });
+    // ...
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white shadow-xl rounded-lg overflow-hidden">
+      {/* 3. Header พร้อม Dropdown เลือก Model */}
+      <div className="flex justify-between items-center p-3 bg-blue-600 text-white">
+        <span className="font-bold">Chann AI Assistant</span>
+        <select 
+          value={selectedModel} 
+          onChange={(e) => setSelectedModel(e.target.value as any)}
+          className="text-xs text-black border rounded p-1 bg-white"
+        >
+          <option value="gpt-4o">OpenAI GPT-4o</option>
+          <option value="gemini-2.5-pro">Google Gemini</option>
+        </select>
+      </div>
+
+      {/* ... ส่วนของ Chat Messages ขีดจำกัดเดิม ... */}
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.7";
+export const APP_VERSION = "2.0.8";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.8",
+    date: "2026-03-04",
+    label: "improvement",
+    changes: [
+      "Desktop nav: Staff เห็นแค่ Dashboard + My Work, Manager เห็นทุก feature menu",
+      "Roster ออกจาก desktop nav bar (Roster data อยู่ใน My Work อยู่แล้ว)",
+      "Settings + Handbook ออกจาก desktop nav — เข้าผ่าน Profile Dropdown แทน",
+      "Mobile sidebar: ยังคงแสดงครบทุกเมนู รวม Roster + Settings + Handbook",
+    ],
+  },
   {
     version: "2.0.7",
     date: "2026-03-04",

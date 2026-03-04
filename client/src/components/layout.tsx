@@ -38,7 +38,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
 
-  const navItems = [
+  const desktopNavItems = [
+    { href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard },
+    { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
+    ...(isManagerOrAdmin ? [
+      { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
+      { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
+      { href: "/requests", label: t("managerRequest") || "Request", icon: FileText },
+      { href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield },
+    ] : []),
+  ];
+
+  const mobileNavItems = [
     { href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard },
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
@@ -138,7 +149,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
                 {/* Mobile Sidebar — Nav Items */}
                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-                  {navItems.map((item) => {
+                  {mobileNavItems.map((item) => {
                     const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
                     return (
                       <Link key={item.href} href={item.href}>
@@ -177,7 +188,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex items-center gap-1">
-          {navItems.map((item) => {
+          {desktopNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href) && item.href !== "/work");
             return (
               <Link

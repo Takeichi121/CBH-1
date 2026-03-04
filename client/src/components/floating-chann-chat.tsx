@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +31,7 @@ export function FloatingChannChat() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<"gpt-4o" | "gemini-2.5-pro">("gpt-4o");
   const greetingInitiated = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -60,7 +62,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true }),
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, model: selectedModel }),
         });
         if (!res.body) throw new Error("No body");
         const reader = res.body.getReader();
@@ -287,7 +289,7 @@ export function FloatingChannChat() {
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: contextMessage, pageContext: buildPageContext() };
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), model: selectedModel };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -456,7 +458,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: fakeEvent, pageContext: buildPageContext() }),
+          body: JSON.stringify({ token, message: fakeEvent, pageContext: buildPageContext(), model: selectedModel }),
         });
         if (!res.body) throw new Error("No response body");
         const reader = res.body.getReader();
@@ -644,9 +646,15 @@ export function FloatingChannChat() {
               </div>
               <div>
                 <h3 className="font-bold" data-testid="text-chann-title">Chann AI</h3>
-                <p className="text-xs opacity-80" data-testid="text-chann-subtitle">
-                  {isStreaming ? "กำลังพิมพ์..." : "ผู้ช่วยอัจฉริยะ"}
-                </p>
+                <Select value={selectedModel} onValueChange={(v) => setSelectedModel(v as any)}>
+                  <SelectTrigger className="h-5 text-[10px] w-36 border-white/30 bg-white/10 text-white px-2 py-0" data-testid="select-chann-model">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o">⚡ GPT-4o</SelectItem>
+                    <SelectItem value="gemini-2.5-pro">🧠 Gemini 2.5 Pro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex items-center gap-1">

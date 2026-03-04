@@ -2,6 +2,31 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO } from "./socket";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+function convertToGeminiTools(openAiTools: any[]) {
+  return openAiTools.map(tool => {
+    const properties: Record<string, any> = {};
+    const required = tool.function.parameters?.required || [];
+    if (tool.function.parameters?.properties) {
+      for (const [key, val] of Object.entries<any>(tool.function.parameters.properties)) {
+        let type = SchemaType.STRING;
+        if (val.type === "number" || val.type === "integer") type = SchemaType.NUMBER;
+        else if (val.type === "boolean") type = SchemaType.BOOLEAN;
+        else if (val.type === "array") type = SchemaType.ARRAY;
+        else if (val.type === "object") type = SchemaType.OBJECT;
+        properties[key] = { type, description: val.description || "" };
+      }
+    }
+    return {
+      name: tool.function.name,
+      description: tool.function.description,
+      parameters: { type: SchemaType.OBJECT, properties, required },
+    };
+  });
+}
 
 // ── LINE Messaging API ──────────────────────────────
 async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
@@ -312,7 +337,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, imageBase64, pageContext, silentMessage } = req.body;
+      const { token, message, imageBase64, pageContext, silentMessage, model: requestedModel = "gpt-4o" } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.json({ ok: false, message: "Token and message required" });
       }
@@ -392,6 +417,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ใช้ tools ค้นหาข้อมูลที่ขาดก่อนเสมอ (เช่น ไม่รู้ path ไฟล์ → ใช้ readSourceFile ค้นหาเอง)
 - ลงมือทำทันทีแล้วรายงานผลลัพธ์
 - ถามนายเฉพาะเมื่อ tools ก็ยังหาข้อมูลที่จำเป็นไม่ได้จริงๆ
+
+[กฎเหล็ก: EXPLORE PHASE (สำรวจก่อนตอบเสมอ)]
+เมื่อนายสั่งงาน ให้ใช้ Tool ค้นหาข้อมูลที่เกี่ยวข้อง "ทันที" ห้ามถาม path หรือข้อมูลเพิ่มเติมถ้าระบบหาเองได้:
+- ถามเรื่องยอดขาย/ภาพรวมร้าน → เรียกใช้ getCrossSystemSummary หรือ getMtdSummary ทันที
+- ถามเรื่องโค้ด/CSS/UI/component → เรียกใช้ readSourceFile เพื่อดูไฟล์ที่เกี่ยวข้องทันที ไม่ถามว่า path คืออะไร
+- ถามเรื่องพนักงาน/กะ → เรียกใช้ getTableRows หรือ getShiftsForDate ทันที
+- ถามเรื่องยืมคืน → getBorrowTransactions + getBorrowBranches พร้อมกัน
+- ไม่รู้ว่าข้อมูลอยู่ที่ไหน → readSourceFile หรือ getTableRows สำรวจก่อน แล้วค่อยตอบ
+
+[กฎเหล็ก: VERIFY PHASE (ตรวจสอบหลังแก้ไขเสมอ)]
+ทุกครั้งที่คุณใช้ Write Tools (เช่น saveDailySales, proposeCodeEdit, saveShift, approveManagerRequest)
+คุณ **ต้อง** ใช้ Read Tools ที่เกี่ยวข้อง (เช่น getTableRows, readSourceFile, getCrossSystemSummary)
+เพื่อดึงข้อมูลกลับมาตรวจสอบยืนยันว่าการแก้ไขนั้นสำเร็จและถูกต้อง "ก่อน" ที่จะสรุปคำตอบให้นายทราบ
+ห้ามทึกทักเอาเองว่าสำเร็จแล้ว ต้องมีหลักฐานจาก Read Tool เสมอ เช่น:
+- หลัง saveDailySales → getTableRows("daily_sales_reports") หรือ getCrossSystemSummary
+- หลัง saveShift / bulkSaveShifts → getShiftsForDate เพื่อยืนยัน
+- หลัง proposeCodeEdit → readSourceFile ตรวจสอบว่า proposal ถูกบันทึก
+- หลัง updateStoreSettings → getStoreSettings ยืนยันค่าที่เปลี่ยน
 
 [บริบทฐานข้อมูล - เชื่อมโยงทุกระบบ]
 คุณมีเครื่องมือพิเศษในการดึงข้อมูลข้ามระบบ:
@@ -2077,59 +2120,91 @@ ${pageContext}` : ''}`;
         }
       }
 
-      // Agentic loop — up to 8 rounds of tool calling for complex multi-step tasks
-      const TOOL_MODEL = "gpt-4o";
-      const FINAL_MODEL = "gpt-4o";
+      // Agentic loop — up to 8 rounds, supports GPT-4o and Gemini 2.5 Pro
       const MAX_ROUNDS = 8;
       let rounds = 0;
       let hadAnyToolCalls = false;
 
+      // Shared helper: extract [SUGGESTIONS:...] from response text
+      const extractSuggestions = (raw: string): { clean: string; suggestions: string[] } => {
+        const match = raw.match(/\[SUGGESTIONS:\s*(.+?)\]\s*$/s);
+        if (!match) return { clean: raw, suggestions: [] };
+        const suggestions = match[1].split("|").map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
+        const clean = raw.slice(0, raw.lastIndexOf(match[0])).trimEnd();
+        return { clean, suggestions };
+      };
+
       while (rounds < MAX_ROUNDS) {
         rounds++;
 
-        // Send thinking progress indicator for multi-step tasks
-        if (rounds > 1) {
-          res.write(`data: ${JSON.stringify({ thinking: `กำลังวิเคราะห์ข้อมูล... (ขั้นตอนที่ ${rounds})` })}\n\n`);
+        // Thinking indicator every round including round 1
+        let thinkingMsg = rounds === 1
+          ? "กำลังทำความเข้าใจคำสั่งและสำรวจข้อมูล (Explore)..."
+          : hadAnyToolCalls
+            ? "กำลังตรวจสอบความถูกต้อง (Verify) และวิเคราะห์ผลลัพธ์..."
+            : "กำลังประมวลผลและดำเนินการต่อ...";
+        res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
+
+        let loopChoice: any;
+        let loopToolCalls: any[] | undefined = [];
+
+        if (requestedModel.startsWith("gemini")) {
+          // ── GEMINI 2.5 PRO LOGIC ──────────────────────
+          const geminiModel = genAI.getGenerativeModel({
+            model: "gemini-2.5-pro",
+            tools: [{ functionDeclarations: convertToGeminiTools(channTools) }],
+          });
+          const prompt = aiMessages
+            .map((m: any) => `${m.role}: ${typeof m.content === "string" ? m.content : JSON.stringify(m.tool_calls || m)}`)
+            .join("\n");
+          const result = await geminiModel.generateContent(prompt);
+          const response = result.response;
+          const functionCalls = response.functionCalls();
+          loopChoice = { message: { role: "assistant", content: response.text() || null } };
+          if (functionCalls && functionCalls.length > 0) {
+            loopToolCalls = functionCalls.map((fc: any) => ({
+              id: `call_${Math.random().toString(36).substr(2, 9)}`,
+              type: "function",
+              function: { name: fc.name, arguments: JSON.stringify(fc.args) },
+            }));
+            loopChoice.message.tool_calls = loopToolCalls;
+          }
+        } else {
+          // ── OPENAI GPT-4o LOGIC ───────────────────────
+          const loopResponse = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: aiMessages,
+            max_completion_tokens: 8192,
+            tools: channTools,
+            parallel_tool_calls: true,
+          });
+          loopChoice = loopResponse.choices[0];
+          loopToolCalls = loopChoice?.message?.tool_calls;
         }
-
-        const loopResponse = await openai.chat.completions.create({
-          model: TOOL_MODEL,
-          messages: aiMessages,
-          max_completion_tokens: 8192,
-          tools: channTools,
-          parallel_tool_calls: true,
-        });
-
-        const loopChoice = loopResponse.choices[0];
-        const loopToolCalls = loopChoice?.message?.tool_calls;
 
         if (loopToolCalls && loopToolCalls.length > 0) {
           hadAnyToolCalls = true;
-          // Send tool name hints to client
           const toolNames = loopToolCalls.map((tc: any) => tc.function?.name).filter(Boolean);
           res.write(`data: ${JSON.stringify({ thinking: `กำลังใช้เครื่องมือ: ${toolNames.join(", ")}` })}\n\n`);
           aiMessages.push(loopChoice.message);
           const toolResults = await Promise.all(
-            loopToolCalls.map(async (toolCall: any) => ({
-              role: "tool" as const,
-              tool_call_id: toolCall.id,
-              content: await handleToolCall(toolCall.function?.name, JSON.parse(toolCall.function.arguments)),
-            }))
+            loopToolCalls.map(async (toolCall: any) => {
+              const parsedArgs = typeof toolCall.function.arguments === "string"
+                ? JSON.parse(toolCall.function.arguments)
+                : toolCall.function.arguments;
+              return {
+                role: "tool" as const,
+                tool_call_id: toolCall.id,
+                content: await handleToolCall(toolCall.function?.name, parsedArgs),
+              };
+            })
           );
           aiMessages.push(...toolResults);
-          // Continue loop to allow chained tool calls
+          // Continue loop — Verify phase will run next round
         } else {
-          // No tool calls — extract suggestions helper
-          const extractSuggestions = (raw: string): { clean: string; suggestions: string[] } => {
-            const match = raw.match(/\[SUGGESTIONS:\s*(.+?)\]\s*$/s);
-            if (!match) return { clean: raw, suggestions: [] };
-            const suggestions = match[1].split("|").map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
-            const clean = raw.slice(0, raw.lastIndexOf(match[0])).trimEnd();
-            return { clean, suggestions };
-          };
-
-          // No tool calls — check for direct text response (no-tool case)
+          // No tool calls — send final response
           if (!hadAnyToolCalls) {
+            // No tools used at all — direct answer
             if (toolActions.length > 0) {
               res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
             }
@@ -2149,7 +2224,7 @@ ${pageContext}` : ''}`;
             return;
           }
 
-          // Had tool calls: use the model's already-generated response directly (avoid extra API call)
+          // Had tool calls: use the model's already-generated response (avoid extra API call)
           const finalDirect = loopChoice?.message?.content;
           if (finalDirect) {
             if (toolActions.length > 0) {
@@ -2167,7 +2242,7 @@ ${pageContext}` : ''}`;
             res.end();
             return;
           }
-          break; // Fallback: no content in break response, do streaming final answer
+          break; // Fallback: no content — do streaming final answer below
         }
       }
 
@@ -2178,7 +2253,7 @@ ${pageContext}` : ''}`;
 
       // Streaming fallback: for rare cases where break has no content or MAX_ROUNDS hit
       const streamResponse = await openai.chat.completions.create({
-        model: FINAL_MODEL,
+        model: "gpt-4o",
         messages: aiMessages,
         max_completion_tokens: 4096,
         stream: true,

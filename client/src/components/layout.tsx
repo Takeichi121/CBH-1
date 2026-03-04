@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
@@ -44,8 +44,6 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(isManagerOrAdmin ? [
       { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
-      { href: "/requests", label: t("managerRequest") || "Request", icon: FileText },
-      { href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield },
     ] : []),
   ];
 
@@ -190,6 +188,46 @@ export function Layout({ children }: { children: ReactNode }) {
         <nav className="flex items-center gap-1">
           {desktopNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href) && item.href !== "/work");
+            const isWorkActive = item.href === "/work" && (location === "/work" || location.startsWith("/requests"));
+
+            if (item.href === "/work" && isManagerOrAdmin) {
+              return (
+                <DropdownMenu key={item.href}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
+                        isWorkActive
+                          ? "bg-primary/10 text-primary font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                      <ChevronDown className="w-3 h-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuItem asChild>
+                      <Link href="/work">
+                        <a className="flex items-center gap-2 w-full cursor-pointer">
+                          <Briefcase className="w-4 h-4 text-muted-foreground" />
+                          <span>{t("myWork") || "My Work"}</span>
+                        </a>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/requests">
+                        <a className="flex items-center gap-2 w-full cursor-pointer">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span>{t("managerRequest") || "Request"}</span>
+                        </a>
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
@@ -292,6 +330,16 @@ export function Layout({ children }: { children: ReactNode }) {
                     </a>
                   </Link>
                 </DropdownMenuItem>
+                {isManagerOrAdmin && (
+                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                    <Link href="/admin">
+                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-manage-team">
+                        <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{t("manageTeam") || "Manage Team"}</span>
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </div>
 
               <DropdownMenuSeparator />

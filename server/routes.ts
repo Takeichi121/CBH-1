@@ -3,8 +3,13 @@ import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO } from "./socket";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
+const anthropic = new Anthropic({
+  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+});
 
 function convertToGeminiTools(openAiTools: any[]) {
   return openAiTools.map(tool => {
@@ -337,7 +342,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, imageBase64, pageContext, silentMessage, model: requestedModel = "gpt-4o" } = req.body;
+      const { token, message, imageBase64, pageContext, silentMessage } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.json({ ok: false, message: "Token and message required" });
       }
@@ -2139,48 +2144,22 @@ ${pageContext}` : ''}`;
 
         // Thinking indicator every round including round 1
         let thinkingMsg = rounds === 1
-          ? "กำลังทำความเข้าใจคำสั่งและสำรวจข้อมูล (Explore)..."
+          ? "กำลังสำรวจข้อมูลด้วย Chann Fusion..."
           : hadAnyToolCalls
-            ? "กำลังตรวจสอบความถูกต้อง (Verify) และวิเคราะห์ผลลัพธ์..."
+            ? "กำลังตรวจสอบ (Verify) ด้วย Chann Fusion..."
             : "กำลังประมวลผลและดำเนินการต่อ...";
         res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
 
-        let loopChoice: any;
-        let loopToolCalls: any[] | undefined = [];
-
-        if (requestedModel.startsWith("gemini")) {
-          // ── GEMINI 2.5 PRO LOGIC ──────────────────────
-          const geminiModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-pro",
-            tools: [{ functionDeclarations: convertToGeminiTools(channTools) }],
-          });
-          const prompt = aiMessages
-            .map((m: any) => `${m.role}: ${typeof m.content === "string" ? m.content : JSON.stringify(m.tool_calls || m)}`)
-            .join("\n");
-          const result = await geminiModel.generateContent(prompt);
-          const response = result.response;
-          const functionCalls = response.functionCalls();
-          loopChoice = { message: { role: "assistant", content: response.text() || null } };
-          if (functionCalls && functionCalls.length > 0) {
-            loopToolCalls = functionCalls.map((fc: any) => ({
-              id: `call_${Math.random().toString(36).substr(2, 9)}`,
-              type: "function",
-              function: { name: fc.name, arguments: JSON.stringify(fc.args) },
-            }));
-            loopChoice.message.tool_calls = loopToolCalls;
-          }
-        } else {
-          // ── OPENAI GPT-4o LOGIC ───────────────────────
-          const loopResponse = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: aiMessages,
-            max_completion_tokens: 8192,
-            tools: channTools,
-            parallel_tool_calls: true,
-          });
-          loopChoice = loopResponse.choices[0];
-          loopToolCalls = loopChoice?.message?.tool_calls;
-        }
+        // ── GPT-4o agentic loop (tool calling) ───────────────────────
+        const loopResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: aiMessages,
+          max_completion_tokens: 8192,
+          tools: channTools,
+          parallel_tool_calls: true,
+        });
+        const loopChoice = loopResponse.choices[0];
+        const loopToolCalls = loopChoice?.message?.tool_calls;
 
         if (loopToolCalls && loopToolCalls.length > 0) {
           hadAnyToolCalls = true;
@@ -2202,35 +2181,129 @@ ${pageContext}` : ''}`;
           aiMessages.push(...toolResults);
           // Continue loop — Verify phase will run next round
         } else {
-          // No tool calls — send final response
-          if (!hadAnyToolCalls) {
-            // No tools used at all — direct answer
-            if (toolActions.length > 0) {
-              res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
-            }
-            const directContent = loopChoice?.message?.content || "";
-            if (directContent) {
-              const { clean, suggestions } = extractSuggestions(directContent);
-              for (let i = 0; i < clean.length; i += 30) {
-                res.write(`data: ${JSON.stringify({ content: clean.slice(i, i + 30) })}\n\n`);
+          // No tool calls — run Triple Fusion Synthesis
+          res.write(`data: ${JSON.stringify({ thinking: "กำลังรวมคำตอบจาก GPT-4o + Gemini + Claude..." })}\n\n`);
+
+          if (toolActions.length > 0) {
+            res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
+          }
+
+          // Build prompt string for non-OpenAI models
+          const fusionPrompt = aiMessages
+            .map((m: any) => `${m.role}: ${typeof m.content === "string" ? m.content : JSON.stringify(m)}`)
+            .join("\n");
+
+          // Run GPT-4o + Gemini + Claude in parallel
+          const [gptAnswer, geminiAnswer, claudeAnswer] = await Promise.all([
+            // GPT-4o
+            openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: aiMessages,
+              max_completion_tokens: 2048,
+            }).then(r => r.choices[0]?.message?.content || "").catch(() => ""),
+
+            // Gemini 2.5 Pro
+            (async () => {
+              try {
+                const gm = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+                const r = await gm.generateContent(fusionPrompt);
+                return r.response.text() || "";
+              } catch { return ""; }
+            })(),
+
+            // Claude Sonnet 4.6 (Replit AI Integration)
+            (async () => {
+              try {
+                const claudeMessages = aiMessages
+                  .filter((m: any) => m.role === "user" || m.role === "assistant")
+                  .map((m: any) => ({
+                    role: m.role as "user" | "assistant",
+                    content: typeof m.content === "string" ? m.content : JSON.stringify(m.content || ""),
+                  }));
+                if (claudeMessages.length === 0) return "";
+                const r = await anthropic.messages.create({
+                  model: "claude-sonnet-4-6",
+                  max_tokens: 2048,
+                  messages: claudeMessages,
+                });
+                const block = r.content[0];
+                return block?.type === "text" ? block.text : "";
+              } catch { return ""; }
+            })(),
+          ]);
+
+          // Collect non-empty answers for synthesis
+          const availableAnswers: string[] = [];
+          if (gptAnswer) availableAnswers.push(`[GPT-4o]: ${gptAnswer}`);
+          if (geminiAnswer) availableAnswers.push(`[Gemini 2.5 Pro]: ${geminiAnswer}`);
+          if (claudeAnswer) availableAnswers.push(`[Claude Sonnet]: ${claudeAnswer}`);
+
+          let finalContent = gptAnswer; // fallback
+
+          if (availableAnswers.length > 1) {
+            // Synthesize all answers via GPT-4o streaming
+            const synthMessages: any[] = [
+              ...aiMessages,
+              {
+                role: "user",
+                content: `คุณมีคำตอบจาก AI หลายตัว:\n\n${availableAnswers.join("\n\n")}\n\nสังเคราะห์ทั้งหมดเป็นคำตอบที่ดีที่สุด ครบถ้วน และเป็นประโยชน์ที่สุด ในภาษาเดียวกับคำถาม ห้ามระบุชื่อโมเดลหรือว่ามาจากใคร`,
+              },
+            ];
+            const synthStream = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: synthMessages,
+              max_completion_tokens: 4096,
+              stream: true,
+            });
+            let fullSynth = "";
+            let suggTailBuf = "";
+            let capturingSugg = false;
+            const SUGG_MARKER = "[SUGGESTIONS:";
+            for await (const chunk of synthStream) {
+              const delta = chunk.choices[0]?.delta?.content || "";
+              if (delta) {
+                fullSynth += delta;
+                if (capturingSugg) {
+                  suggTailBuf += delta;
+                } else {
+                  const tail = suggTailBuf + delta;
+                  const markerIdx = tail.lastIndexOf(SUGG_MARKER);
+                  if (markerIdx !== -1) {
+                    const beforeMarker = tail.slice(0, markerIdx);
+                    if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+                    capturingSugg = true;
+                    suggTailBuf = tail.slice(markerIdx);
+                  } else {
+                    const safeLen = tail.length - SUGG_MARKER.length;
+                    if (safeLen > 0) {
+                      res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
+                      suggTailBuf = tail.slice(safeLen);
+                    } else {
+                      suggTailBuf = tail;
+                    }
+                  }
+                }
               }
-              if (suggestions.length > 0) {
-                res.write(`data: ${JSON.stringify({ suggestedReplies: suggestions })}\n\n`);
-              }
-              await db.insert(channConversations).values({ username, role: "assistant", content: clean });
             }
+            // Flush remaining
+            if (!capturingSugg && suggTailBuf) {
+              res.write(`data: ${JSON.stringify({ content: suggTailBuf })}\n\n`);
+              suggTailBuf = "";
+            }
+            // Extract suggestions from fullSynth
+            const { clean: synthClean, suggestions: synthSugg } = extractSuggestions(fullSynth);
+            if (synthSugg.length > 0) {
+              res.write(`data: ${JSON.stringify({ suggestedReplies: synthSugg })}\n\n`);
+            }
+            db.insert(channConversations).values({ username, role: "assistant", content: synthClean }).catch(console.error);
             res.write(`data: [DONE]\n\n`);
             res.end();
             return;
           }
 
-          // Had tool calls: use the model's already-generated response (avoid extra API call)
-          const finalDirect = loopChoice?.message?.content;
-          if (finalDirect) {
-            if (toolActions.length > 0) {
-              res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
-            }
-            const { clean, suggestions } = extractSuggestions(finalDirect);
+          // Single model fallback — stream gptAnswer directly
+          if (finalContent) {
+            const { clean, suggestions } = extractSuggestions(finalContent);
             for (let i = 0; i < clean.length; i += 30) {
               res.write(`data: ${JSON.stringify({ content: clean.slice(i, i + 30) })}\n\n`);
             }

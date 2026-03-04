@@ -254,6 +254,60 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ==========================================
+  // 🌐 Internal Web Search/Fetch for Chann
+  // ==========================================
+  app.post("/api/internal/web-search", async (req, res) => {
+    try {
+      const { query } = req.body;
+      if (!query) return res.json({ error: "query required" });
+      // Use DuckDuckGo Instant Answer API (free, no API key needed)
+      const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+      const ddgRes = await fetch(ddgUrl, { headers: { "User-Agent": "BKGrandDiamond/1.0" } });
+      const ddgData = await ddgRes.json() as any;
+      const searchAnswer = ddgData.AbstractText || ddgData.Answer || "";
+      const resultPages = [
+        ...(ddgData.RelatedTopics || [])
+          .filter((t: any) => t.FirstURL && t.Text)
+          .slice(0, 5)
+          .map((t: any) => ({ title: t.Text?.slice(0, 80), url: t.FirstURL })),
+        ...(ddgData.Results || [])
+          .filter((r: any) => r.FirstURL && r.Text)
+          .slice(0, 3)
+          .map((r: any) => ({ title: r.Text?.slice(0, 80), url: r.FirstURL })),
+      ].slice(0, 5);
+      const abstractSource = ddgData.AbstractSource || "";
+      const abstractUrl = ddgData.AbstractURL || "";
+      res.json({ searchAnswer, resultPages, abstractSource, abstractUrl, query });
+    } catch (e: any) {
+      res.json({ error: e.message || "Web search failed" });
+    }
+  });
+
+  app.post("/api/internal/web-fetch", async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) return res.json({ error: "url required" });
+      const pageRes = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; BKGrandDiamond/1.0)" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!pageRes.ok) return res.json({ error: `HTTP ${pageRes.status}`, url });
+      const html = await pageRes.text();
+      // Extract text content from HTML simply
+      const text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 6000);
+      res.json({ markdown: text, url });
+    } catch (e: any) {
+      res.json({ error: e.message || "Web fetch failed" });
+    }
+  });
+
+  // ==========================================
   // 🤖 Chann AI Assistant (SSE Streaming)
   // ==========================================
   app.post("/api/chann", async (req, res) => {
@@ -347,6 +401,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - getDailyTargetsForMonth: ดูเป้ายอดขายรายวันทั้งเดือน
 - getDailySalesReportsForMonth: ดูรายงานยอดขายรายวันทั้งเดือน
 - getLaborSettings: ดูค่า Labor settings (PT rate, FT rate ฯลฯ)
+- getManagerRequests: ดูคำขอพนักงาน (ลา, หยุด, สลับกะ, วันหยุดประจำปี) พร้อม filter status
+- webSearch: ค้นหาข้อมูลจากอินเตอร์เน็ต — ใช้เมื่อถามเรื่องนอกฐานข้อมูล เช่น ราคาตลาด, ข่าวธุรกิจ, เทรนด์
+- webFetch: ดึงเนื้อหาจาก URL เฉพาะ — ใช้ต่อจาก webSearch เพื่อดูรายละเอียด
+- recallNotes: เรียกดู notes ที่เคยบันทึกไว้ — ใช้เพื่อจำ preferences หรือข้อมูลสำคัญของนาย
+
+[หลักการทำงานแบบ Multi-Step Agent]
+- วางแผนก่อน: สำหรับ task ซับซ้อน ให้คิดว่าต้องใช้ tool อะไรบ้าง ในลำดับใด
+- ใช้ parallel tool calls: เรียก tool หลายตัวพร้อมกันเมื่อไม่ขึ้นต่อกัน (เช่น ดึงยอดขายและตารางกะพร้อมกัน)
+- recallNotes ก่อนตอบ: ถ้าคิดว่ามี notes สำคัญเกี่ยวกับนาย ให้เรียกดูก่อน
+- ค้นหาเว็บเมื่อจำเป็น: ใช้ webSearch สำหรับข้อมูล real-time ที่ไม่อยู่ในฐานข้อมูล
 
 ใช้ getCrossSystemSummary เมื่อนายถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
 ${isManagerOrAdmin && !isAdmin ? `
@@ -359,6 +423,10 @@ ${isManagerOrAdmin && !isAdmin ? `
 - deleteShift: ลบกะของพนักงาน
 - bulkSaveShifts: จองกะหลายคน/หลายวันพร้อมกัน
 - saveDailyLabor: บันทึกชั่วโมงแรงงานรายวัน (actual + OT)
+- approveManagerRequest: อนุมัติคำขอพนักงาน
+- rejectManagerRequest: ปฏิเสธคำขอพนักงาน
+- rememberNote: บันทึก note ระยะยาว เพื่อจำข้อมูลสำคัญข้ามการสนทนา
+- deleteNote: ลบ note ที่บันทึกไว้
 
 [กฎการเขียนข้อมูล]
 - เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
@@ -377,6 +445,10 @@ ${isManagerOrAdmin && !isAdmin ? `
 - deleteShift: ลบกะของพนักงาน
 - bulkSaveShifts: จองกะหลายคน/หลายวันพร้อมกัน
 - saveDailyLabor: บันทึกชั่วโมงแรงงานรายวัน (actual + OT)
+- approveManagerRequest: อนุมัติคำขอพนักงาน
+- rejectManagerRequest: ปฏิเสธคำขอพนักงาน
+- rememberNote: บันทึก note ระยะยาว เพื่อจำข้อมูลสำคัญข้ามการสนทนา
+- deleteNote: ลบ note ที่บันทึกไว้
 
 **เครื่องมือ Write (Admin only):**
 - saveLaborSettings: อัปเดตค่า Labor (roster hours, PT rate ฯลฯ)
@@ -678,6 +750,62 @@ ${pageContext}` : ''}`;
             parameters: {
               type: "object",
               properties: {},
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getManagerRequests",
+            description: "Get employee requests (leave, day off, shift preference, annual leave). Use this to check pending requests that need approval.",
+            parameters: {
+              type: "object",
+              properties: {
+                status: { type: "string", enum: ["pending", "approved", "rejected", "all"], description: "Filter by status (default: all)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "webSearch",
+            description: "Search the internet for real-time information, news, prices, or any topic not in the database. Use when asked about external information.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "Search query in natural language" }
+              },
+              required: ["query"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "webFetch",
+            description: "Fetch and read content from a specific URL. Use after webSearch to get detailed content from a result page.",
+            parameters: {
+              type: "object",
+              properties: {
+                url: { type: "string", description: "Full HTTPS URL to fetch content from" }
+              },
+              required: ["url"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "recallNotes",
+            description: "Recall notes and memories that were previously saved. Use to remember preferences, important info, or context from past conversations.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "Optional search query to filter notes by keyword" }
+              },
               required: []
             }
           }
@@ -1157,10 +1285,69 @@ ${pageContext}` : ''}`;
               required: ["message"]
             }
           }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "rememberNote",
+            description: "Save a note or memory for future recall. Use to remember user preferences, important context, or any info worth keeping across conversations.",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Short title/key for the note (e.g. 'นายชอบดูยอดขายแบบย่อ')" },
+                content: { type: "string", description: "Full content of the note to remember" }
+              },
+              required: ["title", "content"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "deleteNote",
+            description: "Delete a saved note by its ID.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "The ID of the note to delete" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "approveManagerRequest",
+            description: "Approve an employee request (leave, day off, shift preference). For Manager and Admin only.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "The ID of the manager request to approve" },
+                reason: { type: "string", description: "Optional reason or note for the approval" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "rejectManagerRequest",
+            description: "Reject an employee request (leave, day off, shift preference). For Manager and Admin only.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "The ID of the manager request to reject" },
+                reason: { type: "string", description: "Reason for rejection (recommended)" }
+              },
+              required: ["id"]
+            }
+          }
         }
       ];
 
-      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts"]);
+      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote"]);
       const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "getCodeProposals", "sendLineNotification"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
@@ -1791,25 +1978,108 @@ ${pageContext}` : ''}`;
             }
           }
 
+          case "getManagerRequests": {
+            const reqStatus = args.status === "all" ? undefined : (args.status || undefined);
+            const requests = await storage.getAllManagerRequests(reqStatus);
+            return JSON.stringify({ ok: true, requests, count: requests.length });
+          }
+
+          case "approveManagerRequest": {
+            const mgReq = await storage.getManagerRequest(args.id);
+            if (!mgReq) return JSON.stringify({ error: `ไม่พบคำขอ ID ${args.id}` });
+            await storage.updateManagerRequestStatus(args.id, "approved", username, args.reason || "อนุมัติโดย Chann");
+            toolActions.push(`✅ อนุมัติคำขอ #${args.id} ของ ${mgReq.requestedBy} (${mgReq.requestType})`);
+            return JSON.stringify({ ok: true, message: `อนุมัติคำขอ #${args.id} สำเร็จ` });
+          }
+
+          case "rejectManagerRequest": {
+            const mgReq2 = await storage.getManagerRequest(args.id);
+            if (!mgReq2) return JSON.stringify({ error: `ไม่พบคำขอ ID ${args.id}` });
+            await storage.updateManagerRequestStatus(args.id, "rejected", username, args.reason || "ปฏิเสธโดย Chann");
+            toolActions.push(`❌ ปฏิเสธคำขอ #${args.id} ของ ${mgReq2.requestedBy} (${mgReq2.requestType})`);
+            return JSON.stringify({ ok: true, message: `ปฏิเสธคำขอ #${args.id} สำเร็จ` });
+          }
+
+          case "webSearch": {
+            try {
+              const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(args.query)}&format=json&no_html=1&skip_disambig=1`;
+              const ddgRes = await fetch(ddgUrl, { headers: { "User-Agent": "BKGrandDiamond/1.0" } });
+              const ddgData = await ddgRes.json() as any;
+              const searchAnswer = ddgData.AbstractText || ddgData.Answer || "(ไม่พบคำตอบตรงๆ แต่มีลิงก์ที่เกี่ยวข้อง)";
+              const resultPages = [
+                ...(ddgData.RelatedTopics || []).filter((t: any) => t.FirstURL && t.Text).slice(0, 5).map((t: any) => ({ title: t.Text?.slice(0, 100), url: t.FirstURL })),
+                ...(ddgData.Results || []).filter((r: any) => r.FirstURL && r.Text).slice(0, 3).map((r: any) => ({ title: r.Text?.slice(0, 100), url: r.FirstURL })),
+              ].slice(0, 6);
+              return JSON.stringify({ searchAnswer, resultPages, abstractSource: ddgData.AbstractSource || "", abstractUrl: ddgData.AbstractURL || "", query: args.query });
+            } catch (searchErr: any) {
+              return JSON.stringify({ error: `Web search error: ${searchErr.message}` });
+            }
+          }
+
+          case "webFetch": {
+            try {
+              const pageRes = await fetch(args.url, {
+                headers: { "User-Agent": "Mozilla/5.0 (compatible; BKGrandDiamond/1.0)" },
+                signal: AbortSignal.timeout(8000),
+              });
+              if (!pageRes.ok) return JSON.stringify({ error: `HTTP ${pageRes.status}`, url: args.url });
+              const html = await pageRes.text();
+              const text = html
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 6000);
+              return JSON.stringify({ markdown: text, url: args.url });
+            } catch (fetchErr: any) {
+              return JSON.stringify({ error: `Web fetch error: ${fetchErr.message}` });
+            }
+          }
+
+          case "rememberNote": {
+            const savedNote = await storage.saveChannNote(username, args.title, args.content);
+            toolActions.push(`🧠 จดจำ: "${args.title}"`);
+            return JSON.stringify({ ok: true, message: `บันทึก note "${args.title}" สำเร็จ`, id: savedNote.id });
+          }
+
+          case "recallNotes": {
+            const notes = await storage.getChannNotes(username, args.query);
+            return JSON.stringify({ ok: true, notes, count: notes.length });
+          }
+
+          case "deleteNote": {
+            await storage.deleteChannNote(args.id);
+            toolActions.push(`🗑️ ลบ note ID ${args.id}`);
+            return JSON.stringify({ ok: true, message: `ลบ note ID ${args.id} สำเร็จ` });
+          }
+
           default:
             return JSON.stringify({ error: "Unknown function" });
         }
       }
 
-      // Agentic loop — up to 3 rounds of tool calling
+      // Agentic loop — up to 8 rounds of tool calling for complex multi-step tasks
       const TOOL_MODEL = "gpt-4o";
       const FINAL_MODEL = "gpt-4o";
-      const MAX_ROUNDS = 3;
+      const MAX_ROUNDS = 8;
       let rounds = 0;
       let hadAnyToolCalls = false;
 
       while (rounds < MAX_ROUNDS) {
         rounds++;
+
+        // Send thinking progress indicator for multi-step tasks
+        if (rounds > 1) {
+          res.write(`data: ${JSON.stringify({ thinking: `กำลังวิเคราะห์ข้อมูล... (ขั้นตอนที่ ${rounds})` })}\n\n`);
+        }
+
         const loopResponse = await openai.chat.completions.create({
           model: TOOL_MODEL,
           messages: aiMessages,
-          max_completion_tokens: 4096,
+          max_completion_tokens: 8192,
           tools: channTools,
+          parallel_tool_calls: true,
         });
 
         const loopChoice = loopResponse.choices[0];
@@ -1817,6 +2087,9 @@ ${pageContext}` : ''}`;
 
         if (loopToolCalls && loopToolCalls.length > 0) {
           hadAnyToolCalls = true;
+          // Send tool name hints to client
+          const toolNames = loopToolCalls.map((tc: any) => tc.function?.name).filter(Boolean);
+          res.write(`data: ${JSON.stringify({ thinking: `กำลังใช้เครื่องมือ: ${toolNames.join(", ")}` })}\n\n`);
           aiMessages.push(loopChoice.message);
           const toolResults = await Promise.all(
             loopToolCalls.map(async (toolCall: any) => ({

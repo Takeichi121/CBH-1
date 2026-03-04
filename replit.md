@@ -204,6 +204,31 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.1.0 (March 4, 2026) — Chann Agent Upgrade
+
+**เพิ่มความสามารถ Chann ให้ทำงานแบบ Multi-Step Agent:**
+
+- **MAX_ROUNDS**: เพิ่มจาก 3 → 8 rounds รองรับ task ซับซ้อน
+- **Parallel Tool Calls**: เปิดใช้ `parallel_tool_calls: true` — Chann เรียก tool หลายตัวพร้อมกันได้
+- **Thinking Indicator**: UI แสดง "กำลังวิเคราะห์..." และ "กำลังใช้เครื่องมือ: ..." ระหว่างทำงาน
+- **max_completion_tokens**: เพิ่มจาก 4096 → 8192
+
+**Tools ใหม่:**
+- `webSearch` — ค้นหาข้อมูลจากอินเตอร์เน็ต (DuckDuckGo API)
+- `webFetch` — ดึงเนื้อหาจาก URL
+- `getManagerRequests` — ดูคำขอพนักงาน (ลา/หยุด/สลับกะ)
+- `approveManagerRequest` — อนุมัติคำขอพนักงาน (Manager+)
+- `rejectManagerRequest` — ปฏิเสธคำขอพนักงาน (Manager+)
+- `rememberNote` — บันทึก note ระยะยาว (Agent Memory)
+- `recallNotes` — เรียกดู notes ที่บันทึกไว้
+- `deleteNote` — ลบ note
+
+**Quick Actions ใหม่:**
+- คำขอพนักงาน, โน้ตของฉัน, ค้นหาเว็บ
+
+**Database:**
+- เพิ่มตาราง `chann_notes` สำหรับ Agent Memory
+
 ### Version 2.0.0 (March 1, 2026) — AI Upgrade & Auto Changelog
 - Upgraded Chann AI from gpt-4o-mini to gpt-4o across entire system
 - Added automatic changelog tracking via shared/version.ts (single source of truth)

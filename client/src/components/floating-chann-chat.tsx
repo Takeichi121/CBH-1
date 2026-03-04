@@ -15,6 +15,7 @@ interface ChatMessage {
   timestamp: string;
   imageUrl?: string;
   toolActions?: string[];
+  thinking?: string;
 }
 
 export function FloatingChannChat() {
@@ -254,6 +255,20 @@ export function FloatingChannChat() {
               try {
                 const parsed = JSON.parse(dataStr);
 
+                if (parsed.thinking) {
+                  setMessages((prev) => {
+                    const newMsgs = [...prev];
+                    const lastIndex = newMsgs.length - 1;
+                    if (newMsgs[lastIndex]?.role === "assistant") {
+                      newMsgs[lastIndex] = {
+                        ...newMsgs[lastIndex],
+                        thinking: parsed.thinking,
+                      };
+                    }
+                    return newMsgs;
+                  });
+                }
+
                 if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
                   setMessages((prev) => {
                     const newMsgs = [...prev];
@@ -269,6 +284,14 @@ export function FloatingChannChat() {
                 }
 
                 if (parsed.content) {
+                  setMessages((prev) => {
+                    const newMsgs = [...prev];
+                    const lastIndex = newMsgs.length - 1;
+                    if (newMsgs[lastIndex]?.role === "assistant" && newMsgs[lastIndex].thinking) {
+                      newMsgs[lastIndex] = { ...newMsgs[lastIndex], thinking: undefined };
+                    }
+                    return newMsgs;
+                  });
                   if (!hasStartedTyping) {
                     setIsLoading(false);
                     setIsStreaming(true);
@@ -337,6 +360,9 @@ export function FloatingChannChat() {
     { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList, show: isAdmin },
     { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users, show: isAdmin },
     { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3, show: isAdmin },
+    { label: "คำขอพนักงาน", prompt: "ดูคำขอของพนักงานทั้งหมดที่ยังรอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
+    { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText, show: isManagerOrAdmin },
+    { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap, show: true },
   ].filter(a => a.show);
 
   const sendQuickAction = (prompt: string) => {
@@ -381,6 +407,16 @@ export function FloatingChannChat() {
                 if (dataStr.trim() === "[DONE]") break;
                 try {
                   const parsed = JSON.parse(dataStr);
+                  if (parsed.thinking) {
+                    setMessages(prev => {
+                      const n = [...prev];
+                      const lastIndex = n.length - 1;
+                      if (n[lastIndex]?.role === "assistant") {
+                        n[lastIndex] = { ...n[lastIndex], thinking: parsed.thinking };
+                      }
+                      return n;
+                    });
+                  }
                   if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
                     setMessages(prev => {
                       const n = [...prev];
@@ -392,7 +428,7 @@ export function FloatingChannChat() {
                     if (!hasStarted) { setIsLoading(false); setIsStreaming(true); hasStarted = true; }
                     setMessages(prev => {
                       const n = [...prev];
-                      n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content };
+                      n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
                       return n;
                     });
                   }
@@ -655,6 +691,12 @@ export function FloatingChannChat() {
                       onClick={() => window.open(msg.imageUrl, "_blank")}
                       data-testid={`img-chann-${index}`}
                     />
+                  )}
+                  {msg.thinking && !msg.content && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground italic" data-testid={`thinking-chann-${index}`}>
+                      <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
+                      <span>{msg.thinking}</span>
+                    </div>
                   )}
                   {msg.content && msg.content !== "ส่งรูปภาพ" && (
                     msg.role === "assistant" ? (

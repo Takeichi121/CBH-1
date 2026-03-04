@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -155,6 +155,11 @@ export interface IStorage {
   // Daily Labor
   getDailyLabor(date: string): Promise<DailyLabor | undefined>;
   saveDailyLabor(date: string, data: Partial<InsertDailyLabor>): Promise<DailyLabor>;
+
+  // Chann Agent Notes (Memory)
+  saveChannNote(username: string, title: string, content: string): Promise<ChannNote>;
+  getChannNotes(username: string, query?: string): Promise<ChannNote[]>;
+  deleteChannNote(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -922,6 +927,42 @@ export class DatabaseStorage implements IStorage {
     const q = db.select().from(weeklySalesReports).orderBy(desc(weeklySalesReports.weekStartDate));
     if (limit) return await q.limit(limit);
     return await q;
+  }
+
+  async saveChannNote(username: string, title: string, content: string): Promise<ChannNote> {
+    const now = new Date();
+    const existing = await db.select().from(channNotes)
+      .where(and(eq(channNotes.username, username), eq(channNotes.title, title)))
+      .limit(1);
+    if (existing.length > 0) {
+      const [updated] = await db.update(channNotes)
+        .set({ content, updatedAt: now })
+        .where(eq(channNotes.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(channNotes)
+      .values({ username, title, content, createdAt: now, updatedAt: now })
+      .returning();
+    return created;
+  }
+
+  async getChannNotes(username: string, query?: string): Promise<ChannNote[]> {
+    if (query) {
+      return await db.select().from(channNotes)
+        .where(and(
+          eq(channNotes.username, username),
+          sql`(${channNotes.title} ILIKE ${'%' + query + '%'} OR ${channNotes.content} ILIKE ${'%' + query + '%'})`
+        ))
+        .orderBy(desc(channNotes.updatedAt));
+    }
+    return await db.select().from(channNotes)
+      .where(eq(channNotes.username, username))
+      .orderBy(desc(channNotes.updatedAt));
+  }
+
+  async deleteChannNote(id: number): Promise<void> {
+    await db.delete(channNotes).where(eq(channNotes.id, id));
   }
 }
 

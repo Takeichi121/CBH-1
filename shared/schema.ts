@@ -609,6 +609,22 @@ export type ChannConversation = typeof channConversations.$inferSelect;
 export type InsertChannConversation = typeof channConversations.$inferInsert;
 
 // ==========================================
+// 🧠 Chann Agent Memory (Notes)
+// ==========================================
+
+export const channNotes = pgTable("chann_notes", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ChannNote = typeof channNotes.$inferSelect;
+export type InsertChannNote = typeof channNotes.$inferInsert;
+
+// ==========================================
 // 📝 Code Proposals (Chann → Agent)
 // ==========================================
 

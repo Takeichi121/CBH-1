@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.6";
+export const APP_VERSION = "2.0.7";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.7",
+    date: "2026-03-04",
+    label: "improvement",
+    changes: [
+      "Profile Dropdown & Mobile Sidebar: redesign ให้เหมือน BK Corporate Portal — avatar + ชื่อ + email + เมนู",
+      "Desktop Dropdown: header สีน้ำตาล (primary) พร้อม avatar ใหญ่, ชื่อ, email, ปุ่มแก้ไข, ออกจากระบบ",
+      "Desktop Dropdown: เมนู Home (My Work), โปรไฟล์ของฉัน, กิจกรรมของฉัน → /admin",
+      "Mobile Sidebar: profile zone สีน้ำตาล (primary) แทนที่ grid buttons เดิม",
+      "Mobile Sidebar: Theme toggle ย้ายไปอยู่ใน SheetHeader มุมขวา",
+    ],
+  },
   {
     version: "2.0.6",
     date: "2026-03-03",

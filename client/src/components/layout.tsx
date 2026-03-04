@@ -1,14 +1,13 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, X, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -37,9 +36,6 @@ export function Layout({ children }: { children: ReactNode }) {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
 
-  const isManager = user.role === "manager" || user.role === "admin";
-
-  const isAdmin = user.role === "admin";
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
 
   const navItems = [
@@ -55,6 +51,8 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/settings", label: t("settings") || "Settings", icon: Settings },
     { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
   ];
+
+  const displayEmail = (user as any).email || user.username;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -74,7 +72,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </AvatarFallback>
           </Avatar>
         </div>
-        
+
         <div className="px-4 pb-2">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
@@ -84,27 +82,76 @@ export function Layout({ children }: { children: ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px] p-0 border-r-0 bg-background">
               <div className="flex flex-col h-full">
-                <SheetHeader className="p-6 border-b text-left">
-                  <div className="flex items-center gap-3">
-                    <SiBurgerking className="w-10 h-10 text-[#ED1C24]" />
-                    <SheetTitle className="text-xl font-bold font-display">BK Roster</SheetTitle>
+
+                {/* Mobile Sidebar — BK Logo Header */}
+                <SheetHeader className="p-4 text-left border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <SiBurgerking className="w-9 h-9 text-[#ED1C24]" />
+                      <SheetTitle className="text-xl font-bold font-display">Grand Diamond</SheetTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      data-testid="button-theme-toggle-mobile"
+                    >
+                      {theme === "dark" ? <Sun className="h-4 w-4 text-[#F5EB16]" /> : <Moon className="h-4 w-4 text-[#0033A0]" />}
+                    </Button>
                   </div>
                 </SheetHeader>
-                
-                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+
+                {/* Mobile Sidebar — Profile Section (BK Portal style) */}
+                <div className="bg-primary text-primary-foreground">
+                  <div className="flex items-center justify-end px-4 pt-3 pb-1">
+                    <button
+                      className="text-xs text-primary-foreground/80 hover:text-primary-foreground underline flex items-center gap-1 transition-colors"
+                      onClick={() => { logoutMutation.mutate(); setIsMobileMenuOpen(false); }}
+                      data-testid="button-logout-mobile"
+                    >
+                      ออกจากระบบ <LogOut className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 pb-4">
+                    <Avatar className="h-14 w-14 border-2 border-primary-foreground/30 shrink-0">
+                      <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
+                      <AvatarFallback className="bg-primary-foreground/10 text-primary-foreground font-bold text-lg">
+                        {user.username.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm leading-tight truncate">{user.fullName || user.username}</p>
+                      <p className="text-xs text-primary-foreground/70 truncate mt-0.5">{displayEmail}</p>
+                    </div>
+                    <Link href="/settings">
+                      <a
+                        className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors shrink-0"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        data-testid="button-edit-profile-mobile"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-primary-foreground/80" />
+                      </a>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Mobile Sidebar — Nav Items */}
+                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
                   {navItems.map((item) => {
-                    const isActive = location === item.href;
+                    const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
                     return (
                       <Link key={item.href} href={item.href}>
-                        <a 
+                        <a
                           onClick={() => setIsMobileMenuOpen(false)}
-                          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
-                            isActive 
-                              ? "bg-primary/10 text-primary font-bold shadow-sm" 
-                              : "text-muted-foreground hover:bg-muted/50"
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                            isActive
+                              ? "bg-primary/10 text-primary font-bold shadow-sm"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                           }`}
+                          data-testid={`nav-mobile-${item.href.replace("/", "")}`}
                         >
-                          <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+                          <item.icon className={`w-5 h-5 shrink-0 ${isActive ? "stroke-[2.5px]" : ""}`} />
                           <span className="text-base">{item.label}</span>
                         </a>
                       </Link>
@@ -112,40 +159,6 @@ export function Layout({ children }: { children: ReactNode }) {
                   })}
                 </div>
 
-                <div className="p-6 border-t space-y-4">
-                  <div className="flex items-center gap-4 px-4">
-                    <Avatar className="h-10 w-10 border-2 border-primary/10">
-                      <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
-                      <AvatarFallback className="bg-primary/5 text-primary font-bold">
-                        {user.username.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col overflow-hidden">
-                      <p className="text-sm font-bold truncate">{user.fullName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.username}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-primary/10 hover:bg-primary/5"
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    >
-                      {theme === "dark" ? <Sun className="w-5 h-5 text-[#F5EB16]" /> : <Moon className="w-5 h-5 text-[#0033A0]" />}
-                      <span className="text-[10px] font-bold">Theme</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="rounded-xl flex flex-col h-16 items-center justify-center gap-1 border-destructive/10 hover:bg-destructive/5 text-destructive"
-                      onClick={() => logoutMutation.mutate()}
-                      data-testid="button-logout-mobile"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      <span className="text-[10px] font-bold">{t("logout")}</span>
-                    </Button>
-                  </div>
-                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -163,9 +176,9 @@ export function Layout({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-1">
           {navItems.map((item) => {
-            const isActive = location === item.href;
+            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href) && item.href !== "/work");
             return (
               <Link
                 key={item.href}
@@ -198,9 +211,10 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
+          {/* Desktop Profile Dropdown — BK Portal Style */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full" data-testid="button-profile-dropdown">
                 <Avatar className="h-10 w-10 border-2 border-primary/10">
                   <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
                   <AvatarFallback className="bg-primary/5 text-primary font-bold">
@@ -209,24 +223,75 @@ export function Layout({ children }: { children: ReactNode }) {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.fullName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.username} • {user.role}
-                  </p>
+            <DropdownMenuContent className="w-72 p-0 overflow-hidden" align="end" forceMount>
+
+              {/* Profile Header — Brown/Primary */}
+              <div className="bg-primary text-primary-foreground">
+                <div className="flex items-center justify-end px-4 pt-3 pb-1">
+                  <button
+                    onClick={() => logoutMutation.mutate()}
+                    className="text-xs text-primary-foreground/80 hover:text-primary-foreground underline flex items-center gap-1 transition-colors"
+                    data-testid="button-logout-desktop"
+                  >
+                    ออกจากระบบ <LogOut className="h-3 w-3" />
+                  </button>
                 </div>
-              </DropdownMenuLabel>
+                <div className="flex items-center gap-3 px-4 pb-4">
+                  <Avatar className="h-14 w-14 border-2 border-primary-foreground/30 shrink-0">
+                    <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
+                    <AvatarFallback className="bg-primary-foreground/10 text-primary-foreground font-bold text-lg">
+                      {user.username.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm leading-tight truncate">{user.fullName || user.username}</p>
+                    <p className="text-xs text-primary-foreground/70 truncate mt-0.5">{displayEmail}</p>
+                  </div>
+                  <Link href="/settings">
+                    <a className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors shrink-0" data-testid="button-edit-profile-desktop">
+                      <Pencil className="h-3.5 w-3.5 text-primary-foreground/80" />
+                    </a>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="py-1">
+                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                  <Link href="/work">
+                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-home">
+                      <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>Home (My Work)</span>
+                    </a>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                  <Link href="/settings">
+                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-profile">
+                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>โปรไฟล์ของฉัน</span>
+                    </a>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                  <Link href="/admin">
+                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-activity">
+                      <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>กิจกรรมของฉัน</span>
+                    </a>
+                  </Link>
+                </DropdownMenuItem>
+              </div>
+
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => logoutMutation.mutate()} 
-                className="text-destructive focus:text-destructive cursor-pointer"
-                data-testid="button-logout-desktop"
+              <DropdownMenuItem
+                onClick={() => logoutMutation.mutate()}
+                className="text-destructive focus:text-destructive cursor-pointer px-4 py-2.5 gap-3"
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="h-4 w-4 shrink-0" />
                 <span>{t("logout")}</span>
               </DropdownMenuItem>
+
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

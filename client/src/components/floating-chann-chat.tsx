@@ -16,6 +16,7 @@ interface ChatMessage {
   imageUrl?: string;
   toolActions?: string[];
   thinking?: string;
+  suggestedReplies?: string[];
 }
 
 export function FloatingChannChat() {
@@ -29,6 +30,7 @@ export function FloatingChannChat() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const greetingInitiated = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +47,75 @@ export function FloatingChannChat() {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  const sendGreeting = (token: string) => {
+    if (greetingInitiated.current) return;
+    greetingInitiated.current = true;
+    const displayName = user?.nickName || user?.fullName?.split(" ")[0] || "นาย";
+    const greetPrompt = `ทักทาย${displayName} ตามเวลาปัจจุบัน และแนะนำตัวเองสั้นๆ ว่าช่วยอะไรได้บ้างในระบบนี้ พร้อมสรุปกะวันนี้หรือข้อมูลที่น่าสนใจ 1-2 รายการ`;
+    setMessages([{ role: "assistant", content: "", timestamp: new Date().toISOString() }]);
+    setIsLoading(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/chann", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true }),
+        });
+        if (!res.body) throw new Error("No body");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let done = false;
+        let started = false;
+        let buf = "";
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) {
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split("\n\n");
+            buf = lines.pop() || "";
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const dataStr = line.slice(6);
+              if (dataStr.trim() === "[DONE]") break;
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.thinking) {
+                  setMessages(prev => {
+                    const n = [...prev];
+                    if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], thinking: parsed.thinking };
+                    return n;
+                  });
+                }
+                if (parsed.content) {
+                  if (!started) { setIsLoading(false); setIsStreaming(true); started = true; }
+                  setMessages(prev => {
+                    const n = [...prev];
+                    n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
+                    return n;
+                  });
+                }
+                if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
+                  setMessages(prev => {
+                    const n = [...prev];
+                    n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
+                    return n;
+                  });
+                }
+              } catch {}
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Greeting error:", err);
+        setMessages([{ role: "assistant", content: "สวัสดีครับ! ผม Chann มีอะไรให้ช่วยไหมครับ?", timestamp: new Date().toISOString() }]);
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+      }
+    })();
+  };
 
   useEffect(() => {
     if (isOpen && !historyLoaded) {
@@ -65,6 +136,8 @@ export function FloatingChannChat() {
               timestamp: m.createdAt || new Date().toISOString(),
               imageUrl: m.imageUrl || undefined,
             })));
+          } else {
+            sendGreeting(token);
           }
           setHistoryLoaded(true);
         } catch (error) {
@@ -260,10 +333,7 @@ export function FloatingChannChat() {
                     const newMsgs = [...prev];
                     const lastIndex = newMsgs.length - 1;
                     if (newMsgs[lastIndex]?.role === "assistant") {
-                      newMsgs[lastIndex] = {
-                        ...newMsgs[lastIndex],
-                        thinking: parsed.thinking,
-                      };
+                      newMsgs[lastIndex] = { ...newMsgs[lastIndex], thinking: parsed.thinking };
                     }
                     return newMsgs;
                   });
@@ -272,39 +342,39 @@ export function FloatingChannChat() {
                 if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
                   setMessages((prev) => {
                     const newMsgs = [...prev];
-                    const actionMsg: ChatMessage = {
+                    newMsgs.splice(newMsgs.length - 1, 0, {
                       role: "assistant",
                       content: "",
                       timestamp: new Date().toISOString(),
                       toolActions: parsed.toolActions,
-                    };
-                    newMsgs.splice(newMsgs.length - 1, 0, actionMsg);
+                    });
                     return newMsgs;
                   });
                 }
 
                 if (parsed.content) {
-                  setMessages((prev) => {
-                    const newMsgs = [...prev];
-                    const lastIndex = newMsgs.length - 1;
-                    if (newMsgs[lastIndex]?.role === "assistant" && newMsgs[lastIndex].thinking) {
-                      newMsgs[lastIndex] = { ...newMsgs[lastIndex], thinking: undefined };
-                    }
-                    return newMsgs;
-                  });
                   if (!hasStartedTyping) {
                     setIsLoading(false);
                     setIsStreaming(true);
                     hasStartedTyping = true;
                   }
-
                   setMessages((prev) => {
                     const newMsgs = [...prev];
                     const lastIndex = newMsgs.length - 1;
                     newMsgs[lastIndex] = {
                       ...newMsgs[lastIndex],
                       content: newMsgs[lastIndex].content + parsed.content,
+                      thinking: undefined,
                     };
+                    return newMsgs;
+                  });
+                }
+
+                if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
+                  setMessages((prev) => {
+                    const newMsgs = [...prev];
+                    const lastIndex = newMsgs.length - 1;
+                    newMsgs[lastIndex] = { ...newMsgs[lastIndex], suggestedReplies: parsed.suggestedReplies };
                     return newMsgs;
                   });
                 }
@@ -429,6 +499,13 @@ export function FloatingChannChat() {
                     setMessages(prev => {
                       const n = [...prev];
                       n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
+                      return n;
+                    });
+                  }
+                  if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
+                    setMessages(prev => {
+                      const n = [...prev];
+                      n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
                       return n;
                     });
                   }
@@ -659,61 +736,79 @@ export function FloatingChannChat() {
                 );
               }
 
+              const isLastMsg = index === messages.length - 1;
+              const displayContent = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
+              const showSuggestions = msg.role === "assistant" && isLastMsg && !isLoading && !isStreaming && msg.suggestedReplies && msg.suggestedReplies.length > 0;
+
               return (
-              <div
-                key={index}
-                className={cn(
-                  "flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}
-                data-testid={`message-chann-${msg.role}-${index}`}
-              >
-                {msg.role === "assistant" && (
-                  <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
-                    <AvatarFallback className={cn("bg-primary text-primary-foreground text-xs", getAvatarStyleClass())}>
-                      <Bot className="w-4 h-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+              <div key={index} className="flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
                 <div
                   className={cn(
-                    "max-w-[80%] px-4 py-2 text-sm",
-                    msg.role === "user"
-                      ? cn(getBubbleColorClass(), "text-white", getBubbleStyleClass())
-                      : cn("bg-muted text-foreground", getBubbleStyleClass())
+                    "flex gap-3",
+                    msg.role === "user" ? "justify-end" : "justify-start"
                   )}
                 >
-                  {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
-                    <img
-                      src={msg.imageUrl}
-                      alt="sent"
-                      className="max-w-full max-h-40 rounded-md mb-1 cursor-pointer"
-                      onClick={() => window.open(msg.imageUrl, "_blank")}
-                      data-testid={`img-chann-${index}`}
-                    />
+                  {msg.role === "assistant" && (
+                    <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
+                      <AvatarFallback className={cn("bg-primary text-primary-foreground text-xs", getAvatarStyleClass())}>
+                        <Bot className="w-4 h-4" />
+                      </AvatarFallback>
+                    </Avatar>
                   )}
-                  {msg.thinking && !msg.content && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground italic" data-testid={`thinking-chann-${index}`}>
-                      <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
-                      <span>{msg.thinking}</span>
-                    </div>
-                  )}
-                  {msg.content && msg.content !== "ส่งรูปภาพ" && (
-                    msg.role === "assistant" ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <div
+                    className={cn(
+                      "max-w-[80%] px-4 py-2 text-sm",
+                      msg.role === "user"
+                        ? cn(getBubbleColorClass(), "text-white", getBubbleStyleClass())
+                        : cn("bg-muted text-foreground", getBubbleStyleClass())
+                    )}
+                  >
+                    {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
+                      <img
+                        src={msg.imageUrl}
+                        alt="sent"
+                        className="max-w-full max-h-40 rounded-md mb-1 cursor-pointer"
+                        onClick={() => window.open(msg.imageUrl, "_blank")}
+                        data-testid={`img-chann-${index}`}
+                      />
+                    )}
+                    {msg.thinking && !msg.content && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground italic" data-testid={`thinking-chann-${index}`}>
+                        <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
+                        <span>{msg.thinking}</span>
                       </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    )
+                    )}
+                    {displayContent && displayContent !== "ส่งรูปภาพ" && (
+                      msg.role === "assistant" ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                          <ReactMarkdown>{displayContent}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{displayContent}</p>
+                      )
+                    )}
+                  </div>
+                  {msg.role === "user" && (
+                    <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
+                      <AvatarFallback className={cn("bg-muted text-muted-foreground text-xs", getAvatarStyleClass())}>
+                        <User className="w-4 h-4" />
+                      </AvatarFallback>
+                    </Avatar>
                   )}
                 </div>
-                {msg.role === "user" && (
-                  <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
-                    <AvatarFallback className={cn("bg-muted text-muted-foreground text-xs", getAvatarStyleClass())}>
-                      <User className="w-4 h-4" />
-                    </AvatarFallback>
-                  </Avatar>
+                {showSuggestions && (
+                  <div className="flex flex-wrap gap-1.5 pl-11 animate-in fade-in duration-300" data-testid={`suggestions-chann-${index}`}>
+                    {msg.suggestedReplies!.map((suggestion, si) => (
+                      <button
+                        key={si}
+                        onClick={() => sendQuickAction(suggestion)}
+                        className="text-xs px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:border-primary/50 transition-all"
+                        data-testid={`suggestion-chip-${index}-${si}`}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
               );

@@ -312,7 +312,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, imageBase64, pageContext } = req.body;
+      const { token, message, imageBase64, pageContext, silentMessage } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.json({ ok: false, message: "Token and message required" });
       }
@@ -339,12 +339,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const userContent = typeof message === "string" ? message.slice(0, 2000) : "";
 
-      db.insert(channConversations).values({
-        username,
-        role: "user",
-        content: userContent,
-        imageUrl: imageBase64 ? "(image attached)" : null,
-      }).catch(console.error);
+      if (!silentMessage) {
+        db.insert(channConversations).values({
+          username,
+          role: "user",
+          content: userContent,
+          imageUrl: imageBase64 ? "(image attached)" : null,
+        }).catch(console.error);
+      }
 
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({
@@ -486,6 +488,12 @@ ${isManagerOrAdmin && !isAdmin ? `
 - ถ้าข้อมูลไม่ครบ ให้ถามนายเฉพาะส่วนที่ขาด
 - ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
 ` : ''}
+[คำถามต่อเนื่อง]
+หลังจากตอบทุกครั้ง ให้เพิ่มบรรทัดสุดท้ายในรูปแบบนี้ (ไม่มีช่องว่างนำหน้า):
+[SUGGESTIONS: คำถามสั้น1 | คำถามสั้น2 | คำถามสั้น3]
+ตัวอย่าง: [SUGGESTIONS: ยอดขายเมื่อวาน? | COL% เดือนนี้? | ใครทำกะบ่าย?]
+คำถามต้องสั้น (ไม่เกิน 20 ตัวอักษร) และเกี่ยวข้องกับสิ่งที่เพิ่งตอบ เขียนทุกครั้งไม่มีข้อยกเว้น
+
 ผู้ใช้ปัจจุบัน (นาย): ${user.nickName || user.fullName} (${user.role})
 
 ข้อมูลปัจจุบันในระบบ (Snapshot):
@@ -2101,28 +2109,55 @@ ${pageContext}` : ''}`;
           aiMessages.push(...toolResults);
           // Continue loop to allow chained tool calls
         } else {
+          // No tool calls — extract suggestions helper
+          const extractSuggestions = (raw: string): { clean: string; suggestions: string[] } => {
+            const match = raw.match(/\[SUGGESTIONS:\s*(.+?)\]\s*$/s);
+            if (!match) return { clean: raw, suggestions: [] };
+            const suggestions = match[1].split("|").map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
+            const clean = raw.slice(0, raw.lastIndexOf(match[0])).trimEnd();
+            return { clean, suggestions };
+          };
+
           // No tool calls — check for direct text response (no-tool case)
           if (!hadAnyToolCalls) {
             if (toolActions.length > 0) {
               res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
             }
-            const directContent = loopChoice?.message?.content;
+            const directContent = loopChoice?.message?.content || "";
             if (directContent) {
-              for (let i = 0; i < directContent.length; i += 20) {
-                const chunk = directContent.slice(i, i + 20);
-                res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+              const { clean, suggestions } = extractSuggestions(directContent);
+              for (let i = 0; i < clean.length; i += 30) {
+                res.write(`data: ${JSON.stringify({ content: clean.slice(i, i + 30) })}\n\n`);
               }
-              await db.insert(channConversations).values({
-                username,
-                role: "assistant",
-                content: directContent,
-              });
+              if (suggestions.length > 0) {
+                res.write(`data: ${JSON.stringify({ suggestedReplies: suggestions })}\n\n`);
+              }
+              await db.insert(channConversations).values({ username, role: "assistant", content: clean });
             }
             res.write(`data: [DONE]\n\n`);
             res.end();
             return;
           }
-          break; // Tool calls done, fall through to streaming final answer
+
+          // Had tool calls: use the model's already-generated response directly (avoid extra API call)
+          const finalDirect = loopChoice?.message?.content;
+          if (finalDirect) {
+            if (toolActions.length > 0) {
+              res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
+            }
+            const { clean, suggestions } = extractSuggestions(finalDirect);
+            for (let i = 0; i < clean.length; i += 30) {
+              res.write(`data: ${JSON.stringify({ content: clean.slice(i, i + 30) })}\n\n`);
+            }
+            if (suggestions.length > 0) {
+              res.write(`data: ${JSON.stringify({ suggestedReplies: suggestions })}\n\n`);
+            }
+            db.insert(channConversations).values({ username, role: "assistant", content: clean }).catch(console.error);
+            res.write(`data: [DONE]\n\n`);
+            res.end();
+            return;
+          }
+          break; // Fallback: no content in break response, do streaming final answer
         }
       }
 
@@ -2131,7 +2166,7 @@ ${pageContext}` : ''}`;
         res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
       }
 
-      // Stream final answer after tool calls (use smarter model for summarizing)
+      // Streaming fallback: for rare cases where break has no content or MAX_ROUNDS hit
       const streamResponse = await openai.chat.completions.create({
         model: FINAL_MODEL,
         messages: aiMessages,
@@ -2140,20 +2175,53 @@ ${pageContext}` : ''}`;
       });
 
       let fullAiResponse = "";
+      let suggTailBuffer = "";
+      let capturingSugg = false;
+      const SUGG_MARKER = "[SUGGESTIONS:";
 
       for await (const chunk of streamResponse) {
         const content = chunk.choices[0]?.delta?.content || "";
         if (content) {
           fullAiResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          if (capturingSugg) {
+            suggTailBuffer += content;
+          } else {
+            const tail = suggTailBuffer + content;
+            const markerIdx = tail.indexOf(SUGG_MARKER);
+            if (markerIdx !== -1) {
+              const beforeMarker = tail.slice(0, markerIdx);
+              if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+              suggTailBuffer = tail.slice(markerIdx);
+              capturingSugg = true;
+            } else {
+              const safeLen = Math.max(0, tail.length - (SUGG_MARKER.length - 1));
+              const safe = tail.slice(0, safeLen);
+              suggTailBuffer = tail.slice(safeLen);
+              if (safe) res.write(`data: ${JSON.stringify({ content: safe })}\n\n`);
+            }
+          }
         }
       }
+      // Flush non-suggestion tail
+      if (suggTailBuffer && !capturingSugg) {
+        res.write(`data: ${JSON.stringify({ content: suggTailBuffer })}\n\n`);
+      }
 
-      if (fullAiResponse) {
+      // Parse and strip suggestions from full response
+      const suggMatch = fullAiResponse.match(/\[SUGGESTIONS:\s*(.+?)\]\s*$/s);
+      const cleanResponse = suggMatch
+        ? fullAiResponse.slice(0, fullAiResponse.lastIndexOf(suggMatch[0])).trimEnd()
+        : fullAiResponse;
+      if (suggMatch) {
+        const suggestions = suggMatch[1].split("|").map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
+        if (suggestions.length > 0) res.write(`data: ${JSON.stringify({ suggestedReplies: suggestions })}\n\n`);
+      }
+
+      if (cleanResponse) {
         db.insert(channConversations).values({
           username,
           role: "assistant",
-          content: fullAiResponse,
+          content: cleanResponse,
         }).catch(console.error);
       }
 

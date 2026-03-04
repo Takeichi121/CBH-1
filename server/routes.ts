@@ -64,8 +64,10 @@ function buildDailyReportText(report: any, _storeName: string) {
   const parts = (report.reportDate || "").split("-");
   const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : report.reportDate;
 
-  const fmt = (n: number) => Math.round(n).toLocaleString("th-TH");
+  const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
   const pct = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";
+  const fmtVariance = (n: number) => (n >= 0 ? "+" : "") + fmt(Math.round(n));
+  const fmtMtdVariance = (n: number) => (n >= 0 ? "+฿" : "-฿") + Math.abs(Math.round(n)).toLocaleString("en-US");
 
   const actual   = Number(report.actualSales) || 0;
   const target   = Number(report.dailyTarget) || 0;
@@ -75,85 +77,128 @@ function buildDailyReportText(report: any, _storeName: string) {
   const mtdTc    = Number(report.mtdTc) || 0;
   const dailyTa  = tc > 0 ? Math.round(actual / tc) : 0;
   const mtdTa    = mtdTc > 0 ? Math.round(mtdAct / mtdTc) : 0;
+  const dailyVariance = actual - target;
+  const mtdVariance   = mtdAct - mtdTgt;
 
-  const dineIn   = Number(report.dineIn) || 0;
-  const takeAway = Number(report.takeAway) || 0;
-  const grab     = Number(report.grabfood) || 0;
-  const lineman  = Number(report.lineman) || 0;
-  const shopee   = Number(report.shopee) || 0;
-  const bkapp    = Number(report.bkapp) || 0;
-  const robin    = Number(report.robin) || 0;
-  const gokoo    = Number(report.gokoo) || 0;
-  const delivery = grab + lineman + shopee + bkapp + robin + gokoo;
+  const dineIn      = Number(report.dineIn) || 0;
+  const dineInTc    = Number(report.dineInTc) || 0;
+  const takeAway    = Number(report.takeAway) || 0;
+  const takeAwayTc  = Number(report.takeAwayTc) || 0;
+  const inStore     = dineIn + takeAway;
+  const grab        = Number(report.grabfood) || 0;
+  const lineman     = Number(report.lineman) || 0;
+  const shopee      = Number(report.shopee) || 0;
+  const bkapp       = Number(report.bkapp) || 0;
+  const robin       = Number(report.robin) || 0;
+  const gokoo       = Number(report.gokoo) || 0;
+  const delivery    = grab + lineman + shopee + bkapp + robin + gokoo;
 
-  const sosD     = Number(report.sosDaily) || 0;
-  const sosMd    = Number(report.sosMtd) || 0;
-
-  const wasteD    = Number(report.wasteRawDaily) || 0;
-  const wasteMtd  = Number(report.wasteRawMtd) || 0;
-  const wasteDPct = actual > 0 ? (wasteD / actual) * 100 : 0;
-  const wasteMPct = mtdAct > 0 ? (wasteMtd / mtdAct) * 100 : 0;
-
-  const hours       = Number(report.actualHours) || 0;
   const osat        = report.osat || "0";
   const surveyCount = report.surveyCount || "0";
+  const voidAmount  = Number(report.voidAmount) || 0;
+  const voidCount   = report.voidCount || "0";
 
   const addCheeseN   = Number(report.addCheeseCount) || 0;
-  const addCheesePct = tc > 0 ? (addCheeseN / tc) * 100 : 0;
   const vMealN       = Number(report.vMealCount) || 0;
-  const vMealPct     = tc > 0 ? (vMealN / tc) * 100 : 0;
   const upSizeN      = Number(report.upSizeCount) || 0;
-  const upSizePct    = tc > 0 ? (upSizeN / tc) * 100 : 0;
 
-  const managerRoster = report.managerRosterText || "-";
-  const staffRoster   = report.staffRosterText || "-";
+  const colPct      = Number(report.colPercent) || 0;
+  const hours       = Number(report.actualHours) || 0;
+  const otHours     = Number(report.otHours) || 0;
+  const tcmh        = Number(report.tcmh) || 0;
+  const sosD        = Number(report.sosDaily) || 0;
+  const sosMd       = Number(report.sosMtd) || 0;
+
+  const wasteRawD   = Number(report.wasteRawDaily) || 0;
+  const wasteMealD  = Number(report.wasteMealDaily) || 0;
+  const totalWasteD = wasteRawD + wasteMealD;
+  const wasteRawMtd = Number(report.wasteRawMtd) || 0;
+  const wasteMealMtd = Number(report.wasteMealMtd) || 0;
+  const totalWasteMtd = wasteRawMtd + wasteMealMtd;
+
+  const managerRosterDate = (() => {
+    const d = report.managerRosterDate || report.reportDate || "";
+    const p = d.split("-");
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+  })();
+  const managerRoster = report.managerRosterText || "";
+  const staffRoster   = report.staffRosterText || "";
   const reportBy      = report.reportBy || "";
 
-  const text = [
-    `🗓️${dateStr}`,
+  const deliveryLines: string[] = [
+    `🛵 Grab: ${fmt(grab)}/${pct(grab, actual)}%`,
+    `🛵 LINE MAN: ${fmt(lineman)}/${pct(lineman, actual)}%`,
+    `🛵 Shoppee Food: ${fmt(shopee)}/${pct(shopee, actual)}%`,
+    `🛵 BK App/Web: ${fmt(bkapp)}/${pct(bkapp, actual)}%`,
+  ];
+  if (robin > 0) deliveryLines.push(`🛵 Robin: ${fmt(robin)}/${pct(robin, actual)}%`);
+  if (gokoo > 0) deliveryLines.push(`🛵 GoKOO: ${fmt(gokoo)}/${pct(gokoo, actual)}%`);
+
+  const lines: string[] = [
+    `💎 Daily Sales Report 💎`,
+    `Grand Diamond`,
+    `Date: ${dateStr}`,
+    `========================`,
     ``,
-    `💵Daily Sales=${fmt(actual)}/${fmt(target)}`,
-    `MTD Sale=${fmt(mtdAct)}/${fmt(mtdTgt)}`,
+    `📊 Daily`,
+    `💰 TG: ${fmt(target)}`,
+    `💵 AC: ${fmt(actual)}`,
+    `📉 Variance: ${fmtVariance(dailyVariance)}`,
+    `👥 TC: ${fmt(tc)}`,
+    `🧾 TA: ${fmt(dailyTa)}`,
     ``,
-    `👨‍👩‍👧‍👦Daily TC =${fmt(tc)}`,
-    `👨‍👩‍👧‍👦MTD TC =${fmt(mtdTc)}`,
-    `👑 Daily TA =${fmt(dailyTa)}`,
-    `👑 MTD TA =${fmt(mtdTa)}`,
+    `📈 MTD`,
+    `💰 MTD TG: ${fmt(mtdTgt)}`,
+    `💵 MTD AC: ${fmt(mtdAct)}`,
+    `📉 Variance: ${fmtMtdVariance(mtdVariance)}`,
+    `👥 MTD TC: ${fmt(mtdTc)}`,
+    `🧾 MTD TA: ${fmt(mtdTa)}`,
     ``,
-    `🍽 Dinein :${fmt(dineIn)}/${pct(dineIn, actual)}%`,
-    `🛍Takeaway :${fmt(takeAway)}/${pct(takeAway, actual)}%`,
-    `🛵Delivery :${fmt(delivery)}/${pct(delivery, actual)}%`,
+    `🏪 Restaurant`,
+    `🍽️ Dine In: ${fmt(dineIn)}/${pct(dineIn, actual)}%`,
+    `TC: ${dineInTc}`,
+    `🥡 Take Away: ${fmt(takeAway)}/${pct(takeAway, actual)}%`,
+    `TC: ${takeAwayTc}`,
+    `🏪 In Store Total: ${fmt(inStore)}/${pct(inStore, actual)}%`,
     ``,
-    `🛵Grab Food :${fmt(grab)}/${pct(grab, actual)}%`,
-    `🛵Line Man :${fmt(lineman)}/${pct(lineman, actual)}%`,
-    `🛵Shopeefood:${fmt(shopee)}/${pct(shopee, actual)}%`,
-    `🛵BK App:${fmt(bkapp)}/${pct(bkapp, actual)}%`,
-    `🛵Robin:${fmt(robin)}/${pct(robin, actual)}%`,
-    `🛵GoKOO:${fmt(gokoo)}/${pct(gokoo, actual)}%`,
+    `🛵 DELIVERY`,
+    ...deliveryLines,
+    `📦 Delivery Total: ${fmt(delivery)}/${pct(delivery, actual)}%`,
     ``,
-    `🏃🏻‍♀️SOS =${sosD}`,
-    `🏃🏻MTD SOS =${sosMd}`,
+    `========================`,
     ``,
-    `🧀Add Cheese :${fmt(addCheeseN)}/${addCheesePct.toFixed(2)}%`,
-    `🥗V-meal :${fmt(vMealN)}/${vMealPct.toFixed(2)}%`,
-    `📦Up Size :${fmt(upSizeN)}/${upSizePct.toFixed(2)}%`,
+    `⭐ OSAT: ${osat}`,
+    `📋 Survey count: ${surveyCount}`,
+    `❌ Void: -฿${voidAmount.toFixed(2)}`,
+    `📋 count: ${voidCount} Bill`,
+    `🧀 Add Cheese: ${addCheeseN}/${pct(addCheeseN, tc)}%`,
+    `🍔 V-meal: ${vMealN}/${pct(vMealN, tc)}%`,
+    `🥤 Up Size: ${upSizeN}/${pct(upSizeN, tc)}%`,
     ``,
-    `🗑WasteDaily :${wasteD.toLocaleString("th-TH")}/${wasteDPct.toFixed(2)}%`,
-    `🗑WasteMTD:${wasteMtd.toLocaleString("th-TH")}/${wasteMPct.toFixed(2)}%`,
+    `========================`,
+    `👷 COL: ${colPct.toFixed(2)}%`,
+    `⏰ Hour: ${hours.toFixed(2)}`,
+    `🕒 OT: ${otHours > 0 ? otHours.toFixed(2) : ""}`,
+    `📊 TCMH = ${tcmh.toFixed(2)}`,
+    `🚀 SOS Daily: ${sosD}`,
+    `📈 SOS MTD: ${sosMd}`,
+    `========================`,
+    `🗑️ WASTE`,
+    `Daily: ${totalWasteD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${pct(totalWasteD, actual)}%`,
+    `MTD: ${totalWasteMtd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${pct(totalWasteMtd, mtdAct)}%`,
+    `========================`,
     ``,
-    `🕰Work Hour :${hours.toFixed(1)}`,
-    `📝OSAT:${osat}`,
-    `📝Survey Count:${surveyCount}`,
-    ``,
-    `👨‍💼 Roster Manager`,
+    `📅 Manager Roster`,
+    `Date: ${managerRosterDate}`,
     managerRoster,
     ``,
     `👥 Roster Staff`,
     staffRoster,
     ``,
     `📝 Report by ${reportBy}`,
-  ].join("\n");
+  ];
 
+  const text = lines.join("\n");
   return { type: "text", text };
 }
 import { storage, transaction, updateShiftById } from "./storage";

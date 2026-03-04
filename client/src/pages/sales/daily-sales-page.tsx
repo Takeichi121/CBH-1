@@ -1289,6 +1289,159 @@ ${v.staffRosterText || ""}
       });
   };
 
+  const handleCopyNewReport = () => {
+    const v = form.getValues();
+    const actualSalesVal = parseFloat(v.actualSales?.replace(/,/g, "") || "0") || 0;
+    const tcVal = parseInt(v.transactionCount) || 0;
+    const taVal = tcVal > 0 ? Math.round(actualSalesVal / tcVal) : 0;
+    const dailyTargetVal = parseFloat(v.dailyTarget?.replace(/,/g, "") || "0") || 0;
+    const dailyVariance = actualSalesVal - dailyTargetVal;
+
+    const mtdActualVal = parseFloat(v.mtdActual?.replace(/,/g, "") || "0") || 0;
+    const mtdTargetVal = parseFloat(v.mtdTarget?.replace(/,/g, "") || "0") || 0;
+    const mtdVariance = mtdActualVal - mtdTargetVal;
+    const mtdTcVal = parseInt(v.mtdTc) || 0;
+    const mtdTaVal = mtdTcVal > 0 ? Math.round(mtdActualVal / mtdTcVal) : 0;
+
+    const dineInVal = parseFloat(v.dineIn?.replace(/,/g, "") || "0") || 0;
+    const dineInTcVal = parseInt(v.dineInTc || "0") || 0;
+    const takeAwayVal = parseFloat(v.takeAway?.replace(/,/g, "") || "0") || 0;
+    const takeAwayTcVal = parseInt(v.takeAwayTc || "0") || 0;
+    const inStoreTotal = dineInVal + takeAwayVal;
+
+    const grabVal = parseFloat(v.grabfood?.replace(/,/g, "") || "0") || 0;
+    const linemanVal = parseFloat(v.lineman?.replace(/,/g, "") || "0") || 0;
+    const shopeeVal = parseFloat(v.shopee?.replace(/,/g, "") || "0") || 0;
+    const bkappVal = parseFloat(v.bkapp?.replace(/,/g, "") || "0") || 0;
+    const robinVal = parseFloat(v.robin?.replace(/,/g, "") || "0") || 0;
+    const gokooVal = parseFloat(v.gokoo?.replace(/,/g, "") || "0") || 0;
+    const deliveryTotal = grabVal + linemanVal + shopeeVal + bkappVal + robinVal + gokooVal;
+
+    const pct2 = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";
+    const fmtNum = (n: number) => n.toLocaleString("en-US");
+    const fmtVariance = (n: number) => (n >= 0 ? "+" : "") + fmtNum(Math.round(n));
+    const fmtMtdVariance = (n: number) => (n >= 0 ? "+฿" : "-฿") + fmtNum(Math.abs(Math.round(n)));
+
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
+    };
+
+    const osatVal = v.osat || "0";
+    const surveyCountVal = v.surveyCount || "0";
+    const voidAmountVal = parseFloat(v.voidAmount?.replace(/,/g, "") || "0") || 0;
+    const voidCountVal = v.voidCount || "0";
+    const addCheeseCountVal = parseInt(v.addCheeseCount || "0") || 0;
+    const vMealCountVal = parseInt(v.vMealCount || "0") || 0;
+    const upSizeCountVal = parseInt(v.upSizeCount || "0") || 0;
+
+    const colPct = parseFloat(v.colPercent || "0") || 0;
+    const actualHoursVal = parseFloat(v.actualHours?.replace(/,/g, "") || "0") || 0;
+    const otHoursVal = parseFloat(v.otHours?.replace(/,/g, "") || "0") || 0;
+    const tcmhVal = parseFloat(v.tcmh || "0") || 0;
+    const sosDailyVal = v.sosDaily || "0";
+    const sosMtdVal = v.sosMtd || "0";
+
+    const wasteDailyTotalVal = parseFloat(v.wasteDailyTotal?.replace(/,/g, "") || "0") || 0;
+    const wasteMtdTotalVal = parseFloat(v.wasteMtdTotal?.replace(/,/g, "") || "0") || 0;
+
+    const managerRosterDateStr = v.managerRosterDate ? formatDate(v.managerRosterDate) : formatDate(v.reportDate);
+    const managerLines = MANAGER_NAMES.map(m => {
+      const shift = v[m.key as keyof typeof v] || "";
+      return shift ? `${m.name}: ${shift}` : null;
+    }).filter(Boolean).join("\n");
+
+    const deliveryLines: string[] = [
+      `🛵 Grab: ${fmtNum(grabVal)}/${pct2(grabVal, actualSalesVal)}%`,
+      `🛵 LINE MAN: ${fmtNum(linemanVal)}/${pct2(linemanVal, actualSalesVal)}%`,
+      `🛵 Shoppee Food: ${fmtNum(shopeeVal)}/${pct2(shopeeVal, actualSalesVal)}%`,
+      `🛵 BK App/Web: ${fmtNum(bkappVal)}/${pct2(bkappVal, actualSalesVal)}%`,
+    ];
+    if (robinVal > 0) deliveryLines.push(`🛵 Robin: ${fmtNum(robinVal)}/${pct2(robinVal, actualSalesVal)}%`);
+    if (gokooVal > 0) deliveryLines.push(`🛵 GoKOO: ${fmtNum(gokooVal)}/${pct2(gokooVal, actualSalesVal)}%`);
+
+    const reportText = [
+      `💎 Daily Sales Report 💎`,
+      `Grand Diamond`,
+      `Date: ${formatDate(v.reportDate)}`,
+      `========================`,
+      ``,
+      `📊 Daily`,
+      `💰 TG: ${fmtNum(dailyTargetVal)}`,
+      `💵 AC: ${fmtNum(actualSalesVal)}`,
+      `📉 Variance: ${fmtVariance(dailyVariance)}`,
+      `👥 TC: ${fmtNum(tcVal)}`,
+      `🧾 TA: ${fmtNum(taVal)}`,
+      ``,
+      `📈 MTD`,
+      `💰 MTD TG: ${fmtNum(mtdTargetVal)}`,
+      `💵 MTD AC: ${fmtNum(mtdActualVal)}`,
+      `📉 Variance: ${fmtMtdVariance(mtdVariance)}`,
+      `👥 MTD TC: ${fmtNum(mtdTcVal)}`,
+      `🧾 MTD TA: ${fmtNum(mtdTaVal)}`,
+      ``,
+      `🏪 Restaurant`,
+      `🍽️ Dine In: ${fmtNum(dineInVal)}/${pct2(dineInVal, actualSalesVal)}%`,
+      `TC: ${dineInTcVal}`,
+      `🥡 Take Away: ${fmtNum(takeAwayVal)}/${pct2(takeAwayVal, actualSalesVal)}%`,
+      `TC: ${takeAwayTcVal}`,
+      `🏪 In Store Total: ${fmtNum(inStoreTotal)}/${pct2(inStoreTotal, actualSalesVal)}%`,
+      ``,
+      `🛵 DELIVERY`,
+      ...deliveryLines,
+      `📦 Delivery Total: ${fmtNum(deliveryTotal)}/${pct2(deliveryTotal, actualSalesVal)}%`,
+      ``,
+      `========================`,
+      ``,
+      `⭐ OSAT: ${osatVal}`,
+      `📋 Survey count: ${surveyCountVal}`,
+      `❌ Void: -฿${voidAmountVal.toFixed(2)}`,
+      `📋 count: ${voidCountVal} Bill`,
+      `🧀 Add Cheese: ${addCheeseCountVal}/${pct2(addCheeseCountVal, tcVal)}%`,
+      `🍔 V-meal: ${vMealCountVal}/${pct2(vMealCountVal, tcVal)}%`,
+      `🥤 Up Size: ${upSizeCountVal}/${pct2(upSizeCountVal, tcVal)}%`,
+      ``,
+      `========================`,
+      `👷 COL: ${colPct.toFixed(2)}%`,
+      `⏰ Hour: ${actualHoursVal.toFixed(2)}`,
+      `🕒 OT: ${otHoursVal > 0 ? otHoursVal.toFixed(2) : ""}`,
+      `📊 TCMH = ${tcmhVal.toFixed(2)}`,
+      `🚀 SOS Daily: ${sosDailyVal}`,
+      `📈 SOS MTD: ${sosMtdVal}`,
+      `========================`,
+      `🗑️ WASTE`,
+      `Daily: ${wasteDailyTotalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${pct2(wasteDailyTotalVal, actualSalesVal)}%`,
+      `MTD: ${wasteMtdTotalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${pct2(wasteMtdTotalVal, mtdActualVal)}%`,
+      `========================`,
+      ``,
+      `📅 Manager Roster`,
+      `Date: ${managerRosterDateStr}`,
+      managerLines || v.managerRosterText || "",
+      ``,
+      `👥 Roster Staff`,
+      v.staffRosterText || "",
+      ``,
+      `📝 Report by ${v.reportBy}`,
+    ].join("\n");
+
+    navigator.clipboard
+      .writeText(reportText)
+      .then(() => {
+        toast({
+          title: language === "th" ? "💎 คัดลอกรายงานรูปแบบใหม่แล้ว" : "💎 New format copied",
+          description: language === "th" ? "คัดลอกรายงาน Grand Diamond ไปยังคลิปบอร์ดแล้ว" : "Grand Diamond report copied to clipboard",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: language === "th" ? "เกิดข้อผิดพลาด" : "Error",
+          description: language === "th" ? "ไม่สามารถคัดลอกได้" : "Failed to copy",
+          variant: "destructive",
+        });
+      });
+  };
+
   const actualSales = parseFloat(form.watch("actualSales") || "0");
   const grabSales = parseFloat(form.watch("grabfood") || "0");
   const linemanSales = parseFloat(form.watch("lineman") || "0");
@@ -3499,6 +3652,16 @@ ${v.staffRosterText || ""}
                     {language === "th"
                       ? "คัดลอก (ไม่บันทึก DB)"
                       : "Copy (No DB Save)"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyNewReport}
+                    className="gap-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-400 dark:text-yellow-300 dark:hover:bg-yellow-950"
+                    data-testid="button-copy-new-report"
+                  >
+                    <Copy className="w-4 h-4" />
+                    💎 {language === "th" ? "คัดลอก (Grand Diamond)" : "Copy (Grand Diamond)"}
                   </Button>
                   <Button
                     type="button"

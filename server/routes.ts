@@ -2170,8 +2170,8 @@ ${pageContext}` : ''}`;
         }
       }
 
-      // Agentic loop — up to 8 rounds, supports GPT-4o and Gemini 2.5 Pro
-      const MAX_ROUNDS = 8;
+      // Agentic loop — up to 5 rounds
+      const MAX_ROUNDS = 5;
       let rounds = 0;
       let hadAnyToolCalls = false;
 
@@ -2226,141 +2226,59 @@ ${pageContext}` : ''}`;
           aiMessages.push(...toolResults);
           // Continue loop — Verify phase will run next round
         } else {
-          // No tool calls — run Triple Fusion Synthesis
-          res.write(`data: ${JSON.stringify({ thinking: "กำลังรวมคำตอบจาก GPT-4o + Gemini + Claude..." })}\n\n`);
-
+          // No tool calls — stream GPT-4o directly (has full context from agentic loop)
           if (toolActions.length > 0) {
             res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
           }
+          res.write(`data: ${JSON.stringify({ thinking: "กำลังสร้างคำตอบ..." })}\n\n`);
 
-          // Build prompt string for non-OpenAI models
-          const fusionPrompt = aiMessages
-            .map((m: any) => `${m.role}: ${typeof m.content === "string" ? m.content : JSON.stringify(m)}`)
-            .join("\n");
-
-          // Run GPT-4o + Gemini + Claude in parallel
-          const [gptAnswer, geminiAnswer, claudeAnswer] = await Promise.all([
-            // GPT-4o
-            openai.chat.completions.create({
-              model: "gpt-4o",
-              messages: aiMessages,
-              max_completion_tokens: 2048,
-            }).then(r => r.choices[0]?.message?.content || "").catch(() => ""),
-
-            // Gemini 2.5 Pro
-            (async () => {
-              try {
-                const gm = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-                const r = await gm.generateContent(fusionPrompt);
-                return r.response.text() || "";
-              } catch { return ""; }
-            })(),
-
-            // Claude Sonnet 4.6 (Replit AI Integration)
-            (async () => {
-              try {
-                const claudeMessages = aiMessages
-                  .filter((m: any) => m.role === "user" || m.role === "assistant")
-                  .map((m: any) => ({
-                    role: m.role as "user" | "assistant",
-                    content: typeof m.content === "string" ? m.content : JSON.stringify(m.content || ""),
-                  }));
-                if (claudeMessages.length === 0) return "";
-                const r = await anthropic.messages.create({
-                  model: "claude-sonnet-4-6",
-                  max_tokens: 2048,
-                  messages: claudeMessages,
-                });
-                const block = r.content[0];
-                return block?.type === "text" ? block.text : "";
-              } catch { return ""; }
-            })(),
-          ]);
-
-          // Collect non-empty answers for synthesis
-          const availableAnswers: string[] = [];
-          if (gptAnswer) availableAnswers.push(`[GPT-4o]: ${gptAnswer}`);
-          if (geminiAnswer) availableAnswers.push(`[Gemini 2.5 Pro]: ${geminiAnswer}`);
-          if (claudeAnswer) availableAnswers.push(`[Claude Sonnet]: ${claudeAnswer}`);
-
-          let finalContent = gptAnswer; // fallback
-
-          if (availableAnswers.length > 1) {
-            // Synthesize all answers via GPT-4o streaming
-            const synthMessages: any[] = [
-              ...aiMessages,
-              {
-                role: "user",
-                content: `คุณมีคำตอบจาก AI หลายตัว:\n\n${availableAnswers.join("\n\n")}\n\nสังเคราะห์ทั้งหมดเป็นคำตอบที่ดีที่สุด ครบถ้วน และเป็นประโยชน์ที่สุด ในภาษาเดียวกับคำถาม ห้ามระบุชื่อโมเดลหรือว่ามาจากใคร`,
-              },
-            ];
-            const synthStream = await openai.chat.completions.create({
-              model: "gpt-4o",
-              messages: synthMessages,
-              max_completion_tokens: 4096,
-              stream: true,
-            });
-            let fullSynth = "";
-            let suggTailBuf = "";
-            let capturingSugg = false;
-            const SUGG_MARKER = "[SUGGESTIONS:";
-            for await (const chunk of synthStream) {
-              const delta = chunk.choices[0]?.delta?.content || "";
-              if (delta) {
-                fullSynth += delta;
-                if (capturingSugg) {
-                  suggTailBuf += delta;
+          const directStream = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: aiMessages,
+            max_completion_tokens: 4096,
+            stream: true,
+          });
+          let fullDirect = "";
+          let suggTailBuf = "";
+          let capturingSugg = false;
+          const SUGG_MARKER = "[SUGGESTIONS:";
+          for await (const chunk of directStream) {
+            const delta = chunk.choices[0]?.delta?.content || "";
+            if (delta) {
+              fullDirect += delta;
+              if (capturingSugg) {
+                suggTailBuf += delta;
+              } else {
+                const tail = suggTailBuf + delta;
+                const markerIdx = tail.lastIndexOf(SUGG_MARKER);
+                if (markerIdx !== -1) {
+                  const beforeMarker = tail.slice(0, markerIdx);
+                  if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+                  capturingSugg = true;
+                  suggTailBuf = tail.slice(markerIdx);
                 } else {
-                  const tail = suggTailBuf + delta;
-                  const markerIdx = tail.lastIndexOf(SUGG_MARKER);
-                  if (markerIdx !== -1) {
-                    const beforeMarker = tail.slice(0, markerIdx);
-                    if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
-                    capturingSugg = true;
-                    suggTailBuf = tail.slice(markerIdx);
+                  const safeLen = tail.length - SUGG_MARKER.length;
+                  if (safeLen > 0) {
+                    res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
+                    suggTailBuf = tail.slice(safeLen);
                   } else {
-                    const safeLen = tail.length - SUGG_MARKER.length;
-                    if (safeLen > 0) {
-                      res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
-                      suggTailBuf = tail.slice(safeLen);
-                    } else {
-                      suggTailBuf = tail;
-                    }
+                    suggTailBuf = tail;
                   }
                 }
               }
             }
-            // Flush remaining
-            if (!capturingSugg && suggTailBuf) {
-              res.write(`data: ${JSON.stringify({ content: suggTailBuf })}\n\n`);
-              suggTailBuf = "";
-            }
-            // Extract suggestions from fullSynth
-            const { clean: synthClean, suggestions: synthSugg } = extractSuggestions(fullSynth);
-            if (synthSugg.length > 0) {
-              res.write(`data: ${JSON.stringify({ suggestedReplies: synthSugg })}\n\n`);
-            }
-            db.insert(channConversations).values({ username, role: "assistant", content: synthClean }).catch(console.error);
-            res.write(`data: [DONE]\n\n`);
-            res.end();
-            return;
           }
-
-          // Single model fallback — stream gptAnswer directly
-          if (finalContent) {
-            const { clean, suggestions } = extractSuggestions(finalContent);
-            for (let i = 0; i < clean.length; i += 30) {
-              res.write(`data: ${JSON.stringify({ content: clean.slice(i, i + 30) })}\n\n`);
-            }
-            if (suggestions.length > 0) {
-              res.write(`data: ${JSON.stringify({ suggestedReplies: suggestions })}\n\n`);
-            }
-            db.insert(channConversations).values({ username, role: "assistant", content: clean }).catch(console.error);
-            res.write(`data: [DONE]\n\n`);
-            res.end();
-            return;
+          if (!capturingSugg && suggTailBuf) {
+            res.write(`data: ${JSON.stringify({ content: suggTailBuf })}\n\n`);
           }
-          break; // Fallback: no content — do streaming final answer below
+          const { clean: directClean, suggestions: directSugg } = extractSuggestions(fullDirect);
+          if (directSugg.length > 0) {
+            res.write(`data: ${JSON.stringify({ suggestedReplies: directSugg })}\n\n`);
+          }
+          db.insert(channConversations).values({ username, role: "assistant", content: directClean }).catch(console.error);
+          res.write(`data: [DONE]\n\n`);
+          res.end();
+          return;
         }
       }
 

@@ -4,7 +4,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO } from "./socket";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 function convertToGeminiTools(openAiTools: any[]) {
   return openAiTools.map(tool => {

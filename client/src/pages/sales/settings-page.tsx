@@ -104,6 +104,7 @@ export default function SalesSettingsPage() {
     lastYearTc: string;
     targetTc: string;
     targetTa: string;
+    closeShiftCount: string;
   }>>({});
 
   const [defaultTarget, setDefaultTarget] = useState("130000");
@@ -240,7 +241,11 @@ export default function SalesSettingsPage() {
       runningWorkHours += summaryHours;
       const varianceHours = summaryHours - rosterCommit;
 
-      const colDaily = summaryHours * HOURLY_RATE + fixedCostDaily + closeShiftDailyCost;
+      const closeShiftCount = parseFloat(editable.closeShiftCount) || 0;
+      const dutyCost = DUTY_TEAM_HOURS * HOURLY_RATE;
+      const ptCost = (actualHours + otHours) * HOURLY_RATE;
+      const closeShiftCost = closeShiftDailyCost * closeShiftCount;
+      const colDaily = dutyCost + ptCost + fixedCostDaily + closeShiftCost;
       runningCol += colDaily;
       const colPercent = actualSales > 0 ? (colDaily / actualSales) * 100 : 0;
       
@@ -272,6 +277,10 @@ export default function SalesSettingsPage() {
         summaryHours,
         mtdWorkingHours: runningWorkHours,
         varianceHours,
+        closeShiftCount,
+        dutyCost,
+        ptCost,
+        closeShiftCost,
         colDaily,
         mtdCol: runningCol,
         colPercent,
@@ -314,6 +323,10 @@ export default function SalesSettingsPage() {
       otHours: tableData.reduce((sum, row) => sum + row.otHours, 0),
       summaryHours: tableData.reduce((sum, row) => sum + row.summaryHours, 0),
       mtdWorkingHours: lastRow.mtdWorkingHours,
+      dutyCost: tableData.reduce((sum, row) => sum + row.dutyCost, 0),
+      ptCost: tableData.reduce((sum, row) => sum + row.ptCost, 0),
+      closeShiftCount: tableData.reduce((sum, row) => sum + row.closeShiftCount, 0),
+      closeShiftCost: tableData.reduce((sum, row) => sum + row.closeShiftCost, 0),
       colDaily: tableData.reduce((sum, row) => sum + row.colDaily, 0),
       wasteDaily: tableData.reduce((sum, row) => sum + row.wasteDaily, 0),
       wasteMtd: lastRow.wasteMtd,
@@ -454,7 +467,7 @@ export default function SalesSettingsPage() {
         const data = await res.json();
         if (data.ok && data.reports) {
           const editableMap: Record<string, any> = {};
-          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "" };
+          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0" };
           data.reports.forEach((report: any) => {
             editableMap[report.reportDate] = {
               actualSales: (parseFloat(report.actualSales) || 0).toString(),
@@ -469,6 +482,7 @@ export default function SalesSettingsPage() {
               lastYearTc: (parseFloat(report.lastYearTc) || 0).toString(),
               targetTc: (parseFloat(report.targetTc) || 0).toString(),
               targetTa: (parseFloat(report.targetTa) || 0).toString(),
+              closeShiftCount: (parseInt(report.closeShiftCount) || 0).toString(),
             };
           });
           const newMap: Record<string, any> = {};
@@ -482,7 +496,7 @@ export default function SalesSettingsPage() {
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
         } else {
-          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "" };
+          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0" };
           const newMap: Record<string, any> = {};
           monthDates.forEach(({ date }) => {
             newMap[date] = { ...emptyRow };
@@ -924,7 +938,7 @@ export default function SalesSettingsPage() {
               </div>
               <div className="overflow-x-auto scrollbar-visible pb-3" style={{ scrollbarWidth: 'auto', scrollbarColor: '#888 #f1f1f1' }}>
                 <div className="max-h-[600px] overflow-y-auto">
-                  <table className="w-full text-xs border-collapse min-w-[3800px]">
+                  <table className="w-full text-xs border-collapse min-w-[4300px]">
                     <thead className="sticky top-0 z-20 shadow-sm">
                       <tr className="bg-slate-200 dark:bg-slate-700 text-center">
                         <th className="p-2 border border-slate-300 min-w-[80px] sticky left-0 z-30 bg-slate-200 dark:bg-slate-700">{t.date}</th>
@@ -957,6 +971,11 @@ export default function SalesSettingsPage() {
                         <th className="p-2 border border-slate-300 min-w-[70px] font-bold">{t.sumHours}</th>
                         <th className="p-2 border border-slate-300 min-w-[70px]">{t.mtdHours}</th>
                         <th className="p-2 border border-slate-300 min-w-[60px]">{t.variance}</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-indigo-100 dark:bg-indigo-900">Duty Cost</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-indigo-100 dark:bg-indigo-900">PT+OT Cost</th>
+                        <th className="p-2 border border-slate-300 min-w-[70px] bg-indigo-100 dark:bg-indigo-900">Fixed</th>
+                        <th className="p-2 border border-slate-300 min-w-[60px] bg-indigo-100 dark:bg-indigo-900">คนปิด</th>
+                        <th className="p-2 border border-slate-300 min-w-[80px] bg-indigo-100 dark:bg-indigo-900">ค่าปิดร้าน</th>
                         <th className="p-2 border border-slate-300 min-w-[80px]">{t.colBath}</th>
                         <th className="p-2 border border-slate-300 min-w-[80px]">{t.mtdCol}</th>
                         <th className="p-2 border border-slate-300 min-w-[60px]">{t.colPercent}</th>
@@ -1023,9 +1042,14 @@ export default function SalesSettingsPage() {
                           <td className="p-1 border border-slate-300 bg-slate-100 dark:bg-slate-700 font-bold text-right pr-2 text-indigo-700 dark:text-indigo-300">{fmtDec(row.summaryHours)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.mtdWorkingHours)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceHours < 0 ? 'text-red-500' : 'text-green-600'}`}>{fmtDec(row.varianceHours)}</td>
+                          <td className="p-1 border border-slate-300 bg-indigo-50 dark:bg-indigo-950/30 text-right pr-2">{fmtNum(row.dutyCost)}</td>
+                          <td className="p-1 border border-slate-300 bg-indigo-50 dark:bg-indigo-950/30 text-right pr-2">{fmtNum(row.ptCost)}</td>
+                          <td className="p-1 border border-slate-300 bg-indigo-50 dark:bg-indigo-950/30 text-right pr-2">{fmtNum(fixedCostDaily)}</td>
+                          <td className="p-1 border border-slate-300 bg-indigo-50 dark:bg-indigo-950/30 text-center">{row.closeShiftCount > 0 ? row.closeShiftCount : ""}</td>
+                          <td className="p-1 border border-slate-300 bg-indigo-50 dark:bg-indigo-950/30 text-right pr-2">{row.closeShiftCost > 0 ? fmtNum(row.closeShiftCost) : ""}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.colDaily)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.mtdCol)}</td>
-                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.colPercent)}%</td>
+                          <td className={`p-1 border border-slate-300 text-right pr-2 font-medium ${row.colPercent <= 12 ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300" : row.colPercent <= 14 ? "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300" : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"}`}>{fmtDec(row.colPercent)}%</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.tcmh)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-red-700 dark:text-red-300" value={editableSalesData[row.date]?.wasteDaily || ""} onChange={(e) => handleSalesDataChange(row.date, 'wasteDaily', e.target.value)} data-testid={`input-waste-${row.date}`} />
@@ -1067,6 +1091,11 @@ export default function SalesSettingsPage() {
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.summaryHours)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.mtdWorkingHours)}</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 bg-indigo-100 dark:bg-indigo-900 text-right">{totals && fmtNum(totals.dutyCost)}</td>
+                        <td className="p-2 border border-slate-300 bg-indigo-100 dark:bg-indigo-900 text-right">{totals && fmtNum(totals.ptCost)}</td>
+                        <td className="p-2 border border-slate-300 bg-indigo-100 dark:bg-indigo-900 text-right">{fmtNum(fixedCostDaily * tableData.length)}</td>
+                        <td className="p-2 border border-slate-300 bg-indigo-100 dark:bg-indigo-900 text-center">{totals && totals.closeShiftCount > 0 ? totals.closeShiftCount : "-"}</td>
+                        <td className="p-2 border border-slate-300 bg-indigo-100 dark:bg-indigo-900 text-right">{totals && totals.closeShiftCost > 0 ? fmtNum(totals.closeShiftCost) : "-"}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.colDaily)}</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>

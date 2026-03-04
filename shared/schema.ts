@@ -185,6 +185,7 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   dailyTarget: text("daily_target").notNull().default("0"),
   actualSales: text("actual_sales").notNull().default("0"),
   transactionCount: text("transaction_count").notNull().default("0"),
+  cashDeposit: text("cash_deposit").default("0"),
 
   // MTD
   mtdTarget: text("mtd_target").default("0"),

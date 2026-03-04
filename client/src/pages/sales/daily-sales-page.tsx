@@ -149,6 +149,7 @@ const formSchema = z.object({
   dailyTarget: z.string().default("0"),
   actualSales: z.string().default("0"),
   transactionCount: z.string().default("0"),
+  cashDeposit: z.string().default("0"),
   mtdTarget: z.string().default("0"),
   mtdActual: z.string().default("0"),
   mtdTc: z.string().default("0"),
@@ -288,6 +289,7 @@ export default function DailySalesPage() {
       dailyTarget: "0",
       actualSales: "0",
       transactionCount: "0",
+      cashDeposit: "0",
       mtdTarget: "0",
       mtdActual: "0",
       mtdTc: "0",
@@ -399,6 +401,7 @@ export default function DailySalesPage() {
       mtdTarget: values.mtdTarget?.replace(/,/g, "") || "0",
       mtdActual: values.mtdActual?.replace(/,/g, "") || "0",
       mtdTc: values.mtdTc?.replace(/,/g, "") || "0",
+      cashDeposit: values.cashDeposit?.replace(/,/g, "") || "0",
       voidAmount: values.voidAmount?.replace(/,/g, "") || "0",
       sosDaily: values.sosDaily?.replace(/,/g, "") || "0",
       sosMtd: values.sosMtd?.replace(/,/g, "") || "0",
@@ -729,6 +732,7 @@ export default function DailySalesPage() {
           laborHour: "0",
           tcmh: "0",
           closeShiftCount: "0",
+          cashDeposit: "0",
           managerPhongsathon: "",
           managerNuttarika: "",
           managerBoonyisa: "",
@@ -809,6 +813,7 @@ export default function DailySalesPage() {
           form.setValue("laborHour", r.laborHour || "0");
           form.setValue("tcmh", r.tcmh || "0");
           form.setValue("closeShiftCount", r.closeShiftCount || "0");
+          form.setValue("cashDeposit", r.cashDeposit || "0");
 
           if (r.managerRosterDate)
             form.setValue("managerRosterDate", r.managerRosterDate);
@@ -989,6 +994,7 @@ export default function DailySalesPage() {
         colPercent: values.colPercent?.replace(/,/g, "") || "0",
         tcmh: values.tcmh?.replace(/,/g, "") || "0",
         closeShiftCount: values.closeShiftCount || "0",
+        cashDeposit: values.cashDeposit?.replace(/,/g, "") || "0",
       };
 
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", {
@@ -1102,6 +1108,7 @@ export default function DailySalesPage() {
         colPercent: values.colPercent?.replace(/,/g, "") || "0",
         tcmh: values.tcmh?.replace(/,/g, "") || "0",
         closeShiftCount: values.closeShiftCount || "0",
+        cashDeposit: values.cashDeposit?.replace(/,/g, "") || "0",
       };
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", { token, report: reportToSave });
       const result = await res.json();
@@ -2176,6 +2183,25 @@ ${v.staffRosterText || ""}
                         data-testid="input-ta"
                       />
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="cashDeposit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Cash Deposit (฿)</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">฿</span>
+                              <FormattedInput
+                                className="pl-6 text-sm"
+                                {...field}
+                                data-testid="input-cash-deposit"
+                              />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 

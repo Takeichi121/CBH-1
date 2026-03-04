@@ -4658,8 +4658,9 @@ ${pageContext}` : ''}`;
     const rosterHours = Number(cfg.rosterHours) || 88;
     const varianceHours = summaryHours - rosterHours;
 
+    const closeShiftCount = Number(salesData?.closeShiftCount || 0);
     const variableCost = (dutyHours + actual + ot) * (Number(cfg.ptWageRate) || 0);
-    const fixedCost = (Number(cfg.fixedCostDaily) || 0) + (Number(cfg.closeShiftDailyCost) || 0);
+    const fixedCost = (Number(cfg.fixedCostDaily) || 0) + (Number(cfg.closeShiftDailyCost) || 0) * closeShiftCount;
     const laborCostTotal = fixedCost + variableCost;
 
     const colPercent = sales > 0 ? (laborCostTotal / sales) * 100 : 0;

@@ -243,6 +243,7 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   colPercent: text("col_percent").default("0"),
   laborHour: text("labor_hour").default("0"),
   tcmh: text("tcmh").default("0"),
+  closeShiftCount: text("close_shift_count").default("0"),
 
   // Roster
   managerRosterDate: text("manager_roster_date"),

@@ -191,6 +191,7 @@ const formSchema = z.object({
   colPercent: z.string().default("0"),
   laborHour: z.string().default("0"),
   tcmh: z.string().default("0"),
+  closeShiftCount: z.string().default("0"),
 
   managerRosterDate: z.string().default(""),
   managerRosterText: z.string().default(""),
@@ -327,6 +328,7 @@ export default function DailySalesPage() {
       colPercent: "0",
       laborHour: "0",
       tcmh: "0",
+      closeShiftCount: "0",
 
       managerRosterDate: "",
       managerRosterText: "",
@@ -415,6 +417,7 @@ export default function DailySalesPage() {
       laborHour: values.laborHour?.replace(/,/g, "") || "0",
       colPercent: values.colPercent?.replace(/,/g, "") || "0",
       tcmh: values.tcmh?.replace(/,/g, "") || "0",
+      closeShiftCount: values.closeShiftCount || "0",
     };
 
     try {
@@ -725,6 +728,7 @@ export default function DailySalesPage() {
           colPercent: "0",
           laborHour: "0",
           tcmh: "0",
+          closeShiftCount: "0",
           managerPhongsathon: "",
           managerNuttarika: "",
           managerBoonyisa: "",
@@ -804,6 +808,7 @@ export default function DailySalesPage() {
           form.setValue("colPercent", r.colPercent || "0");
           form.setValue("laborHour", r.laborHour || "0");
           form.setValue("tcmh", r.tcmh || "0");
+          form.setValue("closeShiftCount", r.closeShiftCount || "0");
 
           if (r.managerRosterDate)
             form.setValue("managerRosterDate", r.managerRosterDate);
@@ -983,6 +988,7 @@ export default function DailySalesPage() {
         laborHour: values.laborHour?.replace(/,/g, "") || "0",
         colPercent: values.colPercent?.replace(/,/g, "") || "0",
         tcmh: values.tcmh?.replace(/,/g, "") || "0",
+        closeShiftCount: values.closeShiftCount || "0",
       };
 
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", {
@@ -1095,6 +1101,7 @@ export default function DailySalesPage() {
         laborHour: values.laborHour?.replace(/,/g, "") || "0",
         colPercent: values.colPercent?.replace(/,/g, "") || "0",
         tcmh: values.tcmh?.replace(/,/g, "") || "0",
+        closeShiftCount: values.closeShiftCount || "0",
       };
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", { token, report: reportToSave });
       const result = await res.json();
@@ -1480,6 +1487,7 @@ ${v.staffRosterText || ""}
   const rosterCommitInput = parseFloat(form.watch("rosterCommit") || "0");
   const actualHoursInput = parseFloat(form.watch("actualHours") || "0");
   const otHoursInput = parseFloat(form.watch("otHours") || "0");
+  const closeShiftCountInput = parseInt(form.watch("closeShiftCount") || "0") || 0;
 
   // --- Compute labor metrics directly (for instant display) ---
   const { dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = laborSettings;
@@ -1493,8 +1501,8 @@ ${v.staffRosterText || ""}
   // Total hours including duty for labor cost calculation only
   const totalHoursForCost = dutyDailyHours + actualHoursInput + otHoursInput;
   
-  // Labor Cost Total = Total Hours (including duty) × PPH + fixed daily costs
-  const computedLaborCost = totalHoursForCost * ptWageRate + fixedCostDaily + closeShiftDailyCost;
+  // Labor Cost Total = Total Hours (including duty) × PPH + fixed daily costs + (ค่าปิดร้าน/คน × จำนวนคน)
+  const computedLaborCost = totalHoursForCost * ptWageRate + fixedCostDaily + (closeShiftDailyCost * closeShiftCountInput);
   
   // COL% = Labor Cost / Sales * 100
   const computedColPercent = actualSales > 0 ? (computedLaborCost / actualSales) * 100 : 0;
@@ -3361,6 +3369,25 @@ ${v.staffRosterText || ""}
                               inputMode="decimal"
                               className="text-sm"
                               data-testid="input-ot-hours"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="closeShiftCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            {language === "th" ? "คนปิดร้าน" : "Close Shift (ppl)"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="numeric"
+                              className="text-sm"
+                              data-testid="input-close-shift-count"
                             />
                           </FormControl>
                         </FormItem>

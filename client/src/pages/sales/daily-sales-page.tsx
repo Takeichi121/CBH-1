@@ -225,6 +225,7 @@ const SHIFT_OPTIONS = [
   { value: "19:00-04:00", label: "19:00-04:00" },
   { value: "22:00-07:00", label: "22:00-07:00" },
   { value: "OFF", label: "OFF" },
+  { value: "SICK", label: "SICK" },
   { value: "COM", label: "COM" },
   { value: "Vacation", label: "Vacation" },
   { value: "QSNCC", label: "QSNCC" },

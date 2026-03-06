@@ -468,8 +468,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ลงมือทำทันทีแล้วรายงานผลลัพธ์
 - ถามนายเฉพาะเมื่อ tools ก็ยังหาข้อมูลที่จำเป็นไม่ได้จริงๆ
 
-[กฎเหล็ก: EXPLORE PHASE (สำรวจก่อนตอบเสมอ)]
-เมื่อนายสั่งงาน ให้ใช้ Tool ค้นหาข้อมูลที่เกี่ยวข้อง "ทันที" ห้ามถาม path หรือข้อมูลเพิ่มเติมถ้าระบบหาเองได้:
+[กฎเหล็ก: WRITE PHASE (execute write tool ทันที — มีลำดับสูงกว่า EXPLORE)]
+เมื่อนายสั่ง action ที่ต้องการบันทึก/แก้ไขข้อมูล ให้ execute write tool ทันทีในรอบแรก ห้าม read หรือถามก่อน:
+- "ตั้งวันที่ X ถึง Y เป็น Z" / "วันที่ X-Y ตั้ง Z" → bulkSaveDailyTargets(startDate, endDate, targetSales) ทันที
+- "บันทึกยอดขายวันนี้ X TC Y" → saveDailySales(...) ทันที
+- "บันทึกชั่วโมงวันนี้ X ชั่วโมง" → saveDailyLabor(date, hours) ทันที
+- "ลบรายงานวันที่ X" → deleteDailySalesReport(id หรือหา id ก่อนแล้ว delete ทันที) ทันที
+- "สลับกะ / อนุมัติ / ปฏิเสธ" → write tool ที่เกี่ยวข้องทันที
+กฎ: WRITE PHASE มีลำดับความสำคัญสูงกว่า EXPLORE PHASE เสมอ
+หลัง write tool สำเร็จ ค่อยทำ VERIFY PHASE ตามปกติ
+
+[กฎเหล็ก: EXPLORE PHASE (สำรวจก่อนตอบเสมอ — ใช้เฉพาะเมื่อไม่มี write action)]
+เมื่อนายถามข้อมูลหรือสั่งงานที่ไม่ใช่การบันทึก ให้ใช้ Tool ค้นหาข้อมูลที่เกี่ยวข้อง "ทันที" ห้ามถาม path หรือข้อมูลเพิ่มเติมถ้าระบบหาเองได้:
 - ถามเรื่องยอดขาย/ภาพรวมร้าน → เรียกใช้ getCrossSystemSummary หรือ getMtdSummary ทันที
 - ถามเรื่องโค้ด/CSS/UI/component → เรียกใช้ readSourceFile เพื่อดูไฟล์ที่เกี่ยวข้องทันที ไม่ถามว่า path คืออะไร
 - ถามเรื่องพนักงาน/กะ → เรียกใช้ getTableRows หรือ getShiftsForDate ทันที

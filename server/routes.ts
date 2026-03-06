@@ -2194,6 +2194,32 @@ ${pageContext}` : ''}`;
         return { clean, suggestions };
       };
 
+      // Build Claude-compatible messages from OpenAI-format conversation history
+      const buildClaudeMessages = (messages: any[]): { role: "user" | "assistant"; content: string }[] => {
+        const toolResults = messages
+          .filter((m: any) => m.role === "tool")
+          .map((m: any) => m.content)
+          .join("\n---\n");
+
+        const convo = messages
+          .filter((m: any) =>
+            m.role === "user" ||
+            (m.role === "assistant" && !m.tool_calls && m.content)
+          )
+          .map((m: any) => ({ role: m.role as "user" | "assistant", content: String(m.content || "") }));
+
+        if (toolResults && convo.length > 0) {
+          const lastUserIdx = [...convo].map((m: any) => m.role).lastIndexOf("user");
+          if (lastUserIdx !== -1) {
+            convo[lastUserIdx] = {
+              role: "user",
+              content: convo[lastUserIdx].content + "\n\n[ข้อมูลที่ดึงมาจากระบบ ณ ขณะนี้]:\n" + toolResults,
+            };
+          }
+        }
+        return convo.length > 0 ? convo : [{ role: "user", content: "สวัสดี" }];
+      };
+
       while (rounds < MAX_ROUNDS) {
         rounds++;
 
@@ -2237,43 +2263,46 @@ ${pageContext}` : ''}`;
           aiMessages.push(...toolResults);
           // Continue loop — Verify phase will run next round
         } else {
-          // No tool calls — stream GPT-4o directly (has full context from agentic loop)
+          // No tool calls — Claude claude-sonnet-4-6 streams the final answer
           if (toolActions.length > 0) {
             res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
           }
-          res.write(`data: ${JSON.stringify({ thinking: "กำลังสร้างคำตอบ..." })}\n\n`);
+          res.write(`data: ${JSON.stringify({ thinking: "Claude กำลังสร้างคำตอบ..." })}\n\n`);
 
-          const directStream = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: aiMessages,
-            max_completion_tokens: 4096,
-            stream: true,
+          const claudeMsgs = buildClaudeMessages(aiMessages);
+          const directClaudeStream = anthropic.messages.stream({
+            model: "claude-sonnet-4-6",
+            system: systemPrompt,
+            messages: claudeMsgs,
+            max_tokens: 4096,
           });
           let fullDirect = "";
           let suggTailBuf = "";
           let capturingSugg = false;
           const SUGG_MARKER = "[SUGGESTIONS:";
-          for await (const chunk of directStream) {
-            const delta = chunk.choices[0]?.delta?.content || "";
-            if (delta) {
-              fullDirect += delta;
-              if (capturingSugg) {
-                suggTailBuf += delta;
-              } else {
-                const tail = suggTailBuf + delta;
-                const markerIdx = tail.lastIndexOf(SUGG_MARKER);
-                if (markerIdx !== -1) {
-                  const beforeMarker = tail.slice(0, markerIdx);
-                  if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
-                  capturingSugg = true;
-                  suggTailBuf = tail.slice(markerIdx);
+          for await (const event of directClaudeStream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              const delta = event.delta.text;
+              if (delta) {
+                fullDirect += delta;
+                if (capturingSugg) {
+                  suggTailBuf += delta;
                 } else {
-                  const safeLen = tail.length - SUGG_MARKER.length;
-                  if (safeLen > 0) {
-                    res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
-                    suggTailBuf = tail.slice(safeLen);
+                  const tail = suggTailBuf + delta;
+                  const markerIdx = tail.lastIndexOf(SUGG_MARKER);
+                  if (markerIdx !== -1) {
+                    const beforeMarker = tail.slice(0, markerIdx);
+                    if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+                    capturingSugg = true;
+                    suggTailBuf = tail.slice(markerIdx);
                   } else {
-                    suggTailBuf = tail;
+                    const safeLen = tail.length - SUGG_MARKER.length;
+                    if (safeLen > 0) {
+                      res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
+                      suggTailBuf = tail.slice(safeLen);
+                    } else {
+                      suggTailBuf = tail;
+                    }
                   }
                 }
               }
@@ -2298,12 +2327,14 @@ ${pageContext}` : ''}`;
         res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
       }
 
-      // Streaming fallback: for rare cases where break has no content or MAX_ROUNDS hit
-      const streamResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: aiMessages,
-        max_completion_tokens: 4096,
-        stream: true,
+      // Streaming fallback: for rare cases where MAX_ROUNDS hit — Claude streams final answer
+      res.write(`data: ${JSON.stringify({ thinking: "Claude กำลังสร้างคำตอบ..." })}\n\n`);
+      const fallbackClaudeMsgs = buildClaudeMessages(aiMessages);
+      const fallbackClaudeStream = anthropic.messages.stream({
+        model: "claude-sonnet-4-6",
+        system: systemPrompt,
+        messages: fallbackClaudeMsgs,
+        max_tokens: 4096,
       });
 
       let fullAiResponse = "";
@@ -2311,25 +2342,27 @@ ${pageContext}` : ''}`;
       let capturingSugg = false;
       const SUGG_MARKER = "[SUGGESTIONS:";
 
-      for await (const chunk of streamResponse) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullAiResponse += content;
-          if (capturingSugg) {
-            suggTailBuffer += content;
-          } else {
-            const tail = suggTailBuffer + content;
-            const markerIdx = tail.indexOf(SUGG_MARKER);
-            if (markerIdx !== -1) {
-              const beforeMarker = tail.slice(0, markerIdx);
-              if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
-              suggTailBuffer = tail.slice(markerIdx);
-              capturingSugg = true;
+      for await (const event of fallbackClaudeStream) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          const content = event.delta.text;
+          if (content) {
+            fullAiResponse += content;
+            if (capturingSugg) {
+              suggTailBuffer += content;
             } else {
-              const safeLen = Math.max(0, tail.length - (SUGG_MARKER.length - 1));
-              const safe = tail.slice(0, safeLen);
-              suggTailBuffer = tail.slice(safeLen);
-              if (safe) res.write(`data: ${JSON.stringify({ content: safe })}\n\n`);
+              const tail = suggTailBuffer + content;
+              const markerIdx = tail.indexOf(SUGG_MARKER);
+              if (markerIdx !== -1) {
+                const beforeMarker = tail.slice(0, markerIdx);
+                if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+                suggTailBuffer = tail.slice(markerIdx);
+                capturingSugg = true;
+              } else {
+                const safeLen = Math.max(0, tail.length - (SUGG_MARKER.length - 1));
+                const safe = tail.slice(0, safeLen);
+                suggTailBuffer = tail.slice(safeLen);
+                if (safe) res.write(`data: ${JSON.stringify({ content: safe })}\n\n`);
+              }
             }
           }
         }
@@ -2340,13 +2373,9 @@ ${pageContext}` : ''}`;
       }
 
       // Parse and strip suggestions from full response
-      const suggMatch = fullAiResponse.match(/\[SUGGESTIONS:\s*(.+?)\]\s*$/s);
-      const cleanResponse = suggMatch
-        ? fullAiResponse.slice(0, fullAiResponse.lastIndexOf(suggMatch[0])).trimEnd()
-        : fullAiResponse;
-      if (suggMatch) {
-        const suggestions = suggMatch[1].split("|").map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
-        if (suggestions.length > 0) res.write(`data: ${JSON.stringify({ suggestedReplies: suggestions })}\n\n`);
+      const { clean: cleanResponse, suggestions: fallbackSugg } = extractSuggestions(fullAiResponse);
+      if (fallbackSugg.length > 0) {
+        res.write(`data: ${JSON.stringify({ suggestedReplies: fallbackSugg })}\n\n`);
       }
 
       if (cleanResponse) {

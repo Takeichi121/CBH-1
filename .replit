@@ -41,3 +41,7 @@ integrations = ["javascript_openai_ai_integrations:2.0.0", "resend:1.0.0", "java
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5904
+externalPort = 3000

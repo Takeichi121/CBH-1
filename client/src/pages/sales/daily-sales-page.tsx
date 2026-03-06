@@ -232,6 +232,8 @@ const SHIFT_OPTIONS = [
   { value: "Training", label: "Training" },
 ] as const;
 
+const SHIFT_OPTION_VALUES = new Set(SHIFT_OPTIONS.map((o) => o.value));
+
 const STAFF_SHIFT_GROUPS = [
   { value: "07:00-16:00", label: "07:00-16:00" },
   { value: "09:00-18:00", label: "09:00-18:00" },
@@ -350,6 +352,7 @@ export default function DailySalesPage() {
   const [staffRosterEntries, setStaffRosterEntries] = useState<
     Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }>
   >([{ shiftGroup: "", staffName: "", customStart: "08:00", customEnd: "16:00" }]);
+  const [customManagerMode, setCustomManagerMode] = useState<Record<string, boolean>>({});
 
   const { saveData, restoreData, clearData, hasDraft } =
     useFormPersistence<FormData>("daily-sales-form");
@@ -3527,35 +3530,73 @@ ${v.staffRosterText || ""}
                             <FormField
                               control={form.control}
                               name={manager.key as keyof FormData}
-                              render={({ field }) => (
-                                <Select
-                                  value={field.value}
-                                  onValueChange={field.onChange}
-                                >
-                                  <SelectTrigger
-                                    className="flex-1 text-sm"
-                                    data-testid={`select-${manager.key}`}
-                                  >
-                                    <SelectValue
-                                      placeholder={
-                                        language === "th"
-                                          ? "เลือกกะ"
-                                          : "Select shift"
-                                      }
+                              render={({ field }) => {
+                                const isCustom =
+                                  customManagerMode[manager.key] ||
+                                  (!!field.value && !SHIFT_OPTION_VALUES.has(field.value as string));
+                                return isCustom ? (
+                                  <div className="flex flex-1 gap-1">
+                                    <Input
+                                      value={field.value as string}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                      placeholder="HH:MM-HH:MM"
+                                      className="flex-1 h-9 text-sm"
+                                      data-testid={`input-custom-${manager.key}`}
                                     />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {SHIFT_OPTIONS.map((opt) => (
-                                      <SelectItem
-                                        key={opt.value}
-                                        value={opt.value}
-                                      >
-                                        {opt.label}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-9 px-2 text-xs"
+                                      onClick={() => {
+                                        setCustomManagerMode((prev) => ({ ...prev, [manager.key]: false }));
+                                        field.onChange("");
+                                      }}
+                                      data-testid={`button-cancel-custom-${manager.key}`}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Select
+                                    value={field.value as string}
+                                    onValueChange={(v) => {
+                                      if (v === "__CUSTOM__") {
+                                        setCustomManagerMode((prev) => ({ ...prev, [manager.key]: true }));
+                                        field.onChange("");
+                                      } else {
+                                        field.onChange(v);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger
+                                      className="flex-1 text-sm"
+                                      data-testid={`select-${manager.key}`}
+                                    >
+                                      <SelectValue
+                                        placeholder={
+                                          language === "th"
+                                            ? "เลือกกะ"
+                                            : "Select shift"
+                                        }
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {SHIFT_OPTIONS.map((opt) => (
+                                        <SelectItem
+                                          key={opt.value}
+                                          value={opt.value}
+                                        >
+                                          {opt.label}
+                                        </SelectItem>
+                                      ))}
+                                      <SelectItem value="__CUSTOM__" className="text-blue-600 font-medium">
+                                        {language === "th" ? "✏️ กำหนดเอง..." : "✏️ Custom..."}
                                       </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              }}
                             />
                           </div>
                         ))}

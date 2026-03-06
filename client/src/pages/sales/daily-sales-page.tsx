@@ -1994,7 +1994,15 @@ ${v.staffRosterText || ""}
                             </label>
                             <Textarea
                               value={pasteText}
-                              onChange={(e) => setPasteText(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPasteText(val);
+                                const dateMatch = val.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                                if (dateMatch) {
+                                  const [, d, m, y] = dateMatch;
+                                  setPasteDate(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+                                }
+                              }}
                               placeholder={language === "th"
                                 ? "วางข้อความรายงาน LINE ที่นี่...\nเช่น:\n💵Daily Sales=150,000/110,000\n👨‍👩‍👧‍👦Daily TC =450"
                                 : "Paste LINE report text here..."}

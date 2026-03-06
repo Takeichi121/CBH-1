@@ -2201,6 +2201,7 @@ ${pageContext}` : ''}`;
           messages: aiMessages,
           max_completion_tokens: 8192,
           tools: channTools,
+          tool_choice: rounds === 1 ? "required" : "auto",
           parallel_tool_calls: true,
         });
         const loopChoice = loopResponse.choices[0];

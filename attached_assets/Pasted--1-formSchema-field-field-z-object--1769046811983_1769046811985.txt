@@ -1,0 +1,232 @@
+ส่วนที่ 1: อัปเดต formSchema
+เพิ่ม field ใหม่และตรวจสอบชื่อ field ให้ถูกต้อง (ใส่ไว้ใน z.object({ ... }))
+
+TypeScript
+
+  // ... fields เดิม
+  // แก้ไข/ตรวจสอบชื่อ field ให้ตรงกับที่ระบุ
+  grabfood: z.string().default("0"), // แก้จาก grab เป็น grabfood
+  lineman: z.string().default("0"),
+  shopee: z.string().default("0"),
+  bkapp: z.string().default("0"),    // ตรวจสอบว่ามี bkapp
+  
+  // === เพิ่ม fields ใหม่ ===
+  robin: z.string().default("0"),
+  gokoo: z.string().default("0"),
+  
+  osatScore: z.string().default("0"),
+  osatComments: z.string().default("0"),
+  
+  // ตรวจสอบชื่อ field นี้ใน schema ว่าเป็น mtdTc หรือ mtdTransactionCount
+  // ถ้าใน DB เป็น mtdTransactionCount ให้แก้ตรงนี้เป็น mtdTc หรือ map เอาใน function
+  mtdTc: z.string().default("0"), 
+  // ...
+ส่วนที่ 2: แก้ไขฟังก์ชัน handleCopyReport (Logic ใหม่ + Template ใหม่)
+แทนที่ฟังก์ชันเดิมด้วยโค้ดชุดนี้ครับ
+
+TypeScript
+
+  const handleCopyReport = () => {
+    const v = form.getValues();
+
+    // Helper formatting (ใช้ของเดิมที่มีในไฟล์)
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
+    };
+
+    // 1. Sales Values
+    const actualSalesVal = parseFloat(v.actualSales) || 0;
+    const dailyTargetVal = parseFloat(v.dailyTarget) || 0;
+    const mtdActualVal = parseFloat(v.mtdActual) || 0;
+    const mtdTargetVal = parseFloat(v.mtdTarget) || 0;
+
+    // 2. TC Values (ใช้ v.mtdTc ตามสั่ง)
+    const tcVal = parseFloat(v.transactionCount) || 0;
+    const mtdTcVal = parseFloat(v.mtdTc) || 0;
+
+    // 3. TA Values
+    const taVal = tcVal > 0 ? (actualSalesVal / tcVal).toFixed(0) : "0";
+    const mtdTaVal = mtdTcVal > 0 ? (mtdActualVal / mtdTcVal).toFixed(0) : "0";
+
+    // 4. Channel Values
+    const dineInVal = parseFloat(v.dineIn) || 0;
+    const takeAwayVal = parseFloat(v.takeAway) || 0;
+    
+    // 5. Delivery Calculation (คำนวณเองทั้งหมด)
+    const grabVal = parseFloat(v.grabfood) || 0; // ใช้ v.grabfood
+    const linemanVal = parseFloat(v.lineman) || 0;
+    const shopeeVal = parseFloat(v.shopee) || 0;
+    const bkappVal = parseFloat(v.bkapp) || 0;
+    const robinVal = parseFloat(v.robin) || 0;
+    const gokooVal = parseFloat(v.gokoo) || 0;
+    
+    const deliveryTotal = grabVal + linemanVal + shopeeVal + bkappVal + robinVal + gokooVal;
+
+    // 6. Percentages Calculation
+    const dineInPercent = actualSalesVal > 0 ? ((dineInVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const takeAwayPercent = actualSalesVal > 0 ? ((takeAwayVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const deliveryTotalPercent = actualSalesVal > 0 ? ((deliveryTotal / actualSalesVal) * 100).toFixed(0) : "0";
+
+    const grabPercent = actualSalesVal > 0 ? ((grabVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const linemanPercent = actualSalesVal > 0 ? ((linemanVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const shopeePercent = actualSalesVal > 0 ? ((shopeeVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const bkappPercent = actualSalesVal > 0 ? ((bkappVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const robinPercent = actualSalesVal > 0 ? ((robinVal / actualSalesVal) * 100).toFixed(0) : "0";
+    const gokooPercent = actualSalesVal > 0 ? ((gokooVal / actualSalesVal) * 100).toFixed(0) : "0";
+
+    // 7. Waste Logic
+    const wasteDailyTotalVal = parseFloat(v.wasteDailyTotal) || 0;
+    const wasteMtdTotalVal = parseFloat(v.wasteMtdTotal) || 0;
+    const wasteDailyPercent = actualSalesVal > 0 ? ((wasteDailyTotalVal / actualSalesVal) * 100).toFixed(2) : "0.00";
+    const wasteMtdPercent = mtdActualVal > 0 ? ((wasteMtdTotalVal / mtdActualVal) * 100).toFixed(2) : "0.00";
+
+    // 8. Work Hour (ไม่รวม Duty Team)
+    const actualHoursVal = parseFloat(v.actualHours) || 0;
+    const otHoursVal = parseFloat(v.otHours) || 0;
+    const workHour = (actualHoursVal + otHoursVal).toFixed(1);
+
+    // 9. Roster Logic (ใช้ของเดิม)
+    // Manager Roster
+    const managerLines = MANAGER_NAMES.map(m => {
+      // Cast key เพื่อป้องกัน TS error
+      const shift = v[m.key as keyof typeof v] || "";
+      return shift ? `${m.name}: ${shift}` : null;
+    }).filter(Boolean).join("\n");
+
+    // Staff Roster
+    const staffRosterLines = v.staffRosterText || "";
+
+    // === Report Template (Format ใหม่ตามสั่ง) ===
+    const reportText = `🗓️${formatDate(v.reportDate)}
+
+💵Daily Sales=${actualSalesVal.toLocaleString()}/${dailyTargetVal.toLocaleString()}
+MTD Sale=${mtdActualVal.toLocaleString()}/${mtdTargetVal.toLocaleString()}
+
+👨‍👩‍👧‍👦Daily TC =${tcVal.toLocaleString()}
+👨‍👩‍👧‍👦MTD TC =${mtdTcVal.toLocaleString()}
+👑 Daily TA =${taVal}
+👑 MTD TA =${mtdTaVal}
+
+🍽 Dinein :${dineInVal.toLocaleString()}/${dineInPercent}%
+🛍Takeaway :${takeAwayVal.toLocaleString()}/${takeAwayPercent}%
+🛵Delivery :${deliveryTotal.toLocaleString()}/${deliveryTotalPercent}%
+
+🛵Grab Food :${grabVal.toLocaleString()}/${grabPercent}%
+🛵Line Man :${linemanVal.toLocaleString()}/${linemanPercent}%
+🛵Shopeefood:${shopeeVal.toLocaleString()}/${shopeePercent}%
+🛵BK App:${bkappVal.toLocaleString()}/${bkappPercent}%
+🛵Robin:${robinVal.toLocaleString()}/${robinPercent}%
+🛵GoKOO:${gokooVal.toLocaleString()}/${gokooPercent}%
+
+🏃🏻‍♀️SOS =${v.sosDaily}
+🏃🏻MTD SOS =${v.sosMtd}
+
+🗑WasteDaily :${wasteDailyTotalVal.toLocaleString()}/${wasteDailyPercent}%
+🗑WasteMTD:${wasteMtdTotalVal.toLocaleString()}/${wasteMtdPercent}%
+
+🕰Work Hour :${workHour}
+
+📝OSAT:${v.osatScore}/${v.osatComments} comments
+
+👨‍💼 Roster Manager
+${managerLines}
+
+👥 Roster Staff
+${staffRosterLines}
+
+📝 Report by ${v.reportBy}`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(reportText);
+    toast({ title: "Copied!", description: "รายงานถูกคัดลอกแล้ว" });
+  };
+ส่วนที่ 3: เพิ่ม Input Fields ใน UI (JSX)
+3.1 เพิ่ม Robin และ GoKOO (ใส่ในส่วน Delivery Channels ต่อจาก BK App หรือ Shopee)
+
+TypeScript
+
+                  {/* ... Inputs เดิม ... */}
+
+                  {/* Robin */}
+                  <FormField
+                    control={form.control}
+                    name="robin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Robin</FormLabel>
+                        <FormControl>
+                          <NumberInput
+                            value={field.value}
+                            onChange={field.onChange}
+                            data-testid="input-robin"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* GoKOO */}
+                  <FormField
+                    control={form.control}
+                    name="gokoo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">GoKOO</FormLabel>
+                        <FormControl>
+                          <NumberInput
+                            value={field.value}
+                            onChange={field.onChange}
+                            data-testid="input-gokoo"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+3.2 เพิ่ม OSAT Section (แทรกก่อนส่วน Submit Button หรือต่อจากส่วน Waste)
+
+TypeScript
+
+                {/* OSAT Section */}
+                <div className="bg-slate-50 p-4 rounded-lg border mt-4">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    📝 OSAT Score
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="osatScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Score</FormLabel>
+                          <FormControl>
+                             <NumberInput
+                              value={field.value}
+                              onChange={field.onChange}
+                              data-testid="input-osat-score"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="osatComments"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Comments (จำนวน)</FormLabel>
+                          <FormControl>
+                            <NumberInput
+                              value={field.value}
+                              onChange={field.onChange}
+                              data-testid="input-osat-comments"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>

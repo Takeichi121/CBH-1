@@ -1,0 +1,115 @@
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+
+export default function LaborSettings() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState({
+    rosterHours: 88,      // เป้าชั่วโมงงานจาก Area
+    dutyTeamCount: 4,     // จำนวนผู้จัดการ
+    dutyHourPerHead: 8,   // ชั่วโมงทำงานต่อคน (ปกติ 8)
+    ptWageRate: 45,       // ค่าแรง PT ต่อชั่วโมง
+    closeShiftCost: 50,   // ค่ารถปิดร้านต่อคน
+    fixedCostTotal: 0,    // เงินเดือน FT/Manager รวม (ถ้ามี)
+  });
+
+  // โหลดค่าเดิมตอนเข้าหน้าเว็บ
+  useEffect(() => {
+    fetch('/api/settings/get-labor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: localStorage.getItem('token') })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok && data.settings) setConfig(prev => ({ ...prev, ...data.settings }));
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/settings/save-labor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token: localStorage.getItem('token'),
+          ...config 
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "บันทึกสำเร็จ", description: "ตั้งค่าแรงงานเรียบร้อยแล้ว" });
+      } else {
+        toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: data.message });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto mt-6">
+      <CardHeader>
+        <CardTitle>⚙️ ตั้งค่าต้นทุนแรงงาน (Labor Settings)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Roster Commit (ชม./วัน)</Label>
+            <Input 
+              type="number" 
+              value={config.rosterHours} 
+              onChange={e => setConfig({...config, rosterHours: parseFloat(e.target.value)})} 
+            />
+            <p className="text-xs text-gray-500">เป้าชั่วโมงจาก Area</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>อัตราค่าแรง PT (บาท/ชม.)</Label>
+            <Input 
+              type="number" 
+              value={config.ptWageRate} 
+              onChange={e => setConfig({...config, ptWageRate: parseFloat(e.target.value)})} 
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>จำนวน Duty Team (คน)</Label>
+            <Input 
+              type="number" 
+              value={config.dutyTeamCount} 
+              onChange={e => setConfig({...config, dutyTeamCount: parseFloat(e.target.value)})} 
+            />
+            <p className="text-xs text-blue-600">
+              คิดเป็น {config.dutyTeamCount * config.dutyHourPerHead} ชม./วัน
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>ค่ารถปิดร้าน (บาท/คน)</Label>
+            <Input 
+              type="number" 
+              value={config.closeShiftCost} 
+              onChange={e => setConfig({...config, closeShiftCost: parseFloat(e.target.value)})} 
+            />
+          </div>
+        </div>
+
+        <Button className="w-full mt-4" onClick={handleSave} disabled={loading}>
+          {loading ? "กำลังบันทึก..." : "บันทึกตั้งค่า"}
+        </Button>
+
+      </CardContent>
+    </Card>
+  );
+}

@@ -1,0 +1,98 @@
+// เพิ่มใน routes.ts
+
+// ... (imports เดิม)
+import { dailySales, dailyLabor, dailyPromotions, dailyRatings } from "@shared/schema";
+
+// Helper Function: คำนวณสูตรต่างๆ ตามไฟล์ Instruction
+function calculateMetrics(sales: any, labor: any) {
+  // ป้องกันการหารด้วย 0
+  const actualSales = sales.salesActual || 0;
+  const totalHours = (labor.dutyManagerHours || 0) + (labor.staffHours || 0) + (labor.otHours || 0);
+  
+  // 1. COL % (Cost of Labor Percentage)
+  // สูตร: (ค่าแรงทั้งหมด / ยอดขาย) * 100
+  const totalLaborCost = (labor.fixCost || 0) + (labor.partTimeWage || 0) + (labor.closeShiftCost || 0);
+  const colPercent = actualSales > 0 ? (totalLaborCost / actualSales) * 100 : 0;
+
+  // 2. TCMH (Ticket Count per Man Hour - Productivity)
+  // สูตร: จำนวนบิล / ชั่วโมงทำงานรวม
+  const tcmh = totalHours > 0 ? (sales.tcActual / totalHours) : 0;
+
+  // 3. Labor % Variance
+  // สูตร: เปรียบเทียบชั่วโมงจริง กับ Roster
+  const hoursVariance = totalHours - (labor.rosterHours || 0);
+
+  return {
+    totalLaborCost,
+    colPercent: colPercent.toFixed(2), // ทศนิยม 2 ตำแหน่ง
+    totalHours,
+    tcmh: tcmh.toFixed(2),
+    hoursVariance: hoursVariance.toFixed(2)
+  };
+}
+
+// API: ดึงรายงานภาพรวม (Master Report)
+app.post("/api/reports/daily-master", async (req, res) => {
+  const { token, date } = req.body;
+  // ... (verify token logic) ...
+
+  try {
+    // ดึงข้อมูลจากทั้ง 4 ตารางมารวมกัน
+    const salesData = await storage.getDailySales(date); // ต้องไปสร้าง function นี้ใน storage.ts
+    const laborData = await storage.getDailyLabor(date);
+    const promoData = await storage.getDailyPromotions(date);
+    const ratingData = await storage.getDailyRatings(date);
+
+    // ถ้าไม่มีข้อมูล ให้ส่ง object ว่างกลับไป
+    const safeSales = salesData || {};
+    const safeLabor = laborData || {};
+
+    // คำนวณสูตร
+    const calculated = calculateMetrics(safeSales, safeLabor);
+
+    res.json({
+      ok: true,
+      date,
+      data: {
+        ...safeSales,
+        ...safeLabor,
+        ...promoData,
+        ...ratingData,
+        calculated // ส่งค่าที่คำนวณแล้วกลับไปแสดงผล
+      }
+    });
+  } catch (e) {
+    res.json({ ok: false, message: e.message });
+  }
+});
+
+// API: บันทึกข้อมูล (Save Master Record)
+// รับข้อมูลก้อนใหญ่จากหน้าเว็บ แล้วแยกบันทึกลงแต่ละตาราง
+app.post("/api/reports/save-daily", async (req, res) => {
+  const { token, date, sales, labor, promotions, ratings } = req.body;
+  // ... (verify token logic) ...
+
+  try {
+    await transaction(async (tx) => {
+      // 1. Save Sales
+      await tx.insert(dailySales).values({ date, ...sales })
+        .onConflictDoUpdate({ target: dailySales.date, set: sales });
+        
+      // 2. Save Labor
+      await tx.insert(dailyLabor).values({ date, ...labor })
+        .onConflictDoUpdate({ target: dailyLabor.date, set: labor });
+
+      // 3. Save Promotions
+      await tx.insert(dailyPromotions).values({ date, ...promotions })
+        .onConflictDoUpdate({ target: dailyPromotions.date, set: promotions });
+
+      // 4. Save Ratings
+      await tx.insert(dailyRatings).values({ date, ...ratings })
+        .onConflictDoUpdate({ target: dailyRatings.date, set: ratings });
+    });
+
+    res.json({ ok: true, message: "บันทึกข้อมูลสำเร็จ" });
+  } catch (e) {
+    res.json({ ok: false, message: "บันทึกไม่สำเร็จ: " + e.message });
+  }
+});

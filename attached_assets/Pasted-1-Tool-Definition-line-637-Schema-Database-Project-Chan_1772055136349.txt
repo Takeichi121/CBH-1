@@ -1,0 +1,93 @@
+1. Tool Definition (~line 637):
+ปรับ Schema ให้ตรงกับ Database ป้องกันไม่ให้ Project Chan ส่ง key ผิดมาแต่แรก
+
+TypeScript
+// ในส่วนของ Tool Definition Schema
+dutyDailyHours: z.number().describe("Total daily duty hours"),
+closeShiftDailyCost: z.number().describe("Cost for closing the shift daily"),
+2. Handler (~line 1196):
+รับค่าและ map ให้ถูกต้องก่อนส่งไปที่ storage
+
+TypeScript
+// ในส่วนของ Handler
+const laborData = {
+  ...args, // หรือดึงเฉพาะฟิลด์ที่ต้องการ
+  dutyDailyHours: args.dutyDailyHours, 
+  closeShiftDailyCost: args.closeShiftDailyCost,
+};
+// storage.updateLaborSettings(laborData);
+T002: Fix bulkSaveDailyTargets
+ปัญหา Timezone Shift (UTC vs Local) มักจะเกิดตอนที่เราใช้ toISOString() หรือดึงวันที่ตรงๆ จาก Date object การใช้ String-based arithmetic ตามที่คุณคิดไว้เป็นวิธีที่ปลอดภัยที่สุดสำหรับปัญหานี้ครับ
+
+Handler (~line 1392):
+
+TypeScript
+const { startDate, endDate, ...otherTargets } = args;
+
+// ฟังก์ชันจำลองการบวกวันทีละ 1 วันโดยอิงจาก String (YYYY-MM-DD)
+const getNextDayStr = (currentDateStr: string) => {
+  const [year, month, day] = currentDateStr.split('-').map(Number);
+  const dateObj = new Date(year, month - 1, day);
+  dateObj.setDate(dateObj.getDate() + 1);
+  
+  const nextYear = dateObj.getFullYear();
+  const nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const nextDay = String(dateObj.getDate()).padStart(2, '0');
+  return `${nextYear}-${nextMonth}-${nextDay}`;
+};
+
+const payload = [];
+let currentDateStr = startDate; // Format คาดหวัง: 'YYYY-MM-DD'
+
+// วนลูปสร้าง payload โดยไม่พึ่งพา Timezone
+while (currentDateStr <= endDate) {
+  payload.push({
+    targetDate: currentDateStr, // เปลี่ยนจาก date เป็น targetDate
+    ...otherTargets
+  });
+  currentDateStr = getNextDayStr(currentDateStr);
+}
+
+// await storage.bulkInsertDailyTargets(payload);
+T003: Fix setWasteTarget
+1. Tool Definition (~line 893-904):
+เพิ่มคำอธิบาย (Description) ให้ Project Chan เข้าใจบริบทว่าค่าไหนคืออะไร เพื่อป้องกันการสับสน
+
+TypeScript
+// Tool Definition
+mtdAmount: z.number().describe("Monthly waste target amount (formerly monthlyTarget)"),
+mealAmount: z.number().describe("Meal waste target amount (formerly mealTarget)"),
+rawAmount: z.number().describe("Daily raw waste target amount (formerly dailyTarget)"),
+2. Handler (~line 1437-1440):
+
+TypeScript
+// Handler
+const wasteTargetData = {
+  mtdAmount: args.mtdAmount,
+  mealAmount: args.mealAmount,
+  rawAmount: args.rawAmount,
+};
+// await storage.upsertWasteTarget(wasteTargetData);
+T004: Fix updateStoreSettings
+1. Tool Definition (~line 910-921):
+อัปเดต Schema ให้สะท้อนโครงสร้างที่แท้จริง ตัด timezone ออก และเพิ่ม Target
+
+TypeScript
+// Tool Definition
+storeName: z.string().describe("Name of the store branch"),
+storeCode: z.string().describe("Code of the store branch"),
+dailyTarget: z.number().describe("Daily sales target"),
+mtdTarget: z.number().describe("Month-to-date sales target"),
+// ลบ timezone ออกไปเลย
+2. Handler (~line 1452-1460):
+
+TypeScript
+// Handler
+const ssData = {
+  storeName: args.storeName,
+  storeCode: args.storeCode,
+  dailyTarget: args.dailyTarget,
+  mtdTarget: args.mtdTarget,
+  // ไม่มีการ map timezone เข้ามา
+};
+// await storage.updateStoreSettings(ssData);

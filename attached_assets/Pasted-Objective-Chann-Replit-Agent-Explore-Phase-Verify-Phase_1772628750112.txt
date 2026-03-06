@@ -1,0 +1,52 @@
+Objective
+อัปเกรด Chann ให้ทำงานแบบ Replit Agent เต็มรูปแบบ — Explore Phase, Verify Phase, Gemini Support
+
+Tasks
+T001: System Prompt — Explore Phase (ค้นหาก่อนตอบทุกครั้ง)
+Blocked By: []
+Details:
+เพิ่มใน system prompt หลังส่วน [กฎเหล็ก]:
+[Explore Phase — ค้นหาก่อนตอบเสมอ]
+ก่อนตอบคำถามที่ซับซ้อน ให้ query ข้อมูลที่เกี่ยวข้องก่อนเสมอ โดยไม่ต้องรอให้นายขอ:
+- ถามเรื่องกะ/พนักงาน/ยอดขายวันนี้ → ใช้ getCrossSystemSummary ก่อนทันที
+- ถามเรื่องไฟล์/โค้ด/CSS/component → ใช้ readSourceFile explore โครงสร้างก่อน อย่าถามว่า path คืออะไร
+- ถามเรื่องยืม-คืน → ใช้ getBorrowTransactions + getBorrowBranches พร้อมกัน
+- ถามเรื่อง MTD/เดือน → ใช้ getMtdSummary ก่อน
+- ไม่รู้ว่าข้อมูลอยู่ที่ไหน → ใช้ getTableRows หรือ readSourceFile สำรวจก่อน แล้วค่อยตอบ
+Files: server/routes.ts (บรรทัด ~385-395, ต่อท้ายส่วน [กฎเหล็ก])
+T002: System Prompt — Verify Phase (ตรวจสอบหลังเขียนข้อมูลทุกครั้ง)
+Blocked By: []
+Details:
+เพิ่มใน system prompt:
+[Verify Phase — ตรวจสอบหลังทำงาน]
+หลัง write ข้อมูลทุกครั้ง ให้ read กลับมาตรวจสอบ 1 ครั้งเสมอ:
+- หลัง addBorrowTransaction → getBorrowTransactions เพื่อยืนยันว่าบันทึกแล้ว
+- หลัง updateStoreSettings → getStoreSettings เพื่อยืนยันค่าที่เปลี่ยน
+- หลัง proposeCodeEdit → readSourceFile ตรวจสอบว่า proposal ถูกบันทึก
+- รายงานผล verified เท่านั้น เช่น "ตรวจสอบแล้ว: บันทึก X = Y สำเร็จ" ไม่ใช่แค่ "บันทึกสำเร็จ"
+Files: server/routes.ts
+T003: Agentic Loop — Planning Step (แสดง plan ก่อนทำงาน)
+Blocked By: []
+Details:
+แก้ agentic loop: round แรก (rounds === 1) ให้ส่ง thinking indicator แบบ "กำลังวางแผน..."
+เพิ่มใน system prompt: ก่อนเรียก tool ครั้งแรก ให้ระบุใน thinking ว่าจะใช้ tools อะไร เพื่ออะไร
+ปัจจุบัน thinking indicator แสดงเฉพาะ round > 1 — แก้ให้แสดง round 1 ด้วย
+Files: server/routes.ts บรรทัด ~2090-2093
+// แก้จาก:
+if (rounds > 1) {
+  res.write(`data: ${JSON.stringify({ thinking: `กำลังวิเคราะห์ข้อมูล... (ขั้นตอนที่ ${rounds})` })}\n\n`);
+}
+// เป็น:
+const thinkingMsg = rounds === 1 ? "กำลังวิเคราะห์คำถาม..." : `กำลังประมวลผล... (ขั้นตอนที่ ${rounds})`;
+res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
+T004: Google Gemini Support (เพิ่ม Gemini เป็น model ทางเลือก)
+Blocked By: []
+Details:
+ติดตั้ง @google/generative-ai package
+เพิ่ม GEMINI_API_KEY ใน environment secrets
+เพิ่ม model selector ใน /api/chann endpoint — รับ param model?: "gpt-4o" | "gemini"
+สร้าง Gemini adapter ที่ wrap เป็น OpenAI-compatible format (ใช้ Google Gemini API)
+Default ยังคงเป็น gpt-4o, เลือก Gemini ได้จาก UI
+เพิ่มปุ่ม toggle model ใน floating-chann-chat header
+Files: server/routes.ts, client/src/components/floating-chann-chat.tsx
+หมายเหตุ: ต้องมี GEMINI_API_KEY จาก Google AI Studio (https://aistudio.google.com/apikey)

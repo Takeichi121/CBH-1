@@ -1,0 +1,496 @@
+ขั้นตอนที่ 1: ติดตั้ง Library ที่จำเป็น
+ที่ฝั่ง Client (Frontend) ให้ติดตั้ง xlsx สำหรับอ่านไฟล์ Excel 
+
+Bash
+
+npm install xlsx
+ขั้นตอนที่ 2: อัปเดตฝั่ง Server (Backend)
+2.1 แก้ไขไฟล์ server/storage.ts
+เพิ่ม Method upsertShift เพื่อทำการบันทึกข้อมูลเวร ถ้ามีอยู่แล้วให้อัปเดต ถ้ายังไม่มีให้สร้างใหม่ 
+
+TypeScript
+
+// server/storage.ts
+
+// ... imports เดิม (ตรวจสอบว่า import shifts และ eq, and จาก drizzle-orm แล้ว)
+// import { shifts } from "@shared/schema";
+// import { eq, and } from "drizzle-orm";
+
+export interface IStorage {
+  // ... methods เดิม
+  upsertShift(shift: { username: string; date: string; shiftGroup: string }): Promise<any>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // ... code เดิม
+
+  async upsertShift(shift: { username: string; date: string; shiftGroup: string }) {
+    // เช็คว่ามีข้อมูลเดิมหรือไม่
+    const existing = await db.select().from(shifts)
+      .where(and(eq(shifts.username, shift.username), eq(shifts.date, shift.date)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // มีแล้ว -> Update
+      const [updated] = await db.update(shifts)
+        .set({ shiftGroup: shift.shiftGroup })
+        .where(and(eq(shifts.username, shift.username), eq(shifts.date, shift.date)))
+        .returning();
+      return updated;
+    } else {
+      // ยังไม่มี -> Insert
+      const [inserted] = await db.insert(shifts)
+        .values({
+          username: shift.username,
+          date: shift.date,
+          shiftGroup: shift.shiftGroup,
+          createdAt: new Date().toISOString(),
+        })
+        .returning();
+      return inserted;
+    }
+  }
+}
+2.2 แก้ไขไฟล์ server/routes.ts
+เพิ่ม Route /api/roster/import สำหรับรับข้อมูลจาก Frontend และบันทึกลง Database 
+
+
+
+
+
+TypeScript
+
+// server/routes.ts
+
+// ... imports
+import { storage } from "./storage";
+
+// ... ภายใน registerRoutes หรือส่วนที่กำหนด routes
+
+  // ===== ROSTER IMPORT FROM EXCEL =====
+  app.post("/api/roster/import", async (req, res) => {
+    try {
+      const { token, data } = req.body;
+
+      // 1. ตรวจสอบ Session
+      const session = await storage.getSession(token);
+      if (!session) {
+        return res.json({ ok: false, message: "Session expired" });
+      }
+
+      // 2. ตรวจสอบสิทธิ์ (ต้องเป็น Admin หรือ Manager)
+      const user = await storage.getUser(session.username);
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.json({ ok: false, message: "Permission denied" });
+      }
+
+      const results = {
+        imported: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
+
+      // 3. ดึงข้อมูล Users ทั้งหมดเพื่อทำ Map (Nickname -> Username)
+      const allUsers = await storage.getUsers();
+      const nicknameMap = new Map<string, string>();
+      allUsers.forEach(u => {
+        if (u.nickName) {
+          nicknameMap.set(u.nickName.toLowerCase(), u.username);
+        }
+      });
+
+      // 4. วนลูปบันทึกข้อมูล
+      for (const item of data) {
+        try {
+          // แปลง Nickname เป็น Username
+          const username = nicknameMap.get(item.nickname.toLowerCase());
+          
+          if (!username) {
+            results.errors.push(`ไม่พบ username สำหรับ nickname: ${item.nickname}`);
+            results.skipped++;
+            continue;
+          }
+
+          if (!item.shiftGroup || item.shiftGroup === "off") {
+            results.skipped++;
+            continue;
+          }
+
+          // บันทึกข้อมูล
+          await storage.upsertShift({
+            username,
+            date: item.date,
+            shiftGroup: item.shiftGroup,
+          });
+          results.imported++;
+
+        } catch (err: any) {
+          results.errors.push(`Error for ${item.nickname} on ${item.date}: ${err.message}`);
+        }
+      }
+
+      return res.json({ ok: true, ...results });
+
+    } catch (error: any) {
+      return res.json({ ok: false, message: error.message });
+    }
+  });
+ขั้นตอนที่ 3: สร้างหน้า Frontend
+สร้างไฟล์ใหม่ client/src/pages/roster-import-page.tsx โค้ดนี้รวม Logic การอ่าน Excel, แปลงวันที่, และแปลงรหัสกะ (O, S, C, Late) ตามที่คุณระบุไว้ 
+
+
+
+
+
+TypeScript
+
+// client/src/pages/roster-import-page.tsx
+
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Upload, FileSpreadsheet, CheckCircle2, XCircle } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import * as XLSX from "xlsx";
+
+interface ParsedShift {
+  nickname: string;
+  date: string;
+  shiftGroup: string;
+  timeRange: string;
+}
+
+interface ImportResult {
+  ok: boolean;
+  imported?: number;
+  skipped?: number;
+  errors?: string[];
+  message?: string;
+}
+
+export default function RosterImportPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [file, setFile] = useState<File | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedShift[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+
+  // ตรวจสอบสิทธิ์
+  if (!user || (user.role !== "admin" && user.role !== "manager")) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+      </div>
+    );
+  }
+
+  // แปลง Excel serial date เป็น YYYY-MM-DD
+  const excelDateToString = (serial: number): string => {
+    const date = new Date((serial - 25569) * 86400000);
+    return date.toISOString().split("T")[0];
+  };
+
+  // แปลงรหัสกะและเวลา เป็น shift_group
+  const parseShiftGroup = (code: string, timeRange: string): string | null => {
+    const upperCode = code?.toUpperCase()?.trim();
+    
+    if (!upperCode || upperCode === "OFF" || upperCode === "COM" || upperCode === "") {
+      return null; // Skip
+    }
+
+    // กรณีมีระบุเวลา
+    if (timeRange) {
+      const match = timeRange.match(/(\d{1,2})\.(\d{2})/);
+      if (match) {
+        const startHour = parseInt(match[1]);
+        if (startHour >= 22 || startHour < 6) return "late";
+        if (startHour >= 17) return "dinner";
+        if (startHour >= 10) return "lunch";
+        return "open";
+      }
+    }
+
+    // Fallback ใช้รหัสตัวย่อ
+    if (upperCode === "O") return "open";
+    if (upperCode === "S") return "lunch";
+    if (upperCode === "C") return "dinner";
+
+    return "lunch"; // Default
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    setResult(null);
+
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer);
+      const parsed: ParsedShift[] = [];
+
+      workbook.SheetNames.forEach(sheetName => {
+        const sheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+
+        let dateRow: number[] = [];
+        let currentNickname = "";
+
+        for (let i = 0; i < data.length; i++) {
+          const row = data[i];
+          if (!row || row.length === 0) continue;
+
+          // หาแถววันที่ (DATE)
+          if (row[0] === "DATE") {
+            dateRow = [];
+            for (let j = 2; j < row.length; j += 2) {
+              // เช็คว่าเป็นตัวเลขวันที่ (Serial Date > 40000 คือปี 2009+)
+              if (typeof row[j] === "number" && row[j] > 40000) {
+                dateRow.push(row[j]);
+              }
+            }
+            continue;
+          }
+
+          // ข้ามแถว Header ที่ไม่ใช่ข้อมูลพนักงาน
+          if (row[0] === "Store Name" || row[2] === "TUE" || row[2] === "WED") continue;
+
+          // เช็คว่าเป็นแถวชื่อพนักงาน (คอลัมน์แรกมีข้อความ)
+          if (row[0] && typeof row[0] === "string" && row[0].trim() !== "") {
+            currentNickname = row[0].trim();
+            
+            // วนลูปดึงข้อมูลกะตามวันที่
+            let dateIndex = 0;
+            for (let j = 2; j < row.length && dateIndex < dateRow.length; j += 2) {
+              const code = row[j];
+              const nextRow = data[i + 1]; // แถวถัดไปมักจะเป็นเวลา
+              const timeRange = nextRow?.[j] || "";
+
+              if (code && typeof code === "string") {
+                const shiftGroup = parseShiftGroup(code, timeRange);
+                if (shiftGroup) {
+                  parsed.push({
+                    nickname: currentNickname,
+                    date: excelDateToString(dateRow[dateIndex]),
+                    shiftGroup,
+                    timeRange: timeRange || code,
+                  });
+                }
+              }
+              dateIndex++;
+            }
+          }
+        }
+      });
+
+      setParsedData(parsed);
+      toast({
+        title: "อ่านไฟล์สำเร็จ",
+        description: `พบ ${parsed.length} รายการ พร้อม import`,
+      });
+
+    } catch (err: any) {
+      toast({
+        title: "อ่านไฟล์ไม่สำเร็จ",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImport = async () => {
+    if (parsedData.length === 0) return;
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("bk_token") || ""; // ดึง Token
+      const res = await apiRequest("POST", "/api/roster/import", {
+        token,
+        data: parsedData,
+      });
+      
+      const json: ImportResult = await res.json();
+      setResult(json);
+
+      if (json.ok) {
+        toast({
+          title: "Import สำเร็จ",
+          description: `นำเข้า ${json.imported} รายการ, ข้าม ${json.skipped} รายการ`,
+        });
+      } else {
+        toast({
+          title: "Import ไม่สำเร็จ",
+          description: json.message,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4 max-w-4xl" data-testid="page-roster-import">
+      <h1 className="text-2xl font-bold mb-6">นำเข้าตารางเวรจาก Excel</h1>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            เลือกไฟล์ Excel
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleFileChange}
+            data-testid="input-file-excel"
+          />
+          {file && (
+            <p className="text-sm text-muted-foreground">
+              ไฟล์: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {parsedData.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>ตัวอย่างข้อมูล ({parsedData.length} รายการ)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-64 overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">ชื่อเล่น</th>
+                    <th className="text-left p-2">วันที่</th>
+                    <th className="text-left p-2">กะ</th>
+                    <th className="text-left p-2">เวลา</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsedData.slice(0, 20).map((item, i) => (
+                    <tr key={i} className="border-b">
+                      <td className="p-2">{item.nickname}</td>
+                      <td className="p-2">{item.date}</td>
+                      <td className="p-2">{item.shiftGroup}</td>
+                      <td className="p-2">{item.timeRange}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {parsedData.length > 20 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  ... และอีก {parsedData.length - 20} รายการ
+                </p>
+              )}
+            </div>
+
+            <Button
+              onClick={handleImport}
+              disabled={isLoading}
+              className="mt-4 w-full"
+              data-testid="button-import"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  กำลัง Import...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import ทั้งหมด {parsedData.length} รายการ
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {result && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {result.ok ? (
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-500" />
+              )}
+              ผลลัพธ์
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {result.ok ? (
+              <div className="space-y-2">
+                <p className="text-green-600">✓ นำเข้าสำเร็จ: {result.imported} รายการ</p>
+                <p className="text-yellow-600">○ ข้าม: {result.skipped} รายการ</p>
+                {result.errors && result.errors.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-red-600 font-medium">ข้อผิดพลาด:</p>
+                    <ul className="list-disc list-inside text-sm text-red-500">
+                      {result.errors.slice(0, 10).map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-red-600">{result.message}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+ขั้นตอนที่ 4: เชื่อมต่อ Route ใน client/src/App.tsx
+เพิ่ม Route ไปยังหน้าที่เพิ่งสร้าง 
+
+TypeScript
+
+// client/src/App.tsx
+import { Switch, Route } from "wouter";
+import RosterImportPage from "@/pages/roster-import-page"; // Import หน้าใหม่
+
+function Router() {
+  return (
+    <Switch>
+      {/* Routes อื่นๆ ... */}
+      <Route path="/roster/import" component={RosterImportPage} />
+      {/* ... */}
+    </Switch>
+  );
+}
+ขั้นตอนที่ 5 (ทางเลือก): เพิ่มปุ่มเข้าหน้า Import
+เพิ่มปุ่มนี้ในหน้า roster-page หรือ Navbar สำหรับคนที่มีสิทธิ์ Admin/Manager 
+
+TypeScript
+
+import { Link } from "wouter";
+import { Upload } from "lucide-react";
+
+// ... ในส่วนการแสดงผล
+{(user?.role === "admin" || user?.role === "manager") && (
+  <Link href="/roster/import">
+    <Button variant="outline">
+      <Upload className="mr-2 h-4 w-4" />
+      Import Excel
+    </Button>
+  </Link>
+)}

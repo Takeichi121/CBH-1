@@ -1,0 +1,30 @@
+// Import storage จากไฟล์ storage.ts
+import { storage } from "./storage";
+
+export async function registerRoutes(app: Express) {
+  // ... routes อื่นๆ ...
+
+  app.post("/api/sales/history", async (req, res) => {
+    try {
+      // ตรวจสอบ Token (ถ้ามี middleware ให้ใช้ middleware แทน)
+      if (!req.body.token && !req.isAuthenticated?.()) {
+        // return res.status(401).json({ ok: false, message: "Unauthorized" });
+        // สมมติว่าผ่าน Auth แล้ว
+      }
+
+      // ดึงข้อมูล 7 วันล่าสุดจาก Storage
+      // ต้องไปเพิ่มฟังก์ชัน getDailySalesReports ใน storage.ts ด้วย
+      const salesHistory = await storage.getDailySalesReports(7);
+      
+      // เรียงลำดับจากเก่าไปใหม่เพื่อให้กราฟแสดงถูกต้อง
+      const sortedHistory = salesHistory.sort((a, b) => 
+        new Date(a.report_date).getTime() - new Date(b.report_date).getTime()
+      );
+
+      res.json({ ok: true, data: sortedHistory });
+    } catch (error) {
+      console.error("Sales history error:", error);
+      res.status(500).json({ ok: false, message: "Internal Server Error" });
+    }
+  });
+}

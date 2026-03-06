@@ -1,0 +1,116 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { insertDailySalesSchema, insertStoreSettingsSchema } from "@shared/schema";
+import { z } from "zod";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Daily Sales Reports Routes
+  app.post("/api/daily-sales", async (req, res) => {
+    try {
+      const validatedData = insertDailySalesSchema.parse(req.body);
+      const report = await storage.createDailySalesReport(validatedData);
+      res.json(report);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create daily sales report" 
+        });
+      }
+    }
+  });
+
+  app.get("/api/daily-sales", async (req, res) => {
+    try {
+      const { date, limit = "10" } = req.query;
+      const reports = await storage.getDailySalesReports(
+        date as string, 
+        parseInt(limit as string)
+      );
+      res.json(reports);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch daily sales reports" 
+      });
+    }
+  });
+
+  app.get("/api/daily-sales/:id", async (req, res) => {
+    try {
+      const report = await storage.getDailySalesReport(req.params.id);
+      if (!report) {
+        res.status(404).json({ message: "Report not found" });
+        return;
+      }
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch daily sales report" 
+      });
+    }
+  });
+
+  // Store Settings Routes
+  app.get("/api/store-settings", async (req, res) => {
+    try {
+      const settings = await storage.getStoreSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch store settings" 
+      });
+    }
+  });
+
+  app.put("/api/store-settings", async (req, res) => {
+    try {
+      const validatedData = insertStoreSettingsSchema.parse(req.body);
+      const settings = await storage.updateStoreSettings(validatedData);
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to update store settings" 
+        });
+      }
+    }
+  });
+
+  // Dashboard Analytics Routes
+  app.get("/api/dashboard/kpi", async (req, res) => {
+    try {
+      const { date } = req.query;
+      const kpis = await storage.getDashboardKPIs(date as string);
+      res.json(kpis);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch dashboard KPIs" 
+      });
+    }
+  });
+
+  app.get("/api/dashboard/sales-by-channel", async (req, res) => {
+    try {
+      const { date } = req.query;
+      const channelData = await storage.getSalesByChannel(date as string);
+      res.json(channelData);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch sales by channel data" 
+      });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}

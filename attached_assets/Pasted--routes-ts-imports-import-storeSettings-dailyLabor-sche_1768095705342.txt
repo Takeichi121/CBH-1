@@ -1,0 +1,94 @@
+// routes.ts
+// ... imports (อย่าลืม import storeSettings, dailyLabor จาก schema)
+
+// 1. Route สำหรับหน้า Settings (ดึง/บันทึก ค่าคงที่)
+app.post("/api/settings/get-labor", async (req, res) => {
+  // ดึงค่า Setting ล่าสุด (ปกติจะมีแถวเดียว ID=1)
+  const settings = await db.select().from(storeSettings).limit(1);
+  res.json({ ok: true, settings: settings[0] || {} });
+});
+
+app.post("/api/settings/save-labor", async (req, res) => {
+  const { dutyTeamCount, fixedCostTotal, ptWageRate, closeShiftCost } = req.body;
+  // ใช้ upsert: ถ้ามี ID=1 ให้แก้ ถ้าไม่มีให้สร้าง
+  await db.insert(storeSettings)
+    .values({ id: 1, dutyTeamCount, fixedCostTotal, ptWageRate, closeShiftCost, updatedAt: new Date().toISOString() })
+    .onConflictDoUpdate({ 
+      target: storeSettings.id, 
+      set: { dutyTeamCount, fixedCostTotal, ptWageRate, closeShiftCost, updatedAt: new Date().toISOString() } 
+    });
+  res.json({ ok: true });
+});
+
+// 2. ฟังก์ชันคำนวณ (Utility Function)
+async function calculateLaborMetrics(date: string, inputs: any) {
+  // 1. ดึงค่า Setting มาก่อน
+  const settingsRes = await db.select().from(storeSettings).limit(1);
+  const cfg = settingsRes[0] || { dutyTeamCount: 4, ptWageRate: 45, closeShiftCost: 50, fixedCostTotal: 0 };
+  
+  // 2. ดึงยอดขายและ TC ของวันนั้น (ต้องมีข้อมูลยอดขายก่อนถึงจะคำนวณ %COL ได้แม่น)
+  const salesRes = await storage.getDailySalesReportByDate(date); // สมมติว่าคุณมีฟังก์ชันนี้
+  const salesActual = Number(salesRes?.salesActual || 0);
+  const tcActual = Number(salesRes?.transactionCount || 0);
+
+  // 3. เตรียมตัวแปร Input
+  const roster = Number(inputs.rosterHours || 0);
+  const actual = Number(inputs.actualHours || 0); // PT+FT ไม่รวม Duty
+  const ot = Number(inputs.otHours || 0);
+  const closeCount = Number(inputs.closeShiftCount || 0);
+
+  // --- เริ่มคำนวณ ---
+  
+  // A. Summary Hours
+  const dutyHours = (cfg.dutyTeamCount || 0) * 8; // สูตร: คน * 8 ชม.
+  const summaryHours = dutyHours + actual + ot;
+
+  // B. Variance
+  const varianceHours = summaryHours - roster;
+
+  // C. Labor Cost (บาท)
+  // สูตร: (Fix Cost เฉลี่ยรายวัน) + (Actual * ค่าแรง PT) + (OT * ค่าแรง*1.5?) + (ค่ารถปิดร้าน)
+  // *หมายเหตุ: สูตรนี้ปรับได้ตามวิธีคิดจริงของร้านคุณ
+  const dailyFixCost = (cfg.fixedCostTotal || 0) / 30; // คิดเฉลี่ย 30 วัน
+  const variableWage = (actual + ot) * (cfg.ptWageRate || 45); 
+  const closingCost = closeCount * (cfg.closeShiftCost || 50);
+  
+  const laborCostTotal = dailyFixCost + variableWage + closingCost;
+
+  // D. % COL
+  const colPercent = salesActual > 0 ? (laborCostTotal / salesActual) * 100 : 0;
+
+  // E. TCMH
+  const tcmh = summaryHours > 0 ? (tcActual / summaryHours) : 0;
+
+  return {
+    ...inputs,
+    summaryHours,
+    varianceHours,
+    laborCostTotal,
+    colPercent,
+    tcmh
+  };
+}
+
+// 3. Route บันทึกข้อมูลรายวัน (Daily Save)
+app.post("/api/sales/save-daily-labor", async (req, res) => {
+  const { token, date, rosterHours, actualHours, otHours, closeShiftCount } = req.body;
+  // ... verify token ...
+
+  try {
+    // คำนวณค่าต่างๆ
+    const calculatedData = await calculateLaborMetrics(date, {
+      rosterHours, actualHours, otHours, closeShiftCount
+    });
+
+    // บันทึกลง DB
+    await db.insert(dailyLabor)
+      .values({ date, ...calculatedData })
+      .onConflictDoUpdate({ target: dailyLabor.date, set: calculatedData });
+
+    res.json({ ok: true, data: calculatedData });
+  } catch (e: any) {
+    res.json({ ok: false, message: e.message });
+  }
+});

@@ -1,0 +1,293 @@
+📥 ส่วนที่ 1: ติดตั้ง Library (Terminal)
+เปิด Terminal แล้วรันคำสั่งนี้ก่อนครับ:
+
+Bash
+
+npm install recharts
+🗃️ ส่วนที่ 2: ฐานข้อมูลและ Backend
+1. ไฟล์ shared/schema.ts
+เพิ่มตารางยอดขายรายวัน
+
+TypeScript
+
+import { pgTable, text, serial, integer, numeric, date } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+
+export const dailySalesReports = pgTable("daily_sales_reports", {
+  id: serial("id").primaryKey(),
+  reportDate: date("report_date").notNull(),
+  actualSales: numeric("actual_sales").notNull(),
+  transactionCount: integer("transaction_count").notNull(),
+});
+
+export type DailySalesReport = typeof dailySalesReports.$inferSelect;
+export type InsertDailySalesReport = typeof dailySalesReports.$inferInsert;
+2. ไฟล์ server/storage.ts
+เพิ่มฟังก์ชันดึงข้อมูลยอดขายย้อนหลัง
+
+TypeScript
+
+import { dailySalesReports, type DailySalesReport } from "@shared/schema";
+import { gte, asc } from "drizzle-orm";
+
+export interface IStorage {
+  // ... methods เดิม ...
+  getDailySalesReports(days?: number): Promise<DailySalesReport[]>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // ... methods เดิม ...
+
+  async getDailySalesReports(days: number = 7): Promise<DailySalesReport[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    // แปลงวันที่เป็น YYYY-MM-DD เพื่อเทียบกับ database
+    const dateString = startDate.toISOString().split('T')[0];
+
+    return await db
+      .select()
+      .from(dailySalesReports)
+      .where(gte(dailySalesReports.reportDate, dateString))
+      .orderBy(asc(dailySalesReports.reportDate));
+  }
+}
+3. ไฟล์ server/routes.ts
+เพิ่ม API endpoint
+
+TypeScript
+
+import { storage } from "./storage";
+
+export async function registerRoutes(app: Express) {
+  // ... routes เดิม ...
+
+  app.post("/api/sales/history", async (req, res) => {
+    try {
+      const days = req.body.days || 7;
+      const salesData = await storage.getDailySalesReports(days);
+      
+      // แปลงข้อมูล numeric ให้เป็น number สำหรับ Recharts
+      const formattedData = salesData.map(item => ({
+        ...item,
+        actual_sales: Number(item.actualSales),
+        transaction_count: Number(item.transactionCount)
+      }));
+
+      res.json({ ok: true, data: formattedData });
+    } catch (error) {
+      console.error("Sales history error:", error);
+      res.status(500).json({ ok: false, message: "ดึงข้อมูลล้มเหลว" });
+    }
+  });
+}
+🎨 ส่วนที่ 3: Frontend Components
+4. ไฟล์ client/src/components/dashboard/sales-chart.tsx
+กราฟแสดงยอดขาย
+
+TypeScript
+
+import { useQuery } from "@tanstack/react-query";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+
+interface SalesData {
+  reportDate: string;
+  actual_sales: number;
+  transaction_count: number;
+}
+
+export function SalesChart() {
+  const { data, isLoading } = useQuery<SalesData[]>({
+    queryKey: ["/api/sales/history"],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/sales/history", {});
+      const json = await res.json();
+      return json.data; 
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="col-span-4 h-[350px] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="col-span-4">
+      <CardHeader>
+        <CardTitle>ยอดขาย 7 วันย้อนหลัง</CardTitle>
+      </CardHeader>
+      <CardContent className="pl-2">
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis 
+                dataKey="reportDate" 
+                stroke="#888888" 
+                fontSize={12} 
+                tickLine={false} 
+                axisLine={false}
+                tickFormatter={(value) => new Date(value).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+              />
+              <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `฿${value}`} />
+              <Tooltip 
+                contentStyle={{ borderRadius: "8px" }}
+                formatter={(value: number) => [`฿${value.toLocaleString()}`, "ยอดขาย"]}
+                labelFormatter={(label) => new Date(label).toLocaleDateString("th-TH", { dateStyle: "long" })}
+              />
+              <Line type="monotone" dataKey="actual_sales" stroke="hsl(var(--primary))" strokeWidth={2} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+5. ไฟล์ client/src/components/dashboard/daily-tip.tsx
+แสดง Tip ประจำวัน
+
+TypeScript
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Lightbulb } from "lucide-react";
+
+const TIPS = [
+  "แนะนำลูกค้าเพิ่มชีสใน Whopper เพื่อเพิ่มยอดขาย",
+  "อย่าลืมถามลูกค้าเรื่องบัตรสมาชิกทุกครั้ง",
+  "เช็คอุณหภูมิตู้แช่ทุก 4 ชั่วโมงเพื่อความสดใหม่",
+  "ยิ้มและทักทายลูกค้าด้วยเสียงที่สดใสเสมอ",
+  "ตรวจสอบ Stock กระดาษทิชชู่และซอสมะเขือเทศ",
+];
+
+export function DailyTip() {
+  const todayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const tipOfTheDay = TIPS[todayIndex % TIPS.length];
+
+  return (
+    <Card className="border-primary/20 bg-card text-card-foreground shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-primary">Tip of the Day</CardTitle>
+        <Lightbulb className="h-4 w-4 text-primary" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-lg font-bold mt-2">"{tipOfTheDay}"</div>
+      </CardContent>
+    </Card>
+  );
+}
+📄 ส่วนที่ 4: หน้าเว็บ (Pages & Routing)
+6. ไฟล์ client/src/pages/dashboard-page.tsx
+หน้ารวม Dashboard
+
+TypeScript
+
+import { useAuth } from "@/hooks/use-auth";
+import { SalesChart } from "@/components/dashboard/sales-chart";
+import { DailyTip } from "@/components/dashboard/daily-tip";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+
+export default function DashboardPage() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin" /></div>;
+  if (!user) return null;
+
+  const isManager = user.role === "admin" || user.role === "manager";
+
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <h2 className="text-3xl font-bold tracking-tight">สวัสดี, {user.username}</h2>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {isManager ? (
+          <>
+            <SalesChart />
+            <div className="col-span-3">
+              <Card className="h-full">
+                <CardHeader><CardTitle>พนักงานวันนี้</CardTitle></CardHeader>
+                <CardContent><p className="text-sm text-muted-foreground">รอข้อมูล...</p></CardContent>
+              </Card>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="col-span-5">
+              <Card className="h-full">
+                <CardHeader><CardTitle>ตารางงานของคุณ</CardTitle></CardHeader>
+                <CardContent><p>รอข้อมูล...</p></CardContent>
+              </Card>
+            </div>
+            <div className="col-span-2"><DailyTip /></div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+7. ไฟล์ client/src/App.tsx
+เพิ่ม Route /dashboard
+
+TypeScript
+
+import { Switch, Route } from "wouter";
+import DashboardPage from "@/pages/dashboard-page"; 
+// ... imports อื่นๆ ...
+
+function Router() {
+  return (
+    <Switch>
+      {/* ... routes อื่นๆ ... */}
+      <Route path="/dashboard" component={DashboardPage} />
+      {/* ... routes อื่นๆ ... */}
+    </Switch>
+  );
+}
+// ...
+🔔 ส่วนที่ 5: Notifications
+8. ไฟล์ client/src/lib/notifications.ts
+ฟังก์ชันจัดการแจ้งเตือน
+
+TypeScript
+
+export async function requestNotificationPermission(): Promise<boolean> {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  const permission = await Notification.requestPermission();
+  return permission === "granted";
+}
+
+export async function registerServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    try {
+      return await navigator.serviceWorker.register("/sw.js");
+    } catch (error) {
+      console.error("SW registration failed:", error);
+      return null;
+    }
+  }
+  return null;
+}
+9. ไฟล์ client/public/sw.js
+Service Worker (วางไว้ในโฟลเดอร์ public)
+
+JavaScript
+
+self.addEventListener("push", function (event) {
+  const data = event.data.json();
+  const options = {
+    body: data.body || "มีการเปลี่ยนแปลงตารางงาน",
+    icon: "/icons/icon-192x192.png",
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(data.title || "BK Schedule", options));
+});
+
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data.url));
+});

@@ -1,0 +1,97 @@
+1. ระบบสมองกลเชิงรุก (Proactive Background Job)
+เราจะใช้ node-cron เพื่อให้ Chann ตื่นมาดึงข้อมูล NBO ด้วยรหัส bk1040 แล้ววิเคราะห์เองทุกเช้าครับ
+
+ไฟล์: server/services/proactive-agent.ts
+
+TypeScript
+import cron from 'node-cron';
+import { getNBOSalesAuto } from "./nbo-service";
+import { pushToBoss } from "../socket";
+import { streamLLM } from "./llm-router";
+
+export function initProactiveChann() {
+  // ⏰ ตื่นมาทำงานทุก 08:00 น.
+  cron.schedule('0 8 * * *', async () => {
+    console.log("🌞 Chann ตื่นมาเตรียมรายงานให้เจ้านายแล้วครับ...");
+    
+    const salesData = await getNBOSalesAuto();
+    if (!salesData) return;
+
+    let report = "";
+    await streamLLM({
+      provider: "auto",
+      mode: "analysis",
+      message: `สรุปยอดขายเมื่อวานจาก NBO: ${salesData.TotalSales} บาท. ช่วยวิเคราะห์และทักทายเจ้านายตอนเช้าแบบเป็นกันเองทีครับ`,
+      history: [],
+      onToken: (token) => { report += token; }
+    });
+
+    // ทัก LINE หรือดันขึ้นหน้าจอทันที
+    pushToBoss("chann-alert", {
+      title: "อรุณสวัสดิ์ครับเจ้านาย ☕",
+      message: report
+    });
+  });
+}
+2. ระบบทำงานเองและแก้ไขตัวเอง (Autonomous & Self-Healing)
+ส่วนนี้คือหัวใจของ "Replit Agent" ครับ เราจะสร้าง Loop ที่ให้ AI ลองรันคำสั่ง ถ้าพลาดให้มันอ่าน Error แล้วแก้เองจนผ่านครับ
+
+ไฟล์: server/services/autonomous-agent.ts
+
+TypeScript
+import { exec } from "child_process";
+import { promisify } from "util";
+import { streamLLM } from "./llm-router";
+
+const execAsync = promisify(exec);
+
+export async function executeWithSelfHealing(taskDescription: string, maxRetries = 3) {
+  let currentAttempt = 0;
+  let lastError = "";
+
+  while (currentAttempt < maxRetries) {
+    console.log(`🤖 Chann กำลังพยายามทำงาน: รอบที่ ${currentAttempt + 1}`);
+
+    // 1. ให้ AI วางแผนและเขียนโค้ด/คำสั่ง
+    let planAndCode = "";
+    await streamLLM({
+      provider: "openai", // ใช้ตัวที่เขียนโค้ดเก่งที่สุด
+      mode: "code",
+      message: currentAttempt === 0 
+        ? `ช่วยเขียนคำสั่ง Shell หรือโค้ดเพื่อ: ${taskDescription}`
+        : `คำสั่งก่อนหน้าพลาดด้วย Error: ${lastError}. ช่วยแก้ไขให้ใหม่ทีครับ`,
+      history: [],
+      onToken: (t) => { planAndCode += t; }
+    });
+
+    try {
+      // 2. ลองรัน (Execute) - *ระวัง: ควรทำใน Sandbox*
+      const { stdout } = await execAsync(planAndCode);
+      console.log("✅ งานเสร็จสมบูรณ์!");
+      return stdout;
+    } catch (error: any) {
+      // 3. ถ้าเจอ Error เก็บไว้ให้ AI อ่านในรอบถัดไป (Self-Healing)
+      lastError = error.message;
+      currentAttempt++;
+      console.log(`❌ พลาดครับเจ้านาย กำลังวิเคราะห์ Error...`);
+    }
+  }
+
+  return "ขออภัยครับเจ้านาย ผมพยายามแก้ 3 รอบแล้วยังไม่ผ่าน รบกวนเจ้านายช่วยดูหน่อยครับ";
+}
+3. ประกอบร่างเข้ากับ Server หลัก
+ไปที่ไฟล์ server/index.ts (หรือไฟล์หลักของเจ้านาย) แล้วเรียกใช้งานครับ
+
+TypeScript
+import { createServer } from "http";
+import { initSocket } from "./socket";
+import { initProactiveChann } from "./services/proactive-agent";
+
+const httpServer = createServer(app);
+initSocket(httpServer);
+
+// 🚀 เริ่มระบบเชิงรุก
+initProactiveChann();
+
+// ตัวอย่างการสั่งงานแบบ Autonomous (เรียกใช้ผ่าน API หรือ Terminal)
+// executeWithSelfHealing("สร้างไฟล์สรุปยอดขายรายสัปดาห์เป็นไฟล์ .txt");

@@ -937,7 +937,7 @@ export default function SalesSettingsPage() {
                 <span className="animate-pulse">→</span>
               </div>
               <div className="overflow-x-auto scrollbar-visible pb-3" style={{ scrollbarWidth: 'auto', scrollbarColor: '#888 #f1f1f1' }}>
-                <div className="max-h-[600px] overflow-y-auto">
+                <div>
                   <table className="w-full text-xs border-collapse min-w-[4300px]">
                     <thead className="sticky top-0 z-20 shadow-sm">
                       <tr className="bg-slate-200 dark:bg-slate-700 text-center">

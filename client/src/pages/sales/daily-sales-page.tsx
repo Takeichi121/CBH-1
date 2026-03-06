@@ -1960,6 +1960,10 @@ ${v.staffRosterText || ""}
                           size="sm"
                           className="gap-1"
                           data-testid="button-paste-line-report"
+                          onClick={() => {
+                            const reportDate = form.getValues("reportDate" as keyof FormData) as string;
+                            setPasteDate(reportDate || todayBangkok());
+                          }}
                         >
                           <ClipboardPaste className="w-4 h-4" />
                           {language === "th" ? "วางข้อมูล LINE" : "Paste LINE Report"}

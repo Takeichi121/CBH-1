@@ -165,6 +165,7 @@ export interface IStorage {
   createAgentRequest(data: InsertAgentRequest): Promise<AgentRequest>;
   getAgentRequests(): Promise<AgentRequest[]>;
   updateAgentRequestStatus(id: number, status: string): Promise<AgentRequest>;
+  updateAgentRequestResponse(id: number, response: string): Promise<AgentRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -986,6 +987,14 @@ export class DatabaseStorage implements IStorage {
   async updateAgentRequestStatus(id: number, status: string): Promise<AgentRequest> {
     const [updated] = await db.update(agentRequests)
       .set({ status, updatedAt: new Date().toISOString() })
+      .where(eq(agentRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateAgentRequestResponse(id: number, response: string): Promise<AgentRequest> {
+    const [updated] = await db.update(agentRequests)
+      .set({ response, updatedAt: new Date().toISOString() })
       .where(eq(agentRequests.id, id))
       .returning();
     return updated;

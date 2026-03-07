@@ -43,9 +43,14 @@ export default function AgentRequestsPage() {
       });
       return res.json();
     },
+    refetchInterval: (query) => {
+      const requests = query.state.data?.requests ?? [];
+      const hasPending = requests.some((r) => !r.response);
+      return hasPending ? 2500 : false;
+    },
   });
 
-  const requests = data?.requests ?? [];
+  const requests = (data?.requests ?? []).slice().reverse();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,11 +125,19 @@ export default function AgentRequestsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {isLoading && (
-          <div className="flex flex-col gap-3 items-end">
+          <div className="flex flex-col gap-4">
             {[1, 2].map(i => (
-              <div key={i} className="h-16 w-64 rounded-2xl bg-muted animate-pulse" />
+              <div key={i} className="space-y-2">
+                <div className="flex justify-end">
+                  <div className="h-12 w-56 rounded-2xl bg-muted animate-pulse" />
+                </div>
+                <div className="flex justify-start gap-2">
+                  <div className="h-8 w-8 rounded-full bg-muted animate-pulse shrink-0" />
+                  <div className="h-10 w-48 rounded-2xl bg-muted animate-pulse" />
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -144,40 +157,61 @@ export default function AgentRequestsPage() {
         )}
 
         {requests.map((req) => (
-          <div key={req.id} className="flex flex-col items-end gap-1" data-testid={`card-request-${req.id}`}>
-            <div className="max-w-[80%] min-w-[120px]">
-              <div className="rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-primary-foreground shadow-sm">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" data-testid={`text-desc-${req.id}`}>
-                  {req.description}
-                </p>
-              </div>
-              <div className="flex items-center justify-end gap-2 mt-1.5 flex-wrap">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_BADGE[req.type] ?? "bg-gray-500/20 text-gray-400"}`}
-                  data-testid={`badge-type-${req.id}`}
-                >
-                  {TYPE_OPTIONS.find(t => t.value === req.type)?.label ?? req.type}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(req.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
-                </span>
-                <Select
-                  value={req.status}
-                  onValueChange={(val) => statusMutation.mutate({ id: req.id, status: val })}
-                >
-                  <SelectTrigger
-                    className={`h-5 text-xs px-2 py-0 rounded-full border w-auto gap-1 ${STATUS_INFO[req.status]?.color ?? ""}`}
-                    data-testid={`select-status-${req.id}`}
+          <div key={req.id} className="space-y-1.5" data-testid={`card-request-${req.id}`}>
+            <div className="flex flex-col items-end gap-1">
+              <div className="max-w-[80%]">
+                <div className="rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-primary-foreground shadow-sm">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" data-testid={`text-desc-${req.id}`}>
+                    {req.description}
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-1.5 flex-wrap">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_BADGE[req.type] ?? "bg-gray-500/20 text-gray-400"}`}
+                    data-testid={`badge-type-${req.id}`}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
+                    {TYPE_OPTIONS.find(t => t.value === req.type)?.label ?? req.type}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(req.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                  </span>
+                  <Select
+                    value={req.status}
+                    onValueChange={(val) => statusMutation.mutate({ id: req.id, status: val })}
+                  >
+                    <SelectTrigger
+                      className={`h-5 text-xs px-2 py-0 rounded-full border w-auto gap-1 ${STATUS_INFO[req.status]?.color ?? ""}`}
+                      data-testid={`select-status-${req.id}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="acknowledged">Acknowledged</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-end gap-2 max-w-[80%]">
+              <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0 mb-0.5">
+                <Bot className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5 shadow-sm">
+                {req.response ? (
+                  <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap" data-testid={`text-response-${req.id}`}>
+                    {req.response}
+                  </p>
+                ) : (
+                  <div className="flex gap-1 items-center py-0.5" data-testid={`text-response-loading-${req.id}`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                )}
               </div>
             </div>
           </div>

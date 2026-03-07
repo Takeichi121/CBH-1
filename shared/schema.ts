@@ -659,6 +659,7 @@ export const agentRequests = pgTable("agent_requests", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   status: text("status").notNull().default("pending"),
+  response: text("response"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

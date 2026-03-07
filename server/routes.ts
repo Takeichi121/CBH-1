@@ -5615,6 +5615,38 @@ ${pageContext}` : ''}`;
     if (!parsed.success) return res.json({ ok: false, message: "Invalid data", errors: parsed.error.errors });
 
     const request = await storage.createAgentRequest({ ...parsed.data, username: session.username });
+
+    (async () => {
+      try {
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({
+          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        });
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `You are Replit Agent — an autonomous AI software engineer. 
+When an admin sends you a request, reply briefly acknowledging it and give a short, relevant technical comment or next step.
+Match the language the user wrote in (Thai or English). 
+Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
+            },
+            {
+              role: "user",
+              content: `[${parsed.data.type}] ${parsed.data.description}`,
+            },
+          ],
+          max_tokens: 150,
+        });
+        const aiResponse = completion.choices[0]?.message?.content ?? "ได้รับ request แล้วครับ จะตรวจสอบและดำเนินการเร็วๆ นี้";
+        await storage.updateAgentRequestResponse(request.id, aiResponse);
+      } catch {
+        await storage.updateAgentRequestResponse(request.id, "ได้รับ request แล้วครับ จะตรวจสอบและดำเนินการให้เร็วที่สุด").catch(() => {});
+      }
+    })();
+
     return res.json({ ok: true, request });
   });
 

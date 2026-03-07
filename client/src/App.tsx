@@ -34,6 +34,7 @@ import ForgotPasswordPage from "@/pages/forgot-password-page";
 import DashboardPage from "@/pages/dashboard-page";
 import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
+import AgentRequestsPage from "@/pages/agent-requests-page";
 
 // Sales Pages
 import SalesDashboardPage from "@/pages/sales/dashboard-page";
@@ -45,6 +46,22 @@ import ImportDBFPage from "@/pages/sales/import-dbf-page";
 import WeeklySalesPage from "@/pages/sales/weekly-sales-page";
 
 import { useEffect } from "react";
+
+function AdminProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && (!user || user.role !== "admin")) {
+      setLocation("/work");
+    }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading) return <LoadingScreen />;
+  if (!user || user.role !== "admin") return null;
+
+  return <Component />;
+}
 
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType, path: string }) {
   const { user, isLoading } = useAuth();
@@ -167,6 +184,10 @@ function Router() {
           
           <Route path="/dashboard">
             <ProtectedRoute component={DashboardPage} path="/dashboard" />
+          </Route>
+          
+          <Route path="/agent-requests">
+            <AdminProtectedRoute component={AgentRequestsPage} />
           </Route>
           
           <Route component={NotFound} />

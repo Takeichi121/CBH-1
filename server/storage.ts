@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
@@ -160,6 +160,11 @@ export interface IStorage {
   saveChannNote(username: string, title: string, content: string): Promise<ChannNote>;
   getChannNotes(username: string, query?: string): Promise<ChannNote[]>;
   deleteChannNote(id: number): Promise<void>;
+
+  // Agent Requests
+  createAgentRequest(data: InsertAgentRequest): Promise<AgentRequest>;
+  getAgentRequests(): Promise<AgentRequest[]>;
+  updateAgentRequestStatus(id: number, status: string): Promise<AgentRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -963,6 +968,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChannNote(id: number): Promise<void> {
     await db.delete(channNotes).where(eq(channNotes.id, id));
+  }
+
+  async createAgentRequest(data: InsertAgentRequest): Promise<AgentRequest> {
+    const now = new Date().toISOString();
+    const [created] = await db.insert(agentRequests)
+      .values({ ...data, createdAt: now, updatedAt: now })
+      .returning();
+    return created;
+  }
+
+  async getAgentRequests(): Promise<AgentRequest[]> {
+    return await db.select().from(agentRequests)
+      .orderBy(desc(agentRequests.createdAt));
+  }
+
+  async updateAgentRequestStatus(id: number, status: string): Promise<AgentRequest> {
+    const [updated] = await db.update(agentRequests)
+      .set({ status, updatedAt: new Date().toISOString() })
+      .where(eq(agentRequests.id, id))
+      .returning();
+    return updated;
   }
 }
 

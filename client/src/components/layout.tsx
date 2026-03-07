@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
@@ -45,6 +45,9 @@ export function Layout({ children }: { children: ReactNode }) {
       { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
     ] : []),
+    ...(user.role === "admin" ? [
+      { href: "/agent-requests", label: "Agent", icon: Bot },
+    ] : []),
   ];
 
   const mobileNavItems = [
@@ -56,6 +59,9 @@ export function Layout({ children }: { children: ReactNode }) {
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
       { href: "/requests", label: t("managerRequest") || "Request", icon: FileText },
       { href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield },
+    ] : []),
+    ...(user.role === "admin" ? [
+      { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
     { href: "/settings", label: t("settings") || "Settings", icon: Settings },
     { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },

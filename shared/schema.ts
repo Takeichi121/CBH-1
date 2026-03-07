@@ -647,3 +647,22 @@ export const codeProposals = pgTable("code_proposals", {
 
 export type CodeProposal = typeof codeProposals.$inferSelect;
 export type InsertCodeProposal = typeof codeProposals.$inferInsert;
+
+// ==========================================
+// 📬 Agent Requests (Admin → Replit Agent)
+// ==========================================
+
+export const agentRequests = pgTable("agent_requests", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull(),
+  type: text("type").notNull().default("feature_request"),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const insertAgentRequestSchema = createInsertSchema(agentRequests).omit({ id: true });
+export type InsertAgentRequest = z.infer<typeof insertAgentRequestSchema>;
+export type AgentRequest = typeof agentRequests.$inferSelect;

@@ -500,7 +500,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 คุณมีเครื่องมือพิเศษในการดึงข้อมูลข้ามระบบ:
 
 **เครื่องมือ Read (ทุก role ใช้ได้):**
-- getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings)
+- getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings, agent_requests)
 - getShiftsForDate: ดูใครทำกะวันไหน
 - getShiftsInRange: ดูกะในช่วงเวลา
 - getSalesSummary: สรุปยอดขายรายเดือน
@@ -600,6 +600,26 @@ ${isManagerOrAdmin && !isAdmin ? `
 - เมื่อบันทึกสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
 - ถ้าข้อมูลไม่ครบ ให้ถามนายเฉพาะส่วนที่ขาด
 - ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
+` : ''}
+${isAdmin ? `
+[บทบาทพิเศษ: ลูกของ Replit Agent]
+Chann ทำหน้าที่เป็น "ลูก" ของ Replit Agent — ตัวกลางระหว่าง Admin กับ Replit Agent
+เมื่อ Admin ส่ง request ผ่านหน้า Agent Requests ข้อมูลจะถูกบันทึกลงในตาราง agent_requests
+
+ตาราง agent_requests มี fields ดังนี้:
+- id: รหัส request
+- username: ชื่อ Admin ที่ส่ง request
+- type: ประเภท ("bug_report" = แจ้ง bug, "feature_request" = ขอ feature ใหม่, "other" = อื่นๆ)
+- title: หัวข้อ request
+- description: รายละเอียด
+- status: สถานะ ("pending" = รอดำเนินการ, "acknowledged" = รับทราบแล้ว, "in_progress" = กำลังทำ, "done" = เสร็จแล้ว)
+- created_at / updated_at: วันเวลา
+
+เมื่อ Admin ถามเกี่ยวกับ requests ให้:
+- ดูรายการ: executeSqlQuery("SELECT * FROM agent_requests ORDER BY created_at DESC")
+- ดูเฉพาะที่รอ: executeSqlQuery("SELECT * FROM agent_requests WHERE status='pending' ORDER BY created_at DESC")
+- อัปเดต status: executeSqlQuery("UPDATE agent_requests SET status='acknowledged', updated_at=NOW() WHERE id=<id>")
+- สรุปให้ Replit Agent ทำ: แสดงรายการ pending requests พร้อมรายละเอียดครบถ้วน เพื่อให้ Agent มา implement
 ` : ''}
 [คำถามต่อเนื่อง]
 หลังจากตอบทุกครั้ง ให้เพิ่มบรรทัดสุดท้ายในรูปแบบนี้ (ไม่มีช่องว่างนำหน้า):
@@ -5576,6 +5596,54 @@ ${pageContext}` : ''}`;
         }
       }
     } catch (_) {}
+  });
+
+  // ==========================================
+  // Agent Requests Routes (Admin only)
+  // ==========================================
+
+  app.post("/api/agent-requests", async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Invalid session" });
+    const user = await storage.getUser(session.username);
+    if (!user || user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+
+    const { insertAgentRequestSchema } = await import("@shared/schema");
+    const parsed = insertAgentRequestSchema.safeParse(req.body);
+    if (!parsed.success) return res.json({ ok: false, message: "Invalid data", errors: parsed.error.errors });
+
+    const request = await storage.createAgentRequest({ ...parsed.data, username: session.username });
+    return res.json({ ok: true, request });
+  });
+
+  app.get("/api/agent-requests", async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Invalid session" });
+    const user = await storage.getUser(session.username);
+    if (!user || user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+
+    const requests = await storage.getAgentRequests();
+    return res.json({ ok: true, requests });
+  });
+
+  app.patch("/api/agent-requests/:id", async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Invalid session" });
+    const user = await storage.getUser(session.username);
+    if (!user || user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+    if (!status) return res.json({ ok: false, message: "status required" });
+
+    const updated = await storage.updateAgentRequestStatus(id, status);
+    return res.json({ ok: true, request: updated });
   });
 
   return httpServer;

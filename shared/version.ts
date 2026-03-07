@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.8";
+export const APP_VERSION = "2.0.9";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.9",
+    date: "2026-03-07",
+    label: "feature",
+    changes: [
+      "Agent Requests: เปลี่ยนเป็น Chat Interface — ส่ง request ผ่านช่องแชทได้เลย",
+      "AI ตอบกลับอัตโนมัติด้วย OpenAI — Replit Agent ตอบรับทุก request ใน 2-3 วินาที",
+      "เพิ่มปุ่มเปลี่ยนภาษา (ไทย/EN) ใน Header หลัก",
+    ],
+  },
   {
     version: "2.0.8",
     date: "2026-03-04",

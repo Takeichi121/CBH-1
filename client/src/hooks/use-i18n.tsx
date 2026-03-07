@@ -159,6 +159,11 @@ const translations = {
     resendOtp: "Resend OTP",
     otpExpiredIn: "OTP expires in",
     minutes: "minutes",
+    notifications: "Notifications",
+    agentRequests: "Agent",
+    changelog: "Version History",
+    handbook: "Handbook",
+    versionHistory: "Version History",
   },
   th: {
     appName: "Grand Diamond",
@@ -316,6 +321,11 @@ const translations = {
     resendOtp: "ส่ง OTP อีกครั้ง",
     otpExpiredIn: "OTP หมดอายุใน",
     minutes: "นาที",
+    notifications: "การแจ้งเตือน",
+    agentRequests: "Agent",
+    changelog: "ประวัติเวอร์ชัน",
+    handbook: "คู่มือ",
+    versionHistory: "ประวัติเวอร์ชัน",
   },
 };
 

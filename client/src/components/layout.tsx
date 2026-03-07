@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History } from "lucide-react";
 import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
@@ -27,7 +27,7 @@ import { useI18n } from "@/hooks/use-i18n";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, logoutMutation } = useAuth();
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -80,12 +80,24 @@ export function Layout({ children }: { children: ReactNode }) {
             <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
             <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
           </div>
-          <Avatar className="h-9 w-9 border-2 border-primary/10" data-testid="avatar-mobile-header">
-            <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
-            <AvatarFallback className="bg-primary/5 text-primary font-bold text-sm">
-              {user.username.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLanguage(language === "en" ? "th" : "en")}
+              className="gap-1 h-8 px-2.5 rounded-full border-primary/20 text-muted-foreground text-xs"
+              data-testid="button-language-toggle-mobile"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {language === "en" ? "TH" : "EN"}
+            </Button>
+            <Avatar className="h-9 w-9 border-2 border-primary/10" data-testid="avatar-mobile-header">
+              <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
+              <AvatarFallback className="bg-primary/5 text-primary font-bold text-sm">
+                {user.username.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
 
         <div className="px-4 pb-2">
@@ -254,6 +266,17 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            size="sm"
+            onClick={() => setLanguage(language === "en" ? "th" : "en")}
+            className="gap-1.5 h-9 px-3 rounded-full border-primary/20 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all"
+            data-testid="button-language-toggle"
+          >
+            <Globe className="w-4 h-4" />
+            <span className="text-xs font-medium">{language === "en" ? "ไทย" : "EN"}</span>
+          </Button>
+
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="rounded-full w-10 h-10 border-primary/20 hover:bg-primary/5 transition-all duration-300 relative overflow-hidden"
@@ -346,6 +369,23 @@ export function Layout({ children }: { children: ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                  <Link href="/handbook">
+                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-handbook">
+                      <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>{language === "th" ? "คู่มือพนักงาน" : "Handbook"}</span>
+                    </a>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                  <Link href="/handbook">
+                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-changelog">
+                      <History className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>{language === "th" ? "ประวัติเวอร์ชัน" : "Version History"}</span>
+                    </a>
+                  </Link>
+                </DropdownMenuItem>
               </div>
 
               <DropdownMenuSeparator />

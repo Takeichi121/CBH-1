@@ -5611,7 +5611,7 @@ ${pageContext}` : ''}`;
     if (!user || user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
 
     const { insertAgentRequestSchema } = await import("@shared/schema");
-    const parsed = insertAgentRequestSchema.safeParse(req.body);
+    const parsed = insertAgentRequestSchema.pick({ type: true, title: true, description: true }).safeParse(req.body);
     if (!parsed.success) return res.json({ ok: false, message: "Invalid data", errors: parsed.error.errors });
 
     const request = await storage.createAgentRequest({ ...parsed.data, username: session.username });

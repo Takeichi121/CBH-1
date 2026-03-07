@@ -1609,90 +1609,20 @@ ${v.staffRosterText || ""}
 
   const parseLineReport = (text: string) => {
     const stripped = text.replace(/[\u{1F300}-\u{1FAD6}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{200D}\u{FE0F}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "");
-    const clean = (s: string) => s.replace(/,/g, "").trim();
+    const clean = (s: string) => s.replace(/,/g, "").replace(/฿/g, "").replace(/-/g, "").trim();
     const num = (s: string) => {
       const v = clean(s);
+      const n = parseFloat(v);
+      return isNaN(n) ? "0" : String(n);
+    };
+    const numAbs = (s: string) => {
+      const v = s.replace(/,/g, "").replace(/฿/g, "").replace(/-/g, "").trim();
       const n = parseFloat(v);
       return isNaN(n) ? "0" : String(n);
     };
 
     const parsed: Record<string, string> = {};
 
-    const dateMatch = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (dateMatch) {
-      const [, d, m, y] = dateMatch;
-      parsed.reportDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-    }
-
-    const salesMatch = stripped.match(/Daily\s*Sales\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)/i);
-    if (salesMatch) {
-      parsed.actualSales = num(salesMatch[1]);
-      parsed.dailyTarget = num(salesMatch[2]);
-    }
-
-    const mtdSaleMatch = stripped.match(/MTD\s*Sale[s]?\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)/i);
-    if (mtdSaleMatch) {
-      parsed.mtdActual = num(mtdSaleMatch[1]);
-      parsed.mtdTarget = num(mtdSaleMatch[2]);
-    }
-
-    const dailyTcMatch = stripped.match(/Daily\s*TC\s*[=:]\s*([\d,.]+)/i);
-    if (dailyTcMatch) parsed.transactionCount = num(dailyTcMatch[1]);
-
-    const mtdTcMatch = stripped.match(/MTD\s*TC\s*[=:]\s*([\d,.]+)/i);
-    if (mtdTcMatch) parsed.mtdTc = num(mtdTcMatch[1]);
-
-    const dineInMatch = stripped.match(/Dine\s*[-]?\s*in\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d,.]+))?/i);
-    if (dineInMatch) {
-      parsed.dineIn = num(dineInMatch[1]);
-      if (dineInMatch[2]) parsed.dineInTc = num(dineInMatch[2]);
-    }
-
-    const takeawayMatch = stripped.match(/Take\s*[-]?\s*away\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d,.]+))?/i);
-    if (takeawayMatch) {
-      parsed.takeAway = num(takeawayMatch[1]);
-      if (takeawayMatch[2]) parsed.takeAwayTc = num(takeawayMatch[2]);
-    }
-
-    const grabMatch = stripped.match(/Grab\s*(?:Food)?\s*[=:]\s*([\d,.]+)/i);
-    if (grabMatch) parsed.grabfood = num(grabMatch[1]);
-
-    const linemanMatch = stripped.match(/Line\s*[-]?\s*Man\s*[=:]\s*([\d,.]+)/i);
-    if (linemanMatch) parsed.lineman = num(linemanMatch[1]);
-
-    const shopeeMatch = stripped.match(/Shopee\s*(?:food)?\s*[=:]\s*([\d,.]+)/i);
-    if (shopeeMatch) parsed.shopee = num(shopeeMatch[1]);
-
-    const bkappMatch = stripped.match(/(?:BK\s*App|1112)\s*[=:]\s*([\d,.]+)/i);
-    if (bkappMatch) parsed.bkapp = num(bkappMatch[1]);
-
-    const robinMatch = stripped.match(/Robin\s*[=:]\s*([\d,.]+)/i);
-    if (robinMatch) parsed.robin = num(robinMatch[1]);
-
-    const gokooMatch = stripped.match(/Go\s*KOO\s*[=:]\s*([\d,.]+)/i);
-    if (gokooMatch) parsed.gokoo = num(gokooMatch[1]);
-
-    const sosDailyMatch = stripped.match(/(?:^|\n)[^M\n]*SOS\s*[=:]\s*([\d,.]+)/im);
-    if (sosDailyMatch) parsed.sosDaily = num(sosDailyMatch[1]);
-
-    const sosMtdMatch = stripped.match(/MTD\s*SOS\s*[=:]\s*([\d,.]+)/i);
-    if (sosMtdMatch) parsed.sosMtd = num(sosMtdMatch[1]);
-
-    const wasteDailyMatch = stripped.match(/Waste\s*Daily\s*[=:]\s*([\d,.]+)/i);
-    if (wasteDailyMatch) parsed.wasteDailyTotal = num(wasteDailyMatch[1]);
-
-    const wasteMtdMatch = stripped.match(/Waste\s*MTD\s*[=:]\s*([\d,.]+)/i);
-    if (wasteMtdMatch) parsed.wasteMtdTotal = num(wasteMtdMatch[1]);
-
-    const workHourMatch = stripped.match(/Work\s*Hour\s*[=:]\s*([\d,.]+)/i);
-    if (workHourMatch) parsed.actualHours = num(workHourMatch[1]);
-
-    const osatMatch = stripped.match(/OSAT\s*[=:]\s*([\d,.]+)/i);
-    if (osatMatch) {
-      parsed.osat = num(osatMatch[1]);
-    }
-
-    const managerNames = ["Phongsathon", "Nuttarika", "Boonyisa", "Chanon", "Washiraphan"];
     const normalizeShift = (raw: string) => {
       let s = raw.trim().replace(/\./g, ":");
       s = s.replace(/24:00/g, "00:00");
@@ -1701,17 +1631,262 @@ ${v.staffRosterText || ""}
       );
       return s;
     };
-    for (const name of managerNames) {
-      const mgrMatch = stripped.match(new RegExp(name + "\\s*[=:]\\s*([\\d.:]+\\s*-\\s*[\\d.:]+|OFF|COM|Vacation|QSNCC)", "i"));
-      if (mgrMatch) {
-        const val = normalizeShift(mgrMatch[1]);
-        const key = `manager${name}` as string;
-        parsed[key] = val;
+
+    const toISO = (d: string, m: string, y: string) =>
+      `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+
+    const lines = text.split("\n");
+    const strippedLines = stripped.split("\n");
+
+    let inManagerRoster = false;
+    let foundFirstDate = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const s = strippedLines[i] || "";
+      const dateInLine = raw.match(/Date:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+      if (dateInLine) {
+        const iso = toISO(dateInLine[1], dateInLine[2], dateInLine[3]);
+        if (!foundFirstDate) {
+          parsed.reportDate = iso;
+          foundFirstDate = true;
+        } else if (inManagerRoster) {
+          parsed.managerRosterDate = iso;
+        }
+      }
+      const inlineDate = raw.match(/(?<!Date:.*?)(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (inlineDate && !dateInLine && !foundFirstDate) {
+        parsed.reportDate = toISO(inlineDate[1], inlineDate[2], inlineDate[3]);
+        foundFirstDate = true;
+      }
+      if (/Manager\s*Roster/i.test(s)) inManagerRoster = true;
+    }
+
+    if (!foundFirstDate) {
+      const dateMatch = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (dateMatch) {
+        parsed.reportDate = toISO(dateMatch[1], dateMatch[2], dateMatch[3]);
       }
     }
 
-    const rosterTomorrowMatch = stripped.match(/(?:Roster\s*(?:Tomorrow|Staff|พนักงาน)|Staff\s*Roster)\s*([\s\S]*?)(?:\n\s*\n|$)/i);
-    let rosterBlock = rosterTomorrowMatch ? rosterTomorrowMatch[1].trim() : "";
+    const salesMatch = stripped.match(/Daily\s*Sales\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)/i);
+    if (salesMatch) {
+      parsed.actualSales = num(salesMatch[1]);
+      parsed.dailyTarget = num(salesMatch[2]);
+    }
+
+    if (!parsed.actualSales) {
+      const acMatch = stripped.match(/\bAC\s*[=:]\s*([\d,.]+)/i);
+      if (acMatch) parsed.actualSales = num(acMatch[1]);
+    }
+    if (!parsed.dailyTarget) {
+      const tgMatch = stripped.match(/\bTG\s*[=:]\s*([\d,.]+)/i);
+      if (tgMatch) parsed.dailyTarget = num(tgMatch[1]);
+    }
+
+    const mtdSaleMatch = stripped.match(/MTD\s*Sale[s]?\s*[=:]\s*([\d,.]+)\s*\/\s*([\d,.]+)/i);
+    if (mtdSaleMatch) {
+      parsed.mtdActual = num(mtdSaleMatch[1]);
+      parsed.mtdTarget = num(mtdSaleMatch[2]);
+    }
+    if (!parsed.mtdTarget) {
+      const mtdTgMatch = stripped.match(/MTD\s*TG\s*[=:]\s*([\d,.]+)/i);
+      if (mtdTgMatch) parsed.mtdTarget = num(mtdTgMatch[1]);
+    }
+    if (!parsed.mtdActual) {
+      const mtdAcMatch = stripped.match(/MTD\s*AC\s*[=:]\s*([\d,.]+)/i);
+      if (mtdAcMatch) parsed.mtdActual = num(mtdAcMatch[1]);
+    }
+
+    const dailyTcMatch = stripped.match(/Daily\s*TC\s*[=:]\s*([\d,.]+)/i);
+    if (dailyTcMatch) parsed.transactionCount = num(dailyTcMatch[1]);
+
+    if (!parsed.transactionCount) {
+      const tcDailyBlock = stripped.match(/\bDaily\b[\s\S]{0,200}?\bTC\s*[=:]\s*([\d,.]+)/i);
+      if (tcDailyBlock) parsed.transactionCount = num(tcDailyBlock[1]);
+    }
+
+    if (!parsed.transactionCount) {
+      const tcLines = strippedLines;
+      for (let i = 0; i < tcLines.length; i++) {
+        if (/\bTA\s*[=:]\s*[\d,.]+/.test(tcLines[i])) {
+          for (let j = i - 5; j <= i + 5; j++) {
+            if (j >= 0 && j < tcLines.length && j !== i) {
+              const m = tcLines[j].match(/\bTC\s*[=:]\s*([\d,.]+)/i);
+              if (m && !parsed.transactionCount) {
+                parsed.transactionCount = num(m[1]);
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    const mtdTcMatch = stripped.match(/MTD\s*TC\s*[=:]\s*([\d,.]+)/i);
+    if (mtdTcMatch) parsed.mtdTc = num(mtdTcMatch[1]);
+
+    for (let i = 0; i < strippedLines.length; i++) {
+      const ln = strippedLines[i];
+      const dineInLine = ln.match(/Dine\s*[-]?\s*In\s*[=:]\s*([\d,.]+)/i);
+      if (dineInLine) {
+        parsed.dineIn = num(dineInLine[1]);
+        for (let j = i + 1; j <= Math.min(i + 3, strippedLines.length - 1); j++) {
+          const tcLine = strippedLines[j].match(/\bTC\s*[=:]\s*([\d,.]+)/i);
+          if (tcLine) { parsed.dineInTc = num(tcLine[1]); break; }
+        }
+      }
+      const takeawayLine = ln.match(/Take\s*[-]?\s*[Aa]way\s*[=:]\s*([\d,.]+)/i);
+      if (takeawayLine) {
+        parsed.takeAway = num(takeawayLine[1]);
+        for (let j = i + 1; j <= Math.min(i + 3, strippedLines.length - 1); j++) {
+          const tcLine = strippedLines[j].match(/\bTC\s*[=:]\s*([\d,.]+)/i);
+          if (tcLine) { parsed.takeAwayTc = num(tcLine[1]); break; }
+        }
+      }
+    }
+
+    if (!parsed.dineIn) {
+      const dineInMatch = stripped.match(/Dine\s*[-]?\s*[Ii]n\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d,.]+))?/i);
+      if (dineInMatch) {
+        parsed.dineIn = num(dineInMatch[1]);
+        if (dineInMatch[2]) parsed.dineInTc = num(dineInMatch[2]);
+      }
+    }
+    if (!parsed.takeAway) {
+      const takeawayMatch = stripped.match(/Take\s*[-]?\s*[Aa]way\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d,.]+))?/i);
+      if (takeawayMatch) {
+        parsed.takeAway = num(takeawayMatch[1]);
+        if (takeawayMatch[2]) parsed.takeAwayTc = num(takeawayMatch[2]);
+      }
+    }
+
+    const grabMatch = stripped.match(/Grab\s*(?:Food)?\s*[=:]\s*([\d,.]+)/i);
+    if (grabMatch) parsed.grabfood = num(grabMatch[1]);
+
+    const linemanMatch = stripped.match(/Line\s*[-]?\s*Man\s*[=:]\s*([\d,.]+)/i);
+    if (linemanMatch) parsed.lineman = num(linemanMatch[1]);
+
+    const shopeeMatch = stripped.match(/Shop+ee\s*(?:[Ff]ood)?\s*[=:]\s*([\d,.]+)/i);
+    if (shopeeMatch) parsed.shopee = num(shopeeMatch[1]);
+
+    const bkappMatch = stripped.match(/(?:BK\s*App(?:\/Web)?\s*(?:\/[^=:]*)?|1112)\s*[=:]\s*([\d,.]+)/i);
+    if (bkappMatch) parsed.bkapp = num(bkappMatch[1]);
+
+    const robinMatch = stripped.match(/Robin\s*[=:]\s*([\d,.]+)/i);
+    if (robinMatch) parsed.robin = num(robinMatch[1]);
+
+    const gokooMatch = stripped.match(/Go\s*KOO\s*[=:]\s*([\d,.]+)/i);
+    if (gokooMatch) parsed.gokoo = num(gokooMatch[1]);
+
+    const sosDailyMatch = stripped.match(/SOS\s*Daily\s*[=:]\s*([\d,.]+)/i);
+    if (sosDailyMatch) {
+      parsed.sosDaily = num(sosDailyMatch[1]);
+    } else {
+      const sosDailyAlt = stripped.match(/(?:^|\n)[^M\n]*SOS\s*[=:]\s*([\d,.]+)/im);
+      if (sosDailyAlt) parsed.sosDaily = num(sosDailyAlt[1]);
+    }
+
+    const sosMtdMatch = stripped.match(/(?:SOS\s*MTD|MTD\s*SOS)\s*[=:]\s*([\d,.]+)/i);
+    if (sosMtdMatch) parsed.sosMtd = num(sosMtdMatch[1]);
+
+    const osatMatch = stripped.match(/OSAT\s*[=:]\s*([\d,.]+)/i);
+    if (osatMatch) parsed.osat = num(osatMatch[1]);
+
+    const surveyMatch = stripped.match(/Survey\s*count\s*[=:]\s*([\d,.]+)/i);
+    if (surveyMatch) parsed.surveyCount = num(surveyMatch[1]);
+
+    const voidAmountMatch = stripped.match(/Void\s*[=:]\s*[-฿]*([\d,.]+)/i);
+    if (voidAmountMatch) parsed.voidAmount = numAbs(voidAmountMatch[1]);
+
+    for (let i = 0; i < strippedLines.length; i++) {
+      if (/\bVoid\b/i.test(strippedLines[i]) && !/count/i.test(strippedLines[i])) {
+        for (let j = i + 1; j <= Math.min(i + 2, strippedLines.length - 1); j++) {
+          const countLine = strippedLines[j].match(/count\s*[=:]\s*([\d,.]+)/i);
+          if (countLine) { parsed.voidCount = num(countLine[1]); break; }
+        }
+      }
+    }
+    if (!parsed.voidCount) {
+      const voidCountMatch = stripped.match(/Void\s*(?:count|Count)\s*[=:]\s*([\d,.]+)/i);
+      if (voidCountMatch) parsed.voidCount = num(voidCountMatch[1]);
+    }
+
+    const addCheeseMatch = stripped.match(/Add\s*Cheese\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d.]+)%?)?/i);
+    if (addCheeseMatch) {
+      parsed.addCheeseCount = num(addCheeseMatch[1]);
+      if (addCheeseMatch[2]) parsed.addCheesePercent = addCheeseMatch[2].trim();
+    }
+
+    const vMealMatch = stripped.match(/V[-\s]*[Mm]eal\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d.]+)%?)?/i);
+    if (vMealMatch) {
+      parsed.vMealCount = num(vMealMatch[1]);
+      if (vMealMatch[2]) parsed.vMealPercent = vMealMatch[2].trim();
+    }
+
+    const upSizeMatch = stripped.match(/Up\s*[-\s]*[Ss]ize\s*[=:]\s*([\d,.]+)(?:\s*\/\s*([\d.]+)%?)?/i);
+    if (upSizeMatch) {
+      parsed.upSizeCount = num(upSizeMatch[1]);
+      if (upSizeMatch[2]) parsed.upSizePercent = upSizeMatch[2].trim();
+    }
+
+    const colMatch = stripped.match(/COL\s*[=:]\s*([\d,.]+)%?/i);
+    if (colMatch) parsed.colPercent = num(colMatch[1]);
+
+    const hourMatch = stripped.match(/(?:Work\s*Hour|Hour)\s*[=:]\s*([\d,.]+)/i);
+    if (hourMatch) parsed.actualHours = num(hourMatch[1]);
+
+    const otMatch = stripped.match(/\bOT\s*[=:]\s*([\d,.]+)/i);
+    if (otMatch) parsed.otHours = num(otMatch[1]);
+
+    const tcmhMatch = stripped.match(/TCMH\s*[=:]\s*([\d,.]+)/i);
+    if (tcmhMatch) parsed.tcmh = num(tcmhMatch[1]);
+
+    const wasteHeaderIdx = strippedLines.findIndex(l => /\bWASTE\b/i.test(l));
+    if (wasteHeaderIdx >= 0) {
+      for (let i = wasteHeaderIdx + 1; i <= Math.min(wasteHeaderIdx + 5, strippedLines.length - 1); i++) {
+        const wDaily = strippedLines[i].match(/Daily\s*[=:]\s*([\d,.]+)/i);
+        if (wDaily && !parsed.wasteRawDaily) parsed.wasteRawDaily = num(wDaily[1]);
+        const wMtd = strippedLines[i].match(/MTD\s*[=:]\s*([\d,.]+)/i);
+        if (wMtd && !parsed.wasteRawMtd) parsed.wasteRawMtd = num(wMtd[1]);
+      }
+    }
+    if (!parsed.wasteRawDaily) {
+      const wD = stripped.match(/Waste\s*Daily\s*[=:]\s*([\d,.]+)/i);
+      if (wD) parsed.wasteRawDaily = num(wD[1]);
+    }
+    if (!parsed.wasteRawMtd) {
+      const wM = stripped.match(/Waste\s*MTD\s*[=:]\s*([\d,.]+)/i);
+      if (wM) parsed.wasteRawMtd = num(wM[1]);
+    }
+
+    const managerNames = ["Phongsathon", "Nuttarika", "Boonyisa", "Chanon", "Washiraphan"];
+    for (const name of managerNames) {
+      const mgrMatch = stripped.match(new RegExp(name + "\\s*[=:]\\s*([\\d.:]+\\s*-\\s*[\\d.:]+|OFF|COM|Vacation|QSNCC|SICK|Training)", "i"));
+      if (mgrMatch) {
+        const val = normalizeShift(mgrMatch[1]);
+        parsed[`manager${name}`] = val;
+      }
+    }
+
+    const rosterStaffHeaderIdx = strippedLines.findIndex(l => /Roster\s*Staff|Staff\s*Roster/i.test(l));
+    let rosterBlock = "";
+    if (rosterStaffHeaderIdx >= 0) {
+      const blockLines: string[] = [];
+      for (let i = rosterStaffHeaderIdx + 1; i < strippedLines.length; i++) {
+        const l = strippedLines[i].trim();
+        if (!l) break;
+        if (/Report\s*by/i.test(l)) break;
+        blockLines.push(l);
+      }
+      rosterBlock = blockLines.join("\n");
+    }
+
+    if (!rosterBlock) {
+      const rosterTomorrowMatch = stripped.match(/(?:Roster\s*(?:Tomorrow|Staff|พนักงาน)|Staff\s*Roster)\s*([\s\S]*?)(?:\n\s*\n|$)/i);
+      rosterBlock = rosterTomorrowMatch ? rosterTomorrowMatch[1].trim() : "";
+    }
+
     if (!rosterBlock) {
       const allLines = stripped.split("\n");
       const managerNamesSet = new Set(managerNames.map(n => n.toLowerCase()));
@@ -1722,31 +1897,28 @@ ${v.staffRosterText || ""}
         if (tm) {
           const namesPart = tm[2].trim().split(/[\s,|]+/);
           const isManager = namesPart.every(n => managerNamesSet.has(n.toLowerCase()));
-          if (!isManager) {
-            rosterLines.push(trimmed);
-          }
+          if (!isManager) rosterLines.push(trimmed);
         }
       }
-      if (rosterLines.length >= 2) {
-        rosterBlock = rosterLines.join("\n");
-      }
+      if (rosterLines.length >= 2) rosterBlock = rosterLines.join("\n");
     }
+
     if (rosterBlock) {
-      const lines = rosterBlock.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+      const blockLines = rosterBlock.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
       const staffEntries: Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }> = [];
-      const knownShifts = ["07:00-16:00","09:00-18:00","10:00-19:00","11:00-20:00","12:00-21:00","13:00-22:00","14:00-23:00","15:00-00:00","18:00-00:00","19:00-04:00","21:00-06:00","22:00-07:00"];
-      for (const line of lines) {
+      const knownShifts = ["07:00-16:00","09:00-18:00","10:00-19:00","11:00-20:00","12:00-21:00","13:00-22:00","14:00-23:00","15:00-00:00","15:00-22:00","16:00-01:00","18:00-00:00","19:00-04:00","21:00-06:00","22:00-07:00"];
+      for (const line of blockLines) {
         const timeMatch = line.match(/([\d.:]+\s*-\s*[\d.:]+)\s*[=:|]\s*(.+)/);
         if (timeMatch) {
           const normalizedTime = normalizeShift(timeMatch[1]);
-          const names = timeMatch[2].trim().split(/[\s,|]+/);
+          const names = timeMatch[2].trim().split(/\s+/);
           for (const name of names) {
             if (!name.trim()) continue;
             if (knownShifts.includes(normalizedTime)) {
               staffEntries.push({ shiftGroup: normalizedTime, staffName: name.trim() });
             } else {
-              const parts = normalizedTime.split("-");
-              staffEntries.push({ shiftGroup: "CUSTOM", staffName: name.trim(), customStart: parts[0], customEnd: parts[1] });
+              const [cs, ce] = normalizedTime.split("-");
+              staffEntries.push({ shiftGroup: "CUSTOM", staffName: name.trim(), customStart: cs, customEnd: ce });
             }
           }
         }

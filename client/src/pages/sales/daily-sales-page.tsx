@@ -457,7 +457,9 @@ export default function DailySalesPage() {
         clearTimeout(saveTimerRef.current);
       }
       saveTimerRef.current = setTimeout(() => {
-        saveData(values);
+        // Don't save reportDate into draft — it causes cross-date data bleed
+        const { reportDate: _rd, ...draftValues } = values as any;
+        saveData(draftValues);
         markAsSaved();
       }, 1000);
     },
@@ -498,48 +500,54 @@ export default function DailySalesPage() {
 
   useEffect(() => {
     const restored = restoreData();
-    if (restored) {
-      (Object.keys(restored) as Array<keyof FormData>).forEach((key) => {
-        if (restored[key] !== undefined) {
-          form.setValue(key, restored[key]);
+    if (!restored) return;
+
+    // If draft has a date that doesn't match yesterday, discard it to prevent cross-date data bleed
+    if ((restored as any).reportDate && (restored as any).reportDate !== yesterdayBangkok()) {
+      clearData();
+      return;
+    }
+
+    (Object.keys(restored) as Array<keyof FormData>).forEach((key) => {
+      if (restored[key] !== undefined) {
+        form.setValue(key, restored[key]);
+      }
+    });
+
+    // Hydrate manager roster dropdowns from saved text
+    if (restored.managerRosterText) {
+      const lines = restored.managerRosterText.split("\n");
+      lines.forEach((line) => {
+        const match = line.match(/^(\w+):\s*(.+)$/);
+        if (match) {
+          const [, name, shift] = match;
+          const managerKey = `manager${name}` as keyof FormData;
+          if (
+            [
+              "managerPhongsathon",
+              "managerNuttarika",
+              "managerBoonyisa",
+              "managerChanon",
+              "managerWashiraphan",
+            ].includes(managerKey)
+          ) {
+            form.setValue(managerKey, shift.trim());
+          }
         }
       });
+    }
 
-      // Hydrate manager roster dropdowns from saved text
-      if (restored.managerRosterText) {
-        const lines = restored.managerRosterText.split("\n");
-        lines.forEach((line) => {
-          const match = line.match(/^(\w+):\s*(.+)$/);
-          if (match) {
-            const [, name, shift] = match;
-            const managerKey = `manager${name}` as keyof FormData;
-            if (
-              [
-                "managerPhongsathon",
-                "managerNuttarika",
-                "managerBoonyisa",
-                "managerChanon",
-                "managerWashiraphan",
-              ].includes(managerKey)
-            ) {
-              form.setValue(managerKey, shift.trim());
-            }
-          }
-        });
-      }
-
-      // Hydrate staff roster entries from saved text
-      if (restored.staffRosterText) {
-        const lines = restored.staffRosterText
-          .split("\n")
-          .filter((l) => l.trim());
-        const entries = lines.map((line) => {
-          const parts = line.split("|").map((p) => p.trim());
-          return { shiftGroup: parts[0] || "", staffName: parts[1] || "" };
-        });
-        if (entries.length > 0) {
-          setStaffRosterEntries(entries);
-        }
+    // Hydrate staff roster entries from saved text
+    if (restored.staffRosterText) {
+      const lines = restored.staffRosterText
+        .split("\n")
+        .filter((l) => l.trim());
+      const entries = lines.map((line) => {
+        const parts = line.split("|").map((p) => p.trim());
+        return { shiftGroup: parts[0] || "", staffName: parts[1] || "" };
+      });
+      if (entries.length > 0) {
+        setStaffRosterEntries(entries);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

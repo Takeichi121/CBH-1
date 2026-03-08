@@ -13,7 +13,15 @@ export default function SalesDashboardPage() {
   const { language } = useI18n();
   const [loading, setLoading] = useState(true);
   const [todayReport, setTodayReport] = useState<any>(null);
-  const [mtdData, setMtdData] = useState<{ mtdActual: number; mtdTc: number; mtdTarget: number } | null>(null);
+  const [mtdData, setMtdData] = useState<{
+    mtdActual: number;
+    mtdTc: number;
+    mtdTarget: number;
+    wasteMtdTotal: number;
+    wasteMealMtd: number;
+    otMtd: number;
+    reportCount: number;
+  } | null>(null);
   const [recentReports, setRecentReports] = useState<any[]>([]);
 
   const t = {
@@ -35,6 +43,11 @@ export default function SalesDashboardPage() {
     loading: language === "th" ? "กำลังโหลด..." : "Loading...",
     ofTarget: language === "th" ? "ของเป้า" : "of target",
     shift: language === "th" ? "กะ" : "Shift",
+    mtdAvgTicket: language === "th" ? "ยอดเฉลี่ย/บิล (MTD)" : "MTD Avg Ticket",
+    mtdWaste: language === "th" ? "Waste MTD" : "MTD Waste",
+    mtdWastePercent: language === "th" ? "% Waste MTD" : "MTD Waste %",
+    mtdOt: language === "th" ? "OT สะสม (ชม.)" : "MTD OT Hours",
+    mtdDays: language === "th" ? "วันที่บันทึก" : "Days Reported",
   };
 
   useEffect(() => {
@@ -71,7 +84,11 @@ export default function SalesDashboardPage() {
           setMtdData({
             mtdActual: mtdDataRes.mtdActual || 0,
             mtdTc: mtdDataRes.mtdTc || 0,
-            mtdTarget: mtdDataRes.mtdTarget || 0
+            mtdTarget: mtdDataRes.mtdTarget || 0,
+            wasteMtdTotal: mtdDataRes.wasteMtdTotal || 0,
+            wasteMealMtd: mtdDataRes.wasteMealMtd || 0,
+            otMtd: mtdDataRes.otMtd || 0,
+            reportCount: mtdDataRes.reportCount || 0,
           });
         }
 
@@ -271,11 +288,33 @@ export default function SalesDashboardPage() {
                     <span className="text-muted-foreground">฿{mtdData.mtdActual.toLocaleString()}</span>
                     <span className="text-muted-foreground">/ ฿{mtdData.mtdTarget.toLocaleString()}</span>
                   </div>
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">MTD Transactions</span>
-                      <span className="text-lg font-bold">{mtdData.mtdTc.toLocaleString()}</span>
+                  <div className="pt-3 border-t flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">MTD Transactions</span>
+                    <span className="text-lg font-bold">{mtdData.mtdTc.toLocaleString()}</span>
+                  </div>
+                  {mtdData.mtdTc > 0 && (
+                    <div className="pt-3 border-t flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t.mtdAvgTicket}</span>
+                      <span className="text-base font-semibold">฿{Math.round(mtdData.mtdActual / mtdData.mtdTc).toLocaleString()}</span>
                     </div>
+                  )}
+                  <div className="pt-3 border-t flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t.mtdWaste}</span>
+                    <span className="text-base font-semibold">฿{mtdData.wasteMtdTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                  </div>
+                  {mtdData.mtdActual > 0 && (
+                    <div className="pt-3 border-t flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t.mtdWastePercent}</span>
+                      <span className="text-base font-semibold">{((mtdData.wasteMtdTotal / mtdData.mtdActual) * 100).toFixed(2)}%</span>
+                    </div>
+                  )}
+                  <div className="pt-3 border-t flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t.mtdOt}</span>
+                    <span className="text-base font-semibold">{mtdData.otMtd.toFixed(1)}</span>
+                  </div>
+                  <div className="pt-3 border-t flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t.mtdDays}</span>
+                    <span className="text-base font-semibold">{mtdData.reportCount}</span>
                   </div>
                 </div>
               ) : (

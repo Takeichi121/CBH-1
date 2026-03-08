@@ -78,7 +78,7 @@ export function SalesLayout({ children }: SalesLayoutProps) {
           );
         })}
       </div>
-      <div>{children}</div>
+      <div className="pb-36">{children}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/hooks/use-i18n";
-import { todayBangkok } from "@/lib/utils";
+import { yesterdayBangkok } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, Users, Target, BarChart3, Loader2, Calendar } from "lucide-react";
@@ -42,22 +42,23 @@ export default function SalesDashboardPage() {
       try {
         setLoading(true);
         const token = localStorage.getItem("bk_token");
-        const today = todayBangkok();
-        const [year, month] = today.split('-');
+        // Use yesterday's date — per midnight rule, today's report covers the previous day
+        const reportDate = yesterdayBangkok();
+        const [year, month] = reportDate.split('-');
 
-        const todayRes = await apiRequest("POST", "/api/sales/getReportByDate", { token, date: today });
+        const todayRes = await apiRequest("POST", "/api/sales/getReportByDate", { token, date: reportDate });
         const todayData = await todayRes.json();
         
         let reportForToday = null;
         if (todayData.ok && todayData.report) {
           reportForToday = todayData.report;
         } else {
-          // Fallback: check reports list for today's date
+          // Fallback: check reports list for yesterday's date
           const reportsRes = await apiRequest("POST", "/api/sales/getReports", { token });
           const reportsData = await reportsRes.json();
           if (reportsData.ok && reportsData.reports && reportsData.reports.length > 0) {
             const latest = reportsData.reports[0];
-            if (latest.reportDate === today) {
+            if (latest.reportDate === reportDate) {
               reportForToday = latest;
             }
           }

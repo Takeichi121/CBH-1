@@ -375,6 +375,33 @@ export class DatabaseStorage implements IStorage {
   async upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport> {
     const existing = await this.getDailySalesReportByDate(report.reportDate);
     if (existing) {
+      const existingActual = parseFloat(existing.actualSales || "0");
+      const incomingActual = parseFloat((report as any).actualSales || "0");
+
+      // Guard: if existing record has real sales data but incoming has 0 (autosave of empty form),
+      // preserve non-zero values to prevent accidental overwrite.
+      if (existingActual > 0 && incomingActual === 0) {
+        const safeFields = [
+          "actualSales", "transactionCount",
+          "dineIn", "takeAway", "grabfood", "lineman", "shopee", "bkapp", "robin", "gokoo",
+          "wasteRawDaily", "wasteMealDaily", "wasteRawDailyPercent",
+          "actualHours", "otHours", "summaryHours",
+          "laborCost", "colPercent", "tcmh",
+          "vMealCount", "vMealPercent", "upSizeCount", "upSizePercent",
+          "addCheeseCount", "addCheesePercent",
+          "recommendHours", "rosterCommit",
+        ];
+        const merged: any = { ...report };
+        for (const field of safeFields) {
+          const incoming = parseFloat(merged[field] || "0");
+          const existingVal = parseFloat((existing as any)[field] || "0");
+          if (incoming === 0 && existingVal > 0) {
+            merged[field] = (existing as any)[field];
+          }
+        }
+        return await this.updateDailySalesReport(existing.id, merged);
+      }
+
       return await this.updateDailySalesReport(existing.id, report);
     }
     return await this.createDailySalesReport(report);

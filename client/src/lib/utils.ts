@@ -16,3 +16,9 @@ export function todayBangkok(): string {
 export function nowBangkok(): Date {
   return new Date(new Date().toLocaleString("en-US", { timeZone: TZ }));
 }
+
+export function yesterdayBangkok(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("en-CA", { timeZone: TZ });
+}

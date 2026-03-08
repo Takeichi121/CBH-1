@@ -3611,6 +3611,14 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
+    // Midnight rule: reports for day D can only be saved starting 00:01 of day D+1
+    if (report?.reportDate) {
+      const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+      if (report.reportDate >= todayBKK) {
+        return res.json({ ok: false, message: `ยังไม่สามารถบันทึก Report วันที่ ${report.reportDate} ได้ กรุณารอจนถึงหลังเที่ยงคืน` });
+      }
+    }
+
     try {
       const saved = await storage.upsertDailySalesReportByDate(report);
       res.json({ ok: true, report: saved });

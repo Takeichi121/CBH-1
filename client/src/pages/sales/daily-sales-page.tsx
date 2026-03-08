@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { useAreaLock } from "@/hooks/use-area-lock";
 import { AreaLockBanner } from "@/components/area-lock-banner";
-import { todayBangkok } from "@/lib/utils";
+import { todayBangkok, yesterdayBangkok } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -286,7 +286,7 @@ export default function DailySalesPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      reportDate: todayBangkok(),
+      reportDate: yesterdayBangkok(),
       reportBy: user?.nickName || user?.username || "",
       workShift: "full",
       dailyTarget: "0",
@@ -367,6 +367,7 @@ export default function DailySalesPage() {
 
   const saveToServer = useCallback(async (values: FormData) => {
     if (!values.reportDate || !values.reportBy) return;
+    if (values.reportDate >= todayBangkok()) return;
 
     const wasteDailyTotalNum = parseFloat(
       values.wasteDailyTotal?.replace(/,/g, "") || "0",
@@ -2063,6 +2064,15 @@ ${v.staffRosterText || ""}
     <SalesLayout>
       <div className="space-y-6 pb-20">
         <AreaLockBanner />
+        {reportDate >= todayBangkok() && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300" data-testid="banner-future-date">
+            <span className="text-lg">🔒</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">ยังไม่สามารถกรอกข้อมูลวันที่ {reportDate} ได้</p>
+              <p className="text-xs opacity-75 mt-0.5">กรุณารอจนถึงหลัง 00:01 ของวันที่ {reportDate && (() => { const d = new Date(reportDate + "T00:00:00"); d.setDate(d.getDate() + 1); return d.toLocaleDateString("th-TH", { day: "numeric", month: "long" }); })()}</p>
+            </div>
+          </div>
+        )}
         {dailyDueBanner && (
           <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
             <span className="text-lg">⏰</span>
@@ -2227,6 +2237,7 @@ ${v.staffRosterText || ""}
                             <Input
                               type="date"
                               className="text-sm"
+                              max={yesterdayBangkok()}
                               {...field}
                               data-testid="input-report-date"
                             />

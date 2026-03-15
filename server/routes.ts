@@ -2215,6 +2215,30 @@ ${pageContext}` : ''}`;
         return { clean, suggestions };
       };
 
+      const sanitizeClaudeMessages = <T extends { role: "user" | "assistant" }>(msgs: T[]): T[] => {
+        if (msgs.length === 0) return msgs;
+        const merged: T[] = [msgs[0]];
+        for (let i = 1; i < msgs.length; i++) {
+          const prev = merged[merged.length - 1] as any;
+          const cur = msgs[i] as any;
+          const bothStrings = typeof prev.content === "string" && typeof cur.content === "string";
+          if (msgs[i].role === merged[merged.length - 1].role && bothStrings) {
+            merged[merged.length - 1] = { ...prev, content: prev.content + "\n" + cur.content };
+          } else if (msgs[i].role === merged[merged.length - 1].role) {
+            merged.push(msgs[i]);
+          } else {
+            merged.push(msgs[i]);
+          }
+        }
+        while (merged.length > 0 && merged[merged.length - 1].role === "assistant") {
+          merged.pop();
+        }
+        if (merged.length === 0) {
+          return [{ role: "user", content: "สวัสดี" } as unknown as T];
+        }
+        return merged;
+      };
+
       // Build Claude-compatible messages from OpenAI-format conversation history
       const buildClaudeMessages = (messages: any[]): { role: "user" | "assistant"; content: string }[] => {
         const toolResults = messages
@@ -2238,7 +2262,8 @@ ${pageContext}` : ''}`;
             };
           }
         }
-        return convo.length > 0 ? convo : [{ role: "user", content: "สวัสดี" }];
+        const result = convo.length > 0 ? convo : [{ role: "user" as const, content: "สวัสดี" }];
+        return sanitizeClaudeMessages(result);
       };
 
       interface ClaudeTool {
@@ -2282,10 +2307,11 @@ ${pageContext}` : ''}`;
       let activeToolProvider: "claude" | "openai" = selectedProvider === "openai" ? "openai" : "claude";
 
       const callClaudeTools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
+        const sanitized = sanitizeClaudeMessages(claudeAgentMessages);
         const claudeResponse = await anthropic.messages.create({
           model: "claude-sonnet-4-5-20250514",
           system: (sysMsg?.content || systemPrompt) as string,
-          messages: claudeAgentMessages as Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [key: string]: unknown }> }>,
+          messages: sanitized as Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [key: string]: unknown }> }>,
           max_tokens: 8192,
           tools: claudeTools as Array<{ name: string; description: string; input_schema: { type: "object"; properties?: Record<string, unknown>; required?: string[] } }>,
           tool_choice: round === 1 ? { type: "any" } : { type: "auto" },

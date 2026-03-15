@@ -1,0 +1,33 @@
+รองรับหลายร้าน (Multi-Store)
+What & Why
+ระบบปัจจุบันรองรับร้านเดียว (BK001GDP) อย่างฝังแน่น ต้องการขยายให้รองรับหลายร้าน โดยข้อมูลแต่ละร้านแยกจากกัน พนักงาน/ผู้จัดการเห็นเฉพาะข้อมูลร้านตัวเอง ส่วน admin/area สามารถสลับดูข้อมูลทีละร้านได้
+
+Done looks like
+มีตาราง stores ใหม่ที่เก็บรายชื่อและรหัสร้าน สามารถเพิ่มร้านใหม่ได้จากหน้า Admin
+ผู้ใช้ทุกคนถูกผูกกับร้านที่สังกัด ข้อมูล sales, shifts, labor, manager requests ทั้งหมดแยกตาม store อัตโนมัติ
+Staff/Manager เข้าระบบแล้วเห็นเฉพาะข้อมูลร้านตัวเองทันที ไม่มีตัวเลือกสลับร้าน
+Admin/Area เข้าระบบแล้วมี Store Switcher (dropdown) ที่ header ให้เลือกสลับดูร้านที่ต้องการได้
+ข้อมูลร้านเดิม (BK001GDP) ยังคงอยู่ครบถ้วน ไม่สูญหาย
+Out of scope
+Dashboard รวมทุกร้านในหน้าเดียว (Aggregate view)
+การโอนย้ายผู้ใช้ระหว่างร้าน
+สิทธิ์ระดับละเอียด (เช่น admin เห็นได้แค่บางร้าน)
+การ sync ข้อมูลระหว่างร้าน
+Tasks
+เพิ่มตาราง stores และผูก storeId กับทุก entity — เพิ่มตาราง stores ใน schema, เพิ่ม storeId column ใน users และตารางข้อมูลหลักทุกตาราง (daily_sales_reports, shifts, manager_requests, daily_labor, daily_targets, weekly_sales_reports, announcements, labor_settings, store_settings) พร้อม migrate ข้อมูลเดิมให้ผูกกับ store default
+
+อัปเดต Auth และ Session ให้รู้จัก storeId — เพิ่ม storeId ใน session/user context, อัปเดต verifyManagerAccess helper ให้ return storeId ด้วย, อัปเดต login flow ให้ดึง storeId จาก user record มาเก็บใน session
+
+กรองข้อมูลทุก API endpoint ตาม storeId — อัปเดต storage methods และ route handlers ทุกตัวใน server/routes.ts และ server/storage.ts ให้กรองข้อมูลตาม storeId ของผู้ใช้ที่ login อยู่เสมอ (สำหรับ staff/manager), และตาม storeId ที่ admin/area เลือกอยู่
+
+Store Switcher สำหรับ Admin/Area — เพิ่ม Store Switcher dropdown ใน header สำหรับ role admin/area ให้เลือกร้านที่จะดู โดยเก็บ selectedStoreId ใน session/localStorage, เพิ่มหน้าจัดการ Stores ใน Admin panel (เพิ่ม/แก้ไข/ปิดใช้งานร้าน)
+
+Relevant files
+shared/schema.ts
+server/storage.ts
+server/routes.ts
+server/index.ts
+client/src/hooks/use-auth.tsx
+client/src/App.tsx
+client/src/pages/admin-page.tsx
+client/src/components/layout/header.tsx

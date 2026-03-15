@@ -63,19 +63,39 @@ async function streamOpenAI(params: StreamLLMParams): Promise<string> {
   return full;
 }
 
+function sanitizeClaudeMessages(msgs: { role: "user" | "assistant"; content: string }[]): { role: "user" | "assistant"; content: string }[] {
+  if (msgs.length === 0) return [{ role: "user", content: "สวัสดี" }];
+  const merged: { role: "user" | "assistant"; content: string }[] = [msgs[0]];
+  for (let i = 1; i < msgs.length; i++) {
+    if (msgs[i].role === merged[merged.length - 1].role) {
+      merged[merged.length - 1] = {
+        ...merged[merged.length - 1],
+        content: merged[merged.length - 1].content + "\n" + msgs[i].content,
+      };
+    } else {
+      merged.push(msgs[i]);
+    }
+  }
+  while (merged.length > 0 && merged[merged.length - 1].role === "assistant") {
+    merged.pop();
+  }
+  return merged.length > 0 ? merged : [{ role: "user", content: "สวัสดี" }];
+}
+
 async function streamClaude(params: StreamLLMParams): Promise<string> {
   const anthropic = new Anthropic({
     apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
     baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
 
-  const messages: { role: "user" | "assistant"; content: string }[] = [
+  const rawMessages: { role: "user" | "assistant"; content: string }[] = [
     ...params.history.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     })),
     { role: "user", content: params.message },
   ];
+  const messages = sanitizeClaudeMessages(rawMessages);
 
   const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-5-20250514",

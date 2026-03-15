@@ -2315,9 +2315,9 @@ ${pageContext}` : ''}`;
         if (m.role === "system") continue;
         if (m.role === "user") {
           const content = typeof m.content === "string" ? m.content : String(m.content);
-          claudeAgentMessages.push({ role: "user", content });
+          claudeAgentMessages.push({ role: "user", content: truncateMsg(content) });
         } else if (m.role === "assistant" && m.content) {
-          claudeAgentMessages.push({ role: "assistant", content: typeof m.content === "string" ? m.content : String(m.content) });
+          claudeAgentMessages.push({ role: "assistant", content: truncateMsg(typeof m.content === "string" ? m.content : String(m.content)) });
         }
       }
       if (claudeAgentMessages.length === 0) {
@@ -2455,7 +2455,7 @@ ${pageContext}` : ''}`;
               content: toolResults.map(tr => ({
                 type: "tool_result" as const,
                 tool_use_id: tr.id,
-                content: tr.result,
+                content: truncateMsg(tr.result, 6000),
               })),
             });
           }
@@ -2464,7 +2464,7 @@ ${pageContext}` : ''}`;
             aiMessages.push({
               role: "tool",
               tool_call_id: tr.id,
-              content: tr.result,
+              content: truncateMsg(tr.result, 6000),
             } as { role: "tool"; tool_call_id: string; content: string });
           }
         } else {

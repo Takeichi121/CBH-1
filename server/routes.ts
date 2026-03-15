@@ -2329,7 +2329,7 @@ ${pageContext}` : ''}`;
       const callClaudeTools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
         const sanitized = sanitizeClaudeMessages(claudeAgentMessages);
         const claudeResponse = await anthropic.messages.create({
-          model: "claude-3-5-sonnet-20241022",
+          model: "claude-sonnet-4-5",
           system: (sysMsg?.content || systemPrompt) as string,
           messages: sanitized as Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [key: string]: unknown }> }>,
           max_tokens: 8192,
@@ -2527,7 +2527,7 @@ ${pageContext}` : ''}`;
               }
             } else {
               const cs = anthropic.messages.stream({
-                model: "claude-3-5-sonnet-20241022",
+                model: "claude-sonnet-4-5",
                 system: systemPrompt,
                 messages: directMsgs,
                 max_tokens: 4096,
@@ -2642,7 +2642,7 @@ ${pageContext}` : ''}`;
           }
         } else {
           const cs = anthropic.messages.stream({
-            model: "claude-3-5-sonnet-20241022",
+            model: "claude-sonnet-4-5",
             system: systemPrompt,
             messages: fallbackMsgs,
             max_tokens: 4096,

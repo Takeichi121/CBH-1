@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { useAreaLock } from "@/hooks/use-area-lock";
 import { AreaLockBanner } from "@/components/area-lock-banner";
-import { todayBangkok, yesterdayBangkok } from "@/lib/utils";
+import { todayBangkok, yesterdayBangkok, cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -54,7 +54,22 @@ import {
   ClipboardPaste,
   MessageSquare,
   ChevronDown,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Link } from "wouter";
 import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
@@ -212,7 +227,7 @@ const MANAGER_NAMES = [
   { key: "managerWashiraphan", name: "Washiraphan" },
 ] as const;
 
-const SHIFT_OPTIONS = [
+const DEFAULT_SHIFT_OPTIONS = [
   { value: "07:00-16:00", label: "07:00-16:00" },
   { value: "09:00-18:00", label: "09:00-18:00" },
   { value: "10:00-19:00", label: "10:00-19:00" },
@@ -230,11 +245,9 @@ const SHIFT_OPTIONS = [
   { value: "Vacation", label: "Vacation" },
   { value: "QSNCC", label: "QSNCC" },
   { value: "Training", label: "Training" },
-] as const;
+];
 
-const SHIFT_OPTION_VALUES = new Set(SHIFT_OPTIONS.map((o) => o.value));
-
-const STAFF_SHIFT_GROUPS = [
+const DEFAULT_STAFF_SHIFT_GROUPS = [
   { value: "07:00-16:00", label: "07:00-16:00" },
   { value: "09:00-18:00", label: "09:00-18:00" },
   { value: "10:00-19:00", label: "10:00-19:00" },
@@ -248,7 +261,7 @@ const STAFF_SHIFT_GROUPS = [
   { value: "21:00-06:00", label: "21:00-06:00" },
   { value: "22:00-07:00", label: "22:00-07:00" },
   { value: "CUSTOM", label: "กำหนดเอง" },
-] as const;
+];
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   const hour = i.toString().padStart(2, "0");
@@ -353,6 +366,10 @@ export default function DailySalesPage() {
     Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }>
   >([{ shiftGroup: "", staffName: "", customStart: "08:00", customEnd: "16:00" }]);
   const [customManagerMode, setCustomManagerMode] = useState<Record<string, boolean>>({});
+  const [shiftOptions, setShiftOptions] = useState(DEFAULT_SHIFT_OPTIONS);
+  const [staffShiftGroups, setStaffShiftGroups] = useState(DEFAULT_STAFF_SHIFT_GROUPS);
+  const [openNicknamePopover, setOpenNicknamePopover] = useState<number | null>(null);
+  const [nicknameSearch, setNicknameSearch] = useState("");
 
   const { saveData, restoreData, clearData, hasDraft } =
     useFormPersistence<FormData>("daily-sales-form");
@@ -616,9 +633,32 @@ export default function DailySalesPage() {
         console.error("Failed to load staff list:", error);
       }
     };
+    const loadDropdownOptions = async () => {
+      try {
+        const [shiftRes, staffShiftRes] = await Promise.all([
+          fetch("/api/dropdown-options/manager_shift"),
+          fetch("/api/dropdown-options/staff_shift"),
+        ]);
+        const shiftData = await shiftRes.json();
+        const staffShiftData = await staffShiftRes.json();
+        if (shiftData.ok && shiftData.options.length > 0) {
+          setShiftOptions(shiftData.options
+            .filter((o: { isActive: boolean }) => o.isActive)
+            .map((o: { value: string; label: string }) => ({ value: o.value, label: o.label })));
+        }
+        if (staffShiftData.ok && staffShiftData.options.length > 0) {
+          setStaffShiftGroups(staffShiftData.options
+            .filter((o: { isActive: boolean }) => o.isActive)
+            .map((o: { value: string; label: string }) => ({ value: o.value, label: o.label })));
+        }
+      } catch (error) {
+        console.error("Failed to load dropdown options:", error);
+      }
+    };
     loadStoreSettings();
     loadLaborSettings();
     loadStaffList();
+    loadDropdownOptions();
   }, []);
 
   // Update staffRosterText when entries change
@@ -3736,7 +3776,7 @@ ${v.staffRosterText || ""}
                               render={({ field }) => {
                                 const isCustom =
                                   customManagerMode[manager.key] ||
-                                  (!!field.value && !SHIFT_OPTION_VALUES.has(field.value as string));
+                                  (!!field.value && !shiftOptions.some(o => o.value === field.value));
                                 return isCustom ? (
                                   <div className="flex flex-1 gap-1">
                                     <Input
@@ -3785,7 +3825,7 @@ ${v.staffRosterText || ""}
                                       />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {SHIFT_OPTIONS.map((opt) => (
+                                      {shiftOptions.map((opt) => (
                                         <SelectItem
                                           key={opt.value}
                                           value={opt.value}
@@ -3843,7 +3883,7 @@ ${v.staffRosterText || ""}
                                 />
                               </SelectTrigger>
                               <SelectContent>
-                                {STAFF_SHIFT_GROUPS.map((opt) => (
+                                {staffShiftGroups.map((opt) => (
                                   <SelectItem key={opt.value} value={opt.value}>
                                     {opt.label}
                                   </SelectItem>
@@ -3885,21 +3925,90 @@ ${v.staffRosterText || ""}
                                 </Select>
                               </>
                             )}
-                            <Input
-                              value={entry.staffName}
-                              onChange={(e) =>
-                                updateStaffEntry(
-                                  index,
-                                  "staffName",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder={
-                                language === "th" ? "ชื่อเล่น" : "Nickname"
-                              }
-                              className="flex-1 min-w-[100px] text-sm"
-                              data-testid={`input-staff-name-${index}`}
-                            />
+                            <Popover
+                              open={openNicknamePopover === index}
+                              onOpenChange={(open) => {
+                                setOpenNicknamePopover(open ? index : null);
+                                if (!open) setNicknameSearch("");
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={openNicknamePopover === index}
+                                  className="flex-1 min-w-[100px] justify-between text-sm font-normal h-9"
+                                  data-testid={`input-staff-name-${index}`}
+                                >
+                                  <span className={cn("truncate", !entry.staffName && "text-muted-foreground")}>
+                                    {entry.staffName || (language === "th" ? "ชื่อเล่น" : "Nickname")}
+                                  </span>
+                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[200px] p-0" align="start">
+                                <Command shouldFilter={false}>
+                                  <CommandInput
+                                    placeholder={language === "th" ? "ค้นหา/พิมพ์ชื่อ..." : "Search/type name..."}
+                                    value={nicknameSearch}
+                                    onValueChange={setNicknameSearch}
+                                    data-testid={`input-staff-name-search-${index}`}
+                                  />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      <span className="text-muted-foreground">{language === "th" ? "ไม่พบ" : "No results"}</span>
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {nicknameSearch && (
+                                        <CommandItem
+                                          value={`__custom__${nicknameSearch}`}
+                                          onSelect={() => {
+                                            updateStaffEntry(index, "staffName", nicknameSearch);
+                                            setOpenNicknamePopover(null);
+                                            setNicknameSearch("");
+                                          }}
+                                          className="text-blue-600 font-medium"
+                                          data-testid={`button-use-custom-name-${index}`}
+                                        >
+                                          <Plus className="mr-2 h-4 w-4" />
+                                          {language === "th" ? `ใช้ "${nicknameSearch}"` : `Use "${nicknameSearch}"`}
+                                        </CommandItem>
+                                      )}
+                                      {staffList
+                                        .filter((s) => {
+                                          if (!nicknameSearch) return true;
+                                          const search = nicknameSearch.toLowerCase();
+                                          return (
+                                            s.nickName?.toLowerCase().includes(search) ||
+                                            s.fullName?.toLowerCase().includes(search) ||
+                                            s.username.toLowerCase().includes(search)
+                                          );
+                                        })
+                                        .map((staff) => (
+                                          <CommandItem
+                                            key={staff.username}
+                                            value={staff.nickName || staff.username}
+                                            onSelect={() => {
+                                              updateStaffEntry(index, "staffName", staff.nickName || staff.username);
+                                              setOpenNicknamePopover(null);
+                                              setNicknameSearch("");
+                                            }}
+                                            data-testid={`option-staff-${staff.username}`}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                entry.staffName === (staff.nickName || staff.username) ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            {staff.nickName || staff.username}
+                                          </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             {staffRosterEntries.length > 1 && (
                               <Button
                                 type="button"

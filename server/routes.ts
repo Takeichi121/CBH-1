@@ -236,7 +236,8 @@ import {
   passwordResetOtps,
   staffChatMessages,
   channConversations,
-  codeProposals
+  codeProposals,
+  dropdownOptions
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -5958,6 +5959,136 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     const updated = await storage.updateAgentRequestStatus(id, status);
     return res.json({ ok: true, request: updated });
+  }));
+
+  // ==========================================
+  // 📋 Dropdown Options API
+  // ==========================================
+
+  app.get("/api/dropdown-options/:category", safe(async (req, res) => {
+    const { category } = req.params;
+    const options = await storage.getDropdownOptionsByCategory(category);
+    return res.json({ ok: true, options });
+  }));
+
+  app.post("/api/dropdown-options", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const result = await verifyManagerAccess(token);
+    if (!result.ok) return res.status(403).json({ ok: false, message: result.message });
+
+    const { category, value, label, sortOrder, isActive } = req.body;
+    if (!category || !value || !label) {
+      return res.json({ ok: false, message: "category, value, and label are required" });
+    }
+
+    const created = await storage.createDropdownOption({
+      category,
+      value,
+      label,
+      sortOrder: sortOrder ?? 0,
+      isActive: isActive ?? true,
+    });
+    return res.json({ ok: true, option: created });
+  }));
+
+  app.put("/api/dropdown-options/:id", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const result = await verifyManagerAccess(token);
+    if (!result.ok) return res.status(403).json({ ok: false, message: result.message });
+
+    const id = parseInt(req.params.id);
+    const { value, label, sortOrder, isActive } = req.body;
+    const updateData: Partial<{ value: string; label: string; sortOrder: number; isActive: boolean }> = {};
+    if (value !== undefined) updateData.value = value;
+    if (label !== undefined) updateData.label = label;
+    if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const updated = await storage.updateDropdownOption(id, updateData);
+    return res.json({ ok: true, option: updated });
+  }));
+
+  app.delete("/api/dropdown-options/:id", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const result = await verifyManagerAccess(token);
+    if (!result.ok) return res.status(403).json({ ok: false, message: result.message });
+
+    const id = parseInt(req.params.id);
+    await storage.deleteDropdownOption(id);
+    return res.json({ ok: true });
+  }));
+
+  app.post("/api/dropdown-options/seed", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.json({ ok: false, message: "No token" });
+    const result = await verifyManagerAccess(token);
+    if (!result.ok) return res.status(403).json({ ok: false, message: result.message });
+
+    const existingShift = await storage.getDropdownOptionsByCategory("manager_shift");
+    const existingStaffShift = await storage.getDropdownOptionsByCategory("staff_shift");
+
+    if (existingShift.length === 0) {
+      const shiftDefaults = [
+        { value: "07:00-16:00", label: "07:00-16:00" },
+        { value: "09:00-18:00", label: "09:00-18:00" },
+        { value: "10:00-19:00", label: "10:00-19:00" },
+        { value: "11:00-20:00", label: "11:00-20:00" },
+        { value: "12:00-21:00", label: "12:00-21:00" },
+        { value: "13:00-22:00", label: "13:00-22:00" },
+        { value: "14:00-23:00", label: "14:00-23:00" },
+        { value: "15:00-00:00", label: "15:00-00:00" },
+        { value: "16:00-01:00", label: "16:00-01:00" },
+        { value: "19:00-04:00", label: "19:00-04:00" },
+        { value: "22:00-07:00", label: "22:00-07:00" },
+        { value: "OFF", label: "OFF" },
+        { value: "SICK", label: "SICK" },
+        { value: "COM", label: "COM" },
+        { value: "Vacation", label: "Vacation" },
+        { value: "QSNCC", label: "QSNCC" },
+        { value: "Training", label: "Training" },
+      ];
+      for (let i = 0; i < shiftDefaults.length; i++) {
+        await storage.createDropdownOption({
+          category: "manager_shift",
+          value: shiftDefaults[i].value,
+          label: shiftDefaults[i].label,
+          sortOrder: i,
+          isActive: true,
+        });
+      }
+    }
+
+    if (existingStaffShift.length === 0) {
+      const staffShiftDefaults = [
+        { value: "07:00-16:00", label: "07:00-16:00" },
+        { value: "09:00-18:00", label: "09:00-18:00" },
+        { value: "10:00-19:00", label: "10:00-19:00" },
+        { value: "11:00-20:00", label: "11:00-20:00" },
+        { value: "12:00-21:00", label: "12:00-21:00" },
+        { value: "13:00-22:00", label: "13:00-22:00" },
+        { value: "14:00-23:00", label: "14:00-23:00" },
+        { value: "15:00-00:00", label: "15:00-00:00" },
+        { value: "18:00-00:00", label: "18:00-00:00" },
+        { value: "19:00-04:00", label: "19:00-04:00" },
+        { value: "21:00-06:00", label: "21:00-06:00" },
+        { value: "22:00-07:00", label: "22:00-07:00" },
+        { value: "CUSTOM", label: "กำหนดเอง" },
+      ];
+      for (let i = 0; i < staffShiftDefaults.length; i++) {
+        await storage.createDropdownOption({
+          category: "staff_shift",
+          value: staffShiftDefaults[i].value,
+          label: staffShiftDefaults[i].label,
+          sortOrder: i,
+          isActive: true,
+        });
+      }
+    }
+
+    return res.json({ ok: true, message: "Seed completed" });
   }));
 
   return httpServer;

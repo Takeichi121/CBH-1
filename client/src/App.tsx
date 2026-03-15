@@ -36,6 +36,9 @@ import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
 import AgentRequestsPage from "@/pages/agent-requests-page";
 
+// Settings Pages
+import DropdownSettingsPage from "@/pages/settings/dropdown-settings-page";
+
 // Sales Pages
 import SalesDashboardPage from "@/pages/sales/dashboard-page";
 import DailySalesPage from "@/pages/sales/daily-sales-page";
@@ -102,6 +105,10 @@ function Router() {
           
           <Route path="/settings">
             <ProtectedRoute component={SettingsPage} path="/settings" />
+          </Route>
+          
+          <Route path="/settings/dropdowns">
+            <ProtectedRoute component={DropdownSettingsPage} path="/settings/dropdowns" />
           </Route>
           
           <Route path="/admin">

@@ -497,6 +497,25 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {isManager && (
+          <Card className="glass-card border-none shadow-xl">
+            <CardHeader className="flex flex-row items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-blue-500" />
+              </div>
+              <div className="flex-1">
+                <CardTitle>{language === "th" ? "จัดการ Dropdown" : "Dropdown Settings"}</CardTitle>
+                <CardDescription>{language === "th" ? "จัดการตัวเลือก dropdown เช่น กะ, กลุ่มกะ" : "Manage dropdown options like shifts, shift groups"}</CardDescription>
+              </div>
+              <Link href="/settings/dropdowns">
+                <Button variant="outline" size="sm" data-testid="button-dropdown-settings">
+                  {language === "th" ? "จัดการ" : "Manage"}
+                </Button>
+              </Link>
+            </CardHeader>
+          </Card>
+        )}
+
         {/* Maintenance Window Settings (Manager only) */}
         {isManager && (
           <Card className="glass-card border-none shadow-xl">

@@ -667,3 +667,20 @@ export const agentRequests = pgTable("agent_requests", {
 export const insertAgentRequestSchema = createInsertSchema(agentRequests).omit({ id: true });
 export type InsertAgentRequest = z.infer<typeof insertAgentRequestSchema>;
 export type AgentRequest = typeof agentRequests.$inferSelect;
+
+// ==========================================
+// 📋 Dropdown Options (configurable dropdowns)
+// ==========================================
+
+export const dropdownOptions = pgTable("dropdown_options", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull(),
+  value: text("value").notNull(),
+  label: text("label").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const insertDropdownOptionSchema = createInsertSchema(dropdownOptions).omit({ id: true });
+export type InsertDropdownOption = z.infer<typeof insertDropdownOptionSchema>;
+export type DropdownOption = typeof dropdownOptions.$inferSelect;

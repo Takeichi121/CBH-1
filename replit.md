@@ -88,6 +88,7 @@ Auto-calculated fields based on input Actual Hours and OT Hours:
 - `labor_settings`: Stores configuration constants
 - `daily_labor`: Tracks daily labor metrics (actualHours, otHours, calculated fields)
 - `daily_sales_reports`: Extended with actualHours, otHours columns for persistence
+- `dropdown_options`: Configurable dropdown options (category, value, label, sortOrder, isActive) - used for manager shift options, staff shift groups, etc. Managed via /settings/dropdowns page (admin/manager only)
 
 ## External Dependencies
 

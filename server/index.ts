@@ -140,6 +140,14 @@ app.use((req, res, next) => {
     await registerRoutes(httpServer, app);
     log("Routes registered successfully");
 
+    try {
+      const { storage } = await import("./storage");
+      await storage.seedDropdownDefaults();
+      log("Dropdown defaults seeded");
+    } catch (seedErr) {
+      console.warn("Dropdown seed skipped (table may not exist yet):", seedErr instanceof Error ? seedErr.message : seedErr);
+    }
+
     initProactiveChann();
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

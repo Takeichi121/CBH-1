@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 export class StorageError extends Error {
@@ -184,6 +184,12 @@ export interface IStorage {
   getAgentRequests(): Promise<AgentRequest[]>;
   updateAgentRequestStatus(id: number, status: string): Promise<AgentRequest>;
   updateAgentRequestResponse(id: number, response: string): Promise<AgentRequest>;
+
+  // Dropdown Options
+  getDropdownOptionsByCategory(category: string): Promise<DropdownOption[]>;
+  createDropdownOption(data: InsertDropdownOption): Promise<DropdownOption>;
+  updateDropdownOption(id: number, data: Partial<InsertDropdownOption>): Promise<DropdownOption>;
+  deleteDropdownOption(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1144,6 +1150,100 @@ export class DatabaseStorage implements IStorage {
     } catch (err) {
       wrapStorageError("updateAgentRequestResponse", err);
 
+    }
+  }
+
+  async getDropdownOptionsByCategory(category: string): Promise<DropdownOption[]> {
+    return await db.select().from(dropdownOptions)
+      .where(eq(dropdownOptions.category, category))
+      .orderBy(dropdownOptions.sortOrder);
+  }
+
+  async createDropdownOption(data: InsertDropdownOption): Promise<DropdownOption> {
+    try {
+      const [created] = await db.insert(dropdownOptions).values(data).returning();
+      return created;
+    } catch (err) {
+      wrapStorageError("createDropdownOption", err);
+    }
+  }
+
+  async updateDropdownOption(id: number, data: Partial<InsertDropdownOption>): Promise<DropdownOption> {
+    try {
+      const [updated] = await db.update(dropdownOptions)
+        .set(data)
+        .where(eq(dropdownOptions.id, id))
+        .returning();
+      return updated;
+    } catch (err) {
+      wrapStorageError("updateDropdownOption", err);
+    }
+  }
+
+  async deleteDropdownOption(id: number): Promise<void> {
+    await db.delete(dropdownOptions).where(eq(dropdownOptions.id, id));
+  }
+
+  async seedDropdownDefaults(): Promise<void> {
+    const existingShift = await this.getDropdownOptionsByCategory("manager_shift");
+    const existingStaffShift = await this.getDropdownOptionsByCategory("staff_shift");
+
+    if (existingShift.length === 0) {
+      const shiftDefaults = [
+        { value: "07:00-16:00", label: "07:00-16:00" },
+        { value: "09:00-18:00", label: "09:00-18:00" },
+        { value: "10:00-19:00", label: "10:00-19:00" },
+        { value: "11:00-20:00", label: "11:00-20:00" },
+        { value: "12:00-21:00", label: "12:00-21:00" },
+        { value: "13:00-22:00", label: "13:00-22:00" },
+        { value: "14:00-23:00", label: "14:00-23:00" },
+        { value: "15:00-00:00", label: "15:00-00:00" },
+        { value: "16:00-01:00", label: "16:00-01:00" },
+        { value: "19:00-04:00", label: "19:00-04:00" },
+        { value: "22:00-07:00", label: "22:00-07:00" },
+        { value: "OFF", label: "OFF" },
+        { value: "SICK", label: "SICK" },
+        { value: "COM", label: "COM" },
+        { value: "Vacation", label: "Vacation" },
+        { value: "QSNCC", label: "QSNCC" },
+        { value: "Training", label: "Training" },
+      ];
+      for (let i = 0; i < shiftDefaults.length; i++) {
+        await this.createDropdownOption({
+          category: "manager_shift",
+          value: shiftDefaults[i].value,
+          label: shiftDefaults[i].label,
+          sortOrder: i,
+          isActive: true,
+        });
+      }
+    }
+
+    if (existingStaffShift.length === 0) {
+      const staffShiftDefaults = [
+        { value: "07:00-16:00", label: "07:00-16:00" },
+        { value: "09:00-18:00", label: "09:00-18:00" },
+        { value: "10:00-19:00", label: "10:00-19:00" },
+        { value: "11:00-20:00", label: "11:00-20:00" },
+        { value: "12:00-21:00", label: "12:00-21:00" },
+        { value: "13:00-22:00", label: "13:00-22:00" },
+        { value: "14:00-23:00", label: "14:00-23:00" },
+        { value: "15:00-00:00", label: "15:00-00:00" },
+        { value: "18:00-00:00", label: "18:00-00:00" },
+        { value: "19:00-04:00", label: "19:00-04:00" },
+        { value: "21:00-06:00", label: "21:00-06:00" },
+        { value: "22:00-07:00", label: "22:00-07:00" },
+        { value: "CUSTOM", label: "กำหนดเอง" },
+      ];
+      for (let i = 0; i < staffShiftDefaults.length; i++) {
+        await this.createDropdownOption({
+          category: "staff_shift",
+          value: staffShiftDefaults[i].value,
+          label: staffShiftDefaults[i].label,
+          sortOrder: i,
+          isActive: true,
+        });
+      }
     }
   }
 }

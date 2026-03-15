@@ -654,14 +654,20 @@ ${pageContext}` : ''}`;
         { role: "system", content: systemPrompt }
       ];
 
+      const truncateMsg = (text: string | null, max = 3000): string => {
+        if (!text) return "";
+        if (text.length <= max) return text;
+        return text.slice(0, max) + "\n...[ข้อความยาวเกิน ตัดออก]";
+      };
+
       const recentHistory = await db.select().from(channConversations)
         .where(eq(channConversations.username, username))
         .orderBy(desc(channConversations.createdAt))
-        .limit(10);
+        .limit(6);
 
       recentHistory.reverse().forEach((msg) => {
         if (msg.role === "user" || msg.role === "assistant") {
-          aiMessages.push({ role: msg.role, content: msg.content });
+          aiMessages.push({ role: msg.role, content: truncateMsg(msg.content) });
         }
       });
 
@@ -2323,7 +2329,7 @@ ${pageContext}` : ''}`;
       const callClaudeTools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
         const sanitized = sanitizeClaudeMessages(claudeAgentMessages);
         const claudeResponse = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250514",
+          model: "claude-3-5-sonnet-20241022",
           system: (sysMsg?.content || systemPrompt) as string,
           messages: sanitized as Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [key: string]: unknown }> }>,
           max_tokens: 8192,
@@ -2521,7 +2527,7 @@ ${pageContext}` : ''}`;
               }
             } else {
               const cs = anthropic.messages.stream({
-                model: "claude-sonnet-4-5-20250514",
+                model: "claude-3-5-sonnet-20241022",
                 system: systemPrompt,
                 messages: directMsgs,
                 max_tokens: 4096,
@@ -2636,7 +2642,7 @@ ${pageContext}` : ''}`;
           }
         } else {
           const cs = anthropic.messages.stream({
-            model: "claude-sonnet-4-5-20250514",
+            model: "claude-3-5-sonnet-20241022",
             system: systemPrompt,
             messages: fallbackMsgs,
             max_tokens: 4096,

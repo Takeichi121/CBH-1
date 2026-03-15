@@ -98,7 +98,7 @@ async function streamClaude(params: StreamLLMParams): Promise<string> {
   const messages = sanitizeClaudeMessages(rawMessages);
 
   const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-5-20250514",
+    model: "claude-3-5-sonnet-20241022",
     system: getSystemPrompt(params.mode),
     messages,
     max_tokens: 4096,

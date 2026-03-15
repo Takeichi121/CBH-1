@@ -387,10 +387,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", async (req, res) => {
     try {
-      const { token, message, imageBase64, pageContext, silentMessage } = req.body;
+      const { token, message, imageBase64, pageContext, silentMessage, provider: reqProvider } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.status(400).json({ ok: false, message: "Token and message required" });
       }
+      const selectedProvider = (reqProvider === "openai" || reqProvider === "gemini" || reqProvider === "claude") ? reqProvider : "claude";
 
       const session = await storage.getSession(token);
       if (!session) {
@@ -2240,10 +2241,101 @@ ${pageContext}` : ''}`;
         return convo.length > 0 ? convo : [{ role: "user", content: "สวัสดี" }];
       };
 
+      interface ClaudeTool {
+        name: string;
+        description: string;
+        input_schema: Record<string, unknown>;
+      }
+      interface ToolCallResult {
+        name: string;
+        id: string;
+        args: Record<string, unknown>;
+      }
+      interface ToolExecResult {
+        id: string;
+        name: string;
+        result: string;
+      }
+
+      const claudeTools: ClaudeTool[] = channTools.map((t: { function: { name: string; description: string; parameters: Record<string, unknown> } }) => ({
+        name: t.function.name,
+        description: t.function.description,
+        input_schema: t.function.parameters,
+      }));
+
+      type ClaudeMsg = { role: "user" | "assistant"; content: string | Array<Record<string, unknown>> };
+      const claudeAgentMessages: ClaudeMsg[] = [];
+      const sysMsg = aiMessages.find((m: { role: string }) => m.role === "system");
+      for (const m of aiMessages) {
+        if (m.role === "system") continue;
+        if (m.role === "user") {
+          const content = typeof m.content === "string" ? m.content : String(m.content);
+          claudeAgentMessages.push({ role: "user", content });
+        } else if (m.role === "assistant" && m.content) {
+          claudeAgentMessages.push({ role: "assistant", content: typeof m.content === "string" ? m.content : String(m.content) });
+        }
+      }
+      if (claudeAgentMessages.length === 0) {
+        claudeAgentMessages.push({ role: "user", content: userContent || "สวัสดี" });
+      }
+
+      let activeToolProvider: "claude" | "openai" = selectedProvider === "openai" ? "openai" : "claude";
+
+      const callClaudeTools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
+        const claudeResponse = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250514",
+          system: (sysMsg?.content || systemPrompt) as string,
+          messages: claudeAgentMessages as Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [key: string]: unknown }> }>,
+          max_tokens: 8192,
+          tools: claudeTools as Array<{ name: string; description: string; input_schema: { type: "object"; properties?: Record<string, unknown>; required?: string[] } }>,
+          tool_choice: round === 1 ? { type: "any" } : { type: "auto" },
+        });
+
+        const assistantContent: Array<Record<string, unknown>> = [];
+        const toolCalls: ToolCallResult[] = [];
+        let textContent = "";
+        for (const block of claudeResponse.content) {
+          if (block.type === "tool_use") {
+            toolCalls.push({ name: block.name, id: block.id, args: block.input as Record<string, unknown> });
+            assistantContent.push({ type: "tool_use", id: block.id, name: block.name, input: block.input });
+          } else if (block.type === "text") {
+            textContent += block.text;
+            assistantContent.push({ type: "text", text: block.text });
+          }
+        }
+        claudeAgentMessages.push({ role: "assistant", content: assistantContent });
+        return { toolCalls, textContent };
+      };
+
+      const callOpenAITools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
+        const loopResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: aiMessages,
+          max_completion_tokens: 8192,
+          tools: channTools,
+          tool_choice: round === 1 ? "required" : "auto",
+          parallel_tool_calls: true,
+        });
+        const loopChoice = loopResponse.choices[0];
+        const oaiToolCalls = loopChoice?.message?.tool_calls;
+        const toolCalls: ToolCallResult[] = [];
+        if (oaiToolCalls && oaiToolCalls.length > 0) {
+          for (const tc of oaiToolCalls) {
+            toolCalls.push({
+              name: tc.function?.name,
+              id: tc.id,
+              args: typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments,
+            });
+          }
+        }
+        const textContent = loopChoice?.message?.content || "";
+        aiMessages.push(loopChoice.message);
+        return { toolCalls, textContent };
+      };
+
       while (rounds < MAX_ROUNDS) {
         rounds++;
 
-        // Thinking indicator every round including round 1
         let thinkingMsg = rounds === 1
           ? "กำลังสำรวจข้อมูลด้วย Chann Fusion..."
           : hadAnyToolCalls
@@ -2251,83 +2343,183 @@ ${pageContext}` : ''}`;
             : "กำลังประมวลผลและดำเนินการต่อ...";
         res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
 
-        // ── GPT-4o agentic loop (tool calling) ───────────────────────
-        const loopResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: aiMessages,
-          max_completion_tokens: 8192,
-          tools: channTools,
-          tool_choice: rounds === 1 ? "required" : "auto",
-          parallel_tool_calls: true,
-        });
-        const loopChoice = loopResponse.choices[0];
-        const loopToolCalls = loopChoice?.message?.tool_calls;
+        let loopToolCalls: ToolCallResult[] = [];
+        let loopTextContent = "";
 
-        if (loopToolCalls && loopToolCalls.length > 0) {
-          hadAnyToolCalls = true;
-          const toolNames = loopToolCalls.map((tc: any) => tc.function?.name).filter(Boolean);
-          res.write(`data: ${JSON.stringify({ thinking: `กำลังใช้เครื่องมือ: ${toolNames.join(", ")}` })}\n\n`);
-          aiMessages.push(loopChoice.message);
-          const toolResults = await Promise.all(
-            loopToolCalls.map(async (toolCall: any) => {
-              const parsedArgs = typeof toolCall.function.arguments === "string"
-                ? JSON.parse(toolCall.function.arguments)
-                : toolCall.function.arguments;
-              return {
-                role: "tool" as const,
-                tool_call_id: toolCall.id,
-                content: await handleToolCall(toolCall.function?.name, parsedArgs),
-              };
-            })
-          );
-          aiMessages.push(...toolResults);
-          // Continue loop — Verify phase will run next round
+        if (activeToolProvider === "claude") {
+          try {
+            const result = await callClaudeTools(rounds);
+            loopToolCalls = result.toolCalls;
+            loopTextContent = result.textContent;
+            aiMessages.push({
+              role: "assistant",
+              content: loopTextContent || null,
+              tool_calls: loopToolCalls.map(tc => ({
+                id: tc.id,
+                type: "function" as const,
+                function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+              })),
+            });
+          } catch (claudeToolErr) {
+            console.warn("[Chann] Claude tool-calling failed, falling back to OpenAI:", claudeToolErr);
+            activeToolProvider = "openai";
+            const result = await callOpenAITools(rounds);
+            loopToolCalls = result.toolCalls;
+            loopTextContent = result.textContent;
+          }
         } else {
-          // No tool calls — Claude claude-sonnet-4-6 streams the final answer
+          try {
+            const result = await callOpenAITools(rounds);
+            loopToolCalls = result.toolCalls;
+            loopTextContent = result.textContent;
+          } catch (oaiToolErr) {
+            console.warn("[Chann] OpenAI tool-calling failed, falling back to Claude:", oaiToolErr);
+            activeToolProvider = "claude";
+            const result = await callClaudeTools(rounds);
+            loopToolCalls = result.toolCalls;
+            loopTextContent = result.textContent;
+            aiMessages.push({
+              role: "assistant",
+              content: loopTextContent || null,
+              tool_calls: loopToolCalls.map(tc => ({
+                id: tc.id,
+                type: "function" as const,
+                function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+              })),
+            });
+          }
+        }
+
+        if (loopToolCalls.length > 0) {
+          hadAnyToolCalls = true;
+          const toolNames = loopToolCalls.map(tc => tc.name).filter(Boolean);
+          res.write(`data: ${JSON.stringify({ thinking: `กำลังใช้เครื่องมือ: ${toolNames.join(", ")}` })}\n\n`);
+
+          const toolResults: ToolExecResult[] = await Promise.all(
+            loopToolCalls.map(async (tc) => ({
+              id: tc.id,
+              name: tc.name,
+              result: await handleToolCall(tc.name, tc.args),
+            }))
+          );
+
+          if (activeToolProvider === "claude") {
+            claudeAgentMessages.push({
+              role: "user",
+              content: toolResults.map(tr => ({
+                type: "tool_result" as const,
+                tool_use_id: tr.id,
+                content: tr.result,
+              })),
+            });
+          }
+
+          for (const tr of toolResults) {
+            aiMessages.push({
+              role: "tool",
+              tool_call_id: tr.id,
+              content: tr.result,
+            } as { role: "tool"; tool_call_id: string; content: string });
+          }
+        } else {
           if (toolActions.length > 0) {
             res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
           }
-          res.write(`data: ${JSON.stringify({ thinking: "Claude กำลังสร้างคำตอบ..." })}\n\n`);
 
-          const claudeMsgs = buildClaudeMessages(aiMessages);
-          const directClaudeStream = anthropic.messages.stream({
-            model: "claude-sonnet-4-6",
-            system: systemPrompt,
-            messages: claudeMsgs,
-            max_tokens: 4096,
-          });
+          const directMsgs = buildClaudeMessages(aiMessages);
           let fullDirect = "";
           let suggTailBuf = "";
           let capturingSugg = false;
           const SUGG_MARKER = "[SUGGESTIONS:";
-          for await (const event of directClaudeStream) {
-            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-              const delta = event.delta.text;
-              if (delta) {
-                fullDirect += delta;
-                if (capturingSugg) {
-                  suggTailBuf += delta;
-                } else {
-                  const tail = suggTailBuf + delta;
-                  const markerIdx = tail.lastIndexOf(SUGG_MARKER);
-                  if (markerIdx !== -1) {
-                    const beforeMarker = tail.slice(0, markerIdx);
-                    if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
-                    capturingSugg = true;
-                    suggTailBuf = tail.slice(markerIdx);
-                  } else {
-                    const safeLen = tail.length - SUGG_MARKER.length;
-                    if (safeLen > 0) {
-                      res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
-                      suggTailBuf = tail.slice(safeLen);
-                    } else {
-                      suggTailBuf = tail;
-                    }
-                  }
+
+          const handleDelta = (delta: string) => {
+            fullDirect += delta;
+            if (capturingSugg) { suggTailBuf += delta; }
+            else {
+              const tail = suggTailBuf + delta;
+              const markerIdx = tail.lastIndexOf(SUGG_MARKER);
+              if (markerIdx !== -1) {
+                const beforeMarker = tail.slice(0, markerIdx);
+                if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+                capturingSugg = true;
+                suggTailBuf = tail.slice(markerIdx);
+              } else {
+                const safeLen = tail.length - SUGG_MARKER.length;
+                if (safeLen > 0) {
+                  res.write(`data: ${JSON.stringify({ content: tail.slice(0, safeLen) })}\n\n`);
+                  suggTailBuf = tail.slice(safeLen);
+                } else { suggTailBuf = tail; }
+              }
+            }
+          };
+
+          const streamWithProvider = async (prov: string) => {
+            if (prov === "openai") {
+              const s = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "system", content: systemPrompt }, ...directMsgs],
+                stream: true,
+                max_completion_tokens: 4096,
+              });
+              for await (const chunk of s) {
+                const d = chunk.choices[0]?.delta?.content || "";
+                if (d) handleDelta(d);
+              }
+            } else if (prov === "gemini") {
+              const gm = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+              const gc = gm.startChat({
+                history: directMsgs.slice(0, -1).map(m => ({
+                  role: m.role === "assistant" ? "model" : "user",
+                  parts: [{ text: m.content }],
+                })),
+                systemInstruction: { role: "user", parts: [{ text: systemPrompt }] },
+              });
+              const gr = await gc.sendMessageStream(directMsgs[directMsgs.length - 1]?.content || "");
+              for await (const chunk of gr.stream) {
+                const d = chunk.text();
+                if (d) handleDelta(d);
+              }
+            } else {
+              const cs = anthropic.messages.stream({
+                model: "claude-sonnet-4-5-20250514",
+                system: systemPrompt,
+                messages: directMsgs,
+                max_tokens: 4096,
+              });
+              for await (const event of cs) {
+                if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+                  const d = event.delta.text;
+                  if (d) handleDelta(d);
                 }
               }
             }
+          };
+
+          const providerFallback = selectedProvider === "openai"
+            ? ["openai", "claude", "gemini"]
+            : selectedProvider === "gemini"
+              ? ["gemini", "claude", "openai"]
+              : ["claude", "openai", "gemini"];
+
+          let streamed = false;
+          for (const prov of providerFallback) {
+            const provLabel = prov === "openai" ? "GPT-4o" : prov === "gemini" ? "Gemini" : "Claude";
+            res.write(`data: ${JSON.stringify({ thinking: `${provLabel} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
+            try {
+              await streamWithProvider(prov);
+              streamed = true;
+              break;
+            } catch (provErr) {
+              console.warn(`[Chann] ${prov} streaming failed, trying next:`, provErr);
+              fullDirect = "";
+              suggTailBuf = "";
+              capturingSugg = false;
+            }
           }
+          if (!streamed) {
+            res.write(`data: ${JSON.stringify({ content: "[ไม่สามารถเชื่อมต่อ AI ได้ กรุณาลองใหม่]" })}\n\n`);
+          }
+
           if (!capturingSugg && suggTailBuf) {
             res.write(`data: ${JSON.stringify({ content: suggTailBuf })}\n\n`);
           }
@@ -2335,7 +2527,9 @@ ${pageContext}` : ''}`;
           if (directSugg.length > 0) {
             res.write(`data: ${JSON.stringify({ suggestedReplies: directSugg })}\n\n`);
           }
-          db.insert(channConversations).values({ username, role: "assistant", content: directClean }).catch(console.error);
+          if (directClean) {
+            db.insert(channConversations).values({ username, role: "assistant", content: directClean }).catch(console.error);
+          }
           res.write(`data: [DONE]\n\n`);
           res.end();
           return;
@@ -2347,52 +2541,104 @@ ${pageContext}` : ''}`;
         res.write(`data: ${JSON.stringify({ toolActions })}\n\n`);
       }
 
-      // Streaming fallback: for rare cases where MAX_ROUNDS hit — Claude streams final answer
-      res.write(`data: ${JSON.stringify({ thinking: "Claude กำลังสร้างคำตอบ..." })}\n\n`);
-      const fallbackClaudeMsgs = buildClaudeMessages(aiMessages);
-      const fallbackClaudeStream = anthropic.messages.stream({
-        model: "claude-sonnet-4-6",
-        system: systemPrompt,
-        messages: fallbackClaudeMsgs,
-        max_tokens: 4096,
-      });
+      const fallbackMsgs = buildClaudeMessages(aiMessages);
 
       let fullAiResponse = "";
       let suggTailBuffer = "";
-      let capturingSugg = false;
-      const SUGG_MARKER = "[SUGGESTIONS:";
+      let capturingSuggFb = false;
+      const SUGG_MARKER_FB = "[SUGGESTIONS:";
 
-      for await (const event of fallbackClaudeStream) {
-        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-          const content = event.delta.text;
-          if (content) {
-            fullAiResponse += content;
-            if (capturingSugg) {
-              suggTailBuffer += content;
-            } else {
-              const tail = suggTailBuffer + content;
-              const markerIdx = tail.indexOf(SUGG_MARKER);
-              if (markerIdx !== -1) {
-                const beforeMarker = tail.slice(0, markerIdx);
-                if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
-                suggTailBuffer = tail.slice(markerIdx);
-                capturingSugg = true;
-              } else {
-                const safeLen = Math.max(0, tail.length - (SUGG_MARKER.length - 1));
-                const safe = tail.slice(0, safeLen);
-                suggTailBuffer = tail.slice(safeLen);
-                if (safe) res.write(`data: ${JSON.stringify({ content: safe })}\n\n`);
-              }
+      const handleFbDelta = (delta: string) => {
+        fullAiResponse += delta;
+        if (capturingSuggFb) { suggTailBuffer += delta; }
+        else {
+          const tail = suggTailBuffer + delta;
+          const markerIdx = tail.indexOf(SUGG_MARKER_FB);
+          if (markerIdx !== -1) {
+            const beforeMarker = tail.slice(0, markerIdx);
+            if (beforeMarker) res.write(`data: ${JSON.stringify({ content: beforeMarker })}\n\n`);
+            suggTailBuffer = tail.slice(markerIdx);
+            capturingSuggFb = true;
+          } else {
+            const safeLen = Math.max(0, tail.length - (SUGG_MARKER_FB.length - 1));
+            const safe = tail.slice(0, safeLen);
+            suggTailBuffer = tail.slice(safeLen);
+            if (safe) res.write(`data: ${JSON.stringify({ content: safe })}\n\n`);
+          }
+        }
+      };
+
+      const fbStreamProv = async (prov: string) => {
+        if (prov === "openai") {
+          const s = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "system", content: systemPrompt }, ...fallbackMsgs],
+            stream: true,
+            max_completion_tokens: 4096,
+          });
+          for await (const chunk of s) {
+            const d = chunk.choices[0]?.delta?.content || "";
+            if (d) handleFbDelta(d);
+          }
+        } else if (prov === "gemini") {
+          const gm = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const gc = gm.startChat({
+            history: fallbackMsgs.slice(0, -1).map(m => ({
+              role: m.role === "assistant" ? "model" : "user",
+              parts: [{ text: m.content }],
+            })),
+            systemInstruction: { role: "user", parts: [{ text: systemPrompt }] },
+          });
+          const gr = await gc.sendMessageStream(fallbackMsgs[fallbackMsgs.length - 1]?.content || "");
+          for await (const chunk of gr.stream) {
+            const d = chunk.text();
+            if (d) handleFbDelta(d);
+          }
+        } else {
+          const cs = anthropic.messages.stream({
+            model: "claude-sonnet-4-5-20250514",
+            system: systemPrompt,
+            messages: fallbackMsgs,
+            max_tokens: 4096,
+          });
+          for await (const event of cs) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              const d = event.delta.text;
+              if (d) handleFbDelta(d);
             }
           }
         }
+      };
+
+      const fbOrder = selectedProvider === "openai"
+        ? ["openai", "claude", "gemini"]
+        : selectedProvider === "gemini"
+          ? ["gemini", "claude", "openai"]
+          : ["claude", "openai", "gemini"];
+
+      let fbStreamed = false;
+      for (const prov of fbOrder) {
+        const pl = prov === "openai" ? "GPT-4o" : prov === "gemini" ? "Gemini" : "Claude";
+        res.write(`data: ${JSON.stringify({ thinking: `${pl} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
+        try {
+          await fbStreamProv(prov);
+          fbStreamed = true;
+          break;
+        } catch (fbErr) {
+          console.warn(`[Chann fallback] ${prov} failed:`, fbErr);
+          fullAiResponse = "";
+          suggTailBuffer = "";
+          capturingSuggFb = false;
+        }
       }
-      // Flush non-suggestion tail
-      if (suggTailBuffer && !capturingSugg) {
+      if (!fbStreamed) {
+        res.write(`data: ${JSON.stringify({ content: "[ไม่สามารถเชื่อมต่อ AI ได้ กรุณาลองใหม่]" })}\n\n`);
+      }
+
+      if (suggTailBuffer && !capturingSuggFb) {
         res.write(`data: ${JSON.stringify({ content: suggTailBuffer })}\n\n`);
       }
 
-      // Parse and strip suggestions from full response
       const { clean: cleanResponse, suggestions: fallbackSugg } = extractSuggestions(fullAiResponse);
       if (fallbackSugg.length > 0) {
         res.write(`data: ${JSON.stringify({ suggestedReplies: fallbackSugg })}\n\n`);

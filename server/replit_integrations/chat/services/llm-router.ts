@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { streamGeminiReply } from "../../../gemini";
 import type { Mode, Provider } from "./llm-types";
 
@@ -62,6 +63,39 @@ async function streamOpenAI(params: StreamLLMParams): Promise<string> {
   return full;
 }
 
+async function streamClaude(params: StreamLLMParams): Promise<string> {
+  const anthropic = new Anthropic({
+    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+  });
+
+  const messages: { role: "user" | "assistant"; content: string }[] = [
+    ...params.history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user", content: params.message },
+  ];
+
+  const stream = anthropic.messages.stream({
+    model: "claude-sonnet-4-5-20250514",
+    system: getSystemPrompt(params.mode),
+    messages,
+    max_tokens: 4096,
+  });
+
+  let full = "";
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      const delta = event.delta.text;
+      if (!delta) continue;
+      full += delta;
+      params.onToken(delta);
+    }
+  }
+  return full;
+}
+
 async function streamGemini(params: StreamLLMParams): Promise<string> {
   const messages = [
     ...params.history,
@@ -76,31 +110,50 @@ async function streamGemini(params: StreamLLMParams): Promise<string> {
 }
 
 export async function streamLLM(params: StreamLLMParams): Promise<string> {
+  const hasClaude = !!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
   const hasOpenAI = !!(
     process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY
   );
   const hasGemini = !!process.env.GEMINI_API_KEY;
+
+  if (params.provider === "claude") {
+    if (!hasClaude) throw new Error("Claude API Key ไม่ได้ตั้งค่า");
+    return await streamClaude(params);
+  }
 
   if (params.provider === "gemini") {
     if (!hasGemini) throw new Error("GEMINI_API_KEY ไม่ได้ตั้งค่า");
     return await streamGemini(params);
   }
 
-  if (params.provider === "openai" || (params.provider === "auto" && hasOpenAI)) {
-    try {
-      return await streamOpenAI(params);
-    } catch (err) {
-      console.warn("[LLM Router] OpenAI failed, trying Gemini:", err);
-      if (hasGemini) return await streamGemini(params);
-      throw err;
+  if (params.provider === "openai") {
+    if (!hasOpenAI) throw new Error("OpenAI API Key ไม่ได้ตั้งค่า");
+    return await streamOpenAI(params);
+  }
+
+  if (params.provider === "auto") {
+    if (hasClaude) {
+      try {
+        return await streamClaude(params);
+      } catch (err) {
+        console.warn("[LLM Router] Claude failed, trying OpenAI:", err);
+      }
+    }
+    if (hasOpenAI) {
+      try {
+        return await streamOpenAI(params);
+      } catch (err) {
+        console.warn("[LLM Router] OpenAI failed, trying Gemini:", err);
+        if (hasGemini) return await streamGemini(params);
+        throw err;
+      }
+    }
+    if (hasGemini) {
+      return await streamGemini(params);
     }
   }
 
-  if (params.provider === "auto" && hasGemini) {
-    return await streamGemini(params);
-  }
-
   throw new Error(
-    "ไม่มี API Key สำหรับ OpenAI หรือ Gemini กรุณาตั้งค่า OPENAI_API_KEY หรือ GEMINI_API_KEY"
+    "ไม่มี API Key สำหรับ Claude, OpenAI หรือ Gemini กรุณาตั้งค่า API Key"
   );
 }

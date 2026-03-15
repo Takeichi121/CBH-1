@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.0.9";
+export const APP_VERSION = "2.1.2";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,19 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.1.2",
+    date: "2026-03-15",
+    label: "feature",
+    changes: [
+      "Chann AI: อัพเกรดใช้ Claude (claude-sonnet-4-5) เป็น AI หลัก — ทั้ง tool calling และ streaming",
+      "Chann AI: เพิ่ม Model Selector — เลือก Claude / GPT-4o / Gemini ได้จาก UI",
+      "Chann AI: LLM Router รองรับ Claude streaming ผ่าน Anthropic SDK",
+      "Chann AI: UI ใหม่สไตล์ Dark Mode — gradient header, animated typing indicator",
+      "Chann AI: Claude เป็น default provider, fallback ไป OpenAI แล้ว Gemini",
+      "Chann AI: Agentic tool-calling loop รองรับ Claude tool use — ไม่ต้องพึ่ง OpenAI",
+    ],
+  },
   {
     version: "2.0.9",
     date: "2026-03-07",

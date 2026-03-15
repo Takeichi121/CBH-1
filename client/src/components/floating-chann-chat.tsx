@@ -2,11 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, Palette, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, ChevronDown } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { useChatCustomization, ChatCustomizationPanel } from "@/components/chat-customization";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
@@ -19,6 +18,14 @@ interface ChatMessage {
   suggestedReplies?: string[];
 }
 
+type ModelProvider = "claude" | "openai" | "gemini";
+
+const MODEL_OPTIONS: { value: ModelProvider; label: string; icon: string }[] = [
+  { value: "claude", label: "Claude", icon: "🟣" },
+  { value: "openai", label: "GPT-4o", icon: "🟢" },
+  { value: "gemini", label: "Gemini", icon: "🔵" },
+];
+
 export function FloatingChannChat() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -30,6 +37,9 @@ export function FloatingChannChat() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<ModelProvider>("claude");
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const greetingInitiated = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -48,6 +58,80 @@ export function FloatingChannChat() {
     }
   }, [isOpen]);
 
+  const handleSSEStream = async (
+    res: Response,
+    opts?: { onStarted?: () => void }
+  ) => {
+    if (!res.ok) {
+      let errorMsg = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+      try {
+        const errData = await res.json();
+        if (errData.message) errorMsg = errData.message;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+    if (!res.body) throw new Error("No body");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let done = false;
+    let started = false;
+    let buf = "";
+    while (!done) {
+      const { value, done: readerDone } = await reader.read();
+      done = readerDone;
+      if (value) {
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const dataStr = line.slice(6);
+          if (dataStr.trim() === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.activeProvider) {
+              setActiveProvider(parsed.activeProvider);
+            }
+            if (parsed.thinking) {
+              setMessages(prev => {
+                const n = [...prev];
+                if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], thinking: parsed.thinking };
+                return n;
+              });
+            }
+            if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
+              setMessages(prev => {
+                const n = [...prev];
+                n.splice(n.length - 1, 0, { role: "assistant", content: "", timestamp: new Date().toISOString(), toolActions: parsed.toolActions });
+                return n;
+              });
+            }
+            if (parsed.content) {
+              if (!started) {
+                setIsLoading(false);
+                setIsStreaming(true);
+                started = true;
+                opts?.onStarted?.();
+              }
+              setMessages(prev => {
+                const n = [...prev];
+                n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
+                return n;
+              });
+            }
+            if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
+              setMessages(prev => {
+                const n = [...prev];
+                n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
+                return n;
+              });
+            }
+          } catch {}
+        }
+      }
+    }
+  };
+
   const sendGreeting = (token: string) => {
     if (greetingInitiated.current) return;
     greetingInitiated.current = true;
@@ -60,53 +144,9 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true }),
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: selectedModel }),
         });
-        if (!res.body) throw new Error("No body");
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let done = false;
-        let started = false;
-        let buf = "";
-        while (!done) {
-          const { value, done: readerDone } = await reader.read();
-          done = readerDone;
-          if (value) {
-            buf += decoder.decode(value, { stream: true });
-            const lines = buf.split("\n\n");
-            buf = lines.pop() || "";
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const dataStr = line.slice(6);
-              if (dataStr.trim() === "[DONE]") break;
-              try {
-                const parsed = JSON.parse(dataStr);
-                if (parsed.thinking) {
-                  setMessages(prev => {
-                    const n = [...prev];
-                    if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], thinking: parsed.thinking };
-                    return n;
-                  });
-                }
-                if (parsed.content) {
-                  if (!started) { setIsLoading(false); setIsStreaming(true); started = true; }
-                  setMessages(prev => {
-                    const n = [...prev];
-                    n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
-                    return n;
-                  });
-                }
-                if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
-                  setMessages(prev => {
-                    const n = [...prev];
-                    n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
-                    return n;
-                  });
-                }
-              } catch {}
-            }
-          }
-        }
+        await handleSSEStream(res);
       } catch (err) {
         console.error("Greeting error:", err);
         setMessages([{ role: "assistant", content: "สวัสดีครับ! ผม Chann มีอะไรให้ช่วยไหมครับ?", timestamp: new Date().toISOString() }]);
@@ -287,7 +327,7 @@ export function FloatingChannChat() {
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: contextMessage, pageContext: buildPageContext() };
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: selectedModel };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -298,94 +338,7 @@ export function FloatingChannChat() {
         body: JSON.stringify(body),
       });
 
-      if (!res.body) throw new Error("No response body");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let done = false;
-      let hasStartedTyping = false;
-      let buffer = "";
-
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-
-        if (value) {
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const dataStr = line.replace("data: ", "");
-
-              if (dataStr.trim() === "[DONE]") {
-                setIsLoading(false);
-                setIsStreaming(false);
-                break;
-              }
-
-              try {
-                const parsed = JSON.parse(dataStr);
-
-                if (parsed.thinking) {
-                  setMessages((prev) => {
-                    const newMsgs = [...prev];
-                    const lastIndex = newMsgs.length - 1;
-                    if (newMsgs[lastIndex]?.role === "assistant") {
-                      newMsgs[lastIndex] = { ...newMsgs[lastIndex], thinking: parsed.thinking };
-                    }
-                    return newMsgs;
-                  });
-                }
-
-                if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
-                  setMessages((prev) => {
-                    const newMsgs = [...prev];
-                    newMsgs.splice(newMsgs.length - 1, 0, {
-                      role: "assistant",
-                      content: "",
-                      timestamp: new Date().toISOString(),
-                      toolActions: parsed.toolActions,
-                    });
-                    return newMsgs;
-                  });
-                }
-
-                if (parsed.content) {
-                  if (!hasStartedTyping) {
-                    setIsLoading(false);
-                    setIsStreaming(true);
-                    hasStartedTyping = true;
-                  }
-                  setMessages((prev) => {
-                    const newMsgs = [...prev];
-                    const lastIndex = newMsgs.length - 1;
-                    newMsgs[lastIndex] = {
-                      ...newMsgs[lastIndex],
-                      content: newMsgs[lastIndex].content + parsed.content,
-                      thinking: undefined,
-                    };
-                    return newMsgs;
-                  });
-                }
-
-                if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
-                  setMessages((prev) => {
-                    const newMsgs = [...prev];
-                    const lastIndex = newMsgs.length - 1;
-                    newMsgs[lastIndex] = { ...newMsgs[lastIndex], suggestedReplies: parsed.suggestedReplies };
-                    return newMsgs;
-                  });
-                }
-              } catch {
-                // ignore parse error for partial chunks
-              }
-            }
-          }
-        }
-      }
-
+      await handleSSEStream(res);
       setIsLoading(false);
       setIsStreaming(false);
     } catch (error) {
@@ -407,9 +360,7 @@ export function FloatingChannChat() {
   };
 
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [showCustomization, setShowCustomization] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
-  const { getBubbleColorClass, getBubbleStyleClass, getAvatarStyleClass } = useChatCustomization();
 
   const isManagerOrAdmin = user?.role === "manager" || user?.role === "admin";
   const isAdmin = user?.role === "admin";
@@ -439,13 +390,12 @@ export function FloatingChannChat() {
     setShowQuickActions(false);
     setMessage("");
     if (inputRef.current) inputRef.current.style.height = "36px";
-    const fakeEvent = prompt;
     const token = localStorage.getItem("bk_token");
     if (!token || isLoading || isStreaming) return;
 
     const userMsg: ChatMessage = {
       role: "user",
-      content: fakeEvent,
+      content: prompt,
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg, { role: "assistant", content: "", timestamp: new Date().toISOString() }]);
@@ -456,64 +406,9 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: fakeEvent, pageContext: buildPageContext() }),
+          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: selectedModel }),
         });
-        if (!res.body) throw new Error("No response body");
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let done = false;
-        let hasStarted = false;
-        let buf = "";
-        while (!done) {
-          const { value, done: readerDone } = await reader.read();
-          done = readerDone;
-          if (value) {
-            buf += decoder.decode(value, { stream: true });
-            const lines = buf.split("\n\n");
-            buf = lines.pop() || "";
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const dataStr = line.replace("data: ", "");
-                if (dataStr.trim() === "[DONE]") break;
-                try {
-                  const parsed = JSON.parse(dataStr);
-                  if (parsed.thinking) {
-                    setMessages(prev => {
-                      const n = [...prev];
-                      const lastIndex = n.length - 1;
-                      if (n[lastIndex]?.role === "assistant") {
-                        n[lastIndex] = { ...n[lastIndex], thinking: parsed.thinking };
-                      }
-                      return n;
-                    });
-                  }
-                  if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
-                    setMessages(prev => {
-                      const n = [...prev];
-                      n.splice(n.length - 1, 0, { role: "assistant", content: "", timestamp: new Date().toISOString(), toolActions: parsed.toolActions });
-                      return n;
-                    });
-                  }
-                  if (parsed.content) {
-                    if (!hasStarted) { setIsLoading(false); setIsStreaming(true); hasStarted = true; }
-                    setMessages(prev => {
-                      const n = [...prev];
-                      n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
-                      return n;
-                    });
-                  }
-                  if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
-                    setMessages(prev => {
-                      const n = [...prev];
-                      n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
-                      return n;
-                    });
-                  }
-                } catch {}
-              }
-            }
-          }
-        }
+        await handleSSEStream(res);
       } catch (err) {
         console.error("Quick action error:", err);
         setMessages(prev => {
@@ -551,43 +446,11 @@ export function FloatingChannChat() {
         body: JSON.stringify({
           token,
           message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
+          provider: selectedModel,
         }),
       });
 
-      if (!res.body) throw new Error("No response body");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let rdDone = false;
-      let buf = "";
-      let started = false;
-
-      while (!rdDone) {
-        const { value, done: readerDone } = await reader.read();
-        rdDone = readerDone;
-        if (value) {
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n\n");
-          buf = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const dataStr = line.replace("data: ", "");
-              if (dataStr.trim() === "[DONE]") break;
-              try {
-                const parsed = JSON.parse(dataStr);
-                if (parsed.content) {
-                  if (!started) { setIsLoading(false); setIsStreaming(true); started = true; }
-                  setMessages((prev) => {
-                    const n = [...prev];
-                    n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content };
-                    return n;
-                  });
-                }
-              } catch {}
-            }
-          }
-        }
-      }
+      await handleSSEStream(res);
     } catch (error) {
       console.error("Summary error:", error);
     } finally {
@@ -619,101 +482,135 @@ export function FloatingChannChat() {
     }
   };
 
+  const currentModelOption = MODEL_OPTIONS.find(m => m.value === selectedModel) || MODEL_OPTIONS[0];
+
   if (!user) return null;
 
   return (
     <>
       {!isOpen && (
-        <Button
+        <button
           onClick={() => setIsOpen(true)}
-          size="lg"
-          className="fixed bottom-32 md:bottom-16 right-4 z-50 rounded-full shadow-lg"
+          className="fixed bottom-32 md:bottom-16 right-4 z-50 group"
           data-testid="button-open-chann-chat"
         >
-          <Bot className="w-5 h-5 mr-1" />
-          <span className="text-sm">Chann</span>
-        </Button>
+          <div className="relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <Bot className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-semibold">Chann</span>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+          </div>
+        </button>
       )}
 
       {isOpen && (
-        <div className="fixed inset-4 bottom-20 md:inset-auto md:bottom-4 md:right-4 md:w-[400px] md:h-[600px] md:max-h-[calc(100vh-6rem)] z-[51] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden" data-testid="container-chann-chat">
-          <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                <Bot className="w-6 h-6" />
+        <div className="fixed inset-3 bottom-20 md:inset-auto md:bottom-4 md:right-4 md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] z-[51] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10" data-testid="container-chann-chat">
+          <div className="bg-gradient-to-r from-slate-900 via-violet-950 to-slate-900 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm" data-testid="text-chann-title">Chann AI</h3>
+                  <p className="text-[11px] text-violet-300/80" data-testid="text-chann-subtitle">
+                    {isStreaming
+                      ? `กำลังพิมพ์...${activeProvider ? ` (${MODEL_OPTIONS.find(m => m.value === activeProvider)?.label || activeProvider})` : ""}`
+                      : isLoading
+                        ? "กำลังวิเคราะห์..."
+                        : "ผู้ช่วยอัจฉริยะ"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold" data-testid="text-chann-title">Chann AI</h3>
-                <p className="text-xs opacity-80" data-testid="text-chann-subtitle">
-                  {isStreaming ? "กำลังพิมพ์..." : "ผู้ช่วยอัจฉริยะ"}
-                </p>
+              <div className="flex items-center gap-0.5">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowModelPicker(!showModelPicker)}
+                    className="flex items-center gap-1 text-[11px] text-violet-200 bg-white/10 hover:bg-white/15 rounded-lg px-2 py-1.5 font-medium transition-colors"
+                    data-testid="button-model-selector"
+                  >
+                    <span>{currentModelOption.icon}</span>
+                    <span>{currentModelOption.label}</span>
+                    <ChevronDown className="w-3 h-3 opacity-60" />
+                  </button>
+                  {showModelPicker && (
+                    <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl shadow-black/40 py-1 z-10 min-w-[130px]" data-testid="container-model-picker">
+                      {MODEL_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setSelectedModel(opt.value); setShowModelPicker(false); }}
+                          className={cn(
+                            "flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left transition-colors",
+                            selectedModel === opt.value ? "bg-violet-600/30 text-white" : "text-slate-300 hover:bg-white/5"
+                          )}
+                          data-testid={`button-model-${opt.value}`}
+                        >
+                          <span>{opt.icon}</span>
+                          <span>{opt.label}</span>
+                          {selectedModel === opt.value && <CheckCircle2 className="w-3 h-3 ml-auto text-violet-400" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-violet-300 hover:text-white hover:bg-white/10"
+                  onClick={summarizeChat}
+                  disabled={messages.length === 0 || isSummarizing || isLoading || isStreaming}
+                  title="สรุปบทสนทนา"
+                  data-testid="button-summarize-chann"
+                >
+                  {isSummarizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-violet-300 hover:text-white hover:bg-white/10"
+                  onClick={clearHistory}
+                  disabled={isLoading || isStreaming}
+                  title="ล้างประวัติ"
+                  data-testid="button-clear-chann-history"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-violet-300 hover:text-white hover:bg-white/10"
+                  onClick={() => setIsOpen(false)}
+                  data-testid="button-close-chann-chat"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="flex items-center gap-1 text-[11px] text-white/80 bg-white/15 rounded-full px-2.5 py-1 font-medium" data-testid="badge-chann-fusion">
-                <span>⚡</span><span>🧠</span><span>🤖</span><span>Fusion</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={summarizeChat}
-                disabled={messages.length === 0 || isSummarizing || isLoading || isStreaming}
-                title="สรุปบทสนทนา"
-                data-testid="button-summarize-chann"
-              >
-                {isSummarizing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <FileText className="w-4 h-4" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowCustomization(true)}
-                title="ปรับแต่งแชท"
-                data-testid="button-customize-chat"
-              >
-                <Palette className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={clearHistory}
-                disabled={isLoading || isStreaming}
-                title="ล้างประวัติ"
-                data-testid="button-clear-chann-history"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(false)}
-                data-testid="button-close-chann-chat"
-              >
-                <X className="w-5 h-5" />
-              </Button>
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="container-chann-messages">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto bg-slate-950 p-4 space-y-3" data-testid="container-chann-messages">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center" data-testid="container-chann-empty">
-                <Bot className="w-14 h-14 mb-3 text-primary/30" />
-                <p className="font-bold text-foreground">สวัสดีครับ! ผมชื่อ Chann</p>
-                <p className="text-sm text-muted-foreground mt-1">เลือกคำสั่งด่วนหรือพิมพ์ข้อความได้เลยครับ</p>
-                <div className="grid grid-cols-2 gap-2 mt-4 w-full max-w-xs">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center mb-4">
+                  <Bot className="w-8 h-8 text-violet-400" />
+                </div>
+                <p className="font-bold text-white text-lg">สวัสดีครับ!</p>
+                <p className="text-sm text-slate-400 mt-1 mb-5">ผมชื่อ Chann — มีอะไรให้ช่วยครับ?</p>
+                <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
                   {quickActions.slice(0, 4).map((action) => (
                     <button
                       key={action.label}
                       onClick={() => sendQuickAction(action.prompt)}
                       disabled={isLoading || isStreaming}
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-muted/30 hover:bg-primary/10 hover:border-primary/30 transition-all text-left group"
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-violet-500/10 hover:border-violet-500/20 transition-all text-left group"
                       data-testid={`button-quick-${action.label}`}
                     >
-                      <action.icon className="w-4 h-4 text-primary/60 group-hover:text-primary flex-shrink-0" />
-                      <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">{action.label}</span>
+                      <action.icon className="w-4 h-4 text-violet-400/60 group-hover:text-violet-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-slate-400 group-hover:text-slate-200">{action.label}</span>
                     </button>
                   ))}
                 </div>
@@ -724,15 +621,13 @@ export function FloatingChannChat() {
               if (msg.toolActions && msg.toolActions.length > 0) {
                 return (
                   <div key={index} className="flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-action-${index}`}>
-                    <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg px-3 py-2 max-w-[90%]">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 max-w-[90%]">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                        <span className="text-xs font-semibold text-green-700 dark:text-green-300">Chann ดำเนินการแล้ว</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-xs font-semibold text-emerald-300">Chann ดำเนินการแล้ว</span>
                       </div>
                       {msg.toolActions.map((action, i) => (
-                        <p key={i} className="text-xs text-green-600 dark:text-green-400 pl-5">
-                          {action}
-                        </p>
+                        <p key={i} className="text-xs text-emerald-400/80 pl-5">{action}</p>
                       ))}
                     </div>
                   </div>
@@ -744,110 +639,109 @@ export function FloatingChannChat() {
               const showSuggestions = msg.role === "assistant" && isLastMsg && !isLoading && !isStreaming && msg.suggestedReplies && msg.suggestedReplies.length > 0;
 
               return (
-              <div key={index} className="flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
-                <div
-                  className={cn(
-                    "flex gap-3",
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {msg.role === "assistant" && (
-                    <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
-                      <AvatarFallback className={cn("bg-primary text-primary-foreground text-xs", getAvatarStyleClass())}>
-                        <Bot className="w-4 h-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div
-                    className={cn(
-                      "max-w-[80%] px-4 py-2 text-sm",
-                      msg.role === "user"
-                        ? cn(getBubbleColorClass(), "text-white", getBubbleStyleClass())
-                        : cn("bg-muted text-foreground", getBubbleStyleClass())
+                <div key={index} className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
+                  <div className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}>
+                    {msg.role === "assistant" && (
+                      <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+                        <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
+                          <Bot className="w-3.5 h-3.5" />
+                        </AvatarFallback>
+                      </Avatar>
                     )}
-                  >
-                    {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
-                      <img
-                        src={msg.imageUrl}
-                        alt="sent"
-                        className="max-w-full max-h-40 rounded-md mb-1 cursor-pointer"
-                        onClick={() => window.open(msg.imageUrl, "_blank")}
-                        data-testid={`img-chann-${index}`}
-                      />
-                    )}
-                    {msg.thinking && !msg.content && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground italic" data-testid={`thinking-chann-${index}`}>
-                        <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
-                        <span>{msg.thinking}</span>
-                      </div>
-                    )}
-                    {displayContent && displayContent !== "ส่งรูปภาพ" && (
-                      msg.role === "assistant" ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          <ReactMarkdown>{displayContent}</ReactMarkdown>
+                    <div
+                      className={cn(
+                        "max-w-[80%] px-3.5 py-2.5 text-sm",
+                        msg.role === "user"
+                          ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-violet-500/10"
+                          : "bg-slate-800/80 text-slate-200 rounded-2xl rounded-bl-md border border-white/5"
+                      )}
+                    >
+                      {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
+                        <img
+                          src={msg.imageUrl}
+                          alt="sent"
+                          className="max-w-full max-h-40 rounded-lg mb-1.5 cursor-pointer"
+                          onClick={() => window.open(msg.imageUrl, "_blank")}
+                          data-testid={`img-chann-${index}`}
+                        />
+                      )}
+                      {msg.thinking && !msg.content && (
+                        <div className="flex items-center gap-2 text-xs text-violet-300/80 italic" data-testid={`thinking-chann-${index}`}>
+                          <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </div>
+                          <span>{msg.thinking}</span>
                         </div>
-                      ) : (
-                        <p className="whitespace-pre-wrap">{displayContent}</p>
-                      )
+                      )}
+                      {displayContent && displayContent !== "ส่งรูปภาพ" && (
+                        msg.role === "assistant" ? (
+                          <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 prose-p:text-slate-200 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-slate-700/50 prose-code:px-1 prose-code:rounded">
+                            <ReactMarkdown>{displayContent}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{displayContent}</p>
+                        )
+                      )}
+                    </div>
+                    {msg.role === "user" && (
+                      <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+                        <AvatarFallback className="bg-slate-700 text-slate-300 text-xs">
+                          <User className="w-3.5 h-3.5" />
+                        </AvatarFallback>
+                      </Avatar>
                     )}
                   </div>
-                  {msg.role === "user" && (
-                    <Avatar className={cn("w-8 h-8 flex-shrink-0", getAvatarStyleClass())}>
-                      <AvatarFallback className={cn("bg-muted text-muted-foreground text-xs", getAvatarStyleClass())}>
-                        <User className="w-4 h-4" />
-                      </AvatarFallback>
-                    </Avatar>
+                  {showSuggestions && (
+                    <div className="flex flex-wrap gap-1.5 pl-10 animate-in fade-in duration-300" data-testid={`suggestions-chann-${index}`}>
+                      {msg.suggestedReplies!.map((suggestion, si) => (
+                        <button
+                          key={si}
+                          onClick={() => sendQuickAction(suggestion)}
+                          className="text-xs px-2.5 py-1 rounded-full border border-violet-500/20 bg-violet-500/5 text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/40 transition-all"
+                          data-testid={`suggestion-chip-${index}-${si}`}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {showSuggestions && (
-                  <div className="flex flex-wrap gap-1.5 pl-11 animate-in fade-in duration-300" data-testid={`suggestions-chann-${index}`}>
-                    {msg.suggestedReplies!.map((suggestion, si) => (
-                      <button
-                        key={si}
-                        onClick={() => sendQuickAction(suggestion)}
-                        className="text-xs px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:border-primary/50 transition-all"
-                        data-testid={`suggestion-chip-${index}-${si}`}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
               );
             })}
 
             {isLoading && !isStreaming && (
-              <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid="container-chann-loading">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    <Bot className="w-4 h-4" />
+              <div className="flex gap-2.5 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid="container-chann-loading">
+                <Avatar className="w-7 h-7 flex-shrink-0">
+                  <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
+                    <Bot className="w-3.5 h-3.5" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                  <div className="flex items-center gap-2">
+                <div className="bg-slate-800/80 rounded-2xl rounded-bl-md px-4 py-3 border border-white/5">
+                  <div className="flex items-center gap-2.5">
                     <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-violet-400/70 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-violet-400/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>
-                    <span className="text-xs text-muted-foreground">Chann กำลังคิด...</span>
+                    <span className="text-xs text-slate-400">Chann กำลังคิด...</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="border-t border-border">
+          <div className="border-t border-white/5 bg-slate-900">
             {showQuickActions && (
-              <div className="p-2 border-b border-border bg-muted/30 overflow-x-auto">
+              <div className="p-2 border-b border-white/5 bg-slate-900/50 overflow-x-auto">
                 <div className="flex gap-1.5 flex-wrap">
                   {quickActions.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => sendQuickAction(action.prompt)}
                       disabled={isLoading || isStreaming}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-border/60 bg-background hover:bg-primary/10 hover:border-primary/30 transition-all text-xs font-medium text-muted-foreground hover:text-foreground whitespace-nowrap"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-white/5 bg-white/5 hover:bg-violet-500/10 hover:border-violet-500/20 transition-all text-xs font-medium text-slate-400 hover:text-slate-200 whitespace-nowrap"
                       data-testid={`button-quickbar-${action.label}`}
                     >
                       <action.icon className="w-3 h-3" />
@@ -860,10 +754,10 @@ export function FloatingChannChat() {
             <div className="p-3">
               {imagePreview && (
                 <div className="mb-2 relative inline-block">
-                  <img src={imagePreview} alt="preview" className="max-h-20 rounded-md border" />
+                  <img src={imagePreview} alt="preview" className="max-h-20 rounded-lg border border-white/10" />
                   <button
                     onClick={removeImagePreview}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow-lg"
                     data-testid="button-remove-image-preview"
                   >
                     <X className="w-3 h-3" />
@@ -871,16 +765,16 @@ export function FloatingChannChat() {
                 </div>
               )}
               {fileName && (
-                <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm w-fit max-w-[80%]">
-                  <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                  <span className="truncate text-xs font-medium text-slate-700 dark:text-slate-300">{fileName}</span>
+                <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-slate-800 border border-white/10 rounded-lg text-sm w-fit max-w-[80%]">
+                  <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                  <span className="truncate text-xs font-medium text-slate-300">{fileName}</span>
                   <button
                     onClick={removeFile}
-                    className="ml-1 hover:bg-slate-200 dark:hover:bg-slate-700 p-0.5 rounded-full transition-colors"
+                    className="ml-1 hover:bg-slate-700 p-0.5 rounded-full transition-colors"
                     title="ลบไฟล์"
                     data-testid="button-remove-file-preview"
                   >
-                    <X className="w-3 h-3 text-slate-500" />
+                    <X className="w-3 h-3 text-slate-400" />
                   </button>
                 </div>
               )}
@@ -904,7 +798,7 @@ export function FloatingChannChat() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-9 w-9 rounded-full transition-colors", showQuickActions && "bg-primary/10 text-primary")}
+                  className={cn("h-9 w-9 rounded-full text-slate-400 hover:text-violet-300 hover:bg-white/5 transition-colors", showQuickActions && "bg-violet-500/10 text-violet-400")}
                   onClick={() => setShowQuickActions(!showQuickActions)}
                   disabled={isLoading || isStreaming}
                   title="คำสั่งด่วน"
@@ -915,7 +809,7 @@ export function FloatingChannChat() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full"
+                  className="h-9 w-9 rounded-full text-slate-400 hover:text-violet-300 hover:bg-white/5"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isLoading || isStreaming}
                   data-testid="button-chann-image-upload"
@@ -925,7 +819,7 @@ export function FloatingChannChat() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-9 w-9 rounded-full", fileName && "text-blue-500")}
+                  className={cn("h-9 w-9 rounded-full text-slate-400 hover:text-violet-300 hover:bg-white/5", fileName && "text-violet-400")}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading || isStreaming}
                   title="แนบไฟล์ (.txt, .csv, .xlsx)"
@@ -946,7 +840,7 @@ export function FloatingChannChat() {
                   onPaste={handlePaste}
                   placeholder="พิมพ์ข้อความ..."
                   disabled={isLoading || isStreaming}
-                  className="flex-1 min-h-[36px] max-h-[120px] resize-none text-sm overflow-y-auto"
+                  className="flex-1 min-h-[36px] max-h-[120px] resize-none text-sm overflow-y-auto bg-slate-800/50 border-white/10 text-slate-200 placeholder:text-slate-500 focus-visible:ring-violet-500/30"
                   rows={1}
                   data-testid="input-chann-message"
                 />
@@ -954,7 +848,7 @@ export function FloatingChannChat() {
                   onClick={sendMessage}
                   disabled={(!message.trim() && !imagePreview && !fileContent) || isLoading || isStreaming}
                   size="icon"
-                  className="h-9 w-9 rounded-full"
+                  className="h-9 w-9 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/20 disabled:opacity-30"
                   data-testid="button-send-chann-message"
                 >
                   {isLoading || isStreaming ? (
@@ -968,11 +862,6 @@ export function FloatingChannChat() {
           </div>
         </div>
       )}
-
-      <ChatCustomizationPanel
-        isOpen={showCustomization}
-        onClose={() => setShowCustomization(false)}
-      />
     </>
   );
 }

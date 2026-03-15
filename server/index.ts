@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initProactiveChann } from "./services/proactive-agent";
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -23,6 +25,25 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: "Too many login attempts. Please try again in 15 minutes." },
+});
+app.use("/api/login", loginLimiter);
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: "Too many AI requests. Please slow down." },
+});
+app.use("/api/chann", aiLimiter);
+app.use("/api/generate-image", aiLimiter);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

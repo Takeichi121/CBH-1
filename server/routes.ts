@@ -313,18 +313,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/chat/upload-image", chatImageUpload.single("image"), async (req, res) => {
     try {
       const token = req.body.token;
-      if (!token) return res.json({ ok: false, message: "Token required" });
+      if (!token) return res.status(401).json({ ok: false, message: "Token required" });
       
       const session = await storage.getSession(token);
-      if (!session) return res.json({ ok: false, message: "Invalid session" });
+      if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
 
-      if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
+      if (!req.file) return res.status(400).json({ ok: false, message: "No file uploaded" });
 
       const imageUrl = `/uploads/chat/${req.file.filename}`;
       res.json({ ok: true, imageUrl });
     } catch (e: any) {
       console.error("Chat image upload error:", e);
-      res.json({ ok: false, message: e.message || "Upload failed" });
+      res.status(500).json({ ok: false, message: e.message || "Upload failed" });
     }
   });
 
@@ -389,17 +389,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const { token, message, imageBase64, pageContext, silentMessage } = req.body;
       if (!token || (!message && !imageBase64)) {
-        return res.json({ ok: false, message: "Token and message required" });
+        return res.status(400).json({ ok: false, message: "Token and message required" });
       }
 
       const session = await storage.getSession(token);
       if (!session) {
-        return res.json({ ok: false, message: "Invalid session" });
+        return res.status(401).json({ ok: false, message: "Invalid session" });
       }
 
       const user = await storage.getUser(session.username);
       if (!user) {
-        return res.json({ ok: false, message: "User not found" });
+        return res.status(401).json({ ok: false, message: "User not found" });
       }
 
       const username = session.username;
@@ -2425,10 +2425,10 @@ ${pageContext}` : ''}`;
   app.post("/api/chann/history", async (req, res) => {
     try {
       const { token } = req.body;
-      if (!token) return res.json({ ok: false, message: "Token required" });
+      if (!token) return res.status(401).json({ ok: false, message: "Token required" });
 
       const session = await storage.getSession(token);
-      if (!session) return res.json({ ok: false, message: "Invalid session" });
+      if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
 
       const history = await db.select().from(channConversations)
         .where(eq(channConversations.username, session.username))
@@ -2438,7 +2438,7 @@ ${pageContext}` : ''}`;
       res.json({ ok: true, messages: history.reverse() });
     } catch (e: any) {
       console.error("Chann history error:", e);
-      res.json({ ok: false, message: "Failed to fetch history" });
+      res.status(500).json({ ok: false, message: "Failed to fetch history" });
     }
   });
 
@@ -2446,16 +2446,16 @@ ${pageContext}` : ''}`;
   app.post("/api/chann/clear", async (req, res) => {
     try {
       const { token } = req.body;
-      if (!token) return res.json({ ok: false, message: "Token required" });
+      if (!token) return res.status(401).json({ ok: false, message: "Token required" });
 
       const session = await storage.getSession(token);
-      if (!session) return res.json({ ok: false, message: "Invalid session" });
+      if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
 
       await db.delete(channConversations).where(eq(channConversations.username, session.username));
       res.json({ ok: true });
     } catch (e: any) {
       console.error("Chann clear error:", e);
-      res.json({ ok: false, message: "Failed to clear history" });
+      res.status(500).json({ ok: false, message: "Failed to clear history" });
     }
   });
 
@@ -2499,7 +2499,7 @@ ${pageContext}` : ''}`;
   // Auth: Login
   app.post(api.auth.login.path, async (req, res) => {
     const { username, password, developerMode } = req.body;
-    if (!username || !password) return res.json({ ok: false, message: "กรอกให้ครบ" });
+    if (!username || !password) return res.status(400).json({ ok: false, message: "กรอกให้ครบ" });
 
     const u = await storage.getUser(username);
     const cfg = await storage.getConfig();
@@ -2509,11 +2509,11 @@ ${pageContext}` : ''}`;
     const isManager = u && (isManagerLike(u.role));
 
     if (isSystemClosed(cfg) && !developerMode && !isCreator && !isAdmin && !isManager) {
-      return res.json({ ok: false, message: "ระบบปิดช่วงนี้" });
+      return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้" });
     }
 
-    if (!u || !u.active) return res.json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });
-    if (!(await comparePassword(password, u.passhash))) return res.json({ ok: false, message: "รหัสผ่านไม่ถูก" });
+    if (!u || !u.active) return res.status(401).json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });
+    if (!(await comparePassword(password, u.passhash))) return res.status(401).json({ ok: false, message: "รหัสผ่านไม่ถูก" });
 
     const token = crypto.randomUUID().replace(/-/g, "");
     const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
@@ -2528,17 +2528,17 @@ ${pageContext}` : ''}`;
   // Auth: Validate
   app.post(api.auth.validate.path, async (req, res) => {
     const { token } = req.body;
-    if (!token) return res.json({ ok: false });
+    if (!token) return res.status(401).json({ ok: false });
     const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false });
+    if (!session) return res.status(401).json({ ok: false });
 
     if (Math.floor(Date.now() / 1000) > session.expiresAt) {
       await storage.deleteSession(token);
-      return res.json({ ok: false });
+      return res.status(401).json({ ok: false });
     }
 
     const u = await storage.getUser(session.username);
-    if (!u || !u.active) return res.json({ ok: false });
+    if (!u || !u.active) return res.status(401).json({ ok: false });
 
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
@@ -2555,14 +2555,14 @@ ${pageContext}` : ''}`;
   // Register Staff
   app.post(api.auth.registerStaff.path, async (req, res) => {
     const cfg = await storage.getConfig();
-    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
+    if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword } = req.body;
-    if (!username || !fullName || !email || !phone || !password) return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
-    if (password !== confirmPassword) return res.json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
+    if (!username || !fullName || !email || !phone || !password) return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
+    if (password !== confirmPassword) return res.status(400).json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.status(400).json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
     
     const existing = await storage.getUser(username.toLowerCase());
-    if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
+    if (existing) return res.status(409).json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
       username: username.toLowerCase(), passhash: await hashPassword(password), role: "staff",
@@ -2575,15 +2575,15 @@ ${pageContext}` : ''}`;
   // Register Manager
   app.post(api.auth.registerManager.path, async (req, res) => {
     const cfg = await storage.getConfig();
-    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
+    if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
-    if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
-    if (!username || !fullName || !email || !phone || !password) return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
-    if (password !== confirmPassword) return res.json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
+    if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.status(403).json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
+    if (!username || !fullName || !email || !phone || !password) return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
+    if (password !== confirmPassword) return res.status(400).json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.status(400).json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
     
     const existing = await storage.getUser(username.toLowerCase());
-    if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
+    if (existing) return res.status(409).json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
       username: username.toLowerCase(), passhash: await hashPassword(password), role: "manager",
@@ -2596,15 +2596,15 @@ ${pageContext}` : ''}`;
   // Register Area Manager
   app.post("/api/registerArea", async (req, res) => {
     const cfg = await storage.getConfig();
-    if (isSystemClosed(cfg)) return res.json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
+    if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
-    if (String(verifyCode || "").trim().toLowerCase() !== AREA_VERIFY_CODE) return res.json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
-    if (!username || !fullName || !email || !phone || !password) return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
-    if (password !== confirmPassword) return res.json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
+    if (String(verifyCode || "").trim().toLowerCase() !== AREA_VERIFY_CODE) return res.status(403).json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
+    if (!username || !fullName || !email || !phone || !password) return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
+    if (password !== confirmPassword) return res.status(400).json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.status(400).json({ ok: false, message: "Username ต้องเป็นตัวอักษร/ตัวเลข/_ เท่านั้น" });
 
     const existing = await storage.getUser(username.toLowerCase());
-    if (existing) return res.json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
+    if (existing) return res.status(409).json({ ok: false, message: "Username นี้ถูกใช้แล้ว / Username taken" });
 
     await storage.createUser({
       username: username.toLowerCase(), passhash: await hashPassword(password), role: "area",
@@ -2618,15 +2618,15 @@ ${pageContext}` : ''}`;
   app.post("/api/auth/verify-password", async (req, res) => {
     try {
       const { token, password } = req.body;
-      if (!token || !password) return res.json({ ok: false });
+      if (!token || !password) return res.status(400).json({ ok: false });
       const session = await storage.getSession(token);
-      if (!session) return res.json({ ok: false, message: "Session หมดอายุ" });
+      if (!session) return res.status(401).json({ ok: false, message: "Session หมดอายุ" });
       const u = await storage.getUser(session.username);
-      if (!u) return res.json({ ok: false, message: "ไม่พบผู้ใช้" });
+      if (!u) return res.status(401).json({ ok: false, message: "ไม่พบผู้ใช้" });
       const valid = await comparePassword(password, u.passhash);
       res.json({ ok: valid });
     } catch {
-      res.json({ ok: false });
+      res.status(500).json({ ok: false });
     }
   });
 
@@ -2634,12 +2634,12 @@ ${pageContext}` : ''}`;
   app.post(api.auth.completeProfile.path, async (req, res) => {
     const { token, nickName, phone, email } = req.body;
     const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "session หมดอายุ" });
+    if (!session) return res.status(401).json({ ok: false, message: "session หมดอายุ" });
     const u = await storage.getUser(session.username);
-    if (!u) return res.json({ ok: false, message: "ไม่พบผู้ใช้" });
+    if (!u) return res.status(401).json({ ok: false, message: "ไม่พบผู้ใช้" });
 
     if (!nickName || !phone || !email) {
-      return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ" });
+      return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ" });
     }
 
     await storage.updateUser(u.username, { nickName, phone, email });
@@ -2652,12 +2652,12 @@ ${pageContext}` : ''}`;
     try {
       const { token, newPassword } = req.body;
       if (!token || !newPassword) {
-        return res.json({ ok: false, message: "Token and new password required" });
+        return res.status(400).json({ ok: false, message: "Token and new password required" });
       }
 
       const session = await storage.getSession(token);
       if (!session) {
-        return res.json({ ok: false, message: "Invalid session" });
+        return res.status(401).json({ ok: false, message: "Invalid session" });
       }
 
       await storage.updateUserPassword(session.username, await hashPassword(newPassword));
@@ -2667,7 +2667,7 @@ ${pageContext}` : ''}`;
       res.json({ ok: true, message: "Password updated successfully" });
     } catch (e: any) {
       console.error("Force change password error:", e);
-      res.json({ ok: false, message: e.message || "Failed to update password" });
+      res.status(500).json({ ok: false, message: e.message || "Failed to update password" });
     }
   });
 
@@ -2675,7 +2675,7 @@ ${pageContext}` : ''}`;
   app.post(api.auth.requestPasswordReset.path, async (req, res) => {
     const parsed = api.auth.requestPasswordReset.input.safeParse(req.body);
     if (!parsed.success) {
-      return res.json({ ok: false, message: "กรุณากรอกข้อมูลให้ถูกต้อง / Please enter valid information" });
+      return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ถูกต้อง / Please enter valid information" });
     }
     const { username, email } = parsed.data;
 
@@ -3180,20 +3180,6 @@ ${pageContext}` : ''}`;
 
     const [updated] = await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username)).returning();
     await storage.log("change_password", u.username, "password updated");
-    res.json({ ok: true, user: updated });
-  });
-
-  app.post("/api/forceChangePassword", async (req, res) => {
-    const { token, newPassword } = req.body;
-    const session = await storage.getSession(token);
-    if (!session) return res.json({ ok: false, message: "Session expired" });
-    const u = await storage.getUser(session.username);
-    if (!u) return res.json({ ok: false, message: "User not found" });
-
-    if (u.mustChangePassword !== 1) return res.json({ ok: false, message: "Not required to change password" });
-
-    const [updated] = await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username)).returning();
-    await storage.log("force_change_password", u.username, "first-time password updated");
     res.json({ ok: true, user: updated });
   });
 
@@ -4040,81 +4026,84 @@ ${pageContext}` : ''}`;
   // ==========================================
   const DEV_CODE = "bk1040";
 
-  const verifyDevAccess = async (token: string, devCode?: string): Promise<{ ok: boolean; user?: any; message?: string }> => {
+  const verifyDevAccess = async (token: string, devCode?: string): Promise<{ ok: boolean; user?: any; message?: string; statusCode?: number }> => {
     const session = await storage.getSession(token);
-    if (!session) return { ok: false, message: "Session expired" };
+    if (!session) return { ok: false, message: "Session expired", statusCode: 401 };
     const u = await storage.getUser(session.username);
-    if (!u) return { ok: false, message: "User not found" };
+    if (!u) return { ok: false, message: "User not found", statusCode: 401 };
+    if (process.env.NODE_ENV === "production" && u.role !== "admin") {
+      return { ok: false, message: "Access denied - Admin only in production", statusCode: 403 };
+    }
     if (u.role === "admin" || devCode === DEV_CODE) return { ok: true, user: u };
-    return { ok: false, message: "Access denied - Admin or Dev Code required" };
+    return { ok: false, message: "Access denied - Admin or Dev Code required", statusCode: 403 };
   };
 
   app.post(api.devTools.getSystemLogs.path, async (req, res) => {
     const { token, devCode, limit = 100, action } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       const logs = await storage.getSystemLogs(limit, action);
       res.json({ ok: true, logs });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to get logs" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to get logs" });
     }
   });
 
   app.post(api.devTools.getSessions.path, async (req, res) => {
     const { token, devCode } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       const sessions = await storage.getAllSessions();
       res.json({ ok: true, sessions });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to get sessions" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to get sessions" });
     }
   });
 
   app.post(api.devTools.clearSessions.path, async (req, res) => {
     const { token, devCode, username } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       const count = await storage.clearSessions(username);
       await storage.log("dev_clear_sessions", access.user.username, username ? `user=${username}` : "all sessions");
       res.json({ ok: true, count });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to clear sessions" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to clear sessions" });
     }
   });
 
   app.post(api.devTools.getConfig.path, async (req, res) => {
     const { token, devCode } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       const config = await storage.getConfig();
       res.json({ ok: true, config });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to get config" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to get config" });
     }
   });
 
   app.post(api.devTools.setConfig.path, async (req, res) => {
     const { token, devCode, key, value } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       await storage.setConfig(key, value);
       await storage.log("dev_set_config", access.user.username, `${key}=${value}`);
       res.json({ ok: true });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to set config" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to set config" });
     }
   });
 
   app.post(api.devTools.resetPassword.path, async (req, res) => {
     const { token, devCode, username, newPassword } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
 
     try {
       const passhash = await hashPassword(newPassword);
@@ -4122,27 +4111,27 @@ ${pageContext}` : ''}`;
       await storage.log("dev_reset_password", access.user.username, `user=${username}`);
       res.json({ ok: true, user: updated, message: `Password reset for ${username}` });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to reset password" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to reset password" });
     }
   });
 
   app.post(api.devTools.updateUserRole.path, async (req, res) => {
     const { token, devCode, username, role, position } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       await storage.updateUserRole(username, role, position);
       await storage.log("dev_update_role", access.user.username, `user=${username} role=${role} position=${position || ""}`);
       res.json({ ok: true, message: `Role updated for ${username}` });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to update role" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to update role" });
     }
   });
 
   app.post(api.devTools.getTableInfo.path, async (req, res) => {
     const { token, devCode, tableName } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     try {
       if (tableName) {
         const rows = await storage.getTableRows(tableName, 100);
@@ -4152,38 +4141,38 @@ ${pageContext}` : ''}`;
         res.json({ ok: true, tables });
       }
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to get table info" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to get table info" });
     }
   });
 
   app.post(api.devTools.clearTestData.path, async (req, res) => {
     const { token, devCode, tableName } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
     const allowedTables = ["shifts", "systemlog", "sessions", "swap_requests", "daily_sales_reports", "manager_requests"];
-    if (!allowedTables.includes(tableName)) return res.json({ ok: false, message: `Cannot clear table: ${tableName}` });
+    if (!allowedTables.includes(tableName)) return res.status(400).json({ ok: false, message: `Cannot clear table: ${tableName}` });
     try {
       const count = await storage.clearTable(tableName);
       await storage.log("dev_clear_table", access.user.username, `table=${tableName} count=${count}`);
       res.json({ ok: true, count, message: `Cleared ${count} rows from ${tableName}` });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to clear table" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to clear table" });
     }
   });
 
   app.post(api.devTools.executeQuery.path, async (req, res) => {
     const { token, devCode, query } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
 
     const cleanQuery = query.trim();
     const upperQuery = cleanQuery.toUpperCase();
     const noComments = upperQuery.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--.*$/gm, "").trim();
 
-    if (!noComments.startsWith("SELECT")) return res.json({ ok: false, message: "Only SELECT queries are allowed" });
+    if (!noComments.startsWith("SELECT")) return res.status(400).json({ ok: false, message: "Only SELECT queries are allowed" });
     const dangerousPatterns = [/;.*\S/i, /\bDROP\b/i, /\bDELETE\b/i, /\bINSERT\b/i, /\bUPDATE\b/i, /\bTRUNCATE\b/i, /\bALTER\b/i, /\bCREATE\b/i, /\bGRANT\b/i, /\bREVOKE\b/i, /\bEXECUTE\b/i];
     for (const pattern of dangerousPatterns) {
-      if (pattern.test(cleanQuery)) return res.json({ ok: false, message: "Query contains disallowed keywords" });
+      if (pattern.test(cleanQuery)) return res.status(400).json({ ok: false, message: "Query contains disallowed keywords" });
     }
 
     try {
@@ -4191,15 +4180,15 @@ ${pageContext}` : ''}`;
       await storage.log("dev_execute_query", access.user.username, cleanQuery.substring(0, 100));
       res.json({ ok: true, result });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Query failed" });
+      res.status(500).json({ ok: false, message: e?.message || "Query failed" });
     }
   });
 
   app.post(api.devTools.bulkImportUsers.path, async (req, res) => {
     const { token, devCode, users: inputUsers } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
-    if (!Array.isArray(inputUsers) || inputUsers.length === 0) return res.json({ ok: false, message: "No users provided" });
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
+    if (!Array.isArray(inputUsers) || inputUsers.length === 0) return res.status(400).json({ ok: false, message: "No users provided" });
 
     let imported = 0, failed = 0;
     const errors: string[] = [];
@@ -4234,12 +4223,12 @@ ${pageContext}` : ''}`;
   app.post(api.devTools.updateUserProfile.path, async (req, res) => {
     const { token, devCode, username, updates } = req.body;
     const access = await verifyDevAccess(token, devCode);
-    if (!access.ok) return res.json(access);
-    if (!username || typeof username !== "string") return res.json({ ok: false, message: "Username is required" });
+    if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
+    if (!username || typeof username !== "string") return res.status(400).json({ ok: false, message: "Username is required" });
 
     try {
       const user = await storage.getUser(username);
-      if (!user) return res.json({ ok: false, message: `User ${username} not found` });
+      if (!user) return res.status(404).json({ ok: false, message: `User ${username} not found` });
 
       const allowedFields = ["fullName", "fullNameTh", "nickName", "phone", "email", "active"];
       const sanitizedUpdates: Record<string, any> = {};
@@ -4254,13 +4243,13 @@ ${pageContext}` : ''}`;
           }
         }
       }
-      if (Object.keys(sanitizedUpdates).length === 0) return res.json({ ok: false, message: "No valid updates provided" });
+      if (Object.keys(sanitizedUpdates).length === 0) return res.status(400).json({ ok: false, message: "No valid updates provided" });
 
       await storage.updateUser(username, sanitizedUpdates);
       await storage.log("dev_update_profile", access.user.username, `user=${username} updates=${JSON.stringify(sanitizedUpdates)}`);
       res.json({ ok: true, message: `Profile updated for ${username}` });
     } catch (e: any) {
-      res.json({ ok: false, message: e?.message || "Failed to update profile" });
+      res.status(500).json({ ok: false, message: e?.message || "Failed to update profile" });
     }
   });
 

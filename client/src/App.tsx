@@ -204,19 +204,22 @@ function Router() {
 }
 
 import { ThemeProvider } from "next-themes";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light">
-      <QueryClientProvider client={queryClient}>
-        <I18nProvider>
-          <AuthProvider>
-            <Router />
-            <PWAInstallPrompt />
-          </AuthProvider>
-        </I18nProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <QueryClientProvider client={queryClient}>
+          <I18nProvider>
+            <AuthProvider>
+              <Router />
+              <PWAInstallPrompt />
+            </AuthProvider>
+          </I18nProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

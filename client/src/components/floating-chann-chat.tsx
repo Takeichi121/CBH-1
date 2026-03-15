@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, ChevronDown } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -18,13 +18,6 @@ interface ChatMessage {
   suggestedReplies?: string[];
 }
 
-type ModelProvider = "claude" | "openai" | "gemini";
-
-const MODEL_OPTIONS: { value: ModelProvider; label: string; icon: string }[] = [
-  { value: "claude", label: "Claude", icon: "🟣" },
-  { value: "openai", label: "GPT-4o", icon: "🟢" },
-  { value: "gemini", label: "Gemini", icon: "🔵" },
-];
 
 export function FloatingChannChat() {
   const { user } = useAuth();
@@ -37,9 +30,6 @@ export function FloatingChannChat() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<ModelProvider>("claude");
-  const [showModelPicker, setShowModelPicker] = useState(false);
-  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const greetingInitiated = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -89,9 +79,6 @@ export function FloatingChannChat() {
           if (dataStr.trim() === "[DONE]") break;
           try {
             const parsed = JSON.parse(dataStr);
-            if (parsed.activeProvider) {
-              setActiveProvider(parsed.activeProvider);
-            }
             if (parsed.thinking) {
               setMessages(prev => {
                 const n = [...prev];
@@ -144,7 +131,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: selectedModel }),
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: "claude" }),
         });
         await handleSSEStream(res);
       } catch (err) {
@@ -327,7 +314,7 @@ export function FloatingChannChat() {
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: selectedModel };
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: "claude" };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -406,7 +393,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: selectedModel }),
+          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: "claude" }),
         });
         await handleSSEStream(res);
       } catch (err) {
@@ -446,7 +433,7 @@ export function FloatingChannChat() {
         body: JSON.stringify({
           token,
           message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
-          provider: selectedModel,
+          provider: "claude",
         }),
       });
 
@@ -481,8 +468,6 @@ export function FloatingChannChat() {
       sendMessage();
     }
   };
-
-  const currentModelOption = MODEL_OPTIONS.find(m => m.value === selectedModel) || MODEL_OPTIONS[0];
 
   if (!user) return null;
 
@@ -519,7 +504,7 @@ export function FloatingChannChat() {
                   <h3 className="font-bold text-white text-sm" data-testid="text-chann-title">Chann AI</h3>
                   <p className="text-[11px] text-violet-300/80" data-testid="text-chann-subtitle">
                     {isStreaming
-                      ? `กำลังพิมพ์...${activeProvider ? ` (${MODEL_OPTIONS.find(m => m.value === activeProvider)?.label || activeProvider})` : ""}`
+                      ? "กำลังพิมพ์..."
                       : isLoading
                         ? "กำลังวิเคราะห์..."
                         : "ผู้ช่วยอัจฉริยะ"}
@@ -527,36 +512,6 @@ export function FloatingChannChat() {
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
-                <div className="relative">
-                  <button
-                    onClick={() => setShowModelPicker(!showModelPicker)}
-                    className="flex items-center gap-1 text-[11px] text-violet-200 bg-white/10 hover:bg-white/15 rounded-lg px-2 py-1.5 font-medium transition-colors"
-                    data-testid="button-model-selector"
-                  >
-                    <span>{currentModelOption.icon}</span>
-                    <span>{currentModelOption.label}</span>
-                    <ChevronDown className="w-3 h-3 opacity-60" />
-                  </button>
-                  {showModelPicker && (
-                    <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl shadow-black/40 py-1 z-10 min-w-[130px]" data-testid="container-model-picker">
-                      {MODEL_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => { setSelectedModel(opt.value); setShowModelPicker(false); }}
-                          className={cn(
-                            "flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left transition-colors",
-                            selectedModel === opt.value ? "bg-violet-600/30 text-white" : "text-slate-300 hover:bg-white/5"
-                          )}
-                          data-testid={`button-model-${opt.value}`}
-                        >
-                          <span>{opt.icon}</span>
-                          <span>{opt.label}</span>
-                          {selectedModel === opt.value && <CheckCircle2 className="w-3 h-3 ml-auto text-violet-400" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 <Button
                   variant="ghost"
                   size="icon"

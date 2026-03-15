@@ -4,10 +4,60 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initProactiveChann } from "./services/proactive-agent";
+import { pool } from "./db";
+import { getSocketIO } from "./socket";
+
+let isShuttingDown = false;
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Promise Rejection:", reason);
+  // In production, escalate to graceful shutdown; in dev, log only
+  if (process.env.NODE_ENV === "production") {
+    gracefulShutdown("unhandledRejection");
+  }
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  gracefulShutdown("uncaughtException");
+});
 
 const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);
+
+function gracefulShutdown(signal: string) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.error(`[shutdown] Received ${signal}, shutting down gracefully...`);
+
+  // Determine exit code: uncaughtException is fatal, other signals are clean
+  const exitCode = signal === "uncaughtException" ? 1 : 0;
+
+  const forceTimer = setTimeout(() => {
+    console.error("[shutdown] Timed out after 10s, forcing exit");
+    process.exit(1);
+  }, 10000);
+  forceTimer.unref();
+
+  const io = getSocketIO();
+  if (io) {
+    try { io.close(); } catch (_) {}
+  }
+
+  httpServer.close(() => {
+    console.error("[shutdown] HTTP server closed");
+    pool.end().then(() => {
+      console.error("[shutdown] Database pool closed");
+      clearTimeout(forceTimer);
+      process.exit(exitCode);
+    }).catch((err) => {
+      console.error("[shutdown] Error closing database pool:", err);
+      clearTimeout(forceTimer);
+      process.exit(1);
+    });
+  });
+}
 
 declare module "http" {
   interface IncomingMessage {
@@ -133,6 +183,9 @@ app.use((req, res, next) => {
       console.error("Server error:", err);
       process.exit(1);
     });
+
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);

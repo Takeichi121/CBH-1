@@ -278,6 +278,19 @@ const chatImageUpload = multer({
   }
 });
 
+import type { Request, Response, NextFunction, RequestHandler } from "express";
+
+function safe(fn: (req: Request, res: Response, next: NextFunction) => Promise<any>): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch((err: Error) => {
+      console.error(`Route error [${req.method} ${req.path}]:`, err);
+      if (!res.headersSent) {
+        res.status(500).json({ ok: false, message: "Internal server error" });
+      }
+    });
+  };
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // ==========================================
@@ -310,7 +323,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   // 📸 Chat Image Upload
   // ==========================================
-  app.post("/api/chat/upload-image", chatImageUpload.single("image"), async (req, res) => {
+  app.post("/api/chat/upload-image", chatImageUpload.single("image"), safe(async (req, res) => {
     try {
       const token = req.body.token;
       if (!token) return res.status(401).json({ ok: false, message: "Token required" });
@@ -326,12 +339,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       console.error("Chat image upload error:", e);
       res.status(500).json({ ok: false, message: e.message || "Upload failed" });
     }
-  });
+  }));
 
   // ==========================================
   // 🌐 Internal Web Search/Fetch for Chann
   // ==========================================
-  app.post("/api/internal/web-search", async (req, res) => {
+  app.post("/api/internal/web-search", safe(async (req, res) => {
     try {
       const { query } = req.body;
       if (!query) return res.json({ error: "query required" });
@@ -356,9 +369,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (e: any) {
       res.json({ error: e.message || "Web search failed" });
     }
-  });
+  }));
 
-  app.post("/api/internal/web-fetch", async (req, res) => {
+  app.post("/api/internal/web-fetch", safe(async (req, res) => {
     try {
       const { url } = req.body;
       if (!url) return res.json({ error: "url required" });
@@ -380,12 +393,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (e: any) {
       res.json({ error: e.message || "Web fetch failed" });
     }
-  });
+  }));
 
   // ==========================================
   // 🤖 Chann AI Assistant (SSE Streaming)
   // ==========================================
-  app.post("/api/chann", async (req, res) => {
+  app.post("/api/chann", safe(async (req, res) => {
     try {
       const { token, message, imageBase64, pageContext, silentMessage, provider: reqProvider } = req.body;
       if (!token || (!message && !imageBase64)) {
@@ -2691,10 +2704,10 @@ ${pageContext}` : ''}`;
         // response already ended
       }
     }
-  });
+  }));
 
   // Chann AI: Load chat history
-  app.post("/api/chann/history", async (req, res) => {
+  app.post("/api/chann/history", safe(async (req, res) => {
     try {
       const { token } = req.body;
       if (!token) return res.status(401).json({ ok: false, message: "Token required" });
@@ -2712,10 +2725,10 @@ ${pageContext}` : ''}`;
       console.error("Chann history error:", e);
       res.status(500).json({ ok: false, message: "Failed to fetch history" });
     }
-  });
+  }));
 
   // Chann AI: Clear chat history
-  app.post("/api/chann/clear", async (req, res) => {
+  app.post("/api/chann/clear", safe(async (req, res) => {
     try {
       const { token } = req.body;
       if (!token) return res.status(401).json({ ok: false, message: "Token required" });
@@ -2729,20 +2742,20 @@ ${pageContext}` : ''}`;
       console.error("Chann clear error:", e);
       res.status(500).json({ ok: false, message: "Failed to clear history" });
     }
-  });
+  }));
 
   // ==========================================
   // 🔧 System & Auth
   // ==========================================
 
   // Ping
-  app.post(api.system.ping.path, async (req, res) => {
+  app.post(api.system.ping.path, safe(async (req, res) => {
     const cfg = await storage.getConfig();
     res.json({ ok: true, ts: nowIso(), closed: isSystemClosed(cfg), branch: process.env.BRANCH_NAME || "Grand Diamond" });
-  });
+  }));
 
   // Setup
-  app.post(api.system.setup.path, async (req, res) => {
+  app.post(api.system.setup.path, safe(async (req, res) => {
     const cfg = await storage.getConfig();
     for (const k of Object.keys(DEFAULT_CAPACITY)) {
       if (!("cap_" + k in cfg)) await storage.setConfig("cap_" + k, String(DEFAULT_CAPACITY[k as keyof typeof DEFAULT_CAPACITY]));
@@ -2766,10 +2779,10 @@ ${pageContext}` : ''}`;
 
     await storage.log("setup_ok", "system", "setup completed");
     res.json({ ok: true, message: "setup ok" });
-  });
+  }));
 
   // Auth: Login
-  app.post(api.auth.login.path, async (req, res) => {
+  app.post(api.auth.login.path, safe(async (req, res) => {
     const { username, password, developerMode } = req.body;
     if (!username || !password) return res.status(400).json({ ok: false, message: "กรอกให้ครบ" });
 
@@ -2795,10 +2808,10 @@ ${pageContext}` : ''}`;
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
     res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
-  });
+  }));
 
   // Auth: Validate
-  app.post(api.auth.validate.path, async (req, res) => {
+  app.post(api.auth.validate.path, safe(async (req, res) => {
     const { token } = req.body;
     if (!token) return res.status(401).json({ ok: false });
     const session = await storage.getSession(token);
@@ -2815,17 +2828,17 @@ ${pageContext}` : ''}`;
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
     res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
-  });
+  }));
 
   // Auth: Logout
-  app.post(api.auth.logout.path, async (req, res) => {
+  app.post(api.auth.logout.path, safe(async (req, res) => {
     const { token } = req.body;
     if (token) await storage.deleteSession(token);
     res.json({ ok: true });
-  });
+  }));
 
   // Register Staff
-  app.post(api.auth.registerStaff.path, async (req, res) => {
+  app.post(api.auth.registerStaff.path, safe(async (req, res) => {
     const cfg = await storage.getConfig();
     if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword } = req.body;
@@ -2842,10 +2855,10 @@ ${pageContext}` : ''}`;
     });
     await storage.log("register_staff", username.toLowerCase(), "fullName=" + fullName);
     res.json({ ok: true, username: username.toLowerCase() });
-  });
+  }));
 
   // Register Manager
-  app.post(api.auth.registerManager.path, async (req, res) => {
+  app.post(api.auth.registerManager.path, safe(async (req, res) => {
     const cfg = await storage.getConfig();
     if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
@@ -2863,10 +2876,10 @@ ${pageContext}` : ''}`;
     });
     await storage.log("register_manager", username.toLowerCase(), `fullName=${fullName}, position=store_manager`);
     res.json({ ok: true, username: username.toLowerCase() });
-  });
+  }));
 
   // Register Area Manager
-  app.post("/api/registerArea", async (req, res) => {
+  app.post("/api/registerArea", safe(async (req, res) => {
     const cfg = await storage.getConfig();
     if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
@@ -2884,10 +2897,10 @@ ${pageContext}` : ''}`;
     });
     await storage.log("register_area", username.toLowerCase(), `fullName=${fullName}, position=area_manager`);
     res.json({ ok: true, username: username.toLowerCase() });
-  });
+  }));
 
   // Verify Password (for Area lock unlock)
-  app.post("/api/auth/verify-password", async (req, res) => {
+  app.post("/api/auth/verify-password", safe(async (req, res) => {
     try {
       const { token, password } = req.body;
       if (!token || !password) return res.status(400).json({ ok: false });
@@ -2900,10 +2913,10 @@ ${pageContext}` : ''}`;
     } catch {
       res.status(500).json({ ok: false });
     }
-  });
+  }));
 
   // Complete Profile
-  app.post(api.auth.completeProfile.path, async (req, res) => {
+  app.post(api.auth.completeProfile.path, safe(async (req, res) => {
     const { token, nickName, phone, email } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.status(401).json({ ok: false, message: "session หมดอายุ" });
@@ -2917,10 +2930,10 @@ ${pageContext}` : ''}`;
     await storage.updateUser(u.username, { nickName, phone, email });
     await storage.log("complete_profile", u.username, `nickName=${nickName}, phone=${phone}, email=${email}`);
     res.json({ ok: true });
-  });
+  }));
 
   // Auth: Force Change Password
-  app.post("/api/forceChangePassword", async (req, res) => {
+  app.post("/api/forceChangePassword", safe(async (req, res) => {
     try {
       const { token, newPassword } = req.body;
       if (!token || !newPassword) {
@@ -2941,10 +2954,10 @@ ${pageContext}` : ''}`;
       console.error("Force change password error:", e);
       res.status(500).json({ ok: false, message: e.message || "Failed to update password" });
     }
-  });
+  }));
 
   // Auth: Request Password Reset (send OTP via email)
-  app.post(api.auth.requestPasswordReset.path, async (req, res) => {
+  app.post(api.auth.requestPasswordReset.path, safe(async (req, res) => {
     const parsed = api.auth.requestPasswordReset.input.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ถูกต้อง / Please enter valid information" });
@@ -3009,10 +3022,10 @@ ${pageContext}` : ''}`;
 
     await storage.log("password_reset_request", user.username, `otp sent to ${email}`);
     res.json({ ok: true, message: "หากอีเมลนี้มีในระบบ คุณจะได้รับ OTP / If this email exists, you will receive an OTP" });
-  });
+  }));
 
   // Auth: Verify OTP
-  app.post(api.auth.verifyOtp.path, async (req, res) => {
+  app.post(api.auth.verifyOtp.path, safe(async (req, res) => {
     const parsed = api.auth.verifyOtp.input.safeParse(req.body);
     if (!parsed.success) {
       return res.json({ ok: false, message: "ข้อมูลไม่ครบหรือไม่ถูกต้อง / Missing or invalid data" });
@@ -3067,10 +3080,10 @@ ${pageContext}` : ''}`;
       .where(eq(passwordResetOtps.id, otpRecord.id));
     
     res.json({ ok: true, resetToken, message: "OTP ถูกต้อง / OTP verified" });
-  });
+  }));
 
   // Auth: Reset Password
-  app.post(api.auth.resetPassword.path, async (req, res) => {
+  app.post(api.auth.resetPassword.path, safe(async (req, res) => {
     const parsed = api.auth.resetPassword.input.safeParse(req.body);
     if (!parsed.success) {
       return res.json({ ok: false, message: "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร / Password must be at least 4 characters" });
@@ -3111,13 +3124,13 @@ ${pageContext}` : ''}`;
     await storage.log("password_reset_success", otpRecord.username, "password changed via OTP");
     
     res.json({ ok: true, message: "เปลี่ยนรหัสผ่านสำเร็จ / Password changed successfully" });
-  });
+  }));
 
   // ==========================================
   // ⚙️ Settings & Config
   // ==========================================
 
-  app.post(api.settings.get.path, async (req, res) => {
+  app.post(api.settings.get.path, safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "session หมดอายุ" });
@@ -3139,9 +3152,9 @@ ${pageContext}` : ''}`;
     const systemClosed = isSystemClosed(cfg);
 
     res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod, maintenance, systemClosed });
-  });
+  }));
 
-  app.post(api.settings.update.path, async (req, res) => {
+  app.post(api.settings.update.path, safe(async (req, res) => {
     const { token, capacity, lockTimePeriod, maintenance } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3166,13 +3179,13 @@ ${pageContext}` : ''}`;
 
     await storage.log("update_settings", u.username, JSON.stringify({ capacity, lockTimePeriod, maintenance }));
     res.json({ ok: true });
-  });
+  }));
 
   // ==========================================
   // 📅 Shifts
   // ==========================================
 
-  app.post(api.shifts.getMyWeek.path, async (req, res) => {
+  app.post(api.shifts.getMyWeek.path, safe(async (req, res) => {
     const { token, anyDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3188,9 +3201,9 @@ ${pageContext}` : ''}`;
     const closed = !isManager && isSystemClosed(cfg);
 
     res.json({ ok: true, weekRange: range, shifts: myShifts, items: myShifts, closed });
-  });
+  }));
 
-  app.post(api.shifts.getMyMonth.path, async (req, res) => {
+  app.post(api.shifts.getMyMonth.path, safe(async (req, res) => {
     const { token, month, year } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3205,9 +3218,9 @@ ${pageContext}` : ''}`;
     const myShifts = shifts.filter(s => s.username === u.username);
 
     res.json({ ok: true, month, year, shifts: myShifts });
-  });
+  }));
 
-  app.post(api.shifts.getManagerTeamMonth.path, async (req, res) => {
+  app.post(api.shifts.getManagerTeamMonth.path, safe(async (req, res) => {
     const { token, month, year } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3232,9 +3245,9 @@ ${pageContext}` : ''}`;
       managers: managers.map(m => ({ username: m.username, fullName: m.fullName, fullNameTh: m.fullNameTh, nickName: m.nickName, position: m.position, role: m.role })),
       shifts: managerShifts 
     });
-  });
+  }));
 
-  app.post(api.shifts.book.path, async (req, res) => {
+  app.post(api.shifts.book.path, safe(async (req, res) => {
     const { token, date, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3270,9 +3283,9 @@ ${pageContext}` : ''}`;
     });
     await storage.log("book_shift", u.username, `${date} ${shiftGroup}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post(api.shifts.cancel.path, async (req, res) => {
+  app.post(api.shifts.cancel.path, safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3286,9 +3299,9 @@ ${pageContext}` : ''}`;
     await storage.deleteShift(u.username, date);
     await storage.log("cancel_shift", u.username, date);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post(api.shifts.getRoster.path, async (req, res) => {
+  app.post(api.shifts.getRoster.path, safe(async (req, res) => {
     const { token, anyDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3299,13 +3312,13 @@ ${pageContext}` : ''}`;
     const shifts = await storage.getShiftsInRange(range.start, range.end);
     const allUsers = await storage.getUsers();
     res.json({ ok: true, weekRange: range, roster: shifts, users: allUsers });
-  });
+  }));
 
   // ==========================================
   // 📊 Unified Dashboard & Cross-System APIs
   // ==========================================
 
-  app.post("/api/unified-dashboard", async (req, res) => {
+  app.post("/api/unified-dashboard", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3368,9 +3381,9 @@ ${pageContext}` : ''}`;
       console.error("Unified dashboard error:", e);
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
-  app.post("/api/shift-count-for-date", async (req, res) => {
+  app.post("/api/shift-count-for-date", safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3396,13 +3409,13 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // ==========================================
   // 👤 User Management & Admin
   // ==========================================
 
-  app.post("/api/updateProfile", async (req, res) => {
+  app.post("/api/updateProfile", safe(async (req, res) => {
     const { token, fullName, nickName, phone, email } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3420,9 +3433,9 @@ ${pageContext}` : ''}`;
     const [updated] = await db.update(users).set(updateData).where(eq(users.username, u.username)).returning();
     if (!updated) return res.json({ ok: false, message: "Update failed" });
     res.json({ ok: true, user: updated });
-  });
+  }));
 
-  app.post("/api/updateProfilePicture", async (req, res) => {
+  app.post("/api/updateProfilePicture", safe(async (req, res) => {
     const { token, profilePicture } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3439,9 +3452,9 @@ ${pageContext}` : ''}`;
     const [updated] = await db.update(users).set({ profilePicture }).where(eq(users.username, u.username)).returning();
     await storage.log("update_profile_picture", u.username, "profile picture updated");
     res.json({ ok: true, user: updated });
-  });
+  }));
 
-  app.post("/api/changePassword", async (req, res) => {
+  app.post("/api/changePassword", safe(async (req, res) => {
     const { token, currentPassword, newPassword } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3453,9 +3466,9 @@ ${pageContext}` : ''}`;
     const [updated] = await db.update(users).set({ passhash: await hashPassword(newPassword), mustChangePassword: 0 }).where(eq(users.username, u.username)).returning();
     await storage.log("change_password", u.username, "password updated");
     res.json({ ok: true, user: updated });
-  });
+  }));
 
-  app.post("/api/updateUserStatus", async (req, res) => {
+  app.post("/api/updateUserStatus", safe(async (req, res) => {
     const { token, username, active } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3465,9 +3478,9 @@ ${pageContext}` : ''}`;
     await storage.updateUserStatus(username, active);
     await storage.log("update_user_status", u.username, `set ${username} active=${active}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post("/api/admin/deleteUser", async (req, res) => {
+  app.post("/api/admin/deleteUser", safe(async (req, res) => {
     const { token, username } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3482,9 +3495,9 @@ ${pageContext}` : ''}`;
     await db.delete(users).where(eq(users.username, username));
     await storage.log("delete_user", u.username, `deleted ${username}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post("/api/admin/resignUser", async (req, res) => {
+  app.post("/api/admin/resignUser", safe(async (req, res) => {
     const { token, username } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3498,7 +3511,7 @@ ${pageContext}` : ''}`;
     await db.update(users).set({ active: 2 }).where(eq(users.username, username));
     await storage.log("resign_user", u.username, `marked ${username} as resigned`);
     res.json({ ok: true });
-  });
+  }));
 
   const positionHierarchy: Record<string, number> = {
     "admin": 0, "store_manager": 1, "assistant_store_manager": 2, "shift_manager": 3, "management_trainee": 4, "staff": 5,
@@ -3534,7 +3547,7 @@ ${pageContext}` : ''}`;
     return false;
   };
 
-  app.post("/api/admin/createProfile", async (req, res) => {
+  app.post("/api/admin/createProfile", safe(async (req, res) => {
     const { token, fullName, fullNameTh, password, role, position, nickName, phone, email, mustChangePassword } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3557,9 +3570,9 @@ ${pageContext}` : ''}`;
 
     await storage.log("create_profile", u.username, `created ${username} role=${role} position=${position || "none"}`);
     res.json({ ok: true, username });
-  });
+  }));
 
-  app.post("/api/admin/updateUserRole", async (req, res) => {
+  app.post("/api/admin/updateUserRole", safe(async (req, res) => {
     const { token, username, role, position } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3574,9 +3587,9 @@ ${pageContext}` : ''}`;
     await storage.updateUserRole(username, role, position);
     await storage.log("update_user_role", u.username, `set ${username} role=${role} position=${position || "none"}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post("/api/admin/getUsers", async (req, res) => {
+  app.post("/api/admin/getUsers", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3585,9 +3598,9 @@ ${pageContext}` : ''}`;
 
     const allUsers = await storage.getUsers();
     res.json({ ok: true, users: allUsers.map(user => ({ ...user, passhash: undefined })), creatorRank: getUserRank(u), canManageAll: canManageUsers(u) });
-  });
+  }));
 
-  app.post("/api/admin/updateUserProfile", async (req, res) => {
+  app.post("/api/admin/updateUserProfile", safe(async (req, res) => {
     const { token, username, nickName, phone, email, position } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3610,13 +3623,13 @@ ${pageContext}` : ''}`;
     await storage.updateUser(username, updates);
     await storage.log("admin_update_profile", u.username, `updated ${username}: ${JSON.stringify(updates)}`);
     res.json({ ok: true });
-  });
+  }));
 
   // ==========================================
   // 📋 Shifts Management (Admin/Manager)
   // ==========================================
 
-  app.post(api.shifts.setForUser.path, async (req, res) => {
+  app.post(api.shifts.setForUser.path, safe(async (req, res) => {
     const { token, username, date, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3633,9 +3646,9 @@ ${pageContext}` : ''}`;
     });
     await storage.log("manager_set_shift", u.username, `for ${username} on ${date}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post(api.shifts.deleteForUser.path, async (req, res) => {
+  app.post(api.shifts.deleteForUser.path, safe(async (req, res) => {
     const { token, username, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3645,9 +3658,9 @@ ${pageContext}` : ''}`;
     await storage.deleteShift(username, date);
     await storage.log("manager_delete_shift", u.username, `for ${username} on ${date}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post("/api/deleteShift", async (req, res) => {
+  app.post("/api/deleteShift", safe(async (req, res) => {
     const { token, shiftId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3661,9 +3674,9 @@ ${pageContext}` : ''}`;
     } catch (err) {
       res.json({ ok: false, message: "Failed to delete" });
     }
-  });
+  }));
   
-  app.post("/api/deleteShiftsForWeek", async (req, res) => {
+  app.post("/api/deleteShiftsForWeek", safe(async (req, res) => {
     const { token, days } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3681,9 +3694,9 @@ ${pageContext}` : ''}`;
     } catch (err) {
       res.json({ ok: false, message: "Failed to delete" });
     }
-  });
+  }));
 
-  app.post("/api/updateShift", async (req, res) => {
+  app.post("/api/updateShift", safe(async (req, res) => {
     const { token, shiftId, shiftGroup, startTime, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
@@ -3697,9 +3710,9 @@ ${pageContext}` : ''}`;
     } catch (err) {
       res.json({ ok: false, message: "Failed to update" });
     }
-  });
+  }));
 
-  app.post(api.shifts.swap.path, async (req, res) => {
+  app.post(api.shifts.swap.path, safe(async (req, res) => {
     const { token, myDate, targetUsername, targetDate } = req.body;
       if (!token || !myDate || !targetDate || !targetUsername) return res.json({ ok: false, message: "Missing fields" });
 
@@ -3727,9 +3740,9 @@ ${pageContext}` : ''}`;
 
     await storage.log("swap_request", me.username, `request swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
     return res.json({ ok: true, message: "Swap request submitted for manager approval" });
-  });
+  }));
 
-  app.post(api.shifts.getSwapRequests.path, async (req, res) => {
+  app.post(api.shifts.getSwapRequests.path, safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3740,9 +3753,9 @@ ${pageContext}` : ''}`;
     const requests = await storage.getSwapRequests(isManager ? "pending" : undefined);
     const filteredRequests = isManager ? requests : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
     res.json({ ok: true, requests: filteredRequests });
-  });
+  }));
 
-  app.post(api.shifts.approveSwap.path, async (req, res) => {
+  app.post(api.shifts.approveSwap.path, safe(async (req, res) => {
     const { token, requestId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3770,9 +3783,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       return res.json({ ok: false, message: e?.message || "Swap failed" });
     }
-  });
+  }));
 
-  app.post(api.shifts.rejectSwap.path, async (req, res) => {
+  app.post(api.shifts.rejectSwap.path, safe(async (req, res) => {
     const { token, requestId, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3785,22 +3798,22 @@ ${pageContext}` : ''}`;
     await storage.updateSwapRequestStatus(requestId, "rejected", u.username, note);
     await storage.log("reject_swap", u.username, `rejected swap #${requestId}`);
     return res.json({ ok: true });
-  });
+  }));
 
-  app.post(api.shifts.getUserProfile.path, async (req, res) => {
+  app.post(api.shifts.getUserProfile.path, safe(async (req, res) => {
     const { token, username } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(username);
     if (!u) return res.json({ ok: false, message: "User not found" });
     res.json({ ok: true, user: { fullName: u.fullName || "", nickName: u.nickName || "", phone: u.phone || "", email: u.email || "", position: u.position || "Staff" } });
-  });
+  }));
 
   // ==========================================
   // 📊 Sales & Reports
   // ==========================================
 
-  app.post(api.sales.createReport.path, async (req, res) => {
+  app.post(api.sales.createReport.path, safe(async (req, res) => {
     const { token, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3814,26 +3827,26 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to create report" });
     }
-  });
+  }));
 
-  app.post(api.sales.getReport.path, async (req, res) => {
+  app.post(api.sales.getReport.path, safe(async (req, res) => {
     const { token, id } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const report = await storage.getDailySalesReport(id);
     if (!report) return res.json({ ok: false, message: "Report not found" });
     res.json({ ok: true, report });
-  });
+  }));
 
-  app.post(api.sales.getReports.path, async (req, res) => {
+  app.post(api.sales.getReports.path, safe(async (req, res) => {
     const { token, date, limit } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const reports = await storage.getDailySalesReports(date, limit);
     res.json({ ok: true, reports });
-  });
+  }));
 
-  app.post(api.sales.updateReport.path, async (req, res) => {
+  app.post(api.sales.updateReport.path, safe(async (req, res) => {
     const { token, id, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3847,9 +3860,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to update report" });
     }
-  });
+  }));
 
-  app.post(api.sales.deleteReport.path, async (req, res) => {
+  app.post(api.sales.deleteReport.path, safe(async (req, res) => {
     const { token, id } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3860,9 +3873,9 @@ ${pageContext}` : ''}`;
     if (!deleted) return res.json({ ok: false, message: "Report not found" });
     await storage.log("delete_sales_report", u.username, `id=${id}`);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post(api.sales.upsertReportByDate.path, async (req, res) => {
+  app.post(api.sales.upsertReportByDate.path, safe(async (req, res) => {
     const { token, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3883,17 +3896,17 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to save report" });
     }
-  });
+  }));
 
-  app.post(api.sales.getReportByDate.path, async (req, res) => {
+  app.post(api.sales.getReportByDate.path, safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const report = await storage.getDailySalesReportByDate(date);
     res.json({ ok: true, report: report || null });
-  });
+  }));
 
-  app.post(api.sales.getMtdSummary.path, async (req, res) => {
+  app.post(api.sales.getMtdSummary.path, safe(async (req, res) => {
     const { token, year, month, beforeDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3903,17 +3916,17 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get MTD summary" });
     }
-  });
+  }));
 
-  app.post(api.sales.getSettings.path, async (req, res) => {
+  app.post(api.sales.getSettings.path, safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const settings = await storage.getStoreSettings();
     res.json({ ok: true, settings });
-  });
+  }));
 
-  app.post(api.sales.updateSettings.path, async (req, res) => {
+  app.post(api.sales.updateSettings.path, safe(async (req, res) => {
     const { token, settings } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3927,9 +3940,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to update settings" });
     }
-  });
+  }));
 
-  app.post(api.sales.getDailyTargets.path, async (req, res) => {
+  app.post(api.sales.getDailyTargets.path, safe(async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3939,9 +3952,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get daily targets" });
     }
-  });
+  }));
 
-  app.post(api.sales.saveDailyTargets.path, async (req, res) => {
+  app.post(api.sales.saveDailyTargets.path, safe(async (req, res) => {
     const { token, targets } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3954,9 +3967,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to save daily targets" });
     }
-  });
+  }));
 
-  app.post(api.sales.getDailyTargetForDate.path, async (req, res) => {
+  app.post(api.sales.getDailyTargetForDate.path, safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3966,9 +3979,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get daily target" });
     }
-  });
+  }));
 
-  app.post(api.sales.getMtdTargetSum.path, async (req, res) => {
+  app.post(api.sales.getMtdTargetSum.path, safe(async (req, res) => {
     const { token, year, month, upToDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3978,9 +3991,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get MTD target sum" });
     }
-  });
+  }));
 
-  app.post(api.sales.getMonthlyReports.path, async (req, res) => {
+  app.post(api.sales.getMonthlyReports.path, safe(async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -3990,10 +4003,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get monthly reports" });
     }
-  });
+  }));
 
   // Sales History for Dashboard Chart (Manager/Admin only)
-  app.post("/api/sales/history", async (req, res) => {
+  app.post("/api/sales/history", safe(async (req, res) => {
     const { token, days = 7 } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4016,10 +4029,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get sales history" });
     }
-  });
+  }));
 
   // Weekly Sales Reports
-  app.post(api.sales.upsertWeeklyReport.path, async (req, res) => {
+  app.post(api.sales.upsertWeeklyReport.path, safe(async (req, res) => {
     const { token, report } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4031,17 +4044,17 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to save weekly report" });
     }
-  });
+  }));
 
-  app.post(api.sales.getWeeklyReport.path, async (req, res) => {
+  app.post(api.sales.getWeeklyReport.path, safe(async (req, res) => {
     const { token, weekStartDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const report = await storage.getWeeklySalesReport(weekStartDate);
     res.json({ ok: true, report: report || null });
-  });
+  }));
 
-  app.post(api.sales.getWeeklyReports.path, async (req, res) => {
+  app.post(api.sales.getWeeklyReports.path, safe(async (req, res) => {
     const { token, limit } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4051,9 +4064,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get weekly reports" });
     }
-  });
+  }));
 
-  app.post(api.sales.getDailySummaryForWeek.path, async (req, res) => {
+  app.post(api.sales.getDailySummaryForWeek.path, safe(async (req, res) => {
     const { token, weekStartDate, weekEndDate } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4067,9 +4080,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get weekly daily summary" });
     }
-  });
+  }));
 
-  app.post(api.sales.getWasteTargets.path, async (req, res) => {
+  app.post(api.sales.getWasteTargets.path, safe(async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4080,9 +4093,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get waste targets" });
     }
-  });
+  }));
 
-  app.post(api.sales.saveWasteTargets.path, async (req, res) => {
+  app.post(api.sales.saveWasteTargets.path, safe(async (req, res) => {
     const { token, year, month, wasteTarget } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4096,9 +4109,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to save waste targets" });
     }
-  });
+  }));
 
-  app.post(api.sales.saveDailySalesData.path, async (req, res) => {
+  app.post(api.sales.saveDailySalesData.path, safe(async (req, res) => {
     const { token, salesData } = req.body;
     if (!token || !salesData) return res.json({ ok: false, message: "Missing data" });
     if (!Array.isArray(salesData)) return res.json({ ok: false, message: "Invalid data format" });
@@ -4157,10 +4170,10 @@ ${pageContext}` : ''}`;
       console.error("Save Sales Error:", e);
       res.json({ ok: false, message: e?.message || "Failed" });
     } // <--- [4] CATCH ENDS
-  }); 
+  })); 
   // ==================== Manager Requests ====================
 
-  app.post(api.managerRequests.create.path, async (req, res) => {
+  app.post(api.managerRequests.create.path, safe(async (req, res) => {
     const { token, requestType, requestDate, startTime, endTime, dayOffReason, note } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4189,9 +4202,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to create request" });
     }
-  });
+  }));
 
-  app.post(api.managerRequests.getMyRequests.path, async (req, res) => {
+  app.post(api.managerRequests.getMyRequests.path, safe(async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4201,9 +4214,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get requests" });
     }
-  });
+  }));
 
-  app.post(api.managerRequests.getAllRequests.path, async (req, res) => {
+  app.post(api.managerRequests.getAllRequests.path, safe(async (req, res) => {
     const { token, status } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4220,9 +4233,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get requests" });
     }
-  });
+  }));
 
-  app.post(api.managerRequests.approve.path, async (req, res) => {
+  app.post(api.managerRequests.approve.path, safe(async (req, res) => {
     const { token, requestId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4240,9 +4253,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to approve request" });
     }
-  });
+  }));
 
-  app.post(api.managerRequests.reject.path, async (req, res) => {
+  app.post(api.managerRequests.reject.path, safe(async (req, res) => {
     const { token, requestId, reason } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4260,9 +4273,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to reject request" });
     }
-  });
+  }));
 
-  app.post(api.managerRequests.delete.path, async (req, res) => {
+  app.post(api.managerRequests.delete.path, safe(async (req, res) => {
     const { token, requestId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4279,9 +4292,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to delete request" });
     }
-  });
+  }));
 
-  app.post(api.managerRequests.getSelectWorkTimeCount.path, async (req, res) => {
+  app.post(api.managerRequests.getSelectWorkTimeCount.path, safe(async (req, res) => {
     const { token, year, month } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -4291,7 +4304,7 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get count" });
     }
-  });
+  }));
 
   // ==========================================
   // 🔨 Developer Tools
@@ -4310,7 +4323,7 @@ ${pageContext}` : ''}`;
     return { ok: false, message: "Access denied - Admin or Dev Code required", statusCode: 403 };
   };
 
-  app.post(api.devTools.getSystemLogs.path, async (req, res) => {
+  app.post(api.devTools.getSystemLogs.path, safe(async (req, res) => {
     const { token, devCode, limit = 100, action } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4320,9 +4333,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to get logs" });
     }
-  });
+  }));
 
-  app.post(api.devTools.getSessions.path, async (req, res) => {
+  app.post(api.devTools.getSessions.path, safe(async (req, res) => {
     const { token, devCode } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4332,9 +4345,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to get sessions" });
     }
-  });
+  }));
 
-  app.post(api.devTools.clearSessions.path, async (req, res) => {
+  app.post(api.devTools.clearSessions.path, safe(async (req, res) => {
     const { token, devCode, username } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4345,9 +4358,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to clear sessions" });
     }
-  });
+  }));
 
-  app.post(api.devTools.getConfig.path, async (req, res) => {
+  app.post(api.devTools.getConfig.path, safe(async (req, res) => {
     const { token, devCode } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4357,9 +4370,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to get config" });
     }
-  });
+  }));
 
-  app.post(api.devTools.setConfig.path, async (req, res) => {
+  app.post(api.devTools.setConfig.path, safe(async (req, res) => {
     const { token, devCode, key, value } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4370,9 +4383,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to set config" });
     }
-  });
+  }));
 
-  app.post(api.devTools.resetPassword.path, async (req, res) => {
+  app.post(api.devTools.resetPassword.path, safe(async (req, res) => {
     const { token, devCode, username, newPassword } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4385,9 +4398,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to reset password" });
     }
-  });
+  }));
 
-  app.post(api.devTools.updateUserRole.path, async (req, res) => {
+  app.post(api.devTools.updateUserRole.path, safe(async (req, res) => {
     const { token, devCode, username, role, position } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4398,9 +4411,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to update role" });
     }
-  });
+  }));
 
-  app.post(api.devTools.getTableInfo.path, async (req, res) => {
+  app.post(api.devTools.getTableInfo.path, safe(async (req, res) => {
     const { token, devCode, tableName } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4415,9 +4428,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to get table info" });
     }
-  });
+  }));
 
-  app.post(api.devTools.clearTestData.path, async (req, res) => {
+  app.post(api.devTools.clearTestData.path, safe(async (req, res) => {
     const { token, devCode, tableName } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4430,9 +4443,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to clear table" });
     }
-  });
+  }));
 
-  app.post(api.devTools.executeQuery.path, async (req, res) => {
+  app.post(api.devTools.executeQuery.path, safe(async (req, res) => {
     const { token, devCode, query } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4454,9 +4467,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Query failed" });
     }
-  });
+  }));
 
-  app.post(api.devTools.bulkImportUsers.path, async (req, res) => {
+  app.post(api.devTools.bulkImportUsers.path, safe(async (req, res) => {
     const { token, devCode, users: inputUsers } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4490,9 +4503,9 @@ ${pageContext}` : ''}`;
     }
     await storage.log("dev_bulk_import", access.user.username, `imported=${imported} failed=${failed}`);
     res.json({ ok: true, imported, failed, errors: errors.length > 0 ? errors : undefined, message: `Imported ${imported} users, ${failed} failed` });
-  });
+  }));
 
-  app.post(api.devTools.updateUserProfile.path, async (req, res) => {
+  app.post(api.devTools.updateUserProfile.path, safe(async (req, res) => {
     const { token, devCode, username, updates } = req.body;
     const access = await verifyDevAccess(token, devCode);
     if (!access.ok) return res.status(access.statusCode || 403).json({ ok: false, message: access.message });
@@ -4523,14 +4536,14 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed to update profile" });
     }
-  });
+  }));
 
   // ==========================================
   // 📦 Borrow Tracker (Using Direct DB)
   // ==========================================
 
   // Get Branches
-  app.post("/api/borrow/branches", async (req, res) => {
+  app.post("/api/borrow/branches", safe(async (req, res) => {
     try {
       const { token } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4540,10 +4553,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Add Branch
-  app.post("/api/borrow/branches/add", async (req, res) => {
+  app.post("/api/borrow/branches/add", safe(async (req, res) => {
     try {
       const { token, name, code } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4560,10 +4573,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Delete Branch
-  app.post("/api/borrow/branches/delete", async (req, res) => {
+  app.post("/api/borrow/branches/delete", safe(async (req, res) => {
     try {
       const { token, id } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4573,10 +4586,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Import Branches (Excel)
-  app.post("/api/borrow/branches/import", upload.single("file"), async (req, res) => {
+  app.post("/api/borrow/branches/import", upload.single("file"), safe(async (req, res) => {
     try {
       const token = req.body.token;
       const access = await verifyManagerAccess(token);
@@ -4606,10 +4619,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Get Items
-  app.post("/api/borrow/items", async (req, res) => {
+  app.post("/api/borrow/items", safe(async (req, res) => {
     try {
       const { token } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4619,10 +4632,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Add Item
-  app.post("/api/borrow/items/add", async (req, res) => {
+  app.post("/api/borrow/items/add", safe(async (req, res) => {
     try {
       const { token, name, code, units, category } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4641,10 +4654,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Update Item
-  app.post("/api/borrow/items/update", async (req, res) => {
+  app.post("/api/borrow/items/update", safe(async (req, res) => {
     try {
       const { token, id, units, category } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4654,10 +4667,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Delete Item
-  app.post("/api/borrow/items/delete", async (req, res) => {
+  app.post("/api/borrow/items/delete", safe(async (req, res) => {
     try {
       const { token, id } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4667,10 +4680,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Delete All Items
-  app.post("/api/borrow/items/delete-all", async (req, res) => {
+  app.post("/api/borrow/items/delete-all", safe(async (req, res) => {
     try {
       const { token } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4680,10 +4693,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Import Items (CSV/Excel) - Updated with Unit logic
-  app.post("/api/borrow/items/import", upload.single("file"), async (req, res) => {
+  app.post("/api/borrow/items/import", upload.single("file"), safe(async (req, res) => {
     try {
       const token = req.body.token;
       const access = await verifyManagerAccess(token);
@@ -4724,10 +4737,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Get Transactions
-  app.post("/api/borrow/transactions", async (req, res) => {
+  app.post("/api/borrow/transactions", safe(async (req, res) => {
     try {
       const { token, limit } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4739,10 +4752,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Add Transaction
-  app.post("/api/borrow/transactions/add", async (req, res) => {
+  app.post("/api/borrow/transactions/add", safe(async (req, res) => {
     try {
       const { token, ...txData } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4768,10 +4781,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Toggle Transaction Status
-  app.post("/api/borrow/transactions/toggle", async (req, res) => {
+  app.post("/api/borrow/transactions/toggle", safe(async (req, res) => {
     try {
       const { token, id } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4786,10 +4799,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Delete Transaction
-  app.post("/api/borrow/transactions/delete", async (req, res) => {
+  app.post("/api/borrow/transactions/delete", safe(async (req, res) => {
     try {
       const { token, id } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4799,10 +4812,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Dashboard
-  app.post("/api/borrow/dashboard", async (req, res) => {
+  app.post("/api/borrow/dashboard", safe(async (req, res) => {
     try {
       const { token } = req.body;
       const access = await verifyManagerAccess(token);
@@ -4827,14 +4840,14 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // ==========================================
   // ⚙️ Labor Cost Control (Using Direct DB)
   // ==========================================
 
   // Get Labor Settings
-  app.post("/api/settings/get-labor", async (req, res) => {
+  app.post("/api/settings/get-labor", safe(async (req, res) => {
     try {
       const result = await db.select().from(laborSettings).limit(1);
       const settings = result[0] || { 
@@ -4848,10 +4861,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Save Labor Settings
-  app.post("/api/settings/save-labor", async (req, res) => {
+  app.post("/api/settings/save-labor", safe(async (req, res) => {
     const { token, rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
@@ -4881,7 +4894,7 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Calculate Labor Logic Helper
   async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }) {
@@ -4925,7 +4938,7 @@ ${pageContext}` : ''}`;
   }
 
   // Save Daily Labor
-  app.post("/api/sales/save-daily-labor", async (req, res) => {
+  app.post("/api/sales/save-daily-labor", safe(async (req, res) => {
     const { token, date, actualHours, otHours } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
@@ -4945,10 +4958,10 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // Get Daily Labor
-  app.post("/api/sales/get-daily-labor", async (req, res) => {
+  app.post("/api/sales/get-daily-labor", safe(async (req, res) => {
     const { date } = req.body;
     try {
       const result = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date)).limit(1);
@@ -4956,14 +4969,14 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // ==========================================
   // 📂 DBF Import (Aloha POS Integration)
   // ==========================================
   
   // Parse DBF file and return data
-  app.post("/api/import/parse-dbf", upload.single("file"), async (req, res) => {
+  app.post("/api/import/parse-dbf", upload.single("file"), safe(async (req, res) => {
     const { token } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
@@ -4995,10 +5008,10 @@ ${pageContext}` : ''}`;
       console.error("DBF parse error:", e);
       res.json({ ok: false, message: e.message || "Failed to parse DBF file" });
     }
-  });
+  }));
 
   // Import employees from DBF
-  app.post("/api/import/employees-from-dbf", async (req, res) => {
+  app.post("/api/import/employees-from-dbf", safe(async (req, res) => {
     const { token, employees } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
@@ -5050,7 +5063,7 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // ==========================================
   // 💬 Socket.IO Chat System (Persistent)
@@ -5343,7 +5356,7 @@ ${pageContext}` : ''}`;
   });
 
   // ===== ROSTER IMPORT FROM EXCEL =====
-  app.post("/api/roster/import", async (req, res) => {
+  app.post("/api/roster/import", safe(async (req, res) => {
     try {
       const { token, data } = req.body;
 
@@ -5433,13 +5446,13 @@ ${pageContext}` : ''}`;
     } catch (error: any) {
       return res.json({ ok: false, message: error.message });
     }
-  });
+  }));
 
   // ==========================================
   // 📝 Code Proposals (Chann → Agent review)
   // ==========================================
 
-  app.post("/api/code-proposals/list", async (req, res) => {
+  app.post("/api/code-proposals/list", safe(async (req, res) => {
     const { token, status, limit } = req.body;
     const access = await verifyDevAccess(token);
     if (!access.ok) return res.json(access);
@@ -5462,9 +5475,9 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
-  app.post("/api/code-proposals/review", async (req, res) => {
+  app.post("/api/code-proposals/review", safe(async (req, res) => {
     const { token, proposalId, action, reviewNote } = req.body;
     const access = await verifyDevAccess(token);
     if (!access.ok) return res.json(access);
@@ -5523,12 +5536,12 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }
-  });
+  }));
 
   // ==========================================
   // Export Excel (Template-Based)
   // ==========================================
-  app.post("/api/export/sales-excel", async (req, res) => {
+  app.post("/api/export/sales-excel", safe(async (req, res) => {
     try {
       const { token, month, year, tableData, storeName,
               dutyDailyHours, ptWageRate, fixedCostDaily,
@@ -5676,12 +5689,12 @@ ${pageContext}` : ''}`;
       console.error("Export Excel Error:", error);
       res.status(500).json({ ok: false, message: "Internal server error during export" });
     }
-  });
+  }));
 
   // ==========================================
   // OData & API Key Management
   // ==========================================
-  app.post("/api/settings/get-export-key", async (req, res) => {
+  app.post("/api/settings/get-export-key", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -5695,9 +5708,9 @@ ${pageContext}` : ''}`;
       await storage.setConfig("EXPORT_API_KEY", key);
     }
     res.json({ ok: true, key });
-  });
+  }));
 
-  app.post("/api/settings/regenerate-export-key", async (req, res) => {
+  app.post("/api/settings/regenerate-export-key", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -5707,9 +5720,9 @@ ${pageContext}` : ''}`;
     const key = crypto.randomBytes(20).toString("hex");
     await storage.setConfig("EXPORT_API_KEY", key);
     res.json({ ok: true, key });
-  });
+  }));
 
-  app.get("/api/odata/sales", async (req, res) => {
+  app.get("/api/odata/sales", safe(async (req, res) => {
     const configs = await storage.getConfig();
     if (!configs["EXPORT_API_KEY"] || req.query.key !== configs["EXPORT_API_KEY"]) {
       return res.status(401).json({ error: "Unauthorized. Invalid API Key." });
@@ -5768,10 +5781,10 @@ ${pageContext}` : ''}`;
       "@odata.context": `${baseUrl}/api/odata/$metadata#DailySales`,
       value: value,
     });
-  });
+  }));
 
   // ── LINE OA Configuration ────────────────────────────────
-  app.post("/api/settings/save-line-config", async (req, res) => {
+  app.post("/api/settings/save-line-config", safe(async (req, res) => {
     const { token, channelToken, targetId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.status(401).json({ ok: false, message: "Session expired" });
@@ -5780,9 +5793,9 @@ ${pageContext}` : ''}`;
     if (channelToken) await storage.setConfig("LINE_CHANNEL_TOKEN", channelToken);
     if (targetId) await storage.setConfig("LINE_TARGET_ID", targetId);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post("/api/settings/get-line-config", async (req, res) => {
+  app.post("/api/settings/get-line-config", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -5797,9 +5810,9 @@ ${pageContext}` : ''}`;
       lastGroupId: cfg["LINE_LAST_GROUP_ID"] || "",
       lastGroupTs: cfg["LINE_LAST_GROUP_TS"] || ""
     });
-  });
+  }));
 
-  app.post("/api/settings/test-line", async (req, res) => {
+  app.post("/api/settings/test-line", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -5815,9 +5828,9 @@ ${pageContext}` : ''}`;
     } catch (err: any) {
       res.json({ ok: false, message: err.message });
     }
-  });
+  }));
 
-  app.post("/api/line/send-daily-report", async (req, res) => {
+  app.post("/api/line/send-daily-report", safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
@@ -5843,7 +5856,7 @@ ${pageContext}` : ''}`;
     } catch (err: any) {
       res.json({ ok: false, message: err.message });
     }
-  });
+  }));
 
   app.get("/api/line/webhook", (req, res) => {
     const challenge = req.query["hub.challenge"];
@@ -5851,7 +5864,7 @@ ${pageContext}` : ''}`;
     res.send("LINE Webhook OK");
   });
 
-  app.post("/api/line/webhook", async (req, res) => {
+  app.post("/api/line/webhook", safe(async (req, res) => {
     res.json({ ok: true });
     try {
       const events: any[] = req.body?.events || [];
@@ -5865,13 +5878,13 @@ ${pageContext}` : ''}`;
         }
       }
     } catch (_) {}
-  });
+  }));
 
   // ==========================================
   // Agent Requests Routes (Admin only)
   // ==========================================
 
-  app.post("/api/agent-requests", async (req, res) => {
+  app.post("/api/agent-requests", safe(async (req, res) => {
     const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
     if (!token) return res.json({ ok: false, message: "No token" });
     const session = await storage.getSession(token);
@@ -5917,9 +5930,9 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     })();
 
     return res.json({ ok: true, request });
-  });
+  }));
 
-  app.get("/api/agent-requests", async (req, res) => {
+  app.get("/api/agent-requests", safe(async (req, res) => {
     const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
     if (!token) return res.json({ ok: false, message: "No token" });
     const session = await storage.getSession(token);
@@ -5929,9 +5942,9 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     const requests = await storage.getAgentRequests();
     return res.json({ ok: true, requests });
-  });
+  }));
 
-  app.patch("/api/agent-requests/:id", async (req, res) => {
+  app.patch("/api/agent-requests/:id", safe(async (req, res) => {
     const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
     if (!token) return res.json({ ok: false, message: "No token" });
     const session = await storage.getSession(token);
@@ -5945,7 +5958,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     const updated = await storage.updateAgentRequestStatus(id, status);
     return res.json({ ok: true, request: updated });
-  });
+  }));
 
   return httpServer;
 }

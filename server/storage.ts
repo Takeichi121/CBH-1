@@ -2,6 +2,24 @@ import { db } from "./db";
 import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
+export class StorageError extends Error {
+  public readonly operation: string;
+  public readonly cause: unknown;
+
+  constructor(operation: string, cause: unknown) {
+    const msg = cause instanceof Error ? cause.message : String(cause);
+    super(`Storage operation "${operation}" failed: ${msg}`);
+    this.name = "StorageError";
+    this.operation = operation;
+    this.cause = cause;
+  }
+}
+
+function wrapStorageError(operation: string, err: unknown): never {
+  console.error(`Storage error [${operation}]:`, err);
+  throw new StorageError(operation, err);
+}
+
 type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
 
 export async function transaction<T>(fn: (tx: Tx) => Promise<T>) {
@@ -175,11 +193,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values({
-        ...user,
-        username: user.username.toLowerCase()
-    }).returning();
-    return newUser;
+    try {
+      const [newUser] = await db.insert(users).values({
+          ...user,
+          username: user.username.toLowerCase()
+      }).returning();
+      return newUser;
+    } catch (err) {
+      wrapStorageError("createUser", err);
+
+    }
   }
 
   async getUsers(): Promise<User[]> {
@@ -187,21 +210,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserStatus(username: string, active: number): Promise<void> {
-    await db.update(users)
-      .set({ active })
-      .where(eq(users.username, username.toLowerCase()));
+    try {
+      await db.update(users)
+        .set({ active })
+        .where(eq(users.username, username.toLowerCase()));
+    } catch (err) {
+      wrapStorageError("updateUserStatus", err);
+
+    }
   }
 
   async updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; active: number; mustChangePassword: number; position: string }>): Promise<void> {
-    await db.update(users)
-      .set(data)
-      .where(eq(users.username, username.toLowerCase()));
+    try {
+      await db.update(users)
+        .set(data)
+        .where(eq(users.username, username.toLowerCase()));
+    } catch (err) {
+      wrapStorageError("updateUser", err);
+
+    }
   }
 
   async updateUserRole(username: string, role: string, position?: string): Promise<void> {
-    await db.update(users)
-      .set({ role, position: position || null })
-      .where(eq(users.username, username.toLowerCase()));
+    try {
+      await db.update(users)
+        .set({ role, position: position || null })
+        .where(eq(users.username, username.toLowerCase()));
+    } catch (err) {
+      wrapStorageError("updateUserRole", err);
+
+    }
   }
 
   async getShift(username: string, date: string): Promise<Shift | undefined> {
@@ -218,34 +256,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertShift(shift: InsertShift): Promise<Shift> {
-    // Try to find existing
-    const existing = await this.getShift(shift.username, shift.date);
-    if (existing) {
-      const [updated] = await db.update(shifts)
-        .set({
-          ...shift,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(shifts.id, existing.id))
-        .returning();
-      return updated;
-    } else {
-      const [inserted] = await db.insert(shifts)
-        .values({
+    try {
+      const existing = await this.getShift(shift.username, shift.date);
+      if (existing) {
+        const [updated] = await db.update(shifts)
+          .set({
             ...shift,
-            username: shift.username.toLowerCase(),
-            createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-        })
-        .returning();
-      return inserted;
+          })
+          .where(eq(shifts.id, existing.id))
+          .returning();
+        return updated;
+      } else {
+        const [inserted] = await db.insert(shifts)
+          .values({
+              ...shift,
+              username: shift.username.toLowerCase(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+          })
+          .returning();
+        return inserted;
+      }
+    } catch (err) {
+      wrapStorageError("upsertShift", err);
+
     }
   }
 
   async deleteShift(username: string, date: string): Promise<void> {
-    await db.delete(shifts).where(
-      and(eq(shifts.username, username.toLowerCase()), eq(shifts.date, date))
-    );
+    try {
+      await db.delete(shifts).where(
+        and(eq(shifts.username, username.toLowerCase()), eq(shifts.date, date))
+      );
+    } catch (err) {
+      wrapStorageError("deleteShift", err);
+
+    }
   }
 
   async getConfig(): Promise<Record<string, string>> {
@@ -265,7 +312,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSession(session: typeof sessions.$inferInsert): Promise<void> {
-    await db.insert(sessions).values(session);
+    try {
+      await db.insert(sessions).values(session);
+    } catch (err) {
+      wrapStorageError("createSession", err);
+
+    }
   }
 
   async getSession(token: string): Promise<Session | undefined> {
@@ -287,8 +339,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSwapRequest(request: InsertSwapRequest): Promise<SwapRequest> {
-    const [created] = await db.insert(swapRequests).values(request).returning();
-    return created;
+    try {
+      const [created] = await db.insert(swapRequests).values(request).returning();
+      return created;
+    } catch (err) {
+      wrapStorageError("createSwapRequest", err);
+
+    }
   }
 
   async getSwapRequests(status?: string): Promise<SwapRequest[]> {
@@ -306,24 +363,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSwapRequestStatus(id: number, status: string, approvedBy?: string, note?: string): Promise<void> {
-    await db.update(swapRequests)
-      .set({ 
-        status, 
-        approvedBy: approvedBy || null, 
-        note: note || null,
-        updatedAt: new Date().toISOString() 
-      })
-      .where(eq(swapRequests.id, id));
+    try {
+      await db.update(swapRequests)
+        .set({ 
+          status, 
+          approvedBy: approvedBy || null, 
+          note: note || null,
+          updatedAt: new Date().toISOString() 
+        })
+        .where(eq(swapRequests.id, id));
+    } catch (err) {
+      wrapStorageError("updateSwapRequestStatus", err);
+
+    }
   }
 
   // Daily Sales Reports
   async createDailySalesReport(report: InsertDailySales): Promise<DailySalesReport> {
-    const [created] = await db.insert(dailySalesReports).values({
-      ...report,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }).returning();
-    return created;
+    try {
+      const [created] = await db.insert(dailySalesReports).values({
+        ...report,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).returning();
+      return created;
+    } catch (err) {
+      wrapStorageError("createDailySalesReport", err);
+
+    }
   }
 
   async getDailySalesReport(id: number): Promise<DailySalesReport | undefined> {
@@ -364,12 +431,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport> {
-    const [updated] = await db.update(dailySalesReports)
-      .set({ ...report, updatedAt: new Date().toISOString() })
-      .where(eq(dailySalesReports.id, id))
-      .returning();
-    if (!updated) throw new Error("Report not found");
-    return updated;
+    try {
+      const [updated] = await db.update(dailySalesReports)
+        .set({ ...report, updatedAt: new Date().toISOString() })
+        .where(eq(dailySalesReports.id, id))
+        .returning();
+      if (!updated) throw new Error("Report not found");
+      return updated;
+    } catch (err) {
+      wrapStorageError("updateDailySalesReport", err);
+
+    }
   }
 
   async upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport> {
@@ -408,8 +480,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDailySalesReport(id: number): Promise<boolean> {
-    const result = await db.delete(dailySalesReports).where(eq(dailySalesReports.id, id));
-    return (result.rowCount ?? 0) > 0;
+    try {
+      const result = await db.delete(dailySalesReports).where(eq(dailySalesReports.id, id));
+      return (result.rowCount ?? 0) > 0;
+    } catch (err) {
+      wrapStorageError("deleteDailySalesReport", err);
+
+    }
   }
 
   // MTD Summary - Calculate from saved reports
@@ -558,8 +635,13 @@ export class DatabaseStorage implements IStorage {
 
   // Manager Requests
   async createManagerRequest(request: InsertManagerRequest): Promise<ManagerRequest> {
-    const [created] = await db.insert(managerRequests).values(request).returning();
-    return created;
+    try {
+      const [created] = await db.insert(managerRequests).values(request).returning();
+      return created;
+    } catch (err) {
+      wrapStorageError("createManagerRequest", err);
+
+    }
   }
 
   async getManagerRequest(id: number): Promise<ManagerRequest | undefined> {
@@ -593,19 +675,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateManagerRequestStatus(id: number, status: string, approvedBy: string, reason?: string): Promise<void> {
-    await db.update(managerRequests)
-      .set({
-        status,
-        approvedBy,
-        approvedAt: new Date().toISOString(),
-        rejectionReason: reason || null,
-        updatedAt: new Date().toISOString()
-      })
-      .where(eq(managerRequests.id, id));
+    try {
+      await db.update(managerRequests)
+        .set({
+          status,
+          approvedBy,
+          approvedAt: new Date().toISOString(),
+          rejectionReason: reason || null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(managerRequests.id, id));
+    } catch (err) {
+      wrapStorageError("updateManagerRequestStatus", err);
+
+    }
   }
 
   async deleteManagerRequest(id: number): Promise<void> {
-    await db.delete(managerRequests).where(eq(managerRequests.id, id));
+    try {
+      await db.delete(managerRequests).where(eq(managerRequests.id, id));
+    } catch (err) {
+      wrapStorageError("deleteManagerRequest", err);
+
+    }
   }
 
   async getSelectWorkTimeCountForMonth(username: string, year: number, month: number): Promise<number> {
@@ -705,16 +797,26 @@ export class DatabaseStorage implements IStorage {
 
   // Notifications
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    const [created] = await db.insert(notifications).values(notification).returning();
-    return created;
+    try {
+      const [created] = await db.insert(notifications).values(notification).returning();
+      return created;
+    } catch (err) {
+      wrapStorageError("createNotification", err);
+
+    }
   }
 
   async createNotificationsForUsers(usernames: string[], notification: Omit<InsertNotification, 'recipientUsername'>): Promise<void> {
-    for (const username of usernames) {
-      await db.insert(notifications).values({
-        ...notification,
-        recipientUsername: username
-      });
+    try {
+      for (const username of usernames) {
+        await db.insert(notifications).values({
+          ...notification,
+          recipientUsername: username
+        });
+      }
+    } catch (err) {
+      wrapStorageError("createNotificationsForUsers", err);
+
     }
   }
 
@@ -842,27 +944,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addBorrowTransaction(data: { txDate: string; dueDate?: string; txType: string; branch: string; item: string; qty: number; unit: string; borrower: string; lender: string; note: string }): Promise<{ ok: boolean; message?: string }> {
+    try {
+      const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // ✅ 1. สร้าง ID เองตรงนี้ (สำคัญมาก! ถ้าไม่มีบรรทัดนี้ Database จะแจ้ง Error Null Value)
-    const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      await db.insert(borrowTransactions).values({
+        id: id,
+        txDate: data.txDate,
+        dueDate: data.dueDate || null,
+        txType: data.txType,
+        branch: data.branch,
+        item: data.item,
+        qty: data.qty,
+        unit: data.unit,
+        borrower: data.borrower,
+        lender: data.lender,
+        note: data.note,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
 
-    await db.insert(borrowTransactions).values({
-      id: id, // ✅ ส่ง ID ที่สร้างแล้วเข้าไป
-      txDate: data.txDate,
-      dueDate: data.dueDate || null,
-      txType: data.txType,
-      branch: data.branch, // รับเป็น String ตามที่เราแก้ Frontend แล้ว
-      item: data.item,
-      qty: data.qty,
-      unit: data.unit,
-      borrower: data.borrower,
-      lender: data.lender,
-      note: data.note,
-      status: "pending",
-      createdAt: new Date().toISOString(), // แปลงวันที่เป็น String
-    });
+      return { ok: true };
+    } catch (err) {
+      wrapStorageError("addBorrowTransaction", err);
 
-    return { ok: true };
+    }
   }
 
   async toggleBorrowTransaction(id: string): Promise<{ ok: boolean; status?: string; message?: string }> {
@@ -999,11 +1104,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAgentRequest(data: InsertAgentRequest): Promise<AgentRequest> {
-    const now = new Date().toISOString();
-    const [created] = await db.insert(agentRequests)
-      .values({ ...data, createdAt: now, updatedAt: now })
-      .returning();
-    return created;
+    try {
+      const now = new Date().toISOString();
+      const [created] = await db.insert(agentRequests)
+        .values({ ...data, createdAt: now, updatedAt: now })
+        .returning();
+      return created;
+    } catch (err) {
+      wrapStorageError("createAgentRequest", err);
+
+    }
   }
 
   async getAgentRequests(): Promise<AgentRequest[]> {
@@ -1012,19 +1122,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAgentRequestStatus(id: number, status: string): Promise<AgentRequest> {
-    const [updated] = await db.update(agentRequests)
-      .set({ status, updatedAt: new Date().toISOString() })
-      .where(eq(agentRequests.id, id))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db.update(agentRequests)
+        .set({ status, updatedAt: new Date().toISOString() })
+        .where(eq(agentRequests.id, id))
+        .returning();
+      return updated;
+    } catch (err) {
+      wrapStorageError("updateAgentRequestStatus", err);
+
+    }
   }
 
   async updateAgentRequestResponse(id: number, response: string): Promise<AgentRequest> {
-    const [updated] = await db.update(agentRequests)
-      .set({ response, updatedAt: new Date().toISOString() })
-      .where(eq(agentRequests.id, id))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db.update(agentRequests)
+        .set({ response, updatedAt: new Date().toISOString() })
+        .where(eq(agentRequests.id, id))
+        .returning();
+      return updated;
+    } catch (err) {
+      wrapStorageError("updateAgentRequestResponse", err);
+
+    }
   }
 }
 

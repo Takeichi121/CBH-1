@@ -407,6 +407,7 @@ export default function WeeklySalesPage() {
   })();
 
   const numericFields = new Set<keyof WeeklyFormData>(["sale", "tc", "ta", "sos"]);
+  const percentFields = new Set<keyof WeeklyFormData>(["cog", "waste", "unac", "gsi", "osat", "delivery", "colMtd"]);
 
   const formatWithCommas = (val: string) => {
     const stripped = val.replace(/,/g, "");
@@ -418,8 +419,22 @@ export default function WeeklySalesPage() {
   };
 
   const update = (field: keyof WeeklyFormData, value: string) => {
+    if (percentFields.has(field)) {
+      const stripped = value.replace(/%$/, "");
+      setForm((prev) => ({ ...prev, [field]: stripped }));
+      return;
+    }
     const formatted = numericFields.has(field) ? formatWithCommas(value) : value;
     setForm((prev) => ({ ...prev, [field]: formatted }));
+  };
+
+  const handlePercentBlur = (field: keyof WeeklyFormData) => {
+    if (!percentFields.has(field)) return;
+    setForm((prev) => {
+      const val = prev[field] as string;
+      if (!val || val === "" || val.endsWith("%")) return prev;
+      return { ...prev, [field]: val + "%" };
+    });
   };
 
   const updateSelection = (
@@ -477,7 +492,7 @@ export default function WeeklySalesPage() {
     { key: "unac", label: "Unac", placeholder: "e.g. 0.5%" },
     { key: "sos", label: "SOS", placeholder: "e.g. 180" },
     { key: "gsi", label: "GSI", placeholder: "e.g. 95%" },
-    { key: "osat", label: "OSAT", placeholder: "e.g. 4.5/5" },
+    { key: "osat", label: "OSAT", placeholder: "e.g. 4.5%" },
     { key: "delivery", label: "Delivery", placeholder: "e.g. 25%" },
     { key: "googleReview", label: "Google Review", placeholder: "e.g. 4.3" },
     { key: "colMtd", label: "COL MTD", placeholder: "e.g. 18%" },
@@ -667,6 +682,7 @@ export default function WeeklySalesPage() {
                       <Input
                         value={form[f.key]}
                         onChange={(e) => !f.readOnly && update(f.key, e.target.value)}
+                        onBlur={() => !f.readOnly && handlePercentBlur(f.key)}
                         placeholder={f.placeholder}
                         className={cn("text-sm", f.readOnly && "bg-muted/50 text-muted-foreground cursor-not-allowed")}
                         disabled={!isManager || f.readOnly}

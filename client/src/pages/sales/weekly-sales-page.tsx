@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
+import { useSettings } from "@/hooks/use-settings";
 import { SalesLayout } from "./sales-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History } from "lucide-react";
+import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History, Send } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
+import { enUS } from "date-fns/locale";
 import {
   Popover,
   PopoverContent,
@@ -145,6 +147,7 @@ export default function WeeklySalesPage() {
   const { language } = useI18n();
   const { toast } = useToast();
   const token = localStorage.getItem("bk_token") || "";
+  const { data: settings } = useSettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [form, setForm] = useState<WeeklyFormData>({ ...emptyForm });
@@ -159,6 +162,7 @@ export default function WeeklySalesPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [autoPopulating, setAutoPopulating] = useState(false);
   const [borrowItemNames, setBorrowItemNames] = useState<string[]>([]);
+  const [sendingLine, setSendingLine] = useState(false);
 
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
@@ -320,30 +324,51 @@ export default function WeeklySalesPage() {
   };
 
   const generateReportText = () => {
-    const dateRange = weekLabel;
+    const storeName = settings?.storeName || "Grand Diamond";
+    const startDay = format(weekStart, "d", { locale: enUS });
+    const endDayMonthYear = format(weekEnd, "d MMMM yyyy", { locale: enUS });
+    const dateRange = `[${startDay} - ${endDayMonthYear}]`;
     const lines = [
-      `Grand Diamond`,
+      `💎${storeName}♦️`,
       `Confirm Weekly ${dateRange}`,
       `Sale = ${form.sale}`,
       `TC = ${form.tc}`,
       `TA = ${form.ta}`,
       `COG = ${form.cog}`,
-      `Waste = ${form.waste}`,
+      `Waste\u200b = ${form.waste}`,
       `Unac = ${form.unac}`,
-      `SOS = ${form.sos}`,
+      `SOS\u200b = ${form.sos}`,
       `GSI = ${form.gsi}`,
       `OSAT = ${form.osat}`,
       `Delivery = ${form.delivery}`,
       `Google review = ${form.googleReview}`,
       `COL MTD = ${form.colMtd}`,
       ``,
-      `Waste Top 3`,
+      `Waste Top 3t`,
       form.wasteTop3 || "-",
-      ``,
-      `Unaccounted Top 3`,
+      `Unaccounted Top 3t`,
       form.unaccountedTop3 || "-",
     ];
     return lines.join("\n");
+  };
+
+  const handleSendLine = async () => {
+    setSendingLine(true);
+    try {
+      const res = await apiRequest("POST", "/api/line/send-weekly-report", {
+        token,
+        weekStartDate: weekStartStr,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "ส่ง LINE สำเร็จ ✅" });
+      } else {
+        toast({ variant: "destructive", title: data.message || "ส่ง LINE ไม่สำเร็จ" });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "ไม่สามารถส่ง LINE ได้" });
+    }
+    setSendingLine(false);
   };
 
   const handleCopy = async () => {
@@ -680,6 +705,16 @@ export default function WeeklySalesPage() {
                     <Button variant="outline" onClick={handleCopy} className="gap-2" data-testid="button-copy-weekly">
                       <Copy className="w-4 h-4" />
                       {t.copy}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleSendLine}
+                      disabled={sendingLine || !hasData}
+                      className="gap-2 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+                      data-testid="button-send-line-weekly"
+                    >
+                      {sendingLine ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      ส่ง LINE
                     </Button>
                   </div>
                 )}

@@ -5865,6 +5865,65 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  app.post("/api/line/send-weekly-report", safe(async (req, res) => {
+    const { token, weekStartDate } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
+    const cfg = await storage.getConfig();
+    const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+    const targetId = cfg["LINE_TARGET_ID"];
+    if (!channelToken || !targetId) return res.json({ ok: false, message: "ยังไม่ได้ตั้งค่า LINE Configuration" });
+    if (!weekStartDate) return res.json({ ok: false, message: "กรุณาระบุวันที่เริ่มต้นของสัปดาห์" });
+    const report = await storage.getWeeklySalesReport(weekStartDate);
+    if (!report) return res.json({ ok: false, message: `ไม่พบข้อมูล Weekly Report ของสัปดาห์นี้` });
+    const storeCfg = await storage.getStoreSettings();
+    const storeName = storeCfg?.storeName || "Grand Diamond";
+
+    const parseDate = (d: string) => {
+      const dt = new Date(d + "T12:00:00");
+      return dt;
+    };
+    const startDt = parseDate(report.weekStartDate);
+    const endDt = parseDate(report.weekEndDate);
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const startDay = startDt.getDate();
+    const endDay = endDt.getDate();
+    const endMonth = monthNames[endDt.getMonth()];
+    const endYear = endDt.getFullYear();
+    const dateRange = `[${startDay} - ${endDay} ${endMonth} ${endYear}]`;
+
+    const lines: string[] = [
+      `💎${storeName}♦️`,
+      `Confirm Weekly ${dateRange}`,
+      `Sale = ${report.sale || "-"}`,
+      `TC = ${report.tc || "-"}`,
+      `TA = ${report.ta || "-"}`,
+      `COG = ${report.cog || "-"}`,
+      `Waste\u200b = ${report.waste || "-"}`,
+      `Unac = ${report.unac || "-"}`,
+      `SOS\u200b = ${report.sos || "-"}`,
+      `GSI = ${report.gsi || "-"}`,
+      `OSAT = ${report.osat || "-"}`,
+      `Delivery = ${report.delivery || "-"}`,
+      `Google review = ${report.googleReview || "-"}`,
+      `COL MTD = ${report.colMtd || "-"}`,
+      ``,
+      `Waste Top 3t`,
+      report.wasteTop3 || "-",
+      `Unaccounted Top 3t`,
+      report.unaccountedTop3 || "-",
+    ];
+    const text = lines.join("\n");
+    try {
+      await sendLineMessage(channelToken, targetId, [{ type: "text", text }]);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.json({ ok: false, message: err.message });
+    }
+  }));
+
   app.get("/api/line/webhook", (req, res) => {
     const challenge = req.query["hub.challenge"];
     if (challenge) return res.send(challenge);

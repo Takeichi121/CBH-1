@@ -664,7 +664,7 @@ export const agentRequests = pgTable("agent_requests", {
   updatedAt: text("updated_at").notNull(),
 });
 
-export const insertAgentRequestSchema = createInsertSchema(agentRequests).omit({ id: true });
+export const insertAgentRequestSchema = createInsertSchema(agentRequests).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAgentRequest = z.infer<typeof insertAgentRequestSchema>;
 export type AgentRequest = typeof agentRequests.$inferSelect;
 

@@ -26,7 +26,7 @@ export async function runChannTask(taskDescription: string) {
 
     let decision = "";
     await streamLLM({
-      provider: "openai",
+      provider: "claude",
       mode: "code",
       message: `งานของนายคือ: ${taskDescription}
 เครื่องมือที่มี:

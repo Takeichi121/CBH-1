@@ -2331,7 +2331,7 @@ ${pageContext}` : ''}`;
         const claudeResponse = await anthropic.messages.create({
           model: "claude-sonnet-4-5",
           system: (sysMsg?.content || systemPrompt) as string,
-          messages: sanitized as Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [key: string]: unknown }> }>,
+          messages: sanitized as any,
           max_tokens: 8192,
           tools: claudeTools as Array<{ name: string; description: string; input_schema: { type: "object"; properties?: Record<string, unknown>; required?: string[] } }>,
           tool_choice: round === 1 ? { type: "any" } : { type: "auto" },
@@ -2367,10 +2367,11 @@ ${pageContext}` : ''}`;
         const toolCalls: ToolCallResult[] = [];
         if (oaiToolCalls && oaiToolCalls.length > 0) {
           for (const tc of oaiToolCalls) {
+            const fn = (tc as any).function;
             toolCalls.push({
-              name: tc.function?.name,
+              name: fn?.name,
               id: tc.id,
-              args: typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments,
+              args: typeof fn?.arguments === "string" ? JSON.parse(fn.arguments) : (fn?.arguments ?? {}),
             });
           }
         }
@@ -4083,7 +4084,18 @@ ${pageContext}` : ''}`;
       const totalTc = reports.reduce((sum, r) => sum + (Number(r.transactionCount) || 0), 0);
       const totalWaste = reports.reduce((sum, r) => sum + (parseFloat(r.wasteRawDaily || "0") || 0), 0);
       const wastePercent = totalSale > 0 ? ((totalWaste / totalSale) * 100).toFixed(2) + "%" : "0.00%";
-      res.json({ ok: true, totalSale, totalTc, totalWaste: Math.round(totalWaste), wastePercent });
+
+      const totalDelivery = reports.reduce((sum, r) => {
+        return sum + (Number(r.grabfood) || 0) + (Number(r.lineman) || 0) +
+          (Number(r.shopee) || 0) + (Number(r.bkapp) || 0) +
+          (Number(r.robin) || 0) + (Number(r.gokoo) || 0);
+      }, 0);
+      const deliveryPercent = totalSale > 0 ? ((totalDelivery / totalSale) * 100).toFixed(1) + "%" : "";
+
+      const sosValues = reports.map(r => parseFloat(r.sosDaily || "0")).filter(v => v > 0);
+      const avgSos = sosValues.length > 0 ? Math.round(sosValues.reduce((a, b) => a + b, 0) / sosValues.length) : 0;
+
+      res.json({ ok: true, totalSale, totalTc, totalWaste: Math.round(totalWaste), wastePercent, deliveryPercent, avgSos });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get weekly daily summary" });
     }

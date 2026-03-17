@@ -222,6 +222,8 @@ export default function WeeklySalesPage() {
           tc: fmt(tcNum),
           ta: fmt(ta),
           waste: data.wastePercent || prev.waste,
+          ...(data.deliveryPercent ? { delivery: data.deliveryPercent } : {}),
+          ...(data.avgSos > 0 ? { sos: String(data.avgSos) } : {}),
         }));
         toast({ title: "ดึงข้อมูลจาก Daily สำเร็จ ✅" });
       } else {
@@ -261,19 +263,26 @@ export default function WeeklySalesPage() {
           parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
           return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
         };
+        const normPct = (v: string) => {
+          if (!v) return "";
+          const hasPct = v.endsWith("%");
+          const stripped = v.replace(/%$/, "").replace(/,/g, "");
+          if (!stripped || isNaN(Number(stripped))) return v;
+          return stripped + (hasPct ? "%" : "");
+        };
         setForm({
           sale: fmt(data.report.sale || ""),
           tc: fmt(data.report.tc || ""),
           ta: fmt(data.report.ta || ""),
-          cog: data.report.cog || "",
-          waste: data.report.waste || "",
-          unac: data.report.unac || "",
+          cog: normPct(data.report.cog || ""),
+          waste: normPct(data.report.waste || ""),
+          unac: normPct(data.report.unac || ""),
           sos: fmt(data.report.sos || ""),
-          gsi: data.report.gsi || "",
-          osat: data.report.osat || "",
-          delivery: data.report.delivery || "",
+          gsi: normPct(data.report.gsi || ""),
+          osat: normPct(data.report.osat || ""),
+          delivery: normPct(data.report.delivery || ""),
           googleReview: data.report.googleReview || "",
-          colMtd: data.report.colMtd || "",
+          colMtd: normPct(data.report.colMtd || ""),
           wasteTop3: data.report.wasteTop3 || "",
           unaccountedTop3: data.report.unaccountedTop3 || "",
         });

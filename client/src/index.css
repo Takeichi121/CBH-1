@@ -6,34 +6,34 @@
 
 
 :root {
-  /* Soft Neutral Brown Theme - Easy on Eyes */
-  --primary: 30 35% 40%;      /* Muted brown */
+  /* Midnight Core Theme — ดำ-เขียว */
+  --primary: 160 84% 39%;     /* #10b981 Emerald */
   --primary-foreground: 0 0% 100%;
   
-  --background: 30 8% 96%;    /* Very light warm gray */
-  --foreground: 30 15% 20%;
+  --background: 210 40% 98%;  /* #F8FAFC Cool white */
+  --foreground: 224 20% 16%;
   
-  --card: 0 0% 100%;          /* Pure white cards */
-  --card-foreground: 30 15% 20%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 20% 16%;
   
   --popover: 0 0% 100%;
-  --popover-foreground: 30 15% 20%;
+  --popover-foreground: 224 20% 16%;
   
-  --secondary: 30 8% 92%;     /* Very soft gray-brown */
-  --secondary-foreground: 30 20% 25%;
+  --secondary: 210 20% 93%;
+  --secondary-foreground: 224 20% 20%;
   
-  --muted: 30 6% 94%;
-  --muted-foreground: 30 10% 45%;
+  --muted: 210 20% 95%;
+  --muted-foreground: 220 10% 45%;
   
-  --accent: 30 30% 50%;       /* Subtle brown accent */
-  --accent-foreground: 0 0% 100%;
+  --accent: 160 60% 92%;      /* Light emerald tint */
+  --accent-foreground: 160 84% 25%;
   
   --destructive: 0 65% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 30 8% 88%;
-  --input: 30 8% 88%;
-  --ring: 30 30% 45%;
+  --border: 210 20% 88%;
+  --input: 210 20% 88%;
+  --ring: 160 84% 39%;
   
   --radius: 0.5rem;
   

@@ -8,7 +8,7 @@ export function initProactiveChann() {
   cron.schedule(
     "0 8 * * *",
     async () => {
-      console.log("🌞 [Chann] ตื่นมาเตรียมรายงานให้เจ้านายแล้วครับ...");
+      console.log("🌞 [Chann] ตื่นมาเตรียมรายงานให้คุณผู้จัดการแล้วครับ...");
 
       const [alohaData, nboData] = await Promise.all([
         getAlohaSalesRaw(),
@@ -21,12 +21,12 @@ export function initProactiveChann() {
       }
 
       const prompt = `
-เจ้านายครับ นี่คือสรุปยอดล่าสุด:
+คุณผู้จัดการครับ นี่คือสรุปยอดล่าสุด:
 - ยอดจาก Aloha (DBF): ${alohaData ? alohaData.totalFromDbf.toLocaleString("th-TH") : "ดึงข้อมูลไม่ได้"} บาท
 - ยอดจาก NBO (SQL): ${nboData ? nboData.TotalSales.toLocaleString("th-TH") : "ดึงข้อมูลไม่ได้"} บาท
 - จำนวนลูกค้า (NBO): ${nboData ? nboData.GuestCount.toLocaleString("th-TH") : "-"} คน
 
-ช่วยวิเคราะห์ความสอดคล้องของตัวเลขทั้งสองระบบ และเสนอแผนเชิงรุก 3 ข้อให้เจ้านายด้วยครับ`.trim();
+ช่วยวิเคราะห์ความสอดคล้องของตัวเลขทั้งสองระบบ และเสนอแผนเชิงรุก 3 ข้อให้คุณผู้จัดการด้วยครับ`.trim();
 
       let report = "";
       try {

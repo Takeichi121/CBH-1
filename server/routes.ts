@@ -2,37 +2,6 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO } from "./socket";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import Anthropic from "@anthropic-ai/sdk";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
-
-function convertToGeminiTools(openAiTools: any[]) {
-  return openAiTools.map(tool => {
-    const properties: Record<string, any> = {};
-    const required = tool.function.parameters?.required || [];
-    if (tool.function.parameters?.properties) {
-      for (const [key, val] of Object.entries<any>(tool.function.parameters.properties)) {
-        let type = SchemaType.STRING;
-        if (val.type === "number" || val.type === "integer") type = SchemaType.NUMBER;
-        else if (val.type === "boolean") type = SchemaType.BOOLEAN;
-        else if (val.type === "array") type = SchemaType.ARRAY;
-        else if (val.type === "object") type = SchemaType.OBJECT;
-        properties[key] = { type, description: val.description || "" };
-      }
-    }
-    return {
-      name: tool.function.name,
-      description: tool.function.description,
-      parameters: { type: SchemaType.OBJECT, properties, required },
-    };
-  });
-}
-
 // ── LINE Messaging API ──────────────────────────────
 async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -305,9 +274,9 @@ async function extractTextFromFile(filePath: string, mimeType: string, fileSize:
 
   try {
     if (mimeType === "application/pdf") {
-      const pdfParse = (await import("pdf-parse")).default;
+      const { PDFParse } = await import("pdf-parse");
       const buffer = fs.readFileSync(filePath);
-      const data = await pdfParse(buffer);
+      const data = await new PDFParse({ data: buffer }).getText();
       return data.text?.slice(0, 100000) || null;
     }
 
@@ -511,11 +480,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   app.post("/api/chann", safe(async (req, res) => {
     try {
-      const { token, message, imageBase64, pageContext, silentMessage, provider: reqProvider } = req.body;
+      const { token, message, imageBase64, pageContext, silentMessage } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.status(400).json({ ok: false, message: "Token and message required" });
       }
-      const selectedProvider = (reqProvider === "openai" || reqProvider === "replit" || reqProvider === "gemini" || reqProvider === "claude") ? (reqProvider === "replit" ? "openai" : reqProvider) : "openai";
+      const selectedProvider = "openai";
 
       const session = await storage.getSession(token);
       if (!session) {
@@ -2569,11 +2538,6 @@ ${pageContext}` : ''}`;
         return sanitizeClaudeMessages(result);
       };
 
-      interface ClaudeTool {
-        name: string;
-        description: string;
-        input_schema: Record<string, unknown>;
-      }
       interface ToolCallResult {
         name: string;
         id: string;
@@ -2585,60 +2549,9 @@ ${pageContext}` : ''}`;
         result: string;
       }
 
-      const claudeTools: ClaudeTool[] = channTools.map((t: { function: { name: string; description: string; parameters: Record<string, unknown> } }) => ({
-        name: t.function.name,
-        description: t.function.description,
-        input_schema: t.function.parameters,
-      }));
-
-      type ClaudeMsg = { role: "user" | "assistant"; content: string | Array<Record<string, unknown>> };
-      const claudeAgentMessages: ClaudeMsg[] = [];
-      const sysMsg = aiMessages.find((m: { role: string }) => m.role === "system");
-      for (const m of aiMessages) {
-        if (m.role === "system") continue;
-        if (m.role === "user") {
-          const content = typeof m.content === "string" ? m.content : String(m.content);
-          claudeAgentMessages.push({ role: "user", content: truncateMsg(content) });
-        } else if (m.role === "assistant" && m.content) {
-          claudeAgentMessages.push({ role: "assistant", content: truncateMsg(typeof m.content === "string" ? m.content : String(m.content)) });
-        }
-      }
-      if (claudeAgentMessages.length === 0) {
-        claudeAgentMessages.push({ role: "user", content: userContent || "สวัสดี" });
-      }
-
-      let activeToolProvider: "claude" | "openai" = "openai";
-
-      const callClaudeTools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
-        const sanitized = sanitizeClaudeMessages(claudeAgentMessages);
-        const claudeResponse = await anthropic.messages.create({
-          model: "claude-sonnet-4-5",
-          system: (sysMsg?.content || systemPrompt) as string,
-          messages: sanitized as any,
-          max_tokens: 8192,
-          tools: claudeTools as Array<{ name: string; description: string; input_schema: { type: "object"; properties?: Record<string, unknown>; required?: string[] } }>,
-          tool_choice: round === 1 ? { type: "any" } : { type: "auto" },
-        });
-
-        const assistantContent: Array<Record<string, unknown>> = [];
-        const toolCalls: ToolCallResult[] = [];
-        let textContent = "";
-        for (const block of claudeResponse.content) {
-          if (block.type === "tool_use") {
-            toolCalls.push({ name: block.name, id: block.id, args: block.input as Record<string, unknown> });
-            assistantContent.push({ type: "tool_use", id: block.id, name: block.name, input: block.input });
-          } else if (block.type === "text") {
-            textContent += block.text;
-            assistantContent.push({ type: "text", text: block.text });
-          }
-        }
-        claudeAgentMessages.push({ role: "assistant", content: assistantContent });
-        return { toolCalls, textContent };
-      };
-
       const callOpenAITools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
         const loopResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: "gpt-5.2",
           messages: aiMessages,
           max_completion_tokens: 8192,
           tools: channTools,
@@ -2738,55 +2651,24 @@ ${pageContext}` : ''}`;
             }
           };
 
-          const streamWithProvider = async (prov: string) => {
-            if (prov === "openai") {
-              const s = await openai.chat.completions.create({
-                model: "gpt-4o",
-                messages: [{ role: "system", content: systemPrompt }, ...directMsgs],
-                stream: true,
-                max_completion_tokens: 4096,
-              });
-              for await (const chunk of s) {
-                const d = chunk.choices[0]?.delta?.content || "";
-                if (d) handleDelta(d);
-              }
-            } else if (prov === "gemini") {
-              const gm = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-              const gc = gm.startChat({
-                history: directMsgs.slice(0, -1).map(m => ({
-                  role: m.role === "assistant" ? "model" : "user",
-                  parts: [{ text: m.content }],
-                })),
-                systemInstruction: { role: "user", parts: [{ text: systemPrompt }] },
-              });
-              const gr = await gc.sendMessageStream(directMsgs[directMsgs.length - 1]?.content || "");
-              for await (const chunk of gr.stream) {
-                const d = chunk.text();
-                if (d) handleDelta(d);
-              }
-            } else {
-              const cs = anthropic.messages.stream({
-                model: "claude-sonnet-4-5",
-                system: systemPrompt,
-                messages: directMsgs,
-                max_tokens: 4096,
-              });
-              for await (const event of cs) {
-                if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-                  const d = event.delta.text;
-                  if (d) handleDelta(d);
-                }
-              }
+          const streamWithProvider = async (_prov: string) => {
+            const s = await openai.chat.completions.create({
+              model: "gpt-5.2",
+              messages: [{ role: "system", content: systemPrompt }, ...directMsgs],
+              stream: true,
+              max_completion_tokens: 4096,
+            });
+            for await (const chunk of s) {
+              const d = chunk.choices[0]?.delta?.content || "";
+              if (d) handleDelta(d);
             }
           };
 
-          const providerFallback = selectedProvider === "gemini"
-            ? ["gemini", "openai"]
-            : ["openai", "gemini"];
+          const providerFallback = ["openai"];
 
           let streamed = false;
           for (const prov of providerFallback) {
-            const provLabel = prov === "openai" ? "Replit AI" : prov === "gemini" ? "Gemini" : "Claude";
+            const provLabel = "Replit AI";
             res.write(`data: ${JSON.stringify({ thinking: `${provLabel} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
             try {
               await streamWithProvider(prov);
@@ -2851,55 +2733,24 @@ ${pageContext}` : ''}`;
         }
       };
 
-      const fbStreamProv = async (prov: string) => {
-        if (prov === "openai") {
-          const s = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "system", content: systemPrompt }, ...fallbackMsgs],
-            stream: true,
-            max_completion_tokens: 4096,
-          });
-          for await (const chunk of s) {
-            const d = chunk.choices[0]?.delta?.content || "";
-            if (d) handleFbDelta(d);
-          }
-        } else if (prov === "gemini") {
-          const gm = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const gc = gm.startChat({
-            history: fallbackMsgs.slice(0, -1).map(m => ({
-              role: m.role === "assistant" ? "model" : "user",
-              parts: [{ text: m.content }],
-            })),
-            systemInstruction: { role: "user", parts: [{ text: systemPrompt }] },
-          });
-          const gr = await gc.sendMessageStream(fallbackMsgs[fallbackMsgs.length - 1]?.content || "");
-          for await (const chunk of gr.stream) {
-            const d = chunk.text();
-            if (d) handleFbDelta(d);
-          }
-        } else {
-          const cs = anthropic.messages.stream({
-            model: "claude-sonnet-4-5",
-            system: systemPrompt,
-            messages: fallbackMsgs,
-            max_tokens: 4096,
-          });
-          for await (const event of cs) {
-            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-              const d = event.delta.text;
-              if (d) handleFbDelta(d);
-            }
-          }
+      const fbStreamProv = async (_prov: string) => {
+        const s = await openai.chat.completions.create({
+          model: "gpt-5.2",
+          messages: [{ role: "system", content: systemPrompt }, ...fallbackMsgs],
+          stream: true,
+          max_completion_tokens: 4096,
+        });
+        for await (const chunk of s) {
+          const d = chunk.choices[0]?.delta?.content || "";
+          if (d) handleFbDelta(d);
         }
       };
 
-      const fbOrder = selectedProvider === "gemini"
-        ? ["gemini", "openai"]
-        : ["openai", "gemini"];
+      const fbOrder = ["openai"];
 
       let fbStreamed = false;
       for (const prov of fbOrder) {
-        const pl = prov === "openai" ? "Replit AI" : prov === "gemini" ? "Gemini" : "Claude";
+        const pl = "Replit AI";
         res.write(`data: ${JSON.stringify({ thinking: `${pl} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
         try {
           await fbStreamProv(prov);

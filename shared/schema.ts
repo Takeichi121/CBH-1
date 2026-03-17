@@ -34,7 +34,7 @@ export const staffPositions = [
 export type StaffPosition = typeof staffPositions[number];
 
 export const staffPositionLabels: Record<StaffPosition, { en: string; th: string }> = {
-  team_lead: { en: "Team Lead", th: "หัวหน้าทีม" },
+  team_lead: { en: "Team Lead", th: "หัวหน้าพนักงาน" },
   guest_ambassador: { en: "Guest Ambassador", th: "ผู้ดูแลลูกค้า" },
   service_staff: { en: "Service Staff", th: "พนักงานบริการ" },
 };

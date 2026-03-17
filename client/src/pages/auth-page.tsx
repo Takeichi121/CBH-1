@@ -197,8 +197,10 @@ export default function AuthPage() {
         ) : (
           <>
             <div className="text-center space-y-2 md:space-y-4 select-none">
-              <div className="mx-auto mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center">
-                <LogoDataHouse size={96} />
+              <div className="mx-auto mb-4 md:mb-6 transition-all duration-300 hover:scale-105">
+                <div className="w-20 h-20 flex items-center justify-center">
+                  <LogoDataHouse size={80} />
+                </div>
               </div>
               <div className="space-y-1">
                 <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">

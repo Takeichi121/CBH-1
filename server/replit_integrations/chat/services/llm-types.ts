@@ -1,2 +1,2 @@
 export type Mode = "casual" | "code" | "analysis";
-export type Provider = "auto" | "replit";
+export type Provider = "replit";

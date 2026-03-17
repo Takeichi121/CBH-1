@@ -59,7 +59,7 @@ async function streamReplit(params: StreamLLMParams): Promise<string> {
   const messages = sanitizeMessages(rawMessages);
 
   const stream = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5.2",
     messages: [
       { role: "system", content: getSystemPrompt(params.mode) },
       ...messages,

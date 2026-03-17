@@ -1,7 +1,7 @@
 const midnight = {
-  gradFrom: "#0f2027",
-  gradTo: "#203a43",
-  text: "#4ade80",
+  gradFrom: "#000000",
+  gradTo: "#10b981",
+  text: "#ffffff",
 };
 
 export const LogoDataHouse = ({ size = 120 }: { size?: number }) => (

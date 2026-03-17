@@ -1,7 +1,7 @@
 {
-  "name": "BK Work Schedule - Grand Diamond",
-  "short_name": "BK Schedule",
-  "description": "Staff roster and shift scheduling management for Burger King Grand Diamond",
+  "name": "Chann Back House",
+  "short_name": "CBH",
+  "description": "Back-of-house management system by Chanon Jaimool",
   "start_url": "/?source=pwa",
   "display": "standalone",
   "display_override": ["standalone", "window-controls-overlay"],

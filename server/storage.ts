@@ -506,37 +506,36 @@ export class DatabaseStorage implements IStorage {
     otMtd: number;
   }> {
     const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
-    // Fix: Correctly handle end of month string
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = beforeDate || `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    
-    const reports = await db.select().from(dailySalesReports)
+
+    const [row] = await db
+      .select({
+        mtdActual: sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.actualSales}, '') AS NUMERIC)), 0)`,
+        mtdTc:     sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.transactionCount}, '') AS NUMERIC)), 0)`,
+        mtdTarget: sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.dailyTarget}, '') AS NUMERIC)), 0)`,
+        wasteRaw:  sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.wasteRawDaily}, '') AS NUMERIC)), 0)`,
+        wasteMeal: sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.wasteMealDaily}, '') AS NUMERIC)), 0)`,
+        otMtd:     sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.otHours}, '') AS NUMERIC)), 0)`,
+        reportCount: sql<number>`COUNT(*)`,
+      })
+      .from(dailySalesReports)
       .where(
         and(
           gte(dailySalesReports.reportDate, startOfMonth),
           lte(dailySalesReports.reportDate, endDate)
         )
       );
-    
-    let mtdActual = 0;
-    let mtdTc = 0;
-    let mtdTarget = 0;
-    let wasteMtdTotal = 0;
-    let wasteMealMtd = 0;
-    let otMtd = 0;
-    
-    for (const report of reports) {
-      mtdActual += parseFloat(report.actualSales || "0");
-      mtdTc += parseFloat(report.transactionCount || "0");
-      mtdTarget += parseFloat(report.dailyTarget || "0");
-      const rawDaily = parseFloat(report.wasteRawDaily || "0");
-      const mealDaily = parseFloat(report.wasteMealDaily || "0");
-      wasteMtdTotal += rawDaily + mealDaily;
-      wasteMealMtd += mealDaily;
-      otMtd += parseFloat(report.otHours || "0");
-    }
-    
-    return { mtdActual, mtdTc, mtdTarget, reportCount: reports.length, wasteMtdTotal, wasteMealMtd, otMtd };
+
+    const mtdActual    = Number(row.mtdActual);
+    const mtdTc        = Number(row.mtdTc);
+    const mtdTarget    = Number(row.mtdTarget);
+    const wasteMealMtd = Number(row.wasteMeal);
+    const wasteMtdTotal = Number(row.wasteRaw) + wasteMealMtd;
+    const otMtd        = Number(row.otMtd);
+    const reportCount  = Number(row.reportCount);
+
+    return { mtdActual, mtdTc, mtdTarget, reportCount, wasteMtdTotal, wasteMealMtd, otMtd };
   }
 
   // Store Settings

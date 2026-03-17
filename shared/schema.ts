@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb, real, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -260,7 +260,9 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
 
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => [
+  index("idx_daily_sales_report_date").on(table.reportDate),
+]);
 
 // Weekly Sales Reports
 export const weeklySalesReports = pgTable("weekly_sales_reports", {
@@ -371,7 +373,10 @@ export const borrowTransactions = pgTable("borrow_transactions", {
   note: text("note"),
   status: text("status").notNull().default("pending"),
   createdAt: text("created_at").notNull(), // Backend seems to generate string timestamps
-});
+}, (table) => [
+  index("idx_borrow_tx_date").on(table.txDate),
+  index("idx_borrow_tx_type").on(table.txType),
+]);
 
 // ==========================================
 // ⚙️ Labor & Cost Control

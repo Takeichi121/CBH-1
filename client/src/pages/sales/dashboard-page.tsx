@@ -55,31 +55,30 @@ export default function SalesDashboardPage() {
       try {
         setLoading(true);
         const token = localStorage.getItem("bk_token");
-        // Use yesterday's date — per midnight rule, today's report covers the previous day
         const reportDate = yesterdayBangkok();
         const [year, month] = reportDate.split('-');
 
-        const todayRes = await apiRequest("POST", "/api/sales/getReportByDate", { token, date: reportDate });
-        const todayData = await todayRes.json();
-        
+        const [todayRes, mtdRes, reportsRes] = await Promise.all([
+          apiRequest("POST", "/api/sales/getReportByDate", { token, date: reportDate }),
+          apiRequest("POST", "/api/sales/getMtdSummary", { token, year: parseInt(year), month: parseInt(month) }),
+          apiRequest("POST", "/api/sales/getReports", { token }),
+        ]);
+
+        const [todayData, mtdDataRes, reportsData] = await Promise.all([
+          todayRes.json(),
+          mtdRes.json(),
+          reportsRes.json(),
+        ]);
+
         let reportForToday = null;
         if (todayData.ok && todayData.report) {
           reportForToday = todayData.report;
-        } else {
-          // Fallback: check reports list for yesterday's date
-          const reportsRes = await apiRequest("POST", "/api/sales/getReports", { token });
-          const reportsData = await reportsRes.json();
-          if (reportsData.ok && reportsData.reports && reportsData.reports.length > 0) {
-            const latest = reportsData.reports[0];
-            if (latest.reportDate === reportDate) {
-              reportForToday = latest;
-            }
-          }
+        } else if (reportsData.ok && reportsData.reports && reportsData.reports.length > 0) {
+          const latest = reportsData.reports[0];
+          if (latest.reportDate === reportDate) reportForToday = latest;
         }
         setTodayReport(reportForToday);
 
-        const mtdRes = await apiRequest("POST", "/api/sales/getMtdSummary", { token, year: parseInt(year), month: parseInt(month) });
-        const mtdDataRes = await mtdRes.json();
         if (mtdDataRes.ok) {
           setMtdData({
             mtdActual: mtdDataRes.mtdActual || 0,
@@ -92,8 +91,6 @@ export default function SalesDashboardPage() {
           });
         }
 
-        const reportsRes = await apiRequest("POST", "/api/sales/getReports", { token });
-        const reportsData = await reportsRes.json();
         if (reportsData.ok && reportsData.reports) {
           setRecentReports(reportsData.reports.slice(0, 5));
         }

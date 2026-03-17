@@ -31,7 +31,7 @@ export function initProactiveChann() {
       let report = "";
       try {
         await streamLLM({
-          provider: "auto",
+          provider: "replit",
           mode: "analysis",
           message: prompt,
           history: [],

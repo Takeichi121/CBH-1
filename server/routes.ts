@@ -405,7 +405,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!token || (!message && !imageBase64)) {
         return res.status(400).json({ ok: false, message: "Token and message required" });
       }
-      const selectedProvider = (reqProvider === "openai" || reqProvider === "gemini" || reqProvider === "claude") ? reqProvider : "claude";
+      const selectedProvider = (reqProvider === "openai" || reqProvider === "replit" || reqProvider === "gemini" || reqProvider === "claude") ? (reqProvider === "replit" ? "openai" : reqProvider) : "openai";
 
       const session = await storage.getSession(token);
       if (!session) {
@@ -2324,7 +2324,7 @@ ${pageContext}` : ''}`;
         claudeAgentMessages.push({ role: "user", content: userContent || "สวัสดี" });
       }
 
-      let activeToolProvider: "claude" | "openai" = selectedProvider === "openai" ? "openai" : "claude";
+      let activeToolProvider: "claude" | "openai" = "openai";
 
       const callClaudeTools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
         const sanitized = sanitizeClaudeMessages(claudeAgentMessages);
@@ -2393,48 +2393,14 @@ ${pageContext}` : ''}`;
         let loopToolCalls: ToolCallResult[] = [];
         let loopTextContent = "";
 
-        if (activeToolProvider === "claude") {
-          try {
-            const result = await callClaudeTools(rounds);
-            loopToolCalls = result.toolCalls;
-            loopTextContent = result.textContent;
-            aiMessages.push({
-              role: "assistant",
-              content: loopTextContent || null,
-              tool_calls: loopToolCalls.map(tc => ({
-                id: tc.id,
-                type: "function" as const,
-                function: { name: tc.name, arguments: JSON.stringify(tc.args) },
-              })),
-            });
-          } catch (claudeToolErr) {
-            console.warn("[Chann] Claude tool-calling failed, falling back to OpenAI:", claudeToolErr);
-            activeToolProvider = "openai";
-            const result = await callOpenAITools(rounds);
-            loopToolCalls = result.toolCalls;
-            loopTextContent = result.textContent;
-          }
-        } else {
-          try {
-            const result = await callOpenAITools(rounds);
-            loopToolCalls = result.toolCalls;
-            loopTextContent = result.textContent;
-          } catch (oaiToolErr) {
-            console.warn("[Chann] OpenAI tool-calling failed, falling back to Claude:", oaiToolErr);
-            activeToolProvider = "claude";
-            const result = await callClaudeTools(rounds);
-            loopToolCalls = result.toolCalls;
-            loopTextContent = result.textContent;
-            aiMessages.push({
-              role: "assistant",
-              content: loopTextContent || null,
-              tool_calls: loopToolCalls.map(tc => ({
-                id: tc.id,
-                type: "function" as const,
-                function: { name: tc.name, arguments: JSON.stringify(tc.args) },
-              })),
-            });
-          }
+        try {
+          const result = await callOpenAITools(rounds);
+          loopToolCalls = result.toolCalls;
+          loopTextContent = result.textContent;
+        } catch (oaiToolErr) {
+          console.warn("[Chann] OpenAI (Replit AI) tool-calling failed:", oaiToolErr);
+          loopToolCalls = [];
+          loopTextContent = "";
         }
 
         if (loopToolCalls.length > 0) {
@@ -2449,17 +2415,6 @@ ${pageContext}` : ''}`;
               result: await handleToolCall(tc.name, tc.args),
             }))
           );
-
-          if (activeToolProvider === "claude") {
-            claudeAgentMessages.push({
-              role: "user",
-              content: toolResults.map(tr => ({
-                type: "tool_result" as const,
-                tool_use_id: tr.id,
-                content: truncateMsg(tr.result, 6000),
-              })),
-            });
-          }
 
           for (const tr of toolResults) {
             aiMessages.push({
@@ -2542,15 +2497,13 @@ ${pageContext}` : ''}`;
             }
           };
 
-          const providerFallback = selectedProvider === "openai"
-            ? ["openai", "claude", "gemini"]
-            : selectedProvider === "gemini"
-              ? ["gemini", "claude", "openai"]
-              : ["claude", "openai", "gemini"];
+          const providerFallback = selectedProvider === "gemini"
+            ? ["gemini", "openai"]
+            : ["openai", "gemini"];
 
           let streamed = false;
           for (const prov of providerFallback) {
-            const provLabel = prov === "openai" ? "GPT-4o" : prov === "gemini" ? "Gemini" : "Claude";
+            const provLabel = prov === "openai" ? "Replit AI" : prov === "gemini" ? "Gemini" : "Claude";
             res.write(`data: ${JSON.stringify({ thinking: `${provLabel} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
             try {
               await streamWithProvider(prov);
@@ -2657,15 +2610,13 @@ ${pageContext}` : ''}`;
         }
       };
 
-      const fbOrder = selectedProvider === "openai"
-        ? ["openai", "claude", "gemini"]
-        : selectedProvider === "gemini"
-          ? ["gemini", "claude", "openai"]
-          : ["claude", "openai", "gemini"];
+      const fbOrder = selectedProvider === "gemini"
+        ? ["gemini", "openai"]
+        : ["openai", "gemini"];
 
       let fbStreamed = false;
       for (const prov of fbOrder) {
-        const pl = prov === "openai" ? "GPT-4o" : prov === "gemini" ? "Gemini" : "Claude";
+        const pl = prov === "openai" ? "Replit AI" : prov === "gemini" ? "Gemini" : "Claude";
         res.write(`data: ${JSON.stringify({ thinking: `${pl} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
         try {
           await fbStreamProv(prov);

@@ -131,7 +131,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: "claude" }),
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: "replit" }),
         });
         await handleSSEStream(res);
       } catch (err) {
@@ -314,7 +314,7 @@ export function FloatingChannChat() {
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: "claude" };
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: "replit" };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -393,7 +393,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: "claude" }),
+          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: "replit" }),
         });
         await handleSSEStream(res);
       } catch (err) {
@@ -433,7 +433,7 @@ export function FloatingChannChat() {
         body: JSON.stringify({
           token,
           message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
-          provider: "claude",
+          provider: "replit",
         }),
       });
 

@@ -134,7 +134,7 @@ export function registerChatRoutes(app: Express): void {
 
       const content = String(req.body?.content || "").trim();
       const mode = (req.body?.mode as Mode) || "casual";
-      const provider = (req.body?.provider as Provider) || "auto";
+      const provider = (req.body?.provider as Provider) || "replit";
 
       if (!content) {
         return res.status(400).json({ error: "Message content is empty" });

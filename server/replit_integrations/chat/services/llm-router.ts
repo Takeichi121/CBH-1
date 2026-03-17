@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { Mode, Provider } from "./llm-types";
 
 export type { Mode, Provider };
@@ -14,7 +14,7 @@ export interface StreamLLMParams {
 
 function getSystemPrompt(mode: Mode): string {
   const base =
-    "คุณคือ Chann — AI ผู้ช่วยอัจฉริยะของระบบบริหารร้าน BK Grand Diamond เรียกผู้ใช้ว่า 'นาย' เสมอ ตอบเป็นภาษาไทยเว้นแต่ถูกขอให้ตอบภาษาอื่น ตอบให้กระชับและรวดเร็วที่สุด";
+    "คุณคือ Chann — AI ผู้ช่วยอัจฉริยะของระบบบริหารร้าน Chann Back House (Grand Diamond) เรียกผู้ใช้ว่า 'นาย' เสมอ ตอบเป็นภาษาไทยเว้นแต่ถูกขอให้ตอบภาษาอื่น ตอบให้กระชับและรวดเร็วที่สุด";
   if (mode === "code") {
     return `${base}\nคุณเป็นวิศวกรซอฟต์แวร์ระดับอาวุโส ตอบกระชับและแม่นยำ ยกตัวอย่างโค้ดที่ใช้งานได้จริงเสมอ`;
   }
@@ -24,7 +24,7 @@ function getSystemPrompt(mode: Mode): string {
   return `${base}\nตอบอย่างเป็นธรรมชาติ อบอุ่น และเป็นประโยชน์`;
 }
 
-function sanitizeClaudeMessages(msgs: { role: "user" | "assistant"; content: string }[]): { role: "user" | "assistant"; content: string }[] {
+function sanitizeMessages(msgs: { role: "user" | "assistant"; content: string }[]): { role: "user" | "assistant"; content: string }[] {
   if (msgs.length === 0) return [{ role: "user", content: "สวัสดี" }];
   const merged: { role: "user" | "assistant"; content: string }[] = [msgs[0]];
   for (let i = 1; i < msgs.length; i++) {
@@ -43,10 +43,10 @@ function sanitizeClaudeMessages(msgs: { role: "user" | "assistant"; content: str
   return merged.length > 0 ? merged : [{ role: "user", content: "สวัสดี" }];
 }
 
-async function streamClaude(params: StreamLLMParams): Promise<string> {
-  const anthropic = new Anthropic({
-    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+async function streamReplit(params: StreamLLMParams): Promise<string> {
+  const openai = new OpenAI({
+    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   });
 
   const rawMessages: { role: "user" | "assistant"; content: string }[] = [
@@ -56,30 +56,34 @@ async function streamClaude(params: StreamLLMParams): Promise<string> {
     })),
     { role: "user", content: params.message },
   ];
-  const messages = sanitizeClaudeMessages(rawMessages);
+  const messages = sanitizeMessages(rawMessages);
 
-  const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-5",
-    system: getSystemPrompt(params.mode),
-    messages,
+  const stream = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: getSystemPrompt(params.mode) },
+      ...messages,
+    ],
     max_tokens: 4096,
-  });
+    stream: true,
+  }, params.signal ? { signal: params.signal } : undefined);
 
   let full = "";
-  for await (const event of stream) {
-    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-      const delta = event.delta.text;
-      if (!delta) continue;
-      full += delta;
-      params.onToken(delta);
-    }
+  for await (const chunk of stream) {
+    const delta = chunk.choices?.[0]?.delta?.content;
+    if (!delta) continue;
+    full += delta;
+    params.onToken(delta);
   }
   return full;
 }
 
 export async function streamLLM(params: StreamLLMParams): Promise<string> {
-  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) {
-    throw new Error("Claude API Key ไม่ได้ตั้งค่า");
+  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    throw new Error("Replit AI API Key ไม่ได้ตั้งค่า");
   }
-  return await streamClaude(params);
+  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
+    throw new Error("Replit AI Base URL ไม่ได้ตั้งค่า");
+  }
+  return await streamReplit(params);
 }

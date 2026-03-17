@@ -20,8 +20,8 @@ interface OnboardingStep {
 
 const steps: OnboardingStep[] = [
   {
-    title: "Welcome to BK Grand Diamond!",
-    titleTh: "ยินดีต้อนรับสู่ BK Grand Diamond!",
+    title: "Welcome to Chann Back House!",
+    titleTh: "ยินดีต้อนรับสู่ Chann Back House!",
     description: "Let us show you around the app. This quick tour will help you get started.",
     descriptionTh: "ให้เราพาคุณชมแอปกัน ทัวร์สั้นๆ นี้จะช่วยให้คุณเริ่มต้นได้ง่ายขึ้น",
     icon: <Sparkles className="w-12 h-12 text-primary" />,

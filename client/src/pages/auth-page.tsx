@@ -196,8 +196,10 @@ export default function AuthPage() {
         ) : (
           <>
             <div className="text-center space-y-2 md:space-y-4 select-none">
-              <div className="mx-auto h-24 w-24 md:h-40 md:w-40 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
-                <img src={logoImg} alt="Burger King Logo" className="w-full h-full object-contain drop-shadow-xl" />
+              <div className="mx-auto h-24 w-24 md:h-36 md:w-36 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
+                <div className="w-full h-full rounded-3xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-2xl">
+                  <span className="text-white font-black text-3xl md:text-5xl tracking-tight select-none drop-shadow">CBH</span>
+                </div>
               </div>
               <div className="space-y-1">
                 <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">

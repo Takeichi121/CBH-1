@@ -4,9 +4,9 @@ type Language = "en" | "th";
 
 const translations = {
   en: {
-    appName: "Grand Diamond",
-    appSubtitle: "Schedule management system",
-    branchName: "Branch: Grand Diamond",
+    appName: "Chann Back House",
+    appSubtitle: "Back-of-house management system",
+    branchName: "CBH — Grand Diamond",
     creator: "Created by Chan. J. (Chanon Jaimool)",
     login: "Login",
     register: "Register",
@@ -109,7 +109,7 @@ const translations = {
     responsibilitiesContent: "Punctuality is crucial. If you cannot attend your shift, please use the 'Shift Swap' feature to find a replacement or contact your manager immediately.",
     supportTitle: "System Support",
     supportContent: "If you encounter any issues with the application, please report them to the Shift Manager or use the 'Request' feature in the menu.",
-    handbookFooter: "Burger King Grand Diamond Branch - Official Internal Document",
+    handbookFooter: "Grand Diamond Branch - Official Internal Document",
     managerRequest: "Request",
     myRequests: "My Requests",
     allRequests: "All Requests",
@@ -166,9 +166,9 @@ const translations = {
     versionHistory: "Version History",
   },
   th: {
-    appName: "Grand Diamond",
-    appSubtitle: "ระบบจัดการเวลาทำงาน",
-    branchName: "สาขา Grand Diamond",
+    appName: "Chann Back House",
+    appSubtitle: "ระบบจัดการหลังร้าน",
+    branchName: "CBH — Grand Diamond",
     creator: "สร้างโดย Chan. J. (Chanon Jaimool)",
     login: "เข้าสู่ระบบ",
     register: "สมัครสมาชิก",

@@ -2,7 +2,6 @@ import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History } from "lucide-react";
-import { SiBurgerking } from "react-icons/si";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -77,8 +76,10 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="md:hidden flex flex-col border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
         <div className="h-14 flex items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <SiBurgerking className="w-8 h-8 text-[#ED1C24]" />
-            <h1 className="text-lg font-bold font-display text-foreground">Grand Diamond</h1>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow">
+              <span className="text-white font-black text-xs tracking-tight">CBH</span>
+            </div>
+            <h1 className="text-lg font-bold font-display text-foreground">Chann Back House</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -114,8 +115,10 @@ export function Layout({ children }: { children: ReactNode }) {
                 <SheetHeader className="p-4 text-left border-b">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <SiBurgerking className="w-9 h-9 text-[#ED1C24]" />
-                      <SheetTitle className="text-xl font-bold font-display">Grand Diamond</SheetTitle>
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow">
+                        <span className="text-white font-black text-xs tracking-tight">CBH</span>
+                      </div>
+                      <SheetTitle className="text-xl font-bold font-display">Chann Back House</SheetTitle>
                     </div>
                     <Button
                       variant="ghost"
@@ -197,9 +200,11 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
             <div className="h-10 w-10 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-              <SiBurgerking className="w-full h-full text-[#ED1C24]" />
+              <div className="w-full h-full rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-md">
+                <span className="text-white font-black text-sm tracking-tight">CBH</span>
+              </div>
             </div>
-            <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Grand Diamond</h1>
+            <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Chann Back House</h1>
           </Link>
         </div>
 

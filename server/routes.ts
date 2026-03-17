@@ -577,21 +577,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 กฎ: WRITE PHASE มีลำดับความสำคัญสูงกว่า EXPLORE PHASE เสมอ
 หลัง write tool สำเร็จ ค่อยทำ VERIFY PHASE ตามปกติ
 
-[กฎเหล็ก: GENERAL KNOWLEDGE PHASE (ตอบตรงๆ — มีลำดับสูงกว่า EXPLORE)]
-ถ้าคำถามไม่เกี่ยวกับข้อมูลร้าน (ยอดขาย, กะ, พนักงาน, บัญชี, โค้ดของระบบนี้) ให้ตอบตรงๆ จาก knowledge ทั่วไปโดย "ไม่ต้องใช้ tool" เลย:
-- ถามความรู้ทั่วไป (tech, science, ประวัติศาสตร์, คณิตศาสตร์ ฯลฯ) → ตอบจาก knowledge ทันที ห้าม query DB
-- ขอให้เขียน/แปล/สรุป/ร่างเอกสาร (email, บทความ, โค้ด ฯลฯ) → ทำให้เลยทันที ไม่ต้อง explore
-- ถามแนวคิด/คำแนะนำ/ความคิดเห็น → ตอบจาก reasoning ทันที
-- ถามสิ่งที่ไม่มีทางอยู่ในฐานข้อมูลร้าน → ตอบตรงๆ ไม่ต้อง query
-กฎ: GENERAL KNOWLEDGE PHASE มีลำดับสูงกว่า EXPLORE PHASE เสมอ
+[กฎเหล็ก: GENERAL KNOWLEDGE PHASE (ตอบตรงๆ — มีลำดับสูงกว่า EXPLORE เสมอ)]
+ก่อนตัดสินใจใช้ tool ใดๆ ให้ถามตัวเองว่า "คำถามนี้มี store keyword หรือไม่?"
+Store keywords (ต้องมีอย่างน้อย 1 คำ จึงจะใช้ EXPLORE ได้):
+ยอด, ขาย, กะ, shift, พนักงาน, staff, crew, COL, MTD, TC, labor, แรงงาน, OT, ชั่วโมง,
+borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste, roster, สาขา, branch,
+ร้าน, รายงาน, สรุป(ร้าน), บัญชี, ค่าใช้จ่าย, เงินเดือน, PT, FT, โค้ด(โปรเจคนี้)
 
-[กฎเหล็ก: EXPLORE PHASE (สำรวจก่อนตอบ — ใช้เฉพาะเมื่อถามเรื่องข้อมูลร้านจริงๆ)]
-ใช้ EXPLORE PHASE "เฉพาะเมื่อ" คำถามเกี่ยวกับข้อมูลระบบร้านจริงๆ (ยอดขาย, กะ, พนักงาน, การเงิน, โค้ดของโปรเจคนี้) เท่านั้น ห้ามถาม path หรือข้อมูลเพิ่มเติมถ้าระบบหาเองได้:
+ถ้าไม่มี store keyword เลย → ตอบตรงๆ จาก knowledge ทั่วไป "ห้ามใช้ tool":
+- ความรู้ทั่วไป (tech, science, ประวัติศาสตร์, คณิตศาสตร์, ภาษา ฯลฯ) → ตอบทันที
+- เขียน/แปล/สรุป/ร่างเอกสาร/โค้ด(ทั่วไป) → ทำให้เลย ไม่ต้อง explore
+- คำแนะนำ/ความคิดเห็น/สนทนาทั่วไป → ตอบจาก reasoning ทันที
+- คำถามสั้นคลุมเครือที่ไม่มี store keyword (เช่น "อะไรวะ", "เอ้ย", "แล้วไง") → ถามให้ชัดขึ้นหรือตอบแบบสนทนา ห้าม query DB
+กฎ: GENERAL KNOWLEDGE PHASE มีลำดับสูงกว่า EXPLORE PHASE เสมอ — ถ้าไม่มี store keyword อย่าแตะ tool เลย
+
+[กฎเหล็ก: EXPLORE PHASE (ใช้เฉพาะเมื่อมี store keyword ในคำถาม)]
+ใช้ EXPLORE PHASE "เฉพาะเมื่อ" คำถามมี store keyword จากรายการด้านบนอย่างน้อย 1 คำ:
 - ถามเรื่องยอดขาย/ภาพรวมร้าน → เรียกใช้ getCrossSystemSummary หรือ getMtdSummary ทันที
-- ถามเรื่องโค้ด/CSS/UI/component ของโปรเจคนี้ → เรียกใช้ readSourceFile เพื่อดูไฟล์ที่เกี่ยวข้องทันที ไม่ถามว่า path คืออะไร
+- ถามเรื่องโค้ด/CSS/UI/component ของโปรเจคนี้ → เรียกใช้ readSourceFile ทันที ไม่ถามว่า path คืออะไร
 - ถามเรื่องพนักงาน/กะ → เรียกใช้ getTableRows หรือ getShiftsForDate ทันที
 - ถามเรื่องยืมคืน → getBorrowTransactions + getBorrowBranches พร้อมกัน
-- ไม่รู้ว่าข้อมูลอยู่ที่ไหน → readSourceFile หรือ getTableRows สำรวจก่อน แล้วค่อยตอบ
 
 [กฎเหล็ก: VERIFY PHASE (ตรวจสอบหลังแก้ไขเสมอ)]
 ทุกครั้งที่คุณใช้ Write Tools (เช่น saveDailySales, proposeCodeEdit, saveShift, approveManagerRequest)

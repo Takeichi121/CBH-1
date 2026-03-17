@@ -571,6 +571,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 - ออกแบบและพัฒนาเว็บไซต์
 - เขียนบทความ สรุป และรายงานเชิงลึก
 - วิเคราะห์ยอดขาย ข้อมูลธุรกิจ
+- แก้ไขไฟล์โค้ดได้ทันที (applyCodeEdit) และสร้างไฟล์ใหม่ (createSourceFile) — Admin only
+- รัน terminal command ได้ (executeShellCommand: npm, npx, node, tsc, ls, cat, grep, find) — Admin only
+- วางแผนและทำงานหลายขั้นตอนแบบ autonomous ได้เอง (สูงสุด 20 ขั้นตอน)
 
 [หลักการทำงาน]
 - ปฏิบัติตามคำสั่งของนายอย่างเคร่งครัดและมีประสิทธิภาพ
@@ -613,6 +616,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 ห้ามทึกทักเอาเองว่าสำเร็จแล้ว ต้องมีหลักฐานจาก Read Tool เสมอ เช่น:
 - หลัง saveDailySales → getTableRows("daily_sales_reports") หรือ getCrossSystemSummary
 - หลัง saveShift / bulkSaveShifts → getShiftsForDate เพื่อยืนยัน
+- หลัง applyCodeEdit → readSourceFile ตรวจสอบว่าไฟล์เปลี่ยนแปลงถูกต้อง
 - หลัง proposeCodeEdit → readSourceFile ตรวจสอบว่า proposal ถูกบันทึก
 - หลัง updateStoreSettings → getStoreSettings ยืนยันค่าที่เปลี่ยน
 
@@ -706,14 +710,22 @@ ${isManagerOrAdmin && !isAdmin ? `
 
 **เครื่องมือแก้ไขโค้ด (Admin only):**
 - readSourceFile: อ่านไฟล์ซอร์สโค้ดของโปรเจค (client/src/, server/, shared/)
-- proposeCodeEdit: เสนอการแก้ไขโค้ด — จะยังไม่ apply ทันที ต้องรอ Agent (Replit Agent) ยืนยันก่อน
+- applyCodeEdit: แก้ไขไฟล์โค้ดทันที — เขียนลงดิสก์โดยตรง ไม่ต้องรออนุมัติ (ใช้เมื่อนายสั่งให้แก้โค้ดโดยตรง)
+- createSourceFile: สร้างไฟล์ใหม่ในโปรเจค
+- proposeCodeEdit: เสนอการแก้ไขโค้ด — จะยังไม่ apply ทันที ต้องรอ Agent ยืนยันก่อน (ใช้เมื่อต้องการให้ Agent ตรวจสอบก่อน)
 - getCodeProposals: ดูรายการ code proposals และสถานะ (pending/approved/rejected)
 
-[กฎการแก้ไขโค้ด]
-- เมื่อนายขอให้เปลี่ยนแปลง UI/ธีม/โค้ด ให้ใช้ readSourceFile อ่านโค้ดก่อน แล้วใช้ proposeCodeEdit เสนอการแก้ไข
-- การแก้ไขโค้ดจะยังไม่มีผลทันที — ต้องรอ Agent ตรวจสอบและอนุมัติก่อน
+**เครื่องมือรัน Terminal (Admin only):**
+- executeShellCommand: รันคำสั่ง terminal ในโปรเจค (npm, npx, node, tsc, ls, cat, grep, find) — timeout 60 วินาที
+
+[กฎการแก้ไขโค้ด — Replit Agent Mode]
+- เมื่อนายสั่งให้แก้โค้ดโดยตรง ให้ใช้ **applyCodeEdit** แก้ไขไฟล์ทันที (ไม่ต้อง propose/รออนุมัติ)
+- เมื่อต้องการสร้างไฟล์ใหม่ ให้ใช้ **createSourceFile**
+- ใช้ proposeCodeEdit เฉพาะเมื่อต้องการให้ Agent ตรวจสอบก่อน apply
+- ขั้นตอนการแก้โค้ด: readSourceFile อ่านไฟล์ก่อน → applyCodeEdit แก้ไข → readSourceFile verify → executeShellCommand รัน build/test (ถ้าจำเป็น)
 - ใช้ oldContent ที่ตรงกับไฟล์จริง (copy จาก readSourceFile)
-- อธิบาย description และ reason ให้ชัดเจน
+- อธิบาย description ให้ชัดเจน
+- ถ้า build error ให้อ่าน error → แก้ไข → build ใหม่ ทำซ้ำจนสำเร็จ
 
 [กฎการเขียนข้อมูล]
 - เมื่อนายสั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
@@ -1525,6 +1537,53 @@ ${pageContext}` : ''}`;
         {
           type: "function" as const,
           function: {
+            name: "applyCodeEdit",
+            description: "Apply a code change directly to a source file on disk (no proposal/approval needed). Use readSourceFile first to get the current content, then apply specific changes. Admin only.",
+            parameters: {
+              type: "object",
+              properties: {
+                filePath: { type: "string", description: "Relative file path to modify (must be in client/src/, server/, or shared/)" },
+                oldContent: { type: "string", description: "The exact existing code to be replaced (must match file content exactly)" },
+                newContent: { type: "string", description: "The new code to replace oldContent with" },
+                description: { type: "string", description: "Short description of what this change does" }
+              },
+              required: ["filePath", "oldContent", "newContent"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "createSourceFile",
+            description: "Create a new source file on disk. Use when you need to add a new file to the project. Admin only.",
+            parameters: {
+              type: "object",
+              properties: {
+                filePath: { type: "string", description: "Relative file path to create (must be in client/src/, server/, or shared/)" },
+                content: { type: "string", description: "The full content of the new file" },
+                description: { type: "string", description: "Short description of what this file is for" }
+              },
+              required: ["filePath", "content"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "executeShellCommand",
+            description: "Execute a shell command in the project root. Only allowed commands: npm, npx, node, tsc, ls, cat, grep, find. Dangerous operations are blocked. Timeout: 60 seconds. Admin only.",
+            parameters: {
+              type: "object",
+              properties: {
+                command: { type: "string", description: "Shell command to execute (e.g. 'npm install lodash', 'npx drizzle-kit push', 'ls -la client/src/')" }
+              },
+              required: ["command"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
             name: "getCodeProposals",
             description: "Get list of code change proposals and their status (pending/approved/rejected).",
             parameters: {
@@ -1615,7 +1674,7 @@ ${pageContext}` : ''}`;
       ];
 
       const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote"]);
-      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "getCodeProposals", "sendLineNotification"]);
+      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "applyCodeEdit", "createSourceFile", "executeShellCommand", "getCodeProposals", "sendLineNotification"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
       const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
@@ -2195,6 +2254,113 @@ ${pageContext}` : ''}`;
             }
           }
 
+          case "applyCodeEdit": {
+            if (!args.filePath || !args.oldContent || !args.newContent) {
+              return JSON.stringify({ error: "Missing required fields: filePath, oldContent, newContent" });
+            }
+            const applyAllowedPrefixes = ["client/src/", "server/", "shared/"];
+            const isApplyAllowed = applyAllowedPrefixes.some(p => args.filePath.startsWith(p));
+            if (!isApplyAllowed) {
+              return JSON.stringify({ error: `Cannot edit files outside: ${applyAllowedPrefixes.join(", ")}` });
+            }
+            if (args.filePath.includes("..") || path.isAbsolute(args.filePath)) {
+              return JSON.stringify({ error: "Invalid file path: no '..' or absolute paths allowed" });
+            }
+            try {
+              const projectRoot = process.cwd();
+              const applyFullPath = path.resolve(projectRoot, args.filePath);
+              if (!applyFullPath.startsWith(projectRoot + path.sep)) {
+                return JSON.stringify({ error: "Path escapes project root" });
+              }
+              if (!fs.existsSync(applyFullPath)) {
+                return JSON.stringify({ error: `File not found: ${args.filePath}` });
+              }
+              const currentContent = fs.readFileSync(applyFullPath, "utf-8");
+              if (!currentContent.includes(args.oldContent)) {
+                return JSON.stringify({ error: "oldContent not found in the file. Make sure it matches the current file content exactly (use readSourceFile first)." });
+              }
+              const matchCount = currentContent.split(args.oldContent).length - 1;
+              if (matchCount > 1) {
+                return JSON.stringify({ error: `oldContent matches ${matchCount} locations in the file. Provide a more specific/unique snippet to ensure deterministic edit.` });
+              }
+              const updatedContent = currentContent.replace(args.oldContent, args.newContent);
+              fs.writeFileSync(applyFullPath, updatedContent, "utf-8");
+              await storage.log("chann_apply_code_edit", username, `file=${args.filePath} desc=${args.description || "direct edit"}`);
+              toolActions.push(`✏️ แก้ไขไฟล์: ${args.filePath} — ${args.description || "applied"}`);
+              return JSON.stringify({
+                ok: true,
+                message: `Applied code edit to ${args.filePath} successfully.`,
+                filePath: args.filePath,
+                description: args.description || "direct edit"
+              });
+            } catch (applyErr: any) {
+              return JSON.stringify({ error: `Apply error: ${applyErr.message}` });
+            }
+          }
+
+          case "createSourceFile": {
+            if (!args.filePath || !args.content) {
+              return JSON.stringify({ error: "Missing required fields: filePath, content" });
+            }
+            const createAllowedPrefixes = ["client/src/", "server/", "shared/"];
+            const isCreateAllowed = createAllowedPrefixes.some(p => args.filePath.startsWith(p));
+            if (!isCreateAllowed) {
+              return JSON.stringify({ error: `Cannot create files outside: ${createAllowedPrefixes.join(", ")}` });
+            }
+            if (args.filePath.includes("..") || path.isAbsolute(args.filePath)) {
+              return JSON.stringify({ error: "Invalid file path: no '..' or absolute paths allowed" });
+            }
+            try {
+              const projectRoot = process.cwd();
+              const createFullPath = path.resolve(projectRoot, args.filePath);
+              if (!createFullPath.startsWith(projectRoot + path.sep)) {
+                return JSON.stringify({ error: "Path escapes project root" });
+              }
+              if (fs.existsSync(createFullPath)) {
+                return JSON.stringify({ error: `File already exists: ${args.filePath}. Use applyCodeEdit to modify existing files.` });
+              }
+              const dir = path.dirname(createFullPath);
+              if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+              }
+              fs.writeFileSync(createFullPath, args.content, "utf-8");
+              await storage.log("chann_create_source_file", username, `file=${args.filePath} desc=${args.description || "new file"}`);
+              toolActions.push(`📄 สร้างไฟล์ใหม่: ${args.filePath}`);
+              return JSON.stringify({
+                ok: true,
+                message: `Created file ${args.filePath} successfully.`,
+                filePath: args.filePath,
+                description: args.description || "new file"
+              });
+            } catch (createErr: any) {
+              return JSON.stringify({ error: `Create error: ${createErr.message}` });
+            }
+          }
+
+          case "executeShellCommand": {
+            if (!args.command || typeof args.command !== "string") {
+              return JSON.stringify({ error: "Missing required field: command" });
+            }
+            try {
+              const port = process.env.PORT || 5000;
+              const execRes = await fetch(`http://localhost:${port}/api/chann/exec-shell`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: req.body.token, command: args.command }),
+              });
+              const execData = await execRes.json() as any;
+              if (!execRes.ok) {
+                return JSON.stringify({ ok: false, error: execData.error || "Shell execution failed" });
+              }
+              if (execData.ok) {
+                toolActions.push(`🖥️ รัน: ${args.command.trim()}`);
+              }
+              return JSON.stringify(execData);
+            } catch (shellErr: any) {
+              return JSON.stringify({ ok: false, error: `Shell call error: ${shellErr.message}` });
+            }
+          }
+
           case "getCodeProposals": {
             const proposalStatus = args.status === "all" ? undefined : (args.status || "pending");
             const proposalLimit = args.limit || 20;
@@ -2326,8 +2492,7 @@ ${pageContext}` : ''}`;
         }
       }
 
-      // Agentic loop — up to 5 rounds
-      const MAX_ROUNDS = 5;
+      const MAX_ROUNDS = 20;
       let rounds = 0;
       let hadAnyToolCalls = false;
 
@@ -2489,10 +2654,10 @@ ${pageContext}` : ''}`;
         rounds++;
 
         let thinkingMsg = rounds === 1
-          ? "กำลังสำรวจข้อมูลด้วย Chann Fusion..."
+          ? `กำลังสำรวจข้อมูลด้วย Chann Fusion... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`
           : hadAnyToolCalls
-            ? "กำลังตรวจสอบ (Verify) ด้วย Chann Fusion..."
-            : "กำลังประมวลผลและดำเนินการต่อ...";
+            ? `กำลังตรวจสอบ (Verify) ด้วย Chann Fusion... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`
+            : `กำลังประมวลผลและดำเนินการต่อ... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`;
         res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
 
         let loopToolCalls: ToolCallResult[] = [];
@@ -2511,7 +2676,7 @@ ${pageContext}` : ''}`;
         if (loopToolCalls.length > 0) {
           hadAnyToolCalls = true;
           const toolNames = loopToolCalls.map(tc => tc.name).filter(Boolean);
-          res.write(`data: ${JSON.stringify({ thinking: `กำลังใช้เครื่องมือ: ${toolNames.join(", ")}` })}\n\n`);
+          res.write(`data: ${JSON.stringify({ thinking: `กำลังทำขั้นตอน ${rounds}/${MAX_ROUNDS}: ใช้เครื่องมือ ${toolNames.join(", ")}` })}\n\n`);
 
           const toolResults: ToolExecResult[] = await Promise.all(
             loopToolCalls.map(async (tc) => ({
@@ -2805,6 +2970,66 @@ ${pageContext}` : ''}`;
     } catch (e: any) {
       console.error("Chann clear error:", e);
       res.status(500).json({ ok: false, message: "Failed to clear history" });
+    }
+  }));
+
+  // ==========================================
+  // 🖥️ Chann Shell Execution Endpoint
+  // ==========================================
+  app.post("/api/chann/exec-shell", safe(async (req, res) => {
+    try {
+      const { token, command } = req.body;
+      if (!token || !command) {
+        return res.status(400).json({ ok: false, error: "Token and command required" });
+      }
+      const session = await storage.getSession(token);
+      if (!session) return res.status(401).json({ ok: false, error: "Invalid session" });
+      const execUser = await storage.getUser(session.username);
+      if (!execUser || execUser.role !== "admin") {
+        return res.status(403).json({ ok: false, error: "Admin only" });
+      }
+
+      const cmd = command.trim();
+      const shellMetachars = /[;&|`$(){}!#]/;
+      if (shellMetachars.test(cmd)) {
+        return res.status(400).json({ ok: false, error: "Command blocked: shell metacharacters are not allowed" });
+      }
+      const cmdParts = cmd.split(/\s+/);
+      const cmdBase = cmdParts[0];
+      const cmdArgs = cmdParts.slice(1);
+      const allowedBins = ["npm", "npx", "node", "tsc", "ls", "cat", "grep", "find"];
+      if (!allowedBins.includes(cmdBase)) {
+        return res.status(400).json({ ok: false, error: `Command '${cmdBase}' not allowed. Allowed: ${allowedBins.join(", ")}` });
+      }
+      const dangerousPatterns = [/rm\s+-rf/i, /rm\s+-r/i, /\bsudo\b/i, /\bshutdown\b/i, /\breboot\b/i, /\bchmod\b/i, /\bmkfs\b/i, /\bdd\b/i];
+      if (dangerousPatterns.some(p => p.test(cmd))) {
+        return res.status(400).json({ ok: false, error: "Command blocked: contains dangerous pattern" });
+      }
+
+      try {
+        const { execFileSync } = await import("child_process");
+        const result = execFileSync(cmdBase, cmdArgs, {
+          cwd: process.cwd(),
+          timeout: 60000,
+          maxBuffer: 1024 * 1024,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+        await storage.log("chann_exec_shell", session.username, `cmd=${cmd}`);
+        res.json({ ok: true, stdout: (result || "").slice(0, 8000), stderr: "", exitCode: 0 });
+      } catch (execErr: any) {
+        await storage.log("chann_exec_shell_error", session.username, `cmd=${cmd} error=${execErr.message?.slice(0, 200)}`);
+        res.json({
+          ok: false,
+          stdout: (execErr.stdout || "").slice(0, 8000),
+          stderr: (execErr.stderr || "").slice(0, 4000),
+          exitCode: execErr.status || 1,
+          error: execErr.message?.slice(0, 500)
+        });
+      }
+    } catch (e: any) {
+      console.error("Exec shell error:", e);
+      res.status(500).json({ ok: false, error: "Internal server error" });
     }
   }));
 

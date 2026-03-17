@@ -279,6 +279,68 @@ const chatImageUpload = multer({
   }
 });
 
+// Multer config for general file uploads - accept all file types, up to 2GB
+const chatFileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), "uploads", "chat-files");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || "";
+    cb(null, `file-${uniqueSuffix}${ext}`);
+  }
+});
+const chatFileUpload = multer({
+  storage: chatFileStorage,
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 } // 2GB limit
+});
+
+async function extractTextFromFile(filePath: string, mimeType: string, fileSize: number): Promise<string | null> {
+  const MAX_EXTRACTABLE_SIZE = 50 * 1024 * 1024; // 50MB
+  if (fileSize > MAX_EXTRACTABLE_SIZE) return null;
+
+  try {
+    if (mimeType === "application/pdf") {
+      const pdfParse = (await import("pdf-parse")).default;
+      const buffer = fs.readFileSync(filePath);
+      const data = await pdfParse(buffer);
+      return data.text?.slice(0, 100000) || null;
+    }
+
+    if (mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        mimeType === "application/vnd.ms-excel") {
+      const workbook = XLSX.readFile(filePath);
+      const texts: string[] = [];
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        texts.push(`[Sheet: ${sheetName}]\n${csv}`);
+      }
+      return texts.join("\n\n").slice(0, 100000) || null;
+    }
+
+    if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value?.slice(0, 100000) || null;
+    }
+
+    if (mimeType === "text/csv" || mimeType === "text/plain" ||
+        mimeType === "application/csv" ||
+        filePath.endsWith(".csv") || filePath.endsWith(".txt")) {
+      const text = fs.readFileSync(filePath, "utf-8");
+      return text.slice(0, 100000) || null;
+    }
+  } catch (err) {
+    console.error("Error extracting text from file:", err);
+  }
+  return null;
+}
+
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 
 function safe(fn: (req: Request, res: Response, next: NextFunction) => Promise<any>): RequestHandler {
@@ -319,6 +381,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // 📁 Static file serving for uploads
   // ==========================================
   const express = await import("express");
+  app.use("/uploads/chat-files", (req, res, next) => {
+    res.setHeader("Content-Disposition", "attachment");
+    next();
+  }, express.default.static(path.join(process.cwd(), "uploads", "chat-files")));
   app.use("/uploads", express.default.static(path.join(process.cwd(), "uploads")));
 
   // ==========================================
@@ -338,6 +404,45 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ ok: true, imageUrl });
     } catch (e: any) {
       console.error("Chat image upload error:", e);
+      res.status(500).json({ ok: false, message: e.message || "Upload failed" });
+    }
+  }));
+
+  // ==========================================
+  // 📎 Chat File Upload (all file types, up to 2GB)
+  // ==========================================
+  app.post("/api/chat/upload-file", chatFileUpload.single("file"), safe(async (req, res) => {
+    try {
+      const token = req.body.token;
+      if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+      
+      const session = await storage.getSession(token);
+      if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+      if (!req.file) return res.status(400).json({ ok: false, message: "No file uploaded" });
+
+      const fileUrl = `/uploads/chat-files/${req.file.filename}`;
+      const fileName = req.file.originalname;
+      const fileSize = req.file.size;
+      const mimeType = req.file.mimetype;
+
+      let extractedText: string | null = null;
+      try {
+        extractedText = await extractTextFromFile(req.file.path, mimeType, fileSize);
+      } catch (err) {
+        console.error("Text extraction error (non-fatal):", err);
+      }
+
+      res.json({
+        ok: true,
+        fileUrl,
+        fileName,
+        fileSize,
+        mimeType,
+        ...(extractedText ? { extractedText } : {})
+      });
+    } catch (e: any) {
+      console.error("Chat file upload error:", e);
       res.status(500).json({ ok: false, message: e.message || "Upload failed" });
     }
   }));
@@ -5047,8 +5152,9 @@ ${pageContext}` : ''}`;
     senderUsername: string;
     recipientUsername?: string | null;
     text: string;
-    messageType?: string; // text, image, sticker
+    messageType?: string; // text, image, sticker, file
     imageUrl?: string | null;
+    fileAttachment?: any | null;
     timestamp: string;
     isPrivate?: boolean;
     isRead?: number;
@@ -5107,6 +5213,7 @@ ${pageContext}` : ''}`;
         text: m.text,
         messageType: m.messageType,
         imageUrl: m.imageUrl,
+        fileAttachment: m.fileAttachment ? JSON.parse(m.fileAttachment) : null,
         timestamp: m.createdAt,
         isPrivate: false
       }));
@@ -5119,7 +5226,7 @@ ${pageContext}` : ''}`;
     broadcastOnlineUsers();
 
     // Group message - save to database (supports text, image, sticker)
-    socket.on("message", async (payload: { text: string; messageType?: string; imageUrl?: string }) => {
+    socket.on("message", async (payload: { text: string; messageType?: string; imageUrl?: string; fileAttachment?: any }) => {
       const timestamp = nowIso();
       const messageType = payload.messageType || "text";
       const msg: ChatMessage = {
@@ -5128,12 +5235,12 @@ ${pageContext}` : ''}`;
         text: payload.text,
         messageType,
         imageUrl: payload.imageUrl || null,
+        fileAttachment: payload.fileAttachment || null,
         timestamp,
         isPrivate: false
       };
 
       try {
-        // Save to database
         const result = await db.insert(staffChatMessages).values({
           senderUsername: user.username,
           senderDisplayName: displayName,
@@ -5141,6 +5248,7 @@ ${pageContext}` : ''}`;
           text: payload.text,
           messageType,
           imageUrl: payload.imageUrl || null,
+          fileAttachment: payload.fileAttachment ? JSON.stringify(payload.fileAttachment) : null,
           isRead: 0,
           createdAt: timestamp
         }).returning();
@@ -5153,7 +5261,7 @@ ${pageContext}` : ''}`;
     });
 
     // Private message - save to database and deliver to recipient (even if offline)
-    socket.on("private_message", async (payload: { text: string; to: string; messageType?: string; imageUrl?: string }) => {
+    socket.on("private_message", async (payload: { text: string; to: string; messageType?: string; imageUrl?: string; fileAttachment?: any }) => {
       const timestamp = nowIso();
       const messageType = payload.messageType || "text";
       const msg: ChatMessage = {
@@ -5163,12 +5271,12 @@ ${pageContext}` : ''}`;
         text: payload.text,
         messageType,
         imageUrl: payload.imageUrl || null,
+        fileAttachment: payload.fileAttachment || null,
         timestamp,
         isPrivate: true
       };
 
       try {
-        // Save to database
         const result = await db.insert(staffChatMessages).values({
           senderUsername: user.username,
           senderDisplayName: displayName,
@@ -5176,6 +5284,7 @@ ${pageContext}` : ''}`;
           text: payload.text,
           messageType,
           imageUrl: payload.imageUrl || null,
+          fileAttachment: payload.fileAttachment ? JSON.stringify(payload.fileAttachment) : null,
           isRead: 0,
           createdAt: timestamp
         }).returning();
@@ -5184,10 +5293,8 @@ ${pageContext}` : ''}`;
         console.error("Error saving private message:", e);
       }
 
-      // Send to sender
       socket.emit("message", msg);
 
-      // Send to recipient if online
       const targetUser = onlineUsers.get(payload.to);
       if (targetUser) {
         io.to(targetUser.socketId).emit("message", msg);
@@ -5222,6 +5329,7 @@ ${pageContext}` : ''}`;
           text: m.text,
           messageType: m.messageType,
           imageUrl: m.imageUrl,
+          fileAttachment: m.fileAttachment ? JSON.parse(m.fileAttachment) : null,
           timestamp: m.createdAt,
           isPrivate: true
         }));
@@ -5291,6 +5399,7 @@ ${pageContext}` : ''}`;
           text: m.text,
           messageType: m.messageType,
           imageUrl: m.imageUrl,
+          fileAttachment: m.fileAttachment ? JSON.parse(m.fileAttachment) : null,
           timestamp: m.createdAt,
           isPrivate: true
         }));

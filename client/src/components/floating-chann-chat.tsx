@@ -223,47 +223,106 @@ export function FloatingChannChat() {
   const removeFile = () => {
     setFileContent(null);
     setFileName(null);
+    setFileSize(0);
+    setFileMimeType("");
+    setFileUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [fileSize, setFileSize] = useState<number>(0);
+  const [fileMimeType, setFileMimeType] = useState<string>("");
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [isFileUploading, setIsFileUploading] = useState(false);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 20MB)");
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2GB)");
       removeFile();
       return;
     }
     setFileName(file.name);
+    setFileSize(file.size);
+    setFileMimeType(file.type);
     const ext = file.name.split(".").pop()?.toLowerCase();
-    const reader = new FileReader();
+
     if (ext === "txt" || ext === "csv") {
-      reader.onload = (event) => {
-        setFileContent(event.target?.result as string);
-      };
-      reader.readAsText(file);
-    } else if (ext === "xlsx" || ext === "xls") {
-      reader.onload = (event) => {
-        try {
-          const data = new Uint8Array(event.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
-          let allText = "";
-          workbook.SheetNames.forEach((sheetName) => {
-            const ws = workbook.Sheets[sheetName];
-            allText += `\n--- Sheet: ${sheetName} ---\n`;
-            allText += XLSX.utils.sheet_to_csv(ws) + "\n";
-          });
-          setFileContent(allText);
-        } catch {
-          alert("ไม่สามารถอ่านไฟล์ Excel ได้");
-          removeFile();
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      alert("รองรับเฉพาะไฟล์ .txt, .csv, .xlsx, .xls เท่านั้น");
-      removeFile();
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setFileContent(event.target?.result as string);
+        };
+        reader.readAsText(file);
+      } else {
+        setFileContent(null);
+      }
+      return;
     }
+    
+    if (ext === "xlsx" || ext === "xls") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = new Uint8Array(event.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: "array" });
+            let allText = "";
+            workbook.SheetNames.forEach((sheetName) => {
+              const ws = workbook.Sheets[sheetName];
+              allText += `\n--- Sheet: ${sheetName} ---\n`;
+              allText += XLSX.utils.sheet_to_csv(ws) + "\n";
+            });
+            setFileContent(allText);
+          } catch {
+            setFileContent(null);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+
+    if (ext === "pdf" || ext === "docx") {
+      if (file.size <= 50 * 1024 * 1024) {
+        setIsFileUploading(true);
+        try {
+          const token = localStorage.getItem("bk_token");
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("token", token || "");
+          const response = await fetch("/api/chat/upload-file", {
+            method: "POST",
+            body: formData,
+          });
+          const result = await response.json();
+          if (result.ok) {
+            setFileUrl(result.fileUrl);
+            if (result.extractedText) {
+              setFileContent(result.extractedText);
+            }
+          }
+        } catch (err) {
+          console.error("File upload error:", err);
+        } finally {
+          setIsFileUploading(false);
+        }
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+
+    setFileContent(null);
   };
 
   const buildPageContext = (): string => {
@@ -277,7 +336,7 @@ export function FloatingChannChat() {
   };
 
   const sendMessage = async () => {
-    if ((!message.trim() && !imagePreview && !fileContent) || isLoading || isStreaming) return;
+    if ((!message.trim() && !imagePreview && !fileContent && !fileName) || isLoading || isStreaming) return;
 
     const token = localStorage.getItem("bk_token");
     if (!token) return;
@@ -285,15 +344,21 @@ export function FloatingChannChat() {
     const currentImage = imagePreview;
     const currentFile = fileContent;
     const currentFileName = fileName;
-    const currentInput = message.trim() || (currentImage ? "ส่งรูปภาพ" : currentFile ? "โปรดวิเคราะห์ไฟล์นี้" : "");
+    const currentFileSize = fileSize;
+    const currentInput = message.trim() || (currentImage ? "ส่งรูปภาพ" : currentFileName ? "โปรดวิเคราะห์ไฟล์นี้" : "");
 
-    const displayContent = currentFile && currentFileName
-      ? `📎 ${currentFileName}${message.trim() ? " — " + message.trim() : ""}`
+    const displayContent = currentFileName
+      ? `📎 ${currentFileName} (${formatFileSize(currentFileSize)})${message.trim() ? " — " + message.trim() : ""}`
       : currentInput;
 
-    const contextMessage = currentFile && currentFileName
-      ? `[ไฟล์แนบ: ${currentFileName}]\n\`\`\`\n${currentFile.slice(0, 12000)}\n\`\`\`\n\nคำถามจากผู้ใช้: ${currentInput}`
-      : currentInput;
+    let contextMessage: string;
+    if (currentFile && currentFileName) {
+      contextMessage = `[ไฟล์แนบ: ${currentFileName} (${formatFileSize(currentFileSize)})]\n\`\`\`\n${currentFile.slice(0, 12000)}\n\`\`\`\n\nคำถามจากผู้ใช้: ${currentInput}`;
+    } else if (currentFileName) {
+      contextMessage = `[ไฟล์แนบ: ${currentFileName} (${formatFileSize(currentFileSize)}) — ไม่สามารถอ่านเนื้อหาได้]\n\nคำถามจากผู้ใช้: ${currentInput}`;
+    } else {
+      contextMessage = currentInput;
+    }
 
     const userMessage: ChatMessage = {
       role: "user",
@@ -721,8 +786,15 @@ export function FloatingChannChat() {
               )}
               {fileName && (
                 <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-slate-800 border border-white/10 rounded-lg text-sm w-fit max-w-[80%]">
-                  <FileText className="w-4 h-4 text-violet-400 shrink-0" />
-                  <span className="truncate text-xs font-medium text-slate-300">{fileName}</span>
+                  {isFileUploading ? (
+                    <Loader2 className="w-4 h-4 text-violet-400 shrink-0 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate text-xs font-medium text-slate-300">{fileName}</span>
+                    <span className="text-[10px] text-slate-500">{formatFileSize(fileSize)}{fileContent ? " · อ่านได้" : " · ไม่สามารถอ่านเนื้อหาได้"}</span>
+                  </div>
                   <button
                     onClick={removeFile}
                     className="ml-1 hover:bg-slate-700 p-0.5 rounded-full transition-colors"
@@ -744,7 +816,7 @@ export function FloatingChannChat() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.csv,.xlsx,.xls"
+                accept="*/*"
                 className="hidden"
                 onChange={handleFileSelect}
                 data-testid="input-chann-file"
@@ -801,7 +873,7 @@ export function FloatingChannChat() {
                 />
                 <Button
                   onClick={sendMessage}
-                  disabled={(!message.trim() && !imagePreview && !fileContent) || isLoading || isStreaming}
+                  disabled={(!message.trim() && !imagePreview && !fileContent && !fileName) || isLoading || isStreaming || isFileUploading}
                   size="icon"
                   className="h-9 w-9 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/20 disabled:opacity-30"
                   data-testid="button-send-chann-message"

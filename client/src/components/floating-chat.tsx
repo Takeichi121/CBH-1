@@ -7,9 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
-  Send, MessageCircle, X, Users, User, Loader2, Smile, ImagePlus,
+  Send, MessageCircle, X, Users, User, Loader2, Smile, ImagePlus, Paperclip,
   ThumbsUp, Heart, Smile as SmileIcon, Sparkles, Frown, Flame, Zap, Star, 
-  CheckCircle, Trophy, PartyPopper, Rocket, Coffee, Utensils, Clock
+  CheckCircle, Trophy, PartyPopper, Rocket, Coffee, Utensils, Clock,
+  FileText, FileSpreadsheet, File, FileArchive, Download
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,14 @@ const STICKER_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   CheckCircle, Trophy, PartyPopper, Rocket, Coffee, Utensils, Clock, MessageCircle
 };
 
+interface FileAttachment {
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  extractedText?: string;
+}
+
 interface ChatMessage {
   user: string;
   senderUsername: string;
@@ -28,6 +37,7 @@ interface ChatMessage {
   text: string;
   messageType?: string;
   imageUrl?: string | null;
+  fileAttachment?: FileAttachment | null;
   timestamp: string;
   isPrivate?: boolean;
 }
@@ -197,7 +207,26 @@ export function FloatingChat() {
     setShowStickers(false);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  };
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.includes("pdf")) return FileText;
+    if (mimeType.includes("spreadsheet") || mimeType.includes("excel") || mimeType.includes("csv")) return FileSpreadsheet;
+    if (mimeType.includes("word") || mimeType.includes("document")) return FileText;
+    if (mimeType.includes("zip") || mimeType.includes("rar") || mimeType.includes("7z") || mimeType.includes("tar") || mimeType.includes("gzip")) return FileArchive;
+    return File;
+  };
+
+  const isImageFile = (file: globalThis.File): boolean => {
+    return file.type.startsWith("image/");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !socket || !isConnected) return;
 
@@ -206,36 +235,72 @@ export function FloatingChat() {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-      formData.append("token", token);
+      if (isImageFile(file)) {
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("token", token);
 
-      const response = await fetch("/api/chat/upload-image", {
-        method: "POST",
-        body: formData
-      });
+        const response = await fetch("/api/chat/upload-image", {
+          method: "POST",
+          body: formData
+        });
 
-      const result = await response.json();
-      if (result.ok && result.imageUrl) {
-        if (activeTab === "private" && selectedUser) {
-          socket.emit("private_message", { 
-            text: "[Image]",
-            to: selectedUser,
-            messageType: "image",
-            imageUrl: result.imageUrl
-          });
+        const result = await response.json();
+        if (result.ok && result.imageUrl) {
+          if (activeTab === "private" && selectedUser) {
+            socket.emit("private_message", { 
+              text: "[Image]",
+              to: selectedUser,
+              messageType: "image",
+              imageUrl: result.imageUrl
+            });
+          } else {
+            socket.emit("message", { 
+              text: "[Image]", 
+              messageType: "image",
+              imageUrl: result.imageUrl
+            });
+          }
         } else {
-          socket.emit("message", { 
-            text: "[Image]", 
-            messageType: "image",
-            imageUrl: result.imageUrl
-          });
+          console.error("Image upload failed:", result.message);
         }
       } else {
-        console.error("Image upload failed:", result.message);
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("token", token);
+
+        const response = await fetch("/api/chat/upload-file", {
+          method: "POST",
+          body: formData
+        });
+
+        const result = await response.json();
+        if (result.ok) {
+          const fileAttachment: FileAttachment = {
+            fileUrl: result.fileUrl,
+            fileName: result.fileName,
+            fileSize: result.fileSize,
+            mimeType: result.mimeType,
+            ...(result.extractedText ? { extractedText: result.extractedText } : {})
+          };
+
+          const msgPayload = {
+            text: `[File] ${result.fileName}`,
+            messageType: "file",
+            fileAttachment
+          };
+
+          if (activeTab === "private" && selectedUser) {
+            socket.emit("private_message", { ...msgPayload, to: selectedUser });
+          } else {
+            socket.emit("message", msgPayload);
+          }
+        } else {
+          console.error("File upload failed:", result.message);
+        }
       }
     } catch (error) {
-      console.error("Image upload error:", error);
+      console.error("File upload error:", error);
     } finally {
       setIsUploading(false);
       if (imageInputRef.current) {
@@ -281,6 +346,25 @@ export function FloatingChat() {
       );
     }
 
+    if (msg.messageType === "file" && msg.fileAttachment) {
+      const fa = msg.fileAttachment;
+      const IconComp = getFileIcon(fa.mimeType);
+      return (
+        <div
+          className="flex items-center gap-2 p-2 rounded border bg-background/80 min-w-[180px] cursor-pointer"
+          onClick={() => window.open(fa.fileUrl, "_blank")}
+          data-testid="file-attachment-card"
+        >
+          <IconComp className="h-8 w-8 shrink-0 text-muted-foreground" />
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-xs font-medium truncate">{fa.fileName}</span>
+            <span className="text-[10px] text-muted-foreground">{formatFileSize(fa.fileSize)}</span>
+          </div>
+          <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+      );
+    }
+
     return msg.text;
   };
 
@@ -308,6 +392,7 @@ export function FloatingChat() {
           
           let lastMessage = msg.text;
           if (msg.messageType === "image") lastMessage = "[รูปภาพ]";
+          else if (msg.messageType === "file") lastMessage = "[ไฟล์]";
           else if (msg.messageType === "sticker") lastMessage = "[สติ๊กเกอร์]";
           else if (lastMessage.length > 30) lastMessage = lastMessage.substring(0, 30) + "...";
           
@@ -362,15 +447,14 @@ export function FloatingChat() {
     </Popover>
   );
 
-  const ImageUploadButton = () => (
+  const FileUploadButton = () => (
     <>
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/*"
         className="hidden"
-        onChange={handleImageUpload}
-        data-testid="input-image-upload"
+        onChange={handleFileUpload}
+        data-testid="input-file-upload"
       />
       <Button 
         type="button" 
@@ -378,12 +462,12 @@ export function FloatingChat() {
         size="icon" 
         disabled={!isConnected || isUploading}
         onClick={() => imageInputRef.current?.click()}
-        data-testid="button-image-upload"
+        data-testid="button-file-upload"
       >
         {isUploading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <ImagePlus className="h-4 w-4" />
+          <Paperclip className="h-4 w-4" />
         )}
       </Button>
     </>
@@ -435,6 +519,7 @@ export function FloatingChat() {
                     const isMe = msg.senderUsername === currentUsername;
                     const isSticker = msg.messageType === "sticker";
                     const isImage = msg.messageType === "image";
+                    const isFile = msg.messageType === "file";
                     return (
                       <div
                         key={index}
@@ -454,8 +539,8 @@ export function FloatingChat() {
                           <div className={cn(
                             "rounded-lg text-sm break-words",
                             isSticker ? "bg-transparent p-0" : "px-2.5 py-1.5",
-                            isImage ? "p-1 bg-muted/50" : "",
-                            !isSticker && !isImage && (isMe ? "bg-primary text-primary-foreground" : "bg-muted")
+                            isImage || isFile ? "p-1 bg-muted/50" : "",
+                            !isSticker && !isImage && !isFile && (isMe ? "bg-primary text-primary-foreground" : "bg-muted")
                           )}>
                             {renderMessageContent(msg, isMe)}
                           </div>
@@ -468,7 +553,7 @@ export function FloatingChat() {
 
               <form onSubmit={sendMessage} className="flex items-center gap-1 p-2 border-t">
                 <StickerPicker />
-                <ImageUploadButton />
+                <FileUploadButton />
                 <Input
                   ref={inputRef}
                   value={message}
@@ -624,6 +709,7 @@ export function FloatingChat() {
                         const isMe = msg.senderUsername === currentUsername;
                         const isSticker = msg.messageType === "sticker";
                         const isImage = msg.messageType === "image";
+                        const isFile = msg.messageType === "file";
                         return (
                           <div
                             key={index}
@@ -633,8 +719,8 @@ export function FloatingChat() {
                             <div className={cn(
                               "rounded-lg text-sm break-words max-w-[80%]",
                               isSticker ? "bg-transparent p-0" : "px-2.5 py-1.5",
-                              isImage ? "p-1 bg-muted/50" : "",
-                              !isSticker && !isImage && (isMe ? "bg-primary text-primary-foreground" : "bg-muted")
+                              isImage || isFile ? "p-1 bg-muted/50" : "",
+                              !isSticker && !isImage && !isFile && (isMe ? "bg-primary text-primary-foreground" : "bg-muted")
                             )}>
                               {renderMessageContent(msg, isMe)}
                             </div>
@@ -646,7 +732,7 @@ export function FloatingChat() {
 
                   <form onSubmit={sendMessage} className="flex items-center gap-1 p-2 border-t">
                     <StickerPicker />
-                    <ImageUploadButton />
+                    <FileUploadButton />
                     <Input
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}

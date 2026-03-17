@@ -490,8 +490,9 @@ export const staffChatMessages = pgTable("staff_chat_messages", {
   senderDisplayName: text("sender_display_name").notNull(),
   recipientUsername: text("recipient_username"), // null = group message
   text: text("text").notNull(),
-  messageType: text("message_type").notNull().default("text"), // text, image, sticker
+  messageType: text("message_type").notNull().default("text"), // text, image, sticker, file
   imageUrl: text("image_url"), // URL for image messages
+  fileAttachment: text("file_attachment"), // JSON string for file attachment metadata
   isRead: integer("is_read").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });

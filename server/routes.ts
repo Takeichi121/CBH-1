@@ -335,6 +335,11 @@ async function extractTextFromFile(filePath: string, mimeType: string, fileSize:
       const text = fs.readFileSync(filePath, "utf-8");
       return text.slice(0, 100000) || null;
     }
+
+    if (mimeType.startsWith("text/") || mimeType === "application/xml" || mimeType === "application/json") {
+      const text = fs.readFileSync(filePath, "utf-8");
+      return text.slice(0, 100000) || null;
+    }
   } catch (err) {
     console.error("Error extracting text from file:", err);
   }

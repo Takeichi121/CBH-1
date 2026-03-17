@@ -252,6 +252,8 @@ export function FloatingChannChat() {
     setFileName(file.name);
     setFileSize(file.size);
     setFileMimeType(file.type);
+    setFileContent(null);
+    setFileUrl(null);
     const ext = file.name.split(".").pop()?.toLowerCase();
 
     if (ext === "txt" || ext === "csv") {
@@ -307,12 +309,15 @@ export function FloatingChannChat() {
           const result = await response.json();
           if (result.ok) {
             setFileUrl(result.fileUrl);
-            if (result.extractedText) {
-              setFileContent(result.extractedText);
-            }
+            setFileContent(result.extractedText ?? null);
+          } else {
+            setFileContent(null);
+            setFileUrl(null);
           }
         } catch (err) {
           console.error("File upload error:", err);
+          setFileContent(null);
+          setFileUrl(null);
         } finally {
           setIsFileUploading(false);
         }
@@ -322,7 +327,44 @@ export function FloatingChannChat() {
       return;
     }
 
-    setFileContent(null);
+    if (ext === "config" || ext === "log4net" || ext === "xml" || ext === "json" || ext === "ini") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setFileContent(event.target?.result as string);
+        };
+        reader.readAsText(file);
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+
+    setIsFileUploading(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token || "");
+      const response = await fetch("/api/chat/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.ok) {
+        setFileUrl(result.fileUrl);
+        setFileContent(result.extractedText ?? null);
+      } else {
+        setFileContent(null);
+        setFileUrl(null);
+      }
+    } catch (err) {
+      console.error("File upload error:", err);
+      setFileContent(null);
+      setFileUrl(null);
+    } finally {
+      setIsFileUploading(false);
+    }
   };
 
   const buildPageContext = (): string => {

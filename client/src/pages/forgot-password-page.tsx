@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Loader2, Globe, Sun, Moon, ChevronLeft, Mail, Key, Lock, CheckCircle, User } from "lucide-react";
-import logoImg from "@assets/Burger_King_2020.svg_1766870334760.png";
+import { LogoDataHouse } from "@/components/logo";
 import { useTheme } from "next-themes";
 import { useToast } from "@/hooks/use-toast";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
@@ -193,7 +193,7 @@ export default function ForgotPasswordPage() {
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <img src={logoImg} alt="Logo" className="h-12 object-contain" />
+          <LogoDataHouse size={40} />
           <div className="w-9" />
         </div>
 

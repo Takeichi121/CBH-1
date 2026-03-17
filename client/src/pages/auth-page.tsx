@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {Loader2, Globe, Sun, Moon, ChevronLeft, HelpCircle} from "lucide-react";
 import { Link } from "wouter";
-import logoImg from "@assets/Burger_King_2020.svg_1766870334760.png";
 import {useTheme} from "next-themes";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

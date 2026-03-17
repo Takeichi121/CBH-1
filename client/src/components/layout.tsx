@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { LogoDataHouse } from "@/components/logo";
 import { Link, useLocation } from "wouter";
 import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -76,9 +77,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="md:hidden flex flex-col border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
         <div className="h-14 flex items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow">
-              <span className="text-white font-black text-xs tracking-tight">CBH</span>
-            </div>
+            <LogoDataHouse size={32} />
             <h1 className="text-lg font-bold font-display text-foreground">Chann Back House</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -115,9 +114,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <SheetHeader className="p-4 text-left border-b">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow">
-                        <span className="text-white font-black text-xs tracking-tight">CBH</span>
-                      </div>
+                      <LogoDataHouse size={36} />
                       <SheetTitle className="text-xl font-bold font-display">Chann Back House</SheetTitle>
                     </div>
                     <Button
@@ -199,10 +196,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="hidden md:flex h-16 items-center justify-between px-6 bg-background/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <Link href="/work" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-              <div className="w-full h-full rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-md">
-                <span className="text-white font-black text-sm tracking-tight">CBH</span>
-              </div>
+            <div className="flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+              <LogoDataHouse size={40} />
             </div>
             <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Chann Back House</h1>
           </Link>

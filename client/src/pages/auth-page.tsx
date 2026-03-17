@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { LogoDataHouse } from "@/components/logo";
 import { useI18n } from "@/hooks/use-i18n";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -196,10 +197,8 @@ export default function AuthPage() {
         ) : (
           <>
             <div className="text-center space-y-2 md:space-y-4 select-none">
-              <div className="mx-auto h-24 w-24 md:h-36 md:w-36 mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center relative">
-                <div className="w-full h-full rounded-3xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-2xl">
-                  <span className="text-white font-black text-3xl md:text-5xl tracking-tight select-none drop-shadow">CBH</span>
-                </div>
+              <div className="mx-auto mb-4 md:mb-6 transition-all duration-300 hover:scale-105 flex items-center justify-center">
+                <LogoDataHouse size={96} />
               </div>
               <div className="space-y-1">
                 <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">

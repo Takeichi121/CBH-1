@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,8 @@ export function FloatingChannChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -367,6 +369,118 @@ export function FloatingChannChat() {
     }
   };
 
+  const processFile = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2GB)");
+      return;
+    }
+    setFileName(file.name);
+    setFileSize(file.size);
+    setFileMimeType(file.type);
+    setFileContent(null);
+    setFileUrl(null);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    if (ext === "txt" || ext === "csv") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (ev) => setFileContent(ev.target?.result as string);
+        reader.readAsText(file);
+      }
+      return;
+    }
+    if (ext === "xlsx" || ext === "xls") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: "array" });
+            let allText = "";
+            workbook.SheetNames.forEach((sheetName) => {
+              const ws = workbook.Sheets[sheetName];
+              allText += `\n--- Sheet: ${sheetName} ---\n`;
+              allText += XLSX.utils.sheet_to_csv(ws) + "\n";
+            });
+            setFileContent(allText);
+          } catch {
+            setFileContent(null);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+      return;
+    }
+    if (ext === "pdf" || ext === "docx") {
+      if (file.size <= 50 * 1024 * 1024) {
+        setIsFileUploading(true);
+        try {
+          const token = localStorage.getItem("bk_token");
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("token", token || "");
+          const response = await fetch("/api/chat/upload-file", { method: "POST", body: formData });
+          const result = await response.json();
+          if (result.ok) { setFileUrl(result.fileUrl); setFileContent(result.extractedText ?? null); }
+        } catch (err) { console.error("File upload error:", err); }
+        finally { setIsFileUploading(false); }
+      }
+      return;
+    }
+    if (ext === "config" || ext === "log4net" || ext === "xml" || ext === "json" || ext === "ini") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (ev) => setFileContent(ev.target?.result as string);
+        reader.readAsText(file);
+      }
+      return;
+    }
+    setIsFileUploading(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token || "");
+      const response = await fetch("/api/chat/upload-file", { method: "POST", body: formData });
+      const result = await response.json();
+      if (result.ok) { setFileUrl(result.fileUrl); setFileContent(result.extractedText ?? null); }
+    } catch (err) { console.error("File upload error:", err); }
+    finally { setIsFileUploading(false); }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.type.startsWith("image/")) {
+      processImageFile(file);
+    } else {
+      processFile(file);
+    }
+  };
+
   const buildPageContext = (): string => {
     const path = window.location.pathname;
     const pageDate = localStorage.getItem("chann_page_date");
@@ -597,7 +711,21 @@ export function FloatingChannChat() {
       )}
 
       {isOpen && (
-        <div className="fixed inset-3 bottom-20 md:inset-auto md:bottom-4 md:right-4 md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] z-[51] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10" data-testid="container-chann-chat">
+        <div
+          className="fixed inset-3 bottom-20 md:inset-auto md:bottom-4 md:right-4 md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] z-[51] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
+          data-testid="container-chann-chat"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDragging && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm rounded-2xl border-2 border-dashed border-violet-500/60 pointer-events-none" data-testid="overlay-chann-dropzone">
+              <UploadCloud className="w-14 h-14 text-violet-400 mb-3" />
+              <p className="text-white font-semibold text-base">วางไฟล์ที่นี่</p>
+              <p className="text-violet-300/70 text-sm mt-1">รองรับทุกชนิดไฟล์</p>
+            </div>
+          )}
           <div className="bg-gradient-to-r from-slate-900 via-violet-950 to-slate-900 px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

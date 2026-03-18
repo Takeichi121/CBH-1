@@ -55,18 +55,58 @@ BRANCH_NAME=Grand Diamond
 > **หมายเหตุ:** `.env` เป็นไฟล์ที่อาจมองไม่เห็นใน File Explorer
 > ถ้ามองไม่เห็น: ใน File Explorer → View → ติ๊ก "Hidden items"
 
-### ขั้นตอนที่ 3: นำเข้าข้อมูลจาก Replit
-หลังจาก deploy schema แล้ว ให้ import ข้อมูลเริ่มต้น:
-1. เปิด **pgAdmin** → เชื่อมต่อ localhost
-2. คลิกขวาที่ database `cbhdb` → **Query Tool**
-3. เปิดไฟล์ `database_export.sql` (File → Open) → กด **Run (F5)**
+### ขั้นตอนที่ 3: ย้ายข้อมูลจาก Replit มาคอมร้าน
+
+มี 2 วิธี เลือกตามความต้องการ:
+
+---
+
+#### วิธี A — ใช้ `database_export.sql` (ข้อมูล seed มาตรฐาน)
+ใช้เมื่อ: ต้องการเริ่มต้นใหม่ด้วยข้อมูล config/users มาตรฐาน (ไม่เอาข้อมูลขายจริง)
+
+1. รัน `start-windows.bat` ครั้งแรกให้สำเร็จ (เพื่อให้ db:push สร้างตารางก่อน)
+2. หยุด server (Ctrl+C)
+3. เปิด **pgAdmin** → เชื่อมต่อ localhost
+4. คลิกขวาที่ database `cbhdb` → **Query Tool**
+5. เปิดไฟล์ `database_export.sql` (File → Open) → กด **Run (F5)**
 
 **หรือใช้ psql command line:**
 ```
 psql -U postgres -d cbhdb -f C:\CBH\database_export.sql
 ```
 
-> ⚠️ ทำขั้นตอนนี้หลังจากรัน `start-windows.bat` ครั้งแรกสำเร็จแล้ว (เพื่อให้ db:push สร้างตารางก่อน)
+---
+
+#### วิธี B — Dump ข้อมูลจริงจาก Replit (ย้ายข้อมูลทั้งหมด)
+ใช้เมื่อ: ต้องการนำข้อมูลขายจริง / roster / borrow records จาก Replit มาด้วย
+
+**ขั้นตอน B1: ดู DATABASE_URL จาก Replit**
+1. เปิดโปรเจค Replit
+2. คลิก **Secrets** (ไอคอนกุญแจ) ในแถบด้านซ้าย
+3. คัดลอกค่า `DATABASE_URL` — จะมีรูปแบบ:
+   ```
+   postgresql://user:password@host:5432/dbname
+   ```
+
+**ขั้นตอน B2: Dump จาก Replit (รันบนคอมที่มี psql/pg_dump)**
+```bash
+# แทนที่ YOUR_REPLIT_DATABASE_URL ด้วยค่าจริงจาก Replit Secrets
+pg_dump "YOUR_REPLIT_DATABASE_URL" \
+  --no-owner --no-acl \
+  --format=plain \
+  --file=replit_backup.sql
+```
+
+> ถ้าคอมไม่มี pg_dump: ติดตั้งได้จาก https://www.postgresql.org/download/ (เลือก Command Line Tools)
+
+**ขั้นตอน B3: Import เข้า cbhdb บนคอมร้าน**
+```bash
+# รัน start-windows.bat ก่อน แล้วหยุด server แล้วค่อย import
+psql -U postgres -d cbhdb -f replit_backup.sql
+```
+
+> ⚠️ ถ้า error เรื่อง role/owner ให้เพิ่ม `--no-owner --no-acl` ใน pg_dump
+> และถ้า conflict ให้ drop ตาราง แล้ว import ใหม่ หรือใช้ `--clean` flag กับ pg_dump
 
 ### ขั้นตอนที่ 4: รันแอป
 1. ดับเบิลคลิก **start-windows.bat** ในโฟลเดอร์ `C:\CBH`

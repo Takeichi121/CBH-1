@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title BK Work Schedule Server
+title CBH - Chann Back House Server
 
 echo ============================================
-echo   BK Work Schedule - Grand Diamond
+echo   CBH - Chann Back House (Grand Diamond)
 echo ============================================
 echo.
 

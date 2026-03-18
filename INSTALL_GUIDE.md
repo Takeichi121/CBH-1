@@ -1,24 +1,34 @@
-# 📖 คู่มือติดตั้ง BK Work Schedule บนคอมร้าน
+# 📖 คู่มือติดตั้ง CBH บนคอมร้าน
 
-## 📋 สิ่งที่ต้องเตรียม
+**CBH — Chann Back House (Grand Diamond / BK1040)**
+
+คู่มือนี้จะช่วยให้คุณรันแอป CBH บนคอมร้านเองได้ฟรีทั้งหมด โดยใช้ **Cloudflare Tunnel** เพื่อเปิดให้เข้าถึงจากภายนอกได้
+
+---
+
+## 📋 สิ่งที่ต้องเตรียม (ทำครั้งแรกเท่านั้น)
 
 ### 1. ติดตั้ง Node.js
 1. ไปที่ https://nodejs.org
 2. ดาวน์โหลด **LTS** version (แนะนำ 20.x หรือใหม่กว่า)
 3. ติดตั้งตามขั้นตอน (กด Next ไปเรื่อยๆ)
-4. ตรวจสอบว่าติดตั้งสำเร็จ: เปิด Command Prompt พิมพ์ `node --version`
+4. ตรวจสอบว่าติดตั้งสำเร็จ: เปิด Command Prompt พิมพ์
+   ```
+   node --version
+   ```
 
 ### 2. ติดตั้ง PostgreSQL
 1. ไปที่ https://www.postgresql.org/download/windows/
-2. ดาวน์โหลด installer
-3. ติดตั้งตามขั้นตอน
-   - **จำรหัสผ่าน** ที่ตั้งไว้ (จะใช้ใน DATABASE_URL)
+2. ดาวน์โหลด installer (เลือก Windows x86-64)
+3. ติดตั้งตามขั้นตอน:
+   - **จำรหัสผ่าน** ที่ตั้งไว้สำหรับ user `postgres` (จะใช้ใน DATABASE_URL)
    - Port ใช้ค่าเริ่มต้น: **5432**
-4. เปิด **pgAdmin** หรือ **SQL Shell** สร้าง database ใหม่ชื่อ `bkschedule`
-
-```sql
-CREATE DATABASE bkschedule;
-```
+   - ติดตั้ง pgAdmin ด้วย (ติ๊กไว้)
+4. หลังติดตั้ง เปิด **pgAdmin** หรือ **SQL Shell (psql)**
+5. สร้าง database ใหม่ชื่อ `cbhdb`:
+   ```sql
+   CREATE DATABASE cbhdb;
+   ```
 
 ---
 
@@ -27,32 +37,40 @@ CREATE DATABASE bkschedule;
 ### ขั้นตอนที่ 1: ดาวน์โหลดโค้ด
 1. ใน Replit กดปุ่ม **⋮** (สามจุด) ด้านบนขวา
 2. เลือก **Download as ZIP**
-3. แตกไฟล์ไปยังโฟลเดอร์ที่ต้องการ เช่น `C:\BKSchedule`
+3. แตกไฟล์ ZIP ไปยังโฟลเดอร์ที่ต้องการ เช่น `C:\CBH`
 
 ### ขั้นตอนที่ 2: ตั้งค่า Environment Variables
-1. ในโฟลเดอร์โปรเจค คัดลอกไฟล์ `.env.example` เป็น `.env`
-2. เปิดไฟล์ `.env` ด้วย Notepad แก้ไขค่าต่างๆ:
+1. ในโฟลเดอร์ `C:\CBH` คัดลอกไฟล์ `.env.example` เป็น `.env`
+   - คลิกขวาที่ `.env.example` → Copy → Paste → เปลี่ยนชื่อเป็น `.env`
+2. เปิดไฟล์ `.env` ด้วย **Notepad** (คลิกขวา → Open with → Notepad)
+3. แก้ไขค่าต่างๆ ดังนี้ (ดูรายละเอียดทุก key ใน `.env.example`):
 
 ```
-# ⚠️ ต้องตั้งค่า (Required)
-DATABASE_URL=postgresql://postgres:รหัสผ่านของคุณ@localhost:5432/bkschedule
+DATABASE_URL=postgresql://postgres:รหัสผ่านของคุณ@localhost:5432/cbhdb
 SALT=ใส่ค่าอะไรก็ได้ที่เป็นความลับ
 MANAGER_VERIFY_CODE=รหัสสำหรับสมัคร Manager
-BRANCH_NAME=ชื่อสาขาของคุณ
-
-# ✅ ไม่บังคับ (Optional) - ใช้ค่าเริ่มต้นได้
-PORT=5000
-SESSION_TTL_SECONDS=604800
-
-# 📧 สำหรับ OTP Email (ถ้าไม่ใส่ = ไม่สามารถ reset password ผ่าน email)
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+BRANCH_NAME=Grand Diamond
 ```
 
-**หมายเหตุ:** ถ้าไม่ตั้งค่า RESEND_API_KEY ระบบ OTP reset password จะไม่ทำงาน (ยังสามารถใช้งานฟีเจอร์อื่นได้ปกติ)
+> **หมายเหตุ:** `.env` เป็นไฟล์ที่อาจมองไม่เห็นใน File Explorer
+> ถ้ามองไม่เห็น: ใน File Explorer → View → ติ๊ก "Hidden items"
 
-### ขั้นตอนที่ 3: รันแอป
-1. ดับเบิลคลิก **start-windows.bat**
-2. รอจนเห็นข้อความ "เริ่มต้น Server..." และไม่มี error
+### ขั้นตอนที่ 3: นำเข้าข้อมูลจาก Replit
+หลังจาก deploy schema แล้ว ให้ import ข้อมูลเริ่มต้น:
+1. เปิด **pgAdmin** → เชื่อมต่อ localhost
+2. คลิกขวาที่ database `cbhdb` → **Query Tool**
+3. เปิดไฟล์ `database_export.sql` (File → Open) → กด **Run (F5)**
+
+**หรือใช้ psql command line:**
+```
+psql -U postgres -d cbhdb -f C:\CBH\database_export.sql
+```
+
+> ⚠️ ทำขั้นตอนนี้หลังจากรัน `start-windows.bat` ครั้งแรกสำเร็จแล้ว (เพื่อให้ db:push สร้างตารางก่อน)
+
+### ขั้นตอนที่ 4: รันแอป
+1. ดับเบิลคลิก **start-windows.bat** ในโฟลเดอร์ `C:\CBH`
+2. รอจนเห็นข้อความ `Server running on port 5000` (อาจใช้เวลา 1-2 นาทีครั้งแรก)
 3. เปิดเบราว์เซอร์ไปที่ http://localhost:5000
 
 **สำหรับ Mac/Linux:** ใช้ Terminal รันคำสั่ง:
@@ -63,12 +81,13 @@ chmod +x start-linux.sh start-tunnel.sh
 
 ---
 
-## 🌐 เปิดให้เข้าถึงจากภายนอกร้าน (Cloudflare Tunnel)
+## 🌐 เปิดให้เข้าถึงจากอุปกรณ์อื่น (Cloudflare Tunnel)
 
-### ติดตั้ง Cloudflared (ครั้งแรกเท่านั้น)
+ใช้เพื่อให้มือถือหรือคอมเครื่องอื่นในร้าน/นอกร้านเข้าแอปได้
 
-#### วิธี A: ใช้ winget (แนะนำ)
-เปิด Command Prompt แล้วพิมพ์:
+### ขั้นตอนที่ 1: ติดตั้ง Cloudflared (ครั้งแรกเท่านั้น)
+
+#### วิธี A: ใช้ winget (แนะนำ — เปิด Command Prompt แล้วพิมพ์)
 ```
 winget install cloudflare.cloudflared
 ```
@@ -77,86 +96,69 @@ winget install cloudflare.cloudflared
 1. ไปที่ https://github.com/cloudflare/cloudflared/releases
 2. ดาวน์โหลด `cloudflared-windows-amd64.exe`
 3. เปลี่ยนชื่อเป็น `cloudflared.exe`
-4. ใส่ในโฟลเดอร์เดียวกับโปรเจค หรือใส่ใน PATH
+4. ใส่ในโฟลเดอร์ `C:\CBH` (เดียวกับโปรเจค)
 
-### การใช้งาน Tunnel
+### ขั้นตอนที่ 2: เปิด Tunnel
 1. **เปิด start-windows.bat** ก่อน (รัน server)
-2. **เปิด start-tunnel.bat** (เปิด tunnel)
-3. จะได้ URL แบบ `https://xxxxx.trycloudflare.com`
-4. แชร์ URL นี้ให้พนักงานใช้งาน
+2. **เปิด start-tunnel.bat** ในหน้าต่างใหม่
+3. รอจนเห็น URL แบบ `https://xxxxx.trycloudflare.com`
+4. แชร์ URL นี้ให้ทีมงานใช้
 
-### ⚠️ หมายเหตุสำคัญ
-- URL จะเปลี่ยนทุกครั้งที่เปิด tunnel ใหม่
-- ถ้าต้องการ URL ถาวร ให้อ่านหัวข้อ "Named Tunnel" ด้านล่าง
+> ⚠️ **URL จะเปลี่ยนทุกครั้งที่เปิด tunnel ใหม่**
+> ถ้าต้องการ URL ถาวร ดูหัวข้อ "Named Tunnel" ด้านล่าง
 
 ---
 
-## 🔒 ตั้งค่า Named Tunnel (URL ถาวร)
+## 🔒 ตั้งค่า Named Tunnel (URL ถาวร — ไม่เปลี่ยน)
 
-ถ้าต้องการ URL ที่ไม่เปลี่ยน:
+ถ้าต้องการ URL ที่ไม่เปลี่ยนทุกครั้ง:
 
 ### 1. สมัคร Cloudflare (ฟรี)
-1. ไปที่ https://cloudflare.com
-2. สมัครบัญชี
-3. เพิ่ม domain ของคุณ (ถ้ามี) หรือใช้ subdomain ฟรี
+1. ไปที่ https://cloudflare.com → Create account
+2. ไม่จำเป็นต้องมี domain ของตัวเอง
 
 ### 2. Login cloudflared
+เปิด Command Prompt แล้วพิมพ์:
 ```
 cloudflared tunnel login
 ```
-(จะเปิดเบราว์เซอร์ให้ login)
+จะเปิดเบราว์เซอร์ให้ login Cloudflare → อนุมัติ
 
 ### 3. สร้าง Tunnel
 ```
-cloudflared tunnel create bk-schedule
+cloudflared tunnel create cbh-store
+```
+จะได้ Tunnel ID (เก็บไว้)
+
+### 4. ตั้งค่า DNS (ต้องมี domain)
+```
+cloudflared tunnel route dns cbh-store cbh.yourdomain.com
 ```
 
-### 4. ตั้งค่า DNS
-```
-cloudflared tunnel route dns bk-schedule schedule.yourdomain.com
-```
-
-### 5. สร้างไฟล์ config.yml
-สร้างไฟล์ `~/.cloudflared/config.yml`:
+### 5. สร้างไฟล์ config
+สร้างไฟล์ `%USERPROFILE%\.cloudflared\config.yml`:
 ```yaml
-tunnel: bk-schedule
-credentials-file: C:\Users\YourName\.cloudflared\xxxxx.json
+tunnel: cbh-store
+credentials-file: C:\Users\YourName\.cloudflared\TUNNEL-ID.json
 
 ingress:
-  - hostname: schedule.yourdomain.com
+  - hostname: cbh.yourdomain.com
     service: http://localhost:5000
   - service: http_status:404
 ```
 
-### 6. รัน Tunnel
+### 6. รัน Tunnel ถาวร
 ```
-cloudflared tunnel run bk-schedule
+cloudflared tunnel run cbh-store
 ```
 
 ---
 
-## 🔧 การแก้ปัญหาเบื้องต้น
+## 📱 การเข้าถึงจากมือถือหรืออุปกรณ์ในร้าน
 
-### ปัญหา: ไม่สามารถเชื่อมต่อ Database
-- ตรวจสอบว่า PostgreSQL service กำลังทำงาน
-- ตรวจสอบ DATABASE_URL ในไฟล์ .env
-- ตรวจสอบรหัสผ่าน PostgreSQL
-
-### ปัญหา: Port 5000 ถูกใช้งานแล้ว
-- ปิดโปรแกรมอื่นที่ใช้ port 5000
-- หรือแก้ไข PORT ในไฟล์ .env เป็นตัวเลขอื่น เช่น 3000
-
-### ปัญหา: OTP ไม่ส่ง Email
-- ตรวจสอบ RESEND_API_KEY ในไฟล์ .env
-- ถ้าไม่มี Resend account ให้สมัครที่ https://resend.com
-
----
-
-## 📱 การเข้าถึงจากมือถือ
-
-### ภายในร้าน (WiFi เดียวกัน)
-1. หา IP ของคอมร้าน: เปิด Command Prompt พิมพ์ `ipconfig`
-2. ดู IPv4 Address เช่น `192.168.1.100`
+### ภายในร้าน (WiFi เดียวกัน — ไม่ต้องใช้ Tunnel)
+1. หา IP ของคอมที่รัน server: เปิด Command Prompt พิมพ์ `ipconfig`
+2. ดู **IPv4 Address** เช่น `192.168.1.100`
 3. เปิดเบราว์เซอร์บนมือถือไปที่ `http://192.168.1.100:5000`
 
 ### ภายนอกร้าน
@@ -166,12 +168,61 @@ cloudflared tunnel run bk-schedule
 
 ## ⏰ ตั้งให้รันอัตโนมัติตอนเปิดคอม
 
-1. กด `Win + R` พิมพ์ `shell:startup`
-2. คัดลอก shortcut ของ `start-windows.bat` ไปใส่ในโฟลเดอร์ Startup
-3. (ถ้าต้องการ tunnel ด้วย) คัดลอก shortcut ของ `start-tunnel.bat` ด้วย
+1. กด `Win + R` → พิมพ์ `shell:startup` → Enter
+2. คัดลอก **shortcut** ของ `start-windows.bat` ไปใส่ในโฟลเดอร์ Startup
+   - คลิกขวาที่ `start-windows.bat` → Send to → Desktop (เพื่อสร้าง shortcut)
+   - ย้าย shortcut ไปใส่ใน Startup folder
+3. (ถ้าต้องการ tunnel ด้วย) ทำเช่นเดียวกันกับ `start-tunnel.bat`
+
+---
+
+## 🤖 การตั้งค่า Chann AI บนคอมร้าน
+
+Chann AI ต้องใช้ OpenAI API Key ซึ่งต่างจาก Replit (Replit ใช้ key ของตัวเอง)
+
+1. สมัคร OpenAI account ที่ https://platform.openai.com
+2. สร้าง API Key ที่ https://platform.openai.com/api-keys
+3. ใส่ใน `.env`:
+   ```
+   AI_INTEGRATIONS_OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxx
+   AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
+   ```
+
+> ถ้าไม่ต้องการใช้ Chann AI ปล่อยว่างไว้ได้ ฟีเจอร์อื่นยังทำงานได้ปกติ
+
+---
+
+## 🔧 การแก้ปัญหาเบื้องต้น
+
+### ปัญหา: ไม่สามารถเชื่อมต่อ Database
+- ตรวจสอบว่า PostgreSQL service กำลังทำงาน:
+  - เปิด Services (Win+R → `services.msc`) → หา `postgresql-x64-XX` → Start
+- ตรวจสอบ `DATABASE_URL` ในไฟล์ `.env`
+- ตรวจสอบรหัสผ่าน PostgreSQL ให้ตรงกัน
+
+### ปัญหา: Port 5000 ถูกใช้งานแล้ว
+- ปิดโปรแกรมอื่นที่ใช้ port 5000
+- หรือแก้ไข `PORT=3000` ในไฟล์ `.env` แล้วเปิด http://localhost:3000 แทน
+
+### ปัญหา: [ERROR] Build ไม่สำเร็จ
+- ตรวจสอบว่า Node.js ติดตั้งถูกต้อง: `node --version`
+- ลบโฟลเดอร์ `node_modules` แล้วรัน `npm install` ใหม่
+- ตรวจสอบว่าไม่มี antivirus บล็อกการรัน Node.js
+
+### ปัญหา: OTP Email ไม่ทำงาน
+- ตรวจสอบ `RESEND_API_KEY` ในไฟล์ `.env`
+- สมัคร Resend account ฟรีที่ https://resend.com (ส่งได้ 100 email/วัน)
+
+### ปัญหา: Cloudflared ไม่พบ
+- ตรวจสอบว่าติดตั้งแล้ว: เปิด Command Prompt พิมพ์ `cloudflared --version`
+- ถ้าใช้วิธี B (ดาวน์โหลดเอง) ให้แน่ใจว่าไฟล์อยู่ใน `C:\CBH` หรือใน PATH
+
+### ปัญหา: ลืมรหัสผ่าน PostgreSQL
+- เปิด pgAdmin → คลิกขวาที่ server → Properties → แก้ Password
+- หรือถอนการติดตั้งและติดตั้ง PostgreSQL ใหม่
 
 ---
 
 ## 📞 ต้องการความช่วยเหลือ?
 
-ถ้ามีปัญหาในการติดตั้ง สามารถติดต่อผู้พัฒนาได้
+ถ้ามีปัญหาในการติดตั้ง สามารถติดต่อผู้พัฒนาได้ที่ Chann AI หรือทีม Dev

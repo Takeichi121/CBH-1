@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "============================================"
-echo "  BK Work Schedule - Grand Diamond"
+echo "  CBH - Chann Back House (Grand Diamond)"
 echo "============================================"
 echo ""
 

@@ -372,6 +372,7 @@ export function FloatingChannChat() {
   const processFile = async (file: File) => {
     if (file.size > 2 * 1024 * 1024 * 1024) {
       alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2GB)");
+      removeFile();
       return;
     }
     setFileName(file.name);
@@ -463,7 +464,7 @@ export function FloatingChannChat() {
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    dragCounter.current--;
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
     if (dragCounter.current === 0) setIsDragging(false);
   };
 

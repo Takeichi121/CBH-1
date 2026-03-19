@@ -2442,6 +2442,83 @@ function DroppableEmptyCell({
   );
 }
 
+function ManagerDroppableEmptyCell({
+  username,
+  day,
+  groups,
+  onDrop,
+  isDragging,
+  isCopyMode,
+}: {
+  username: string;
+  day: string;
+  groups: any;
+  onDrop: (username: string, day: string, shift: any) => void;
+  isDragging: boolean;
+  isCopyMode: boolean;
+}) {
+  const [isOver, setIsOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = e.ctrlKey || e.metaKey ? "copy" : "move";
+    setIsOver(true);
+  };
+
+  const handleDragLeave = () => setIsOver(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsOver(false);
+    try {
+      const shiftData = JSON.parse(e.dataTransfer.getData("application/json"));
+      onDrop(username, day, shiftData);
+    } catch (err) {
+      console.error("Failed to parse dropped shift data:", err);
+    }
+  };
+
+  const borderColor = isOver
+    ? isCopyMode
+      ? "border-green-500 bg-green-500/20 border-2"
+      : "border-orange-500 bg-orange-500/20 border-2"
+    : isDragging
+      ? isCopyMode
+        ? "border-green-400/50 bg-green-500/5"
+        : "border-orange-400/50 bg-orange-500/5"
+      : "border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5";
+
+  return (
+    <div
+      className={`w-full h-10 border-2 border-dashed rounded-lg flex items-center justify-center transition-all group ${borderColor}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging || isOver ? (
+        <Plus
+          className={`w-4 h-4 ${isCopyMode ? "text-green-500" : "text-orange-500"}`}
+        />
+      ) : (
+        <ManageShiftDialogInWork
+          username={username}
+          date={day}
+          existingShift={null}
+          mode="create"
+          groups={groups}
+        >
+          <button
+            className="w-full h-full flex items-center justify-center"
+            data-testid={`button-add-manager-shift-${username}-${day}`}
+          >
+            <Plus className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary/50 transition-colors" />
+          </button>
+        </ManageShiftDialogInWork>
+      )}
+    </div>
+  );
+}
+
 // Manager Team Roster View - shows only managers
 function ManagerTeamRosterView() {
   const { language, t } = useI18n();
@@ -2474,6 +2551,34 @@ function ManagerTeamRosterView() {
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+
+  const handleDropShift = async (
+    targetUsername: string,
+    targetDate: string,
+    sourceShift: any,
+  ) => {
+    const token = localStorage.getItem("bk_token") || "";
+    const isCopy = sourceShift._isCopy;
+    try {
+      await apiRequest("POST", api.shifts.setForUser.path, {
+        token,
+        username: targetUsername,
+        date: targetDate,
+        shiftGroup: sourceShift.shiftGroup,
+        startTime: sourceShift.startTime,
+        note: sourceShift.note || "",
+      });
+      if (!isCopy && sourceShift.id) {
+        await apiRequest("POST", "/api/deleteShift", {
+          token,
+          shiftId: sourceShift.id,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (isLoading) return <WorkPageSkeleton />;
 
@@ -2613,20 +2718,14 @@ function ManagerTeamRosterView() {
                                 }}
                               />
                             ) : (
-                              <ManageShiftDialogInWork
+                              <ManagerDroppableEmptyCell
                                 username={manager.username}
-                                date={day}
-                                existingShift={null}
-                                mode="create"
+                                day={day}
                                 groups={managerGroups}
-                              >
-                                <button
-                                  className="w-full h-10 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center hover-elevate transition-colors"
-                                  data-testid={`button-add-manager-shift-${manager.username}-${day}`}
-                                >
-                                  <Plus className="w-4 h-4 text-muted-foreground/50" />
-                                </button>
-                              </ManageShiftDialogInWork>
+                                onDrop={handleDropShift}
+                                isDragging={!!draggedShift}
+                                isCopyMode={isCopyMode}
+                              />
                             )}
                           </TableCell>
                         );

@@ -59,6 +59,7 @@ echo ============================================
 echo.
 
 :: Start the server
-call npm start
+SET NODE_ENV=production
+node dist/index.cjs
 
 pause

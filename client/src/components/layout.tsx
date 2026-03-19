@@ -71,6 +71,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* Orange Brand Top Bar */}
+      <div className="w-full h-8 flex items-center px-4 gap-2 shrink-0" style={{ backgroundColor: "#F58220" }}>
+        <LogoDataHouse size={20} />
+        <span className="text-white text-sm font-semibold font-display tracking-wide">Chann Back House</span>
+      </div>
+
       <OfflineIndicator />
 
       {/* Mobile Header */}

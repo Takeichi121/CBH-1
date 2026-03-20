@@ -3884,6 +3884,48 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  app.post("/api/swapShifts", safe(async (req, res) => {
+    const { token, shiftIdA, shiftIdB } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) return res.json({ ok: false, message: "No permission" });
+
+    if (!shiftIdA || !shiftIdB) return res.json({ ok: false, message: "shiftIdA and shiftIdB are required" });
+
+    try {
+      const [shiftA] = await db.select().from(shifts).where(eq(shifts.id, Number(shiftIdA))).limit(1);
+      const [shiftB] = await db.select().from(shifts).where(eq(shifts.id, Number(shiftIdB))).limit(1);
+
+      if (!shiftA) return res.json({ ok: false, message: "Shift A not found" });
+      if (!shiftB) return res.json({ ok: false, message: "Shift B not found" });
+
+      const now = nowIso();
+      await transaction(async (tx) => {
+        await tx.update(shifts).set({
+          shiftGroup: shiftB.shiftGroup,
+          startTime: shiftB.startTime,
+          note: shiftB.note,
+          updatedAt: now,
+          updatedBy: u.username,
+        }).where(eq(shifts.id, shiftA.id));
+
+        await tx.update(shifts).set({
+          shiftGroup: shiftA.shiftGroup,
+          startTime: shiftA.startTime,
+          note: shiftA.note,
+          updatedAt: now,
+          updatedBy: u.username,
+        }).where(eq(shifts.id, shiftB.id));
+      });
+
+      await storage.log("manager_swap_shifts", u.username, `swapped shiftId=${shiftIdA} <-> shiftId=${shiftIdB}`);
+      res.json({ ok: true });
+    } catch (err) {
+      res.json({ ok: false, message: "Failed to swap shifts" });
+    }
+  }));
+
   app.post(api.shifts.swap.path, safe(async (req, res) => {
     const { token, myDate, targetUsername, targetDate } = req.body;
       if (!token || !myDate || !targetDate || !targetUsername) return res.json({ ok: false, message: "Missing fields" });

@@ -1649,18 +1649,25 @@ function ShiftCellWithActions({
   onRefresh,
   onDragStart,
   onDragEnd,
+  onSwap,
+  isDraggingGlobal,
+  isCopyModeGlobal,
 }: {
   shift: any;
   groups: any;
   onRefresh: () => void;
   onDragStart?: (shift: any, isCopy: boolean) => void;
   onDragEnd?: () => void;
+  onSwap?: (sourceShift: any, targetShift: any) => void;
+  isDraggingGlobal?: boolean;
+  isCopyModeGlobal?: boolean;
 }) {
   const { language } = useI18n();
   const [showActions, setShowActions] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isCopyMode, setIsCopyMode] = useState(false);
+  const [isSwapOver, setIsSwapOver] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(shift.shiftGroup);
   const [useCustomTime, setUseCustomTime] = useState(false);
   const [selectedTime, setSelectedTime] = useState(shift.startTime);
@@ -1735,10 +1742,16 @@ function ShiftCellWithActions({
     sick: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   };
 
+  const swapOverlay = isSwapOver && isDraggingGlobal && !isCopyModeGlobal
+    ? "ring-2 ring-violet-500 bg-violet-500/20"
+    : isSwapOver && isDraggingGlobal && isCopyModeGlobal
+    ? "ring-2 ring-green-500 bg-green-500/20"
+    : "";
+
   return (
     <>
       <div
-        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-grab ${groupColors[shift.shiftGroup] || groupColors.late} ${isDragging ? (isCopyMode ? "opacity-50 ring-2 ring-green-500" : "opacity-50 ring-2 ring-orange-500") : ""}`}
+        className={`relative h-10 rounded-lg p-1 flex flex-col justify-center items-center cursor-grab ${groupColors[shift.shiftGroup] || groupColors.late} ${isDragging ? (isCopyMode ? "opacity-50 ring-2 ring-green-500" : "opacity-50 ring-2 ring-orange-500") : ""} ${swapOverlay} transition-all`}
         draggable
         onDragStart={(e) => {
           const copyMode = e.ctrlKey || e.metaKey;
@@ -1753,6 +1766,29 @@ function ShiftCellWithActions({
           setIsDragging(false);
           setIsCopyMode(false);
           onDragEnd?.();
+        }}
+        onDragOver={(e) => {
+          if (!isDraggingGlobal) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = isCopyModeGlobal ? "copy" : "move";
+          setIsSwapOver(true);
+        }}
+        onDragLeave={() => setIsSwapOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsSwapOver(false);
+          if (!isDraggingGlobal) return;
+          try {
+            const sourceShift = JSON.parse(e.dataTransfer.getData("application/json"));
+            if (sourceShift.id === shift.id) return;
+            if (sourceShift._isCopy) {
+              onSwap?.({ ...sourceShift, _overwriteMode: true }, shift);
+              return;
+            }
+            onSwap?.(sourceShift, shift);
+          } catch (err) {
+            console.error("Failed to parse dropped shift data:", err);
+          }
         }}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
@@ -2580,6 +2616,32 @@ function ManagerTeamRosterView() {
     }
   };
 
+  const handleSwapShift = async (sourceShift: any, targetShift: any) => {
+    if (!targetShift?.id) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      if (sourceShift._overwriteMode) {
+        await apiRequest("POST", "/api/updateShift", {
+          token,
+          shiftId: targetShift.id,
+          shiftGroup: sourceShift.shiftGroup,
+          startTime: sourceShift.startTime,
+          note: sourceShift.note || "",
+        });
+      } else {
+        if (!sourceShift?.id) return;
+        await apiRequest("POST", "/api/swapShifts", {
+          token,
+          shiftIdA: sourceShift.id,
+          shiftIdB: targetShift.id,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (isLoading) return <WorkPageSkeleton />;
 
   const weekRange = rosterData?.weekRange;
@@ -2716,6 +2778,9 @@ function ManagerTeamRosterView() {
                                   setDraggedShift(null);
                                   setIsCopyMode(false);
                                 }}
+                                onSwap={handleSwapShift}
+                                isDraggingGlobal={!!draggedShift}
+                                isCopyModeGlobal={isCopyMode}
                               />
                             ) : (
                               <ManagerDroppableEmptyCell
@@ -2780,6 +2845,32 @@ function ManagerEmployeeRosterView() {
         });
       }
 
+      queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSwapShift = async (sourceShift: any, targetShift: any) => {
+    if (!targetShift?.id) return;
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      if (sourceShift._overwriteMode) {
+        await apiRequest("POST", "/api/updateShift", {
+          token,
+          shiftId: targetShift.id,
+          shiftGroup: sourceShift.shiftGroup,
+          startTime: sourceShift.startTime,
+          note: sourceShift.note || "",
+        });
+      } else {
+        if (!sourceShift?.id) return;
+        await apiRequest("POST", "/api/swapShifts", {
+          token,
+          shiftIdA: sourceShift.id,
+          shiftIdB: targetShift.id,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
     } catch (err) {
       console.error(err);
@@ -3029,6 +3120,9 @@ function ManagerEmployeeRosterView() {
                                       setDraggedShift(null);
                                       setIsCopyMode(false);
                                     }}
+                                    onSwap={handleSwapShift}
+                                    isDraggingGlobal={!!draggedShift}
+                                    isCopyModeGlobal={isCopyMode}
                                   />
                                 ) : (
                                   <DroppableEmptyCell

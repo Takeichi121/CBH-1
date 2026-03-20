@@ -596,9 +596,11 @@ export default function WorkPage() {
                                       shift.startTime,
                                     )}
                                   </span>
+                                  {!["off", "com"].includes(shift.shiftGroup) && (
                                   <span className="text-[8px]">
                                     {shift.startTime}
                                   </span>
+                                  )}
                                 </div>
                               ) : (
                                 <BookShiftDialog
@@ -719,9 +721,11 @@ export default function WorkPage() {
                                               s.startTime,
                                             )}
                                           </span>
+                                          {!["off", "com"].includes(s.shiftGroup) && (
                                           <span className="text-[6px] leading-tight">
                                             {s.startTime}
                                           </span>
+                                          )}
                                         </div>
                                       );
                                     })()
@@ -838,9 +842,11 @@ export default function WorkPage() {
                                 shift.startTime,
                               )}
                             </span>
+                            {!["off", "com"].includes(shift.shiftGroup) && (
                             <span className="text-xs font-semibold">
                               {shift.startTime}
                             </span>
+                            )}
                           </div>
                         ) : (
                           <BookShiftDialog
@@ -939,7 +945,9 @@ export default function WorkPage() {
                               <span className="text-[8px] font-bold uppercase">
                                 {getShiftDisplayName(s.shiftGroup, s.startTime)}
                               </span>
+                              {!["off", "com"].includes(s.shiftGroup) && (
                               <span className="text-[9px]">{s.startTime}</span>
+                              )}
                             </div>
                           ) : (
                             <div className="h-10 w-full rounded bg-red-50/50 dark:bg-red-950/20 border border-red-200/30 dark:border-red-900/20 flex items-center justify-center">
@@ -1796,7 +1804,9 @@ function ShiftCellWithActions({
         <span className="text-[10px] font-bold uppercase whitespace-nowrap">
           {getShiftDisplayName(shift.shiftGroup, shift.startTime)}
         </span>
+        {!["off", "com"].includes(shift.shiftGroup) && (
         <span className="text-[10px] whitespace-nowrap">{shift.startTime}</span>
+        )}
         {shift.note && (
           <span className="text-[9px] opacity-70 truncate max-w-full">
             {shift.note}
@@ -3175,9 +3185,11 @@ function ManagerEmployeeRosterView() {
                                 shift.startTime,
                               )}
                             </span>
+                            {!["off", "com"].includes(shift.shiftGroup) && (
                             <span className="text-[10px] whitespace-nowrap">
                               {shift.startTime}
                             </span>
+                            )}
                           </div>
                         ) : null}
                       </TableCell>
@@ -3666,9 +3678,11 @@ function ManagerMonthlyView() {
                       <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">
                         {getShiftDisplayName(shift.shiftGroup, shift.startTime)}
                       </span>
+                      {!["off", "com"].includes(shift.shiftGroup) && (
                       <span className="text-[7px] md:text-[9px] hidden md:block">
                         {shift.startTime}
                       </span>
+                      )}
                     </div>
                   )}
                 </div>

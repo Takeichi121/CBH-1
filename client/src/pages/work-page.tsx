@@ -1768,16 +1768,15 @@ function ShiftCellWithActions({
           onDragEnd?.();
         }}
         onDragOver={(e) => {
-          if (!isDraggingGlobal) return;
+          if (!e.dataTransfer.types.includes("application/json")) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = isCopyModeGlobal ? "copy" : "move";
-          setIsSwapOver(true);
+          if (isDraggingGlobal) setIsSwapOver(true);
         }}
         onDragLeave={() => setIsSwapOver(false)}
         onDrop={(e) => {
           e.preventDefault();
           setIsSwapOver(false);
-          if (!isDraggingGlobal) return;
           try {
             const sourceShift = JSON.parse(e.dataTransfer.getData("application/json"));
             if (sourceShift.id === shift.id) return;

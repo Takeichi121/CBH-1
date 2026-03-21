@@ -296,6 +296,11 @@ export default function DailySalesPage() {
   const { isAreaUser, isUnlocked } = useAreaLock();
   const areaLocked = isAreaUser && !isUnlocked;
 
+  // Unlock today's report after 22:00 Bangkok time
+  const bangkokHour = parseInt(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok", hour: "numeric", hour12: false }));
+  const isAfter10PM = bangkokHour >= 22;
+  const maxAllowedDate = isAfter10PM ? todayBangkok() : yesterdayBangkok();
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -384,7 +389,7 @@ export default function DailySalesPage() {
 
   const saveToServer = useCallback(async (values: FormData) => {
     if (!values.reportDate || !values.reportBy) return;
-    if (values.reportDate >= todayBangkok()) return;
+    if (values.reportDate > maxAllowedDate) return;
 
     const wasteDailyTotalNum = parseFloat(
       values.wasteDailyTotal?.replace(/,/g, "") || "0",
@@ -2112,12 +2117,12 @@ ${v.staffRosterText || ""}
     <SalesLayout>
       <div className="space-y-6 pb-20">
         <AreaLockBanner />
-        {reportDate >= todayBangkok() && (
+        {reportDate > maxAllowedDate && (
           <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300" data-testid="banner-future-date">
             <span className="text-lg">🔒</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">ยังไม่สามารถกรอกข้อมูลวันที่ {reportDate} ได้</p>
-              <p className="text-xs opacity-75 mt-0.5">กรุณารอจนถึงหลัง 00:01 ของวันที่ {reportDate && (() => { const d = new Date(reportDate + "T00:00:00"); d.setDate(d.getDate() + 1); return d.toLocaleDateString("th-TH", { day: "numeric", month: "long" }); })()}</p>
+              <p className="text-xs opacity-75 mt-0.5">กรุณารอจนถึงหลัง {reportDate === todayBangkok() ? "22:00 น." : `00:01 ของวันที่ ${reportDate && (() => { const d = new Date(reportDate + "T00:00:00"); d.setDate(d.getDate() + 1); return d.toLocaleDateString("th-TH", { day: "numeric", month: "long" }); })()}`}</p>
             </div>
           </div>
         )}
@@ -2285,7 +2290,7 @@ ${v.staffRosterText || ""}
                             <Input
                               type="date"
                               className="text-sm"
-                              max={yesterdayBangkok()}
+                              max={maxAllowedDate}
                               {...field}
                               data-testid="input-report-date"
                             />

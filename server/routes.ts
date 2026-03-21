@@ -4096,11 +4096,21 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    // Midnight rule: reports for day D can only be saved starting 00:01 of day D+1
+    // 22:00 rule: reports for day D can be saved after 22:00 Bangkok time on day D, or any time on day D+1 and beyond
     if (report?.reportDate) {
       const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
-      if (report.reportDate >= todayBKK) {
-        return res.json({ ok: false, message: `ยังไม่สามารถบันทึก Report วันที่ ${report.reportDate} ได้ กรุณารอจนถึงหลังเที่ยงคืน` });
+      const bangkokHour = parseInt(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok", hour: "numeric", hour12: false }));
+      const isAfter10PM = bangkokHour >= 22;
+      const maxAllowedDate = isAfter10PM ? todayBKK : (() => {
+        const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+        d.setDate(d.getDate() - 1);
+        return d.toLocaleDateString("en-CA");
+      })();
+      if (report.reportDate > maxAllowedDate) {
+        const msg = report.reportDate === todayBKK
+          ? `ยังไม่สามารถบันทึก Report วันที่ ${report.reportDate} ได้ กรุณารอจนถึงหลัง 22:00 น.`
+          : `ยังไม่สามารถบันทึก Report วันที่ ${report.reportDate} ได้ กรุณารอจนถึงหลังเที่ยงคืน`;
+        return res.json({ ok: false, message: msg });
       }
     }
 

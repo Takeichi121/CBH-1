@@ -389,7 +389,10 @@ export default function DailySalesPage() {
 
   const saveToServer = useCallback(async (values: FormData) => {
     if (!values.reportDate || !values.reportBy) return;
-    if (values.reportDate > maxAllowedDate) return;
+    // Compute at call-time to avoid stale closure (e.g., page opened before 22:00)
+    const _hour = parseInt(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok", hour: "numeric", hour12: false }));
+    const _maxDate = _hour >= 22 ? todayBangkok() : yesterdayBangkok();
+    if (values.reportDate > _maxDate) return;
 
     const wasteDailyTotalNum = parseFloat(
       values.wasteDailyTotal?.replace(/,/g, "") || "0",

@@ -1,7 +1,7 @@
 {
-  "name": "Chann Back House",
+  "name": "CBH Platform",
   "short_name": "CBH",
-  "description": "Back-of-house management system for Grand Diamond",
+  "description": "ระบบจัดการข้อมูลของ CBH",
   "start_url": "/?source=pwa",
   "display": "standalone",
   "display_override": ["standalone", "window-controls-overlay"],
@@ -11,10 +11,30 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/favicon.png?v=2",
+      "src": "/cbh-icon-square.svg",
       "sizes": "any",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/cbh-icon-square.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Login",
+      "short_name": "Login",
+      "url": "/auth",
+      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/",
+      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ],
   "categories": ["business", "productivity"],

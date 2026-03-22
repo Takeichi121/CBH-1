@@ -12,13 +12,13 @@
   "icons": [
     {
       "src": "/cbh-icon-square.svg",
-      "sizes": "any",
+      "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
       "src": "/cbh-icon-square.svg",
-      "sizes": "any",
+      "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
@@ -28,13 +28,13 @@
       "name": "Login",
       "short_name": "Login",
       "url": "/auth",
-      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "192x192 512x512", "type": "image/svg+xml" }]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "url": "/",
-      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "192x192 512x512", "type": "image/svg+xml" }]
     }
   ],
   "categories": ["business", "productivity"],

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,6 +19,108 @@ interface ChatMessage {
 }
 
 
+interface MessageBubbleProps {
+  msg: ChatMessage;
+  index: number;
+  isLastMsg: boolean;
+  isLoading: boolean;
+  isStreaming: boolean;
+  onSuggestionClick: (text: string) => void;
+}
+
+const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoading, isStreaming, onSuggestionClick }: MessageBubbleProps) {
+  if (msg.toolActions && msg.toolActions.length > 0) {
+    return (
+      <div className="flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-action-${index}`}>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 max-w-[90%]">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-300">Chann ดำเนินการแล้ว</span>
+          </div>
+          {msg.toolActions.map((action, i) => (
+            <p key={i} className="text-xs text-emerald-400/80 pl-5">{action}</p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const displayContent = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
+  const showSuggestions = msg.role === "assistant" && isLastMsg && !isLoading && !isStreaming && msg.suggestedReplies && msg.suggestedReplies.length > 0;
+
+  return (
+    <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
+      <div className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}>
+        {msg.role === "assistant" && (
+          <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+            <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
+              <Bot className="w-3.5 h-3.5" />
+            </AvatarFallback>
+          </Avatar>
+        )}
+        <div
+          className={cn(
+            "max-w-[80%] px-3.5 py-2.5 text-sm",
+            msg.role === "user"
+              ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-violet-500/10"
+              : "bg-slate-800/80 text-slate-200 rounded-2xl rounded-bl-md border border-white/5"
+          )}
+        >
+          {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
+            <img
+              src={msg.imageUrl}
+              alt="sent"
+              className="max-w-full max-h-40 rounded-lg mb-1.5 cursor-pointer"
+              onClick={() => window.open(msg.imageUrl, "_blank")}
+              data-testid={`img-chann-${index}`}
+            />
+          )}
+          {msg.thinking && !msg.content && (
+            <div className="flex items-center gap-2 text-xs text-violet-300/80 italic" data-testid={`thinking-chann-${index}`}>
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span>{msg.thinking}</span>
+            </div>
+          )}
+          {displayContent && displayContent !== "ส่งรูปภาพ" && (
+            msg.role === "assistant" ? (
+              <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 prose-p:text-slate-200 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-slate-700/50 prose-code:px-1 prose-code:rounded">
+                <ReactMarkdown>{displayContent}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="whitespace-pre-wrap">{displayContent}</p>
+            )
+          )}
+        </div>
+        {msg.role === "user" && (
+          <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+            <AvatarFallback className="bg-slate-700 text-slate-300 text-xs">
+              <User className="w-3.5 h-3.5" />
+            </AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+      {showSuggestions && (
+        <div className="flex flex-wrap gap-1.5 pl-10 animate-in fade-in duration-300" data-testid={`suggestions-chann-${index}`}>
+          {msg.suggestedReplies!.map((suggestion, si) => (
+            <button
+              key={si}
+              onClick={() => onSuggestionClick(suggestion)}
+              className="text-xs px-2.5 py-1 rounded-full border border-violet-500/20 bg-violet-500/5 text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/40 transition-all"
+              data-testid={`suggestion-chip-${index}-${si}`}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
 export function FloatingChannChat() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -37,6 +139,8 @@ export function FloatingChannChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
+  const pendingContentRef = useRef("");
+  const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -49,6 +153,24 @@ export function FloatingChannChat() {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  const flushPendingContent = () => {
+    rafIdRef.current = null;
+    const chunk = pendingContentRef.current;
+    if (!chunk) return;
+    pendingContentRef.current = "";
+    setMessages(prev => {
+      const n = [...prev];
+      n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + chunk, thinking: undefined };
+      return n;
+    });
+  };
+
+  const scheduleFlush = () => {
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(flushPendingContent);
+    }
+  };
 
   const handleSSEStream = async (
     res: Response,
@@ -102,13 +224,14 @@ export function FloatingChannChat() {
                 started = true;
                 opts?.onStarted?.();
               }
-              setMessages(prev => {
-                const n = [...prev];
-                n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + parsed.content, thinking: undefined };
-                return n;
-              });
+              pendingContentRef.current += parsed.content;
+              scheduleFlush();
             }
             if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
+              if (rafIdRef.current !== null) {
+                cancelAnimationFrame(rafIdRef.current);
+                flushPendingContent();
+              }
               setMessages(prev => {
                 const n = [...prev];
                 n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
@@ -118,6 +241,10 @@ export function FloatingChannChat() {
           } catch {}
         }
       }
+    }
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      flushPendingContent();
     }
   };
 
@@ -595,6 +722,8 @@ export function FloatingChannChat() {
     { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap, show: true },
   ].filter(a => a.show);
 
+  const sendQuickActionRef = useRef<(prompt: string) => void>(() => {});
+
   const sendQuickAction = (prompt: string) => {
     setShowQuickActions(false);
     setMessage("");
@@ -633,6 +762,12 @@ export function FloatingChannChat() {
       }
     })();
   };
+
+  sendQuickActionRef.current = sendQuickAction;
+
+  const stableSendQuickAction = useCallback((prompt: string) => {
+    sendQuickActionRef.current(prompt);
+  }, []);
 
   const summarizeChat = async () => {
     if (messages.length === 0 || isSummarizing || isLoading || isStreaming) return;
@@ -713,7 +848,7 @@ export function FloatingChannChat() {
 
       {isOpen && (
         <div
-          className="fixed inset-3 bottom-20 md:inset-auto md:bottom-4 md:right-4 md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] z-[51] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
+          className="fixed top-16 left-3 right-3 bottom-20 md:top-auto md:left-auto md:bottom-4 md:right-4 md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] z-[51] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
           data-testid="container-chann-chat"
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
@@ -808,99 +943,17 @@ export function FloatingChannChat() {
               </div>
             )}
 
-            {messages.map((msg, index) => {
-              if (msg.toolActions && msg.toolActions.length > 0) {
-                return (
-                  <div key={index} className="flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-action-${index}`}>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 max-w-[90%]">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-xs font-semibold text-emerald-300">Chann ดำเนินการแล้ว</span>
-                      </div>
-                      {msg.toolActions.map((action, i) => (
-                        <p key={i} className="text-xs text-emerald-400/80 pl-5">{action}</p>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
-
-              const isLastMsg = index === messages.length - 1;
-              const displayContent = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
-              const showSuggestions = msg.role === "assistant" && isLastMsg && !isLoading && !isStreaming && msg.suggestedReplies && msg.suggestedReplies.length > 0;
-
-              return (
-                <div key={index} className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
-                  <div className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}>
-                    {msg.role === "assistant" && (
-                      <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
-                        <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
-                          <Bot className="w-3.5 h-3.5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div
-                      className={cn(
-                        "max-w-[80%] px-3.5 py-2.5 text-sm",
-                        msg.role === "user"
-                          ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-violet-500/10"
-                          : "bg-slate-800/80 text-slate-200 rounded-2xl rounded-bl-md border border-white/5"
-                      )}
-                    >
-                      {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
-                        <img
-                          src={msg.imageUrl}
-                          alt="sent"
-                          className="max-w-full max-h-40 rounded-lg mb-1.5 cursor-pointer"
-                          onClick={() => window.open(msg.imageUrl, "_blank")}
-                          data-testid={`img-chann-${index}`}
-                        />
-                      )}
-                      {msg.thinking && !msg.content && (
-                        <div className="flex items-center gap-2 text-xs text-violet-300/80 italic" data-testid={`thinking-chann-${index}`}>
-                          <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                          </div>
-                          <span>{msg.thinking}</span>
-                        </div>
-                      )}
-                      {displayContent && displayContent !== "ส่งรูปภาพ" && (
-                        msg.role === "assistant" ? (
-                          <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 prose-p:text-slate-200 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-slate-700/50 prose-code:px-1 prose-code:rounded">
-                            <ReactMarkdown>{displayContent}</ReactMarkdown>
-                          </div>
-                        ) : (
-                          <p className="whitespace-pre-wrap">{displayContent}</p>
-                        )
-                      )}
-                    </div>
-                    {msg.role === "user" && (
-                      <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
-                        <AvatarFallback className="bg-slate-700 text-slate-300 text-xs">
-                          <User className="w-3.5 h-3.5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                  {showSuggestions && (
-                    <div className="flex flex-wrap gap-1.5 pl-10 animate-in fade-in duration-300" data-testid={`suggestions-chann-${index}`}>
-                      {msg.suggestedReplies!.map((suggestion, si) => (
-                        <button
-                          key={si}
-                          onClick={() => sendQuickAction(suggestion)}
-                          className="text-xs px-2.5 py-1 rounded-full border border-violet-500/20 bg-violet-500/5 text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/40 transition-all"
-                          data-testid={`suggestion-chip-${index}-${si}`}
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {messages.map((msg, index) => (
+              <MessageBubble
+                key={index}
+                msg={msg}
+                index={index}
+                isLastMsg={index === messages.length - 1}
+                isLoading={isLoading}
+                isStreaming={isStreaming}
+                onSuggestionClick={stableSendQuickAction}
+              />
+            ))}
 
             {isLoading && !isStreaming && (
               <div className="flex gap-2.5 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid="container-chann-loading">

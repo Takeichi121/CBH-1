@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, CheckCircle2, XCircle, CalendarDays, Package, Sparkles, ClipboardList, FileText } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,28 @@ export function NotificationBell() {
 
   const badgeCount = unreadCount > 99 ? "99+" : unreadCount > 0 ? String(unreadCount) : null;
 
+  function NotifIcon({ type }: { type: string }) {
+    const base = "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5";
+    switch (type) {
+      case "version_update":
+        return <span className={`${base} bg-violet-100 dark:bg-violet-900/30`}><Sparkles className="w-3.5 h-3.5 text-violet-500" /></span>;
+      case "request_approved":
+        return <span className={`${base} bg-green-100 dark:bg-green-900/30`}><CheckCircle2 className="w-3.5 h-3.5 text-green-600" /></span>;
+      case "request_rejected":
+        return <span className={`${base} bg-red-100 dark:bg-red-900/30`}><XCircle className="w-3.5 h-3.5 text-red-500" /></span>;
+      case "manager_request":
+        return <span className={`${base} bg-orange-100 dark:bg-orange-900/30`}><ClipboardList className="w-3.5 h-3.5 text-orange-500" /></span>;
+      case "borrow_transaction":
+        return <span className={`${base} bg-blue-100 dark:bg-blue-900/30`}><Package className="w-3.5 h-3.5 text-blue-500" /></span>;
+      case "roster_published":
+        return <span className={`${base} bg-teal-100 dark:bg-teal-900/30`}><CalendarDays className="w-3.5 h-3.5 text-teal-600" /></span>;
+      case "daily_report":
+        return <span className={`${base} bg-amber-100 dark:bg-amber-900/30`}><FileText className="w-3.5 h-3.5 text-amber-600" /></span>;
+      default:
+        return <span className={`${base} bg-muted`}><Bell className="w-3.5 h-3.5 text-muted-foreground" /></span>;
+    }
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -143,10 +165,12 @@ export function NotificationBell() {
                   onClick={() => handleItemClick(notif)}
                   data-testid={`notification-item-${notif.id}`}
                 >
-                  {!notif.isRead && (
-                    <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500" />
-                  )}
-                  {notif.isRead && <span className="mt-1.5 flex-shrink-0 w-2 h-2" />}
+                  <div className="relative flex-shrink-0">
+                    <NotifIcon type={notif.type} />
+                    {!notif.isRead && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-background" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm leading-snug line-clamp-1 ${!notif.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
                       {notif.titleTh || notif.title}

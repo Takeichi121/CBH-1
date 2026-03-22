@@ -172,6 +172,7 @@ function buildDailyReportText(report: any, _storeName: string) {
 }
 import { storage, transaction, updateShiftById } from "./storage";
 import { api } from "@shared/routes";
+import { CHANGELOG } from "@shared/version";
 import { z } from "zod";
 import crypto from "crypto";
 import multer from "multer";
@@ -327,6 +328,46 @@ function safe(fn: (req: Request, res: Response, next: NextFunction) => Promise<a
       }
     });
   };
+}
+
+function getRequestTypeLabel(requestType: string): string {
+  switch (requestType) {
+    case "day_off": return "ขอวันหยุด";
+    case "select_work_time": return "เลือกเวลาเข้างาน";
+    case "swap_shift": return "ขอสลับกะ";
+    case "late_arrival": return "แจ้งมาสาย";
+    case "early_leave": return "ขอกลับก่อน";
+    default: return requestType;
+  }
+}
+
+async function triggerVersionNotifications(username: string): Promise<void> {
+  try {
+    const existing = await storage.getNotificationsForUser(username, 500);
+    const seenVersions = new Set(
+      existing.filter(n => n.type === "version_update").map(n => n.relatedId)
+    );
+    for (const entry of CHANGELOG) {
+      if (!seenVersions.has(entry.version)) {
+        const summary = entry.changes.slice(0, 2).join(" • ") +
+          (entry.changes.length > 2 ? ` (+${entry.changes.length - 2} รายการ)` : "");
+        await storage.createNotification({
+          recipientUsername: username,
+          type: "version_update",
+          title: `อัพเดท v${entry.version}`,
+          titleTh: `อัพเดท v${entry.version}`,
+          message: summary,
+          messageTh: summary,
+          relatedId: entry.version,
+          isRead: 0,
+          createdAt: entry.date + "T00:00:00.000Z",
+          createdBy: "system",
+        });
+      }
+    }
+  } catch (err) {
+    console.error("triggerVersionNotifications error:", err);
+  }
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -2978,6 +3019,7 @@ ${pageContext}` : ''}`;
     await storage.createSession({ token, username: u.username, expiresAt });
 
     await storage.log("login_ok", u.username, "role=" + u.role);
+    triggerVersionNotifications(u.username).catch(() => {});
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
     res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
@@ -4116,7 +4158,30 @@ ${pageContext}` : ''}`;
     }
 
     try {
+      const existing = report?.reportDate ? await storage.getDailySalesReportByDate(report.reportDate) : null;
+      const isNewReport = !existing;
       const saved = await storage.upsertDailySalesReportByDate(report);
+      if (isNewReport) {
+        (async () => {
+          try {
+            const allUsers = await storage.getUsers();
+            const admins = allUsers.filter(a => a.active && a.role === "admin" && a.username !== u.username).map(a => a.username);
+            if (admins.length > 0) {
+              await storage.createNotificationsForUsers(admins, {
+                type: "daily_report",
+                title: "Daily Report Submitted",
+                titleTh: `รายงานประจำวัน ${report.reportDate}`,
+                message: `${u.fullName || u.username} ส่งรายงานประจำวันที่ ${report.reportDate} แล้ว`,
+                messageTh: `${u.fullName || u.username} ส่งรายงานประจำวันที่ ${report.reportDate} แล้ว`,
+                relatedId: `daily_sales_${report.reportDate}`,
+                isRead: 0,
+                createdAt: nowIso(),
+                createdBy: u.username,
+              });
+            }
+          } catch {}
+        })();
+      }
       res.json({ ok: true, report: saved });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to save report" });
@@ -4434,6 +4499,28 @@ ${pageContext}` : ''}`;
         status: "pending", createdAt: now, updatedAt: now,
       });
       await storage.log("manager_request_create", u.username, `type=${requestType} date=${requestDate}`);
+      (async () => {
+        try {
+          const allUsers = await storage.getUsers();
+          const recipients = allUsers
+            .filter(a => a.active && (a.role === "admin" || (a.role === "manager" && a.position === "store_manager")) && a.username !== u.username)
+            .map(a => a.username);
+          if (recipients.length > 0) {
+            const label = getRequestTypeLabel(requestType);
+            await storage.createNotificationsForUsers(recipients, {
+              type: "manager_request",
+              title: `New Manager Request`,
+              titleTh: `คำขอใหม่: ${label}`,
+              message: `${u.fullName || u.username} ยื่นคำขอ ${label} วันที่ ${requestDate}`,
+              messageTh: `${u.fullName || u.username} ยื่นคำขอ ${label} วันที่ ${requestDate}`,
+              relatedId: String(request.id),
+              isRead: 0,
+              createdAt: now,
+              createdBy: u.username,
+            });
+          }
+        } catch {}
+      })();
       res.json({ ok: true, request });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to create request" });
@@ -4483,8 +4570,24 @@ ${pageContext}` : ''}`;
     if (!isAdmin && !isStoreManager) return res.json({ ok: false, message: "Only Admin or Store Manager can approve requests" });
 
     try {
+      const reqToApprove = await storage.getManagerRequest(requestId);
       await storage.updateManagerRequestStatus(requestId, "approved", u.username);
       await storage.log("manager_request_approve", u.username, `requestId=${requestId}`);
+      if (reqToApprove) {
+        const label = getRequestTypeLabel(reqToApprove.requestType);
+        storage.createNotification({
+          recipientUsername: reqToApprove.requestedBy,
+          type: "request_approved",
+          title: "Request Approved",
+          titleTh: `คำขออนุมัติแล้ว: ${label}`,
+          message: `คำขอ ${label} ของคุณได้รับการอนุมัติแล้ว`,
+          messageTh: `คำขอ ${label} ของคุณได้รับการอนุมัติแล้ว`,
+          relatedId: String(requestId),
+          isRead: 0,
+          createdAt: nowIso(),
+          createdBy: u.username,
+        }).catch(() => {});
+      }
       res.json({ ok: true });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to approve request" });
@@ -4503,8 +4606,24 @@ ${pageContext}` : ''}`;
     if (!isAdmin && !isStoreManager) return res.json({ ok: false, message: "Only Admin or Store Manager can reject requests" });
 
     try {
+      const reqToReject = await storage.getManagerRequest(requestId);
       await storage.updateManagerRequestStatus(requestId, "rejected", u.username, reason);
       await storage.log("manager_request_reject", u.username, `requestId=${requestId} reason=${reason}`);
+      if (reqToReject) {
+        const label = getRequestTypeLabel(reqToReject.requestType);
+        storage.createNotification({
+          recipientUsername: reqToReject.requestedBy,
+          type: "request_rejected",
+          title: "Request Not Approved",
+          titleTh: `คำขอไม่อนุมัติ: ${label}`,
+          message: `คำขอ ${label} ไม่ผ่านการอนุมัติ${reason ? `: ${reason}` : ""}`,
+          messageTh: `คำขอ ${label} ไม่ผ่านการอนุมัติ${reason ? `: ${reason}` : ""}`,
+          relatedId: String(requestId),
+          isRead: 0,
+          createdAt: nowIso(),
+          createdBy: u.username,
+        }).catch(() => {});
+      }
       res.json({ ok: true });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to reject request" });
@@ -4998,6 +5117,7 @@ ${pageContext}` : ''}`;
       if (!access.ok) return res.status(401).json(access);
 
       const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const createdAt = nowIso();
       await db.insert(borrowTransactions).values({
         id,
         txDate: txData.txDate,
@@ -5011,8 +5131,29 @@ ${pageContext}` : ''}`;
         lender: txData.lender || "",
         note: txData.note || "",
         status: "pending",
-        createdAt: nowIso()
+        createdAt,
       });
+      (async () => {
+        try {
+          const allUsers = await storage.getUsers();
+          const admins = allUsers.filter(a => a.active && a.role === "admin" && a.username !== access.user.username).map(a => a.username);
+          if (admins.length > 0) {
+            const txLabel = txData.txType === "borrow_in" ? "ยืมเข้า" : txData.txType === "borrow_out" ? "ยืมออก" : txData.txType;
+            const detail = [txData.branch, txData.item, txData.qty ? `${txData.qty} ${txData.unit || ""}`.trim() : null].filter(Boolean).join(" — ");
+            await storage.createNotificationsForUsers(admins, {
+              type: "borrow_transaction",
+              title: "New Borrow Transaction",
+              titleTh: `รายการยืมใหม่: ${txLabel}`,
+              message: detail || `รายการยืมใหม่จาก ${access.user.username}`,
+              messageTh: detail || `รายการยืมใหม่จาก ${access.user.username}`,
+              relatedId: id,
+              isRead: 0,
+              createdAt,
+              createdBy: access.user.username,
+            });
+          }
+        } catch {}
+      })();
       res.json({ ok: true });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
@@ -5681,6 +5822,30 @@ ${pageContext}` : ''}`;
         }
       }
 
+      if (results.imported > 0) {
+        (async () => {
+          try {
+            const allUsers = await storage.getUsers();
+            const recipients = allUsers
+              .filter(a => a.active && a.username !== session.username)
+              .map(a => a.username);
+            if (recipients.length > 0) {
+              const now = nowIso();
+              await storage.createNotificationsForUsers(recipients, {
+                type: "roster_published",
+                title: "Schedule Updated",
+                titleTh: "ตารางงานอัพเดทแล้ว",
+                message: `ตารางกะงานอัพเดทใหม่แล้ว (${results.imported} รายการ) กรุณาตรวจสอบตารางของคุณ`,
+                messageTh: `ตารางกะงานอัพเดทใหม่แล้ว (${results.imported} รายการ) กรุณาตรวจสอบตารางของคุณ`,
+                relatedId: null,
+                isRead: 0,
+                createdAt: now,
+                createdBy: session.username,
+              });
+            }
+          } catch {}
+        })();
+      }
       return res.json({ ok: true, ...results });
 
     } catch (error: any) {

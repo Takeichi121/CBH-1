@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.1.2";
+export const APP_VERSION = "2.2.0";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,44 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.2.0",
+    date: "2026-03-22",
+    label: "feature",
+    changes: [
+      "Notification Bell — กระดิ่งแจ้งเตือนใน header พร้อม badge จำนวนที่ยังไม่อ่าน",
+      "Event Notifications — แจ้งเตือนอัตโนมัติทุก event สำคัญ: คำขอผู้จัดการ, ยืมคืน, ตารางงาน, รายงาน",
+      "Version Update Notifications — ดูประวัติการอัพเดทผ่านกระดิ่งแจ้งเตือนได้เลย",
+    ],
+  },
+  {
+    version: "2.1.5",
+    date: "2026-03-22",
+    label: "bugfix",
+    changes: [
+      "แก้ไขไอคอน PWA/iOS แสดงไม่ถูกต้อง — เปลี่ยนจาก SVG เป็น PNG (192×192, 512×512)",
+      "ใช้ ImageMagick render PNG ก่อน deploy เพื่อหลีกเลี่ยงปัญหา font rendering ใน SVG context",
+    ],
+  },
+  {
+    version: "2.1.4",
+    date: "2026-03-22",
+    label: "bugfix",
+    changes: [
+      "แก้ไขไอคอน Browser Tab แสดงแค่ตัว 'C' — เปลี่ยน favicon จาก SVG เป็น PNG",
+      "SVG favicon ไม่รองรับ Google Fonts — ใช้ favicon.png แทนเพื่อแสดงโลโก้ CBH ถูกต้อง",
+    ],
+  },
+  {
+    version: "2.1.3",
+    date: "2026-03-22",
+    label: "improvement",
+    changes: [
+      "Rebranding: เปลี่ยน app identity เป็น CBH (Chann Back House) เต็มรูปแบบ",
+      "โลโก้ใหม่: Data House icon (หลังคา + 3 bars + CBH text) gradient เขียวเข้ม #021008→#10b981",
+      "ลบทุก reference ของ 'Burger King'/'BK Grand Diamond' ออกจาก frontend และ server",
+    ],
+  },
   {
     version: "2.1.2",
     date: "2026-03-15",

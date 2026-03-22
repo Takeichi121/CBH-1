@@ -205,6 +205,12 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.2.0 (March 22, 2026) — Notification Events + Version History
+- **Notification Bell**: กระดิ่งแจ้งเตือนใน header พร้อม badge, unread dot, icon ตาม event type
+- **Event Notifications**: แจ้งเตือนอัตโนมัติทุก event: Manager Request (create/approve/reject), Borrow Transaction, Roster Import, Daily Report (first submit)
+- **Version Update Notifications**: เมื่อ login ระบบสร้าง notification ย้อนหลังสำหรับทุก version ที่ยังไม่เห็น
+- **Changelog**: เพิ่ม 4 entries ใหม่ (v2.1.3–v2.1.5, v2.2.0) ครอบคลุม Rebranding, Icon fixes, Notification Bell
+
 ### Version 2.1.1 (March 15, 2026) — Claude AI + UI ใหม่
 
 - **Claude Default**: Chann ใช้ Claude (claude-sonnet-4-5) เป็น AI หลักแทน OpenAI

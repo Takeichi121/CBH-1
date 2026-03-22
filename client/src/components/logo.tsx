@@ -2,42 +2,34 @@ export const LogoDataHouse = ({ size = 120 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="grad-cbh-midnight" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#000000" />
+        <stop offset="0%" stopColor="#021008" />
         <stop offset="100%" stopColor="#10b981" />
       </linearGradient>
     </defs>
 
-    {/* Background */}
     <rect width="120" height="120" rx="26" fill="url(#grad-cbh-midnight)" />
 
-    {/* House roof — white triangle */}
-    <polygon
-      points="60,14 14,50 106,50"
-      fill="white"
-      opacity="0.95"
+    <path
+      d="M 22 56 L 60 28 L 98 56"
+      stroke="white"
+      strokeWidth="7.5"
+      strokeLinecap="butt"
+      strokeLinejoin="round"
+      fill="none"
     />
 
-    {/* House walls — very subtle fill to frame bars */}
-    <rect x="20" y="50" width="80" height="42" fill="white" opacity="0.07" rx="2" />
+    <rect x="34" y="62" width="12" height="18" rx="1.5" fill="white" />
+    <rect x="54" y="50" width="12" height="30" rx="1.5" fill="white" />
+    <rect x="74" y="34" width="12" height="46" rx="1.5" fill="white" />
 
-    {/* Data bars — 3 bars of different heights inside house */}
-    <rect x="27" y="58" width="14" height="34" rx="3" fill="white" opacity="0.90" />
-    <rect x="53" y="70" width="14" height="22" rx="3" fill="white" opacity="0.70" />
-    <rect x="79" y="63" width="14" height="29" rx="3" fill="white" opacity="0.85" />
-
-    {/* Floor line */}
-    <line x1="20" y1="92" x2="100" y2="92" stroke="white" strokeWidth="2.5" opacity="0.40" strokeLinecap="round" />
-
-    {/* CBH label */}
     <text
       x="60"
-      y="110"
+      y="105"
       textAnchor="middle"
       fill="white"
-      fontFamily="Arial, Helvetica, sans-serif"
-      fontWeight="bold"
-      fontSize="13"
-      opacity="0.88"
+      fontFamily="Montserrat, Arial Black, sans-serif"
+      fontWeight="900"
+      fontSize="28"
       letterSpacing="1"
     >
       CBH

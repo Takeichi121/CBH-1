@@ -283,6 +283,24 @@ const getShiftBadgeClass = (shiftGroup: string): string => {
   }
 };
 
+interface ShiftLogRow {
+  username: string;
+  nickName: string | null;
+  fullName: string | null;
+  shiftGroup: string;
+  startTime: string | null;
+  endTime: string | null;
+}
+
+interface ShiftLogResponse {
+  ok: boolean;
+  date: string;
+  total: number;
+  byGroup: Record<string, number>;
+  shifts: ShiftLogRow[];
+  message?: string;
+}
+
 const DEFAULT_STAFF_SHIFT_GROUPS = [
   { value: "07:00-16:00", label: "07:00-16:00" },
   { value: "09:00-18:00", label: "09:00-18:00" },
@@ -767,13 +785,13 @@ export default function DailySalesPage() {
   const reportDate = form.watch("reportDate");
   const watchedRosterDate = form.watch("managerRosterDate");
 
-  const rosterLogQuery = useQuery({
+  const rosterLogQuery = useQuery<ShiftLogResponse | null>({
     queryKey: ["/api/shift-count-for-date", watchedRosterDate],
     queryFn: async () => {
       if (!watchedRosterDate) return null;
       const token = localStorage.getItem("bk_token") || "";
       const res = await apiRequest("POST", "/api/shift-count-for-date", { token, date: watchedRosterDate });
-      return res.json();
+      return res.json() as Promise<ShiftLogResponse>;
     },
     enabled: !!watchedRosterDate,
   });
@@ -4184,7 +4202,7 @@ ${v.staffRosterText || ""}
                             </tr>
                           </thead>
                           <tbody>
-                            {rosterLogQuery.data.shifts.map((shift: any, idx: number) => (
+                            {rosterLogQuery.data.shifts.map((shift: ShiftLogRow, idx: number) => (
                               <tr
                                 key={idx}
                                 className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"

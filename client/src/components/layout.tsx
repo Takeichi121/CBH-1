@@ -277,8 +277,6 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="text-xs font-medium">{language === "en" ? "ไทย" : "EN"}</span>
           </Button>
 
-          <NotificationBell />
-
           <Button
             variant="outline"
             size="icon"
@@ -287,11 +285,13 @@ export function Layout({ children }: { children: ReactNode }) {
             data-testid="button-theme-toggle"
           >
             <div className="relative w-full h-full flex items-center justify-center">
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all duration-500 dark:-rotate-90 dark:scale-0 text-[#F5EB16]" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-500 dark:rotate-0 dark:scale-100 text-[#0033A0]" />
+              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all duration-500 dark:-rotate-90 dark:scale-0 text-yellow-400" />
+              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-500 dark:rotate-0 dark:scale-100 text-emerald-400" />
             </div>
             <span className="sr-only">Toggle theme</span>
           </Button>
+
+          <NotificationBell />
 
           {/* Desktop Profile Dropdown — BK Portal Style */}
           <DropdownMenu>

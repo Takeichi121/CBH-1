@@ -216,7 +216,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider attribute="class" defaultTheme="light">
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
         <QueryClientProvider client={queryClient}>
           <I18nProvider>
             <AuthProvider>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBH Icon Assets</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --dark: #021008;
+            --bg: #f0f2f5;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            margin-top: 0;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        @media (max-width: 600px) {
+            .card {
+                flex-direction: column;
+                align-items: center;
+            }
+            .code-section {
+                width: 100%;
+            }
+        }
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            min-width: 150px;
+        }
+        .icon-preview {
+            width: 120px;
+            height: 120px;
+            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.3);
+        }
+        .icon-preview.rounded {
+            border-radius: 26px;
+        }
+        .code-section {
+            flex-grow: 1;
+            width: 100%;
+        }
+        .code-section h3 {
+            margin-top: 0;
+            color: var(--dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 13px;
+            color: #444;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .btn-copy {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-copy:hover {
+            background-color: #059669;
+        }
+        /* Toast Notification */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--dark);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        #toast.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>ชุดไฟล์โลโก้ CBH </h1>
+            <p>คุณเอกสามารถกดคัดลอกโค้ดไปสร้างไฟล์ตามชื่อที่ระบุได้เลยครับ</p>
+        </div>
+
+        <!-- ไฟล์ที่ 1: แบบขอบมน -->
+        <div class="card">
+            <div class="preview-section">
+                <div class="icon-preview rounded" id="preview-rounded"></div>
+                <strong>cbh-icon-rounded.svg</strong>
+                <span style="font-size: 12px; color: #666; text-align: center;">สำหรับหน้าเว็บทั่วไป<br>(Favicon)</span>
+            </div>
+            <div class="code-section">
+                <h3>
+                    โค้ด SVG (ขอบมน)
+                    <button class="btn-copy" onclick="copyCode('code-rounded')">คัดลอกโค้ด</button>
+                </h3>
+                <textarea id="code-rounded" readonly><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="cbh-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#021008" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#cbh-gradient)" />
+  <g fill="white">
+    <path d="M 22 56 L 60 28 L 98 56" fill="none" stroke="white" stroke-width="7.5" stroke-linecap="butt" stroke-linejoin="round" />
+    <rect x="34" y="62" width="12" height="18" rx="1.5" />
+    <rect x="54" y="50" width="12" height="30" rx="1.5" />
+    <rect x="74" y="34" width="12" height="46" rx="1.5" />
+    <text x="60" y="105" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="28" font-weight="900" text-anchor="middle" letter-spacing="1">CBH</text>
+  </g>
+</svg></textarea>
+            </div>
+        </div>
+
+        <!-- ไฟล์ที่ 2: แบบสี่เหลี่ยมเต็ม -->
+        <div class="card">
+            <div class="preview-section">
+                <div class="icon-preview" id="preview-square"></div>
+                <strong>cbh-icon-square.svg</strong>
+                <span style="font-size: 12px; color: #666; text-align: center;">สำหรับ iOS / Android<br>(ระบบจะตัดขอบให้เอง)</span>
+            </div>
+            <div class="code-section">
+                <h3>
+                    โค้ด SVG (สี่เหลี่ยมเต็ม)
+                    <button class="btn-copy" onclick="copyCode('code-square')">คัดลอกโค้ด</button>
+                </h3>
+                <textarea id="code-square" readonly><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="cbh-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#021008" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" fill="url(#cbh-gradient)" />
+  <g fill="white">
+    <path d="M 22 56 L 60 28 L 98 56" fill="none" stroke="white" stroke-width="7.5" stroke-linecap="butt" stroke-linejoin="round" />
+    <rect x="34" y="62" width="12" height="18" rx="1.5" />
+    <rect x="54" y="50" width="12" height="30" rx="1.5" />
+    <rect x="74" y="34" width="12" height="46" rx="1.5" />
+    <text x="60" y="105" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="28" font-weight="900" text-anchor="middle" letter-spacing="1">CBH</text>
+  </g>
+</svg></textarea>
+            </div>
+        </div>
+
+        <!-- ไฟล์ที่ 3: Web Manifest -->
+        <div class="card">
+            <div class="preview-section" style="justify-content: center;">
+                <div style="font-size: 40px;">⚙️</div>
+                <strong>site.webmanifest</strong>
+                <span style="font-size: 12px; color: #666; text-align: center;">ไฟล์ตั้งค่าสำหรับ<br>แอปมือถือ (PWA)</span>
+            </div>
+            <div class="code-section">
+                <h3>
+                    โค้ด Web Manifest
+                    <button class="btn-copy" onclick="copyCode('code-manifest')">คัดลอกโค้ด</button>
+                </h3>
+                <textarea id="code-manifest" style="height: 250px;" readonly>{
+  "name": "CBH Platform",
+  "short_name": "CBH",
+  "description": "ระบบจัดการข้อมูลของ CBH",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#021008",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "cbh-icon-square.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "cbh-icon-square.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}</textarea>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- แจ้งเตือนเมื่อกดคัดลอก -->
+    <div id="toast">✅ คัดลอกโค้ดเรียบร้อยแล้ว!</div>
+
+    <script>
+        // เรนเดอร์รูป Preview จากโค้ดใน Textarea
+        document.getElementById('preview-rounded').innerHTML = document.getElementById('code-rounded').value;
+        document.getElementById('preview-square').innerHTML = document.getElementById('code-square').value;
+
+        // ฟังก์ชันคัดลอกโค้ด
+        function copyCode(elementId) {
+            const textarea = document.getElementById(elementId);
+            
+            // สร้าง textarea ชั่วคราวเพื่อคัดลอก (รองรับทุกเบราว์เซอร์)
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = textarea.value;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast();
+            } catch (err) {
+                console.error('ไม่สามารถคัดลอกได้', err);
+            }
+            
+            document.body.removeChild(tempTextArea);
+        }
+
+        // ฟังก์ชันแสดงการแจ้งเตือน
+        let toastTimeout;
+        function showToast() {
+            const toast = document.getElementById("toast");
+            toast.className = "show";
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(function(){ 
+                toast.className = toast.className.replace("show", ""); 
+            }, 2500);
+        }
+    </script>
+</body>
+</html>

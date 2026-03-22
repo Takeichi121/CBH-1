@@ -75,7 +75,8 @@ import { useFormPersistence } from "@/hooks/use-form-persistence";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const formatNumber = (value: string | number): string => {
   const num =
@@ -246,6 +247,41 @@ const DEFAULT_SHIFT_OPTIONS = [
   { value: "QSNCC", label: "QSNCC" },
   { value: "Training", label: "Training" },
 ];
+
+const getShiftThaiName = (shiftGroup: string): string => {
+  switch (shiftGroup?.toLowerCase()) {
+    case "open": return "Open";
+    case "lunch": return "Lunch";
+    case "swing": return "Swing";
+    case "dinner": return "Dinner";
+    case "close": return "Close";
+    case "late": return "Late Night";
+    case "com": return "COM";
+    case "off": return "OFF";
+    case "meeting_manager": return "MM";
+    case "meeting_zone": return "ZM";
+    case "other": return "OTHER";
+    case "sick": return "SICK";
+    default: return shiftGroup || "–";
+  }
+};
+
+const getShiftBadgeClass = (shiftGroup: string): string => {
+  switch (shiftGroup?.toLowerCase()) {
+    case "open": return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+    case "lunch": return "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300";
+    case "swing": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
+    case "dinner": return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
+    case "close": return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300";
+    case "late": return "bg-slate-700 text-slate-100 dark:bg-slate-600 dark:text-slate-100";
+    case "com": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+    case "off": return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+    case "meeting_manager": return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
+    case "meeting_zone": return "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300";
+    case "sick": return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
 
 const DEFAULT_STAFF_SHIFT_GROUPS = [
   { value: "07:00-16:00", label: "07:00-16:00" },
@@ -729,6 +765,18 @@ export default function DailySalesPage() {
 
   // Load daily target, MTD summary, and existing report when date changes
   const reportDate = form.watch("reportDate");
+  const watchedRosterDate = form.watch("managerRosterDate");
+
+  const rosterLogQuery = useQuery({
+    queryKey: ["/api/shift-count-for-date", watchedRosterDate],
+    queryFn: async () => {
+      if (!watchedRosterDate) return null;
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/shift-count-for-date", { token, date: watchedRosterDate });
+      return res.json();
+    },
+    enabled: !!watchedRosterDate,
+  });
 
   useEffect(() => {
     if (reportDate) localStorage.setItem("chann_page_date", reportDate);
@@ -1069,6 +1117,7 @@ export default function DailySalesPage() {
         });
         clearData();
         markAsSaved();
+        queryClient.invalidateQueries({ queryKey: ["/api/shift-count-for-date"] });
       } else {
         toast({
           variant: "destructive",
@@ -4104,6 +4153,70 @@ ${v.staffRosterText || ""}
                     </Button>
                   )}
                 </div>
+
+                {/* ตารางบันทึก — Saved Shift Log */}
+                {watchedRosterDate && (
+                  <div className="mt-5 pt-4 border-t border-border/40" data-testid="section-roster-log">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        ตารางบันทึก — {watchedRosterDate}
+                      </h4>
+                      {rosterLogQuery.data?.total > 0 && (
+                        <span className="text-xs text-muted-foreground">{rosterLogQuery.data.total} รายการ</span>
+                      )}
+                    </div>
+
+                    {rosterLogQuery.isLoading ? (
+                      <div className="space-y-1.5">
+                        {[0, 1, 2].map((i) => (
+                          <div key={i} className="h-8 rounded-md bg-muted/40 animate-pulse" />
+                        ))}
+                      </div>
+                    ) : rosterLogQuery.data?.ok && rosterLogQuery.data.shifts?.length > 0 ? (
+                      <div className="rounded-md border border-border/50 overflow-hidden">
+                        <table className="w-full text-sm" data-testid="table-roster-log">
+                          <thead>
+                            <tr className="bg-muted/40 border-b border-border/50">
+                              <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground w-8">#</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">ชื่อเล่น</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">กะ</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">เวลา</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rosterLogQuery.data.shifts.map((shift: any, idx: number) => (
+                              <tr
+                                key={idx}
+                                className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
+                                data-testid={`row-roster-log-${idx}`}
+                              >
+                                <td className="px-3 py-1.5 text-xs text-muted-foreground">{idx + 1}</td>
+                                <td className="px-3 py-1.5 text-sm font-medium">{shift.nickName || shift.username}</td>
+                                <td className="px-3 py-1.5">
+                                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${getShiftBadgeClass(shift.shiftGroup)}`}>
+                                    {getShiftThaiName(shift.shiftGroup)}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-1.5 text-xs text-muted-foreground font-mono">
+                                  {shift.startTime && shift.endTime
+                                    ? `${shift.startTime}–${shift.endTime}`
+                                    : shift.startTime || "–"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div
+                        className="text-center py-5 text-xs text-muted-foreground border border-dashed border-border/50 rounded-md"
+                        data-testid="empty-roster-log"
+                      >
+                        ไม่พบข้อมูลบันทึกกะสำหรับวันที่ {watchedRosterDate}
+                      </div>
+                    )}
+                  </div>
+                )}
               </form>
             </Form>
           </CardContent>

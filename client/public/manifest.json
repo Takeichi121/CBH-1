@@ -11,15 +11,21 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/cbh-icon-square.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "/cbh-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/cbh-icon-square.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "/cbh-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/cbh-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],
@@ -28,13 +34,13 @@
       "name": "Login",
       "short_name": "Login",
       "url": "/auth",
-      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "192x192 512x512", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/cbh-icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "url": "/",
-      "icons": [{ "src": "/cbh-icon-square.svg", "sizes": "192x192 512x512", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/cbh-icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "categories": ["business", "productivity"],

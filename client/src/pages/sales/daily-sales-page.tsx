@@ -248,7 +248,7 @@ const DEFAULT_SHIFT_OPTIONS = [
   { value: "Training", label: "Training" },
 ];
 
-const getShiftThaiName = (shiftGroup: string): string => {
+const getShiftDisplayName = (shiftGroup: string): string => {
   switch (shiftGroup?.toLowerCase()) {
     case "open": return "Open";
     case "lunch": return "Lunch";
@@ -4204,7 +4204,7 @@ ${v.staffRosterText || ""}
                           <tbody>
                             {rosterLogQuery.data.shifts.map((shift: ShiftLogRow, idx: number) => (
                               <tr
-                                key={idx}
+                                key={`${shift.username}-${shift.shiftGroup}-${shift.startTime ?? idx}`}
                                 className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                                 data-testid={`row-roster-log-${idx}`}
                               >
@@ -4212,7 +4212,7 @@ ${v.staffRosterText || ""}
                                 <td className="px-3 py-1.5 text-sm font-medium">{shift.nickName || shift.username}</td>
                                 <td className="px-3 py-1.5">
                                   <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${getShiftBadgeClass(shift.shiftGroup)}`}>
-                                    {getShiftThaiName(shift.shiftGroup)}
+                                    {getShiftDisplayName(shift.shiftGroup)}
                                   </span>
                                 </td>
                                 <td className="px-3 py-1.5 text-xs text-muted-foreground font-mono">

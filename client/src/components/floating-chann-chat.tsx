@@ -154,6 +154,15 @@ export function FloatingChannChat() {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+  }, []);
+
   const flushPendingContent = () => {
     rafIdRef.current = null;
     const chunk = pendingContentRef.current;

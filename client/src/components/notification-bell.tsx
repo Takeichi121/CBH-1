@@ -144,7 +144,7 @@ export function NotificationBell() {
                   data-testid={`notification-item-${notif.id}`}
                 >
                   {!notif.isRead && (
-                    <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-primary" />
+                    <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500" />
                   )}
                   {notif.isRead && <span className="mt-1.5 flex-shrink-0 w-2 h-2" />}
                   <div className="flex-1 min-w-0">

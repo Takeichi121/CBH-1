@@ -206,7 +206,8 @@ import {
   staffChatMessages,
   channConversations,
   codeProposals,
-  dropdownOptions
+  dropdownOptions,
+  notifications
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -6422,9 +6423,10 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
 
-    const userNotifs = await storage.getNotificationsForUser(session.username, 1000);
-    const owned = userNotifs.some(n => n.id === id);
-    if (!owned) return res.status(403).json({ ok: false, message: "No permission" });
+    const [notif] = await db.select().from(notifications)
+      .where(and(eq(notifications.id, id), eq(notifications.recipientUsername, session.username)))
+      .limit(1);
+    if (!notif) return res.status(403).json({ ok: false, message: "No permission" });
 
     await storage.markNotificationAsRead(id);
     return res.json({ ok: true });
@@ -6452,9 +6454,13 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const user = await storage.getUser(session.username);
     if (!user) return res.status(401).json({ ok: false, message: "User not found" });
 
-    const userNotifs = await storage.getNotificationsForUser(session.username, 1000);
-    const owned = userNotifs.some(n => n.id === id);
-    if (!owned && !isManagerLike(user.role)) {
+    const [notif] = await db.select().from(notifications)
+      .where(eq(notifications.id, id))
+      .limit(1);
+    if (!notif) return res.status(404).json({ ok: false, message: "Not found" });
+
+    const isOwner = notif.recipientUsername === session.username;
+    if (!isOwner && !isManagerLike(user.role)) {
       return res.status(403).json({ ok: false, message: "No permission" });
     }
 

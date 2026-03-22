@@ -155,13 +155,6 @@ export function FloatingChannChat() {
   }, [isOpen]);
 
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
     return () => {
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
@@ -845,26 +838,10 @@ export function FloatingChannChat() {
   if (!user) return null;
 
   return (
-    <>
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-32 md:bottom-16 right-4 z-50 group"
-          data-testid="button-open-chann-chat"
-        >
-          <div className="relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200">
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-              <Bot className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-semibold">Chann</span>
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
-          </div>
-        </button>
-      )}
-
-      {isOpen && (
+    <div className="fixed bottom-32 md:bottom-16 right-4 z-[51]">
+      {isOpen ? (
         <div
-          className="fixed top-16 left-3 right-3 bottom-20 md:top-auto md:left-auto md:bottom-4 md:right-4 md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] z-[51] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
+          className="w-[min(calc(100vw-2rem),420px)] h-[500px] md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
           data-testid="container-chann-chat"
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
@@ -1128,7 +1105,21 @@ export function FloatingChannChat() {
             </div>
           </div>
         </div>
+      ) : (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="group"
+          data-testid="button-open-chann-chat"
+        >
+          <div className="relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <Bot className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-semibold">Chann</span>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+          </div>
+        </button>
       )}
-    </>
+    </div>
   );
 }

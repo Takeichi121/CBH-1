@@ -216,6 +216,8 @@ const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowe
 const AREA_VERIFY_CODE = (process.env.AREA_VERIFY_CODE || "bkarea").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
 
+const versionNotifiedSessions = new Set<string>();
+
 const isManagerLike = (role?: string | null) =>
   role === "admin" || role === "manager" || role === "area";
 
@@ -3040,6 +3042,11 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !u.active) return res.status(401).json({ ok: false });
 
+    if (!versionNotifiedSessions.has(token)) {
+      versionNotifiedSessions.add(token);
+      triggerVersionNotifications(u.username).catch(() => {});
+    }
+
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
     res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
@@ -5827,7 +5834,7 @@ ${pageContext}` : ''}`;
           try {
             const allUsers = await storage.getUsers();
             const recipients = allUsers
-              .filter(a => a.active && a.username !== session.username)
+              .filter(a => a.active && a.role === "staff" && a.username !== session.username)
               .map(a => a.username);
             if (recipients.length > 0) {
               const now = nowIso();
@@ -6361,6 +6368,26 @@ ${pageContext}` : ''}`;
     if (!parsed.success) return res.json({ ok: false, message: "Invalid data", errors: parsed.error.errors });
 
     const request = await storage.createAgentRequest({ ...parsed.data, username: session.username });
+
+    (async () => {
+      try {
+        const allUsers = await storage.getUsers();
+        const otherAdmins = allUsers.filter(a => a.active && a.role === "admin" && a.username !== session.username).map(a => a.username);
+        if (otherAdmins.length > 0) {
+          await storage.createNotificationsForUsers(otherAdmins, {
+            type: "agent_request",
+            title: "New Agent Request",
+            titleTh: `Agent Request ใหม่: ${parsed.data.type}`,
+            message: `${user.fullName || session.username} ส่ง request ใหม่: ${parsed.data.description.slice(0, 80)}`,
+            messageTh: `${user.fullName || session.username} ส่ง request ใหม่: ${parsed.data.description.slice(0, 80)}`,
+            relatedId: String(request.id),
+            isRead: 0,
+            createdAt: nowIso(),
+            createdBy: session.username,
+          });
+        }
+      } catch {}
+    })();
 
     (async () => {
       try {

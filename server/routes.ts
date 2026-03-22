@@ -6388,5 +6388,53 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     return res.json({ ok: true, message: "Seed completed" });
   }));
 
+  // ==========================================
+  // 🔔 Notification API
+  // ==========================================
+
+  app.get("/api/notifications", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+    const notifs = await storage.getNotificationsForUser(session.username, 30);
+    const unreadCount = await storage.getUnreadCountForUser(session.username);
+    return res.json({ ok: true, notifications: notifs, unreadCount });
+  }));
+
+  app.post("/api/notifications/:id/read", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+    await storage.markNotificationAsRead(id);
+    return res.json({ ok: true });
+  }));
+
+  app.post("/api/notifications/read-all", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+    await storage.markAllNotificationsAsRead(session.username);
+    return res.json({ ok: true });
+  }));
+
+  app.delete("/api/notifications/:id", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+    await storage.deleteNotification(id);
+    return res.json({ ok: true });
+  }));
+
   return httpServer;
 }

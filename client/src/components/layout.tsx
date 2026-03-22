@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { NotificationBell } from "@/components/notification-bell";
 
 import { useI18n } from "@/hooks/use-i18n";
 
@@ -81,6 +82,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <h1 className="text-lg font-bold font-display text-foreground">Chann Back House</h1>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <Button
               variant="outline"
               size="sm"
@@ -274,6 +276,8 @@ export function Layout({ children }: { children: ReactNode }) {
             <Globe className="w-4 h-4" />
             <span className="text-xs font-medium">{language === "en" ? "ไทย" : "EN"}</span>
           </Button>
+
+          <NotificationBell />
 
           <Button
             variant="outline"

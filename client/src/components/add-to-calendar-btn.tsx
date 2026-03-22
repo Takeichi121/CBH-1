@@ -16,7 +16,7 @@ export function AddToCalendarBtn({ title, startTime, endTime }: AddToCalendarBtn
 
     const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
       title
-    )}&dates=${start}/${end}&details=Work+Shift+at+Burger+King&location=Grand+Diamond`;
+    )}&dates=${start}/${end}&details=Work+Shift+at+CBH+Grand+Diamond&location=Grand+Diamond`;
 
     window.open(googleUrl, "_blank");
   };

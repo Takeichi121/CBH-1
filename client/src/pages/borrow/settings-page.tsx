@@ -291,7 +291,7 @@ export default function BorrowSettingsPage() {
                       <Input
                         value={newBranch.name}
                         onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
-                        placeholder="BK Grand Diamond"
+                        placeholder="Grand Diamond"
                         data-testid="input-branch-name"
                       />
                     </div>

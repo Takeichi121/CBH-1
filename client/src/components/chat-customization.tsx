@@ -180,7 +180,7 @@ export function ChatCustomizationPanel({ isOpen, onClose }: ChatCustomizationPan
                   <RadioGroupItem value={style.id} id={`avatar-${style.id}`} />
                   <Label htmlFor={`avatar-${style.id}`} className="cursor-pointer">
                     <div className={cn("w-10 h-10 bg-primary/20 flex items-center justify-center", style.class)}>
-                      <span className="text-xs font-bold">BK</span>
+                      <span className="text-xs font-bold">CBH</span>
                     </div>
                   </Label>
                 </div>

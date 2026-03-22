@@ -24,12 +24,12 @@ export async function sendOtpEmail(to: string, otp: string, displayName: string,
     const branchName = process.env.BRANCH_NAME || 'Grand Diamond';
     
     const result = await client.emails.send({
-      from: `BK ${branchName} <${fromEmail}>`,
+      from: `CBH ${branchName} <${fromEmail}>`,
       to: [to],
       subject: `รหัส OTP สำหรับรีเซ็ตรหัสผ่าน / Password Reset OTP`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #D62300;">BK Work Schedule - ${branchName}</h2>
+          <h2 style="color: #10b981;">CBH — Chann Back House · ${branchName}</h2>
           <p>สวัสดี <strong>${displayName}</strong>,</p>
           <p>คุณได้ร้องขอรหัส OTP เพื่อรีเซ็ตรหัสผ่านสำหรับบัญชี:</p>
           <div style="background: #e8f4fc; padding: 12px; text-align: center; margin: 10px 0; border-radius: 8px; border: 1px solid #cce5ff;">

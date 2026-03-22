@@ -81,7 +81,7 @@ export default function HandbookPage() {
           <BookOpen className="w-8 h-8 text-primary" />
           <div>
             <h1 className="text-2xl font-bold">คู่มือการใช้งานระบบ</h1>
-            <p className="text-sm text-muted-foreground">Burger King Grand Diamond — ฉบับล่าสุด v{APP_VERSION}</p>
+            <p className="text-sm text-muted-foreground">Grand Diamond — ฉบับล่าสุด v{APP_VERSION}</p>
           </div>
         </div>
         {isManagerLike && (
@@ -488,7 +488,7 @@ export default function HandbookPage() {
       </Accordion>
 
       <div className="text-center text-xs text-muted-foreground pt-4 pb-2">
-        <p className="font-semibold">Burger King Grand Diamond Branch</p>
+        <p className="font-semibold">Grand Diamond Branch</p>
         <p>เอกสารภายใน — อัพเดทล่าสุด {CHANGELOG[0] ? formatDateThai(CHANGELOG[0].date) : ""} · v{APP_VERSION}</p>
       </div>
     </div>

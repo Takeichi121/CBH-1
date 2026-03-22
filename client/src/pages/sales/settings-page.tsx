@@ -61,8 +61,8 @@ export default function SalesSettingsPage() {
   const { isAreaUser, isUnlocked } = useAreaLock();
   const areaLocked = isAreaUser && !isUnlocked;
 
-  const [storeName, setStoreName] = useState("BK Grand Diamond");
-  const [storeCode, setStoreCode] = useState("BK1040");
+  const [storeName, setStoreName] = useState("Grand Diamond");
+  const [storeCode, setStoreCode] = useState("GD1040");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingTargets, setIsSavingTargets] = useState(false);
@@ -353,8 +353,8 @@ export default function SalesSettingsPage() {
         const storeData = await storeRes.json();
         const laborData = await laborRes.json();
         if (storeData.ok && storeData.settings) {
-          setStoreName(storeData.settings.storeName || "BK Grand Diamond");
-          setStoreCode(storeData.settings.storeCode || "BK1040");
+          setStoreName(storeData.settings.storeName || "Grand Diamond");
+          setStoreCode(storeData.settings.storeCode || "GD1040");
           setDefaultTarget(storeData.settings.dailyTarget?.toString() || "130000");
           if (storeData.settings.dutyTeamHours) {
             setDutyTeamHours(storeData.settings.dutyTeamHours.toString());

@@ -41,7 +41,7 @@ export default function SalesManualPage() {
       icon: BookOpen,
       content: language === "th" ? (
         <div className="space-y-4">
-          <p>ระบบ Sales Report เป็นเครื่องมือสำหรับบันทึกและติดตามยอดขายประจำวันของร้าน Burger King Grand Diamond โดยมีความสามารถหลักดังนี้:</p>
+          <p>ระบบ Sales Report เป็นเครื่องมือสำหรับบันทึกและติดตามยอดขายประจำวันของร้าน Grand Diamond โดยมีความสามารถหลักดังนี้:</p>
           <ul className="list-disc list-inside space-y-2 ml-4">
             <li><strong>บันทึกยอดขายรายวัน</strong> - บันทึกยอดขายจริง เป้าหมาย และจำนวนรายการ</li>
             <li><strong>ติดตาม MTD (Month-to-Date)</strong> - ดูยอดสะสมประจำเดือน</li>
@@ -53,7 +53,7 @@ export default function SalesManualPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p>The Sales Report system is a tool for recording and tracking daily sales at Burger King Grand Diamond with the following main features:</p>
+          <p>The Sales Report system is a tool for recording and tracking daily sales at Grand Diamond with the following main features:</p>
           <ul className="list-disc list-inside space-y-2 ml-4">
             <li><strong>Daily Sales Recording</strong> - Record actual sales, targets, and transaction counts</li>
             <li><strong>MTD Tracking</strong> - View month-to-date accumulated sales</li>
@@ -374,7 +374,7 @@ export default function SalesManualPage() {
               <AccordionContent>
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li><strong>รหัสร้าน:</strong> BK1040</li>
-                  <li><strong>ชื่อร้าน:</strong> Burger King Grand Diamond</li>
+                  <li><strong>ชื่อร้าน:</strong> Grand Diamond</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
@@ -452,7 +452,7 @@ export default function SalesManualPage() {
             <h4 className="font-semibold">Store Information</h4>
             <ul className="list-disc list-inside space-y-1 ml-4">
               <li>Store Code: BK1040</li>
-              <li>Store Name: Burger King Grand Diamond</li>
+              <li>Store Name: Grand Diamond</li>
             </ul>
           </div>
 
@@ -635,7 +635,7 @@ export default function SalesManualPage() {
 
         <div className="text-center text-sm text-muted-foreground pt-4 border-t">
           <p>Developer: Chanon | Version {t.version} | Last Updated: {t.lastUpdated}</p>
-          <p className="mt-1">© 2025-2026 BK Grand Diamond. All Rights Reserved.</p>
+          <p className="mt-1">© 2025-2026 Grand Diamond. All Rights Reserved.</p>
         </div>
       </div>
     </SalesLayout>

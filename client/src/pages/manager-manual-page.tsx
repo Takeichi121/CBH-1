@@ -238,7 +238,7 @@ export default function ManagerManualPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold leading-tight">คู่มือผู้จัดการ</h1>
-            <p className="text-red-200 text-sm">Burger King Grand Diamond</p>
+            <p className="text-red-200 text-sm">Grand Diamond</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-red-200">
@@ -525,7 +525,7 @@ export default function ManagerManualPage() {
 
       {/* Footer */}
       <div className="text-center text-xs text-muted-foreground pt-2 pb-4 border-t border-border">
-        <p>คู่มือผู้จัดการ — BK Grand Diamond · v{APP_VERSION}</p>
+        <p>คู่มือผู้จัดการ — Grand Diamond · v{APP_VERSION}</p>
         <p className="mt-1">ติดต่อ Admin เพื่อแก้ไขหรือเพิ่มเติมข้อมูล</p>
       </div>
     </div>

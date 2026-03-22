@@ -2394,7 +2394,7 @@ ${pageContext}` : ''}`;
               const rReport = rReports.find(r => r.reportDate === rDate);
               if (rReport) {
                 const lineStoreCfg = await storage.getStoreSettings();
-                const lineStoreName = lineStoreCfg?.storeName || "Burger King Grand Diamond";
+                const lineStoreName = lineStoreCfg?.storeName || "Grand Diamond";
                 lineMessages.push(buildDailyReportText(rReport, lineStoreName));
               }
             }
@@ -5815,7 +5815,7 @@ ${pageContext}` : ''}`;
       const ws = wb.Sheets["Sales Management Sheet"];
       const dutyCount = Math.round((dutyDailyHours || 0) / 8);
 
-      setCell(ws, "D1", storeName || "Burger King", "s");
+      setCell(ws, "D1", storeName || "Grand Diamond", "s");
       setCell(ws, "AI1", dutyCount, "n");
       setCell(ws, "AQ1", ptWageRate || 0, "n");
 
@@ -6062,7 +6062,7 @@ ${pageContext}` : ''}`;
     const targetId = cfg["LINE_TARGET_ID"];
     if (!channelToken || !targetId) return res.json({ ok: false, message: "ยังไม่ได้ตั้งค่า Channel Token หรือ Target ID" });
     try {
-      await sendLineMessage(channelToken, targetId, [{ type: "text", text: "✅ ทดสอบระบบแจ้งเตือนสำเร็จ! จาก BK Grand Diamond 🍔" }]);
+      await sendLineMessage(channelToken, targetId, [{ type: "text", text: "✅ ทดสอบระบบแจ้งเตือนสำเร็จ! จาก CBH Grand Diamond" }]);
       res.json({ ok: true });
     } catch (err: any) {
       res.json({ ok: false, message: err.message });
@@ -6087,7 +6087,7 @@ ${pageContext}` : ''}`;
     const report = reports.find(r => r.reportDate === targetDate);
     if (!report) return res.json({ ok: false, message: `ไม่พบข้อมูลของวันที่ ${targetDate}` });
     const storeCfg = await storage.getStoreSettings();
-    const storeName = storeCfg?.storeName || "Burger King Grand Diamond";
+    const storeName = storeCfg?.storeName || "Grand Diamond";
     try {
       const flex = buildDailyReportText(report, storeName);
       await sendLineMessage(channelToken, targetId, [flex]);

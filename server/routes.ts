@@ -4582,13 +4582,14 @@ ${pageContext}` : ''}`;
       await storage.log("manager_request_approve", u.username, `requestId=${requestId}`);
       if (reqToApprove) {
         const label = getRequestTypeLabel(reqToApprove.requestType);
+        const approverName = u.fullName || u.nickName || u.username;
         storage.createNotification({
           recipientUsername: reqToApprove.requestedBy,
           type: "request_approved",
           title: "Request Approved",
           titleTh: `คำขออนุมัติแล้ว: ${label}`,
-          message: `คำขอ ${label} ของคุณได้รับการอนุมัติแล้ว`,
-          messageTh: `คำขอ ${label} ของคุณได้รับการอนุมัติแล้ว`,
+          message: `${approverName} อนุมัติคำขอ ${label} ของคุณแล้ว`,
+          messageTh: `${approverName} อนุมัติคำขอ ${label} ของคุณแล้ว`,
           relatedId: String(requestId),
           isRead: 0,
           createdAt: nowIso(),
@@ -4618,13 +4619,14 @@ ${pageContext}` : ''}`;
       await storage.log("manager_request_reject", u.username, `requestId=${requestId} reason=${reason}`);
       if (reqToReject) {
         const label = getRequestTypeLabel(reqToReject.requestType);
+        const rejecterName = u.fullName || u.nickName || u.username;
         storage.createNotification({
           recipientUsername: reqToReject.requestedBy,
           type: "request_rejected",
-          title: "Request Not Approved",
+          title: "Request Rejected",
           titleTh: `คำขอไม่อนุมัติ: ${label}`,
-          message: `คำขอ ${label} ไม่ผ่านการอนุมัติ${reason ? `: ${reason}` : ""}`,
-          messageTh: `คำขอ ${label} ไม่ผ่านการอนุมัติ${reason ? `: ${reason}` : ""}`,
+          message: `${rejecterName} ไม่อนุมัติคำขอ ${label} ของคุณ${reason ? `: ${reason}` : ""}`,
+          messageTh: `${rejecterName} ไม่อนุมัติคำขอ ${label} ของคุณ${reason ? `: ${reason}` : ""}`,
           relatedId: String(requestId),
           isRead: 0,
           createdAt: nowIso(),

@@ -155,6 +155,13 @@ export function FloatingChannChat() {
   }, [isOpen]);
 
   useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     return () => {
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);

@@ -6403,6 +6403,16 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     return res.json({ ok: true, notifications: notifs, unreadCount });
   }));
 
+  app.get("/api/notifications/unread-count", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+    const count = await storage.getUnreadCountForUser(session.username);
+    return res.json({ ok: true, count });
+  }));
+
   app.post("/api/notifications/:id/read", safe(async (req, res) => {
     const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
     if (!token) return res.status(401).json({ ok: false, message: "Token required" });
@@ -6411,6 +6421,11 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+
+    const userNotifs = await storage.getNotificationsForUser(session.username, 1000);
+    const owned = userNotifs.some(n => n.id === id);
+    if (!owned) return res.status(403).json({ ok: false, message: "No permission" });
+
     await storage.markNotificationAsRead(id);
     return res.json({ ok: true });
   }));
@@ -6430,8 +6445,19 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     if (!token) return res.status(401).json({ ok: false, message: "Token required" });
     const session = await storage.getSession(token);
     if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+
+    const user = await storage.getUser(session.username);
+    if (!user) return res.status(401).json({ ok: false, message: "User not found" });
+
+    const userNotifs = await storage.getNotificationsForUser(session.username, 1000);
+    const owned = userNotifs.some(n => n.id === id);
+    if (!owned && !isManagerLike(user.role)) {
+      return res.status(403).json({ ok: false, message: "No permission" });
+    }
+
     await storage.deleteNotification(id);
     return res.json({ ok: true });
   }));

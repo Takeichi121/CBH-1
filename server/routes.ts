@@ -5118,6 +5118,88 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  // Get Outstanding (Net Balance)
+  app.post("/api/borrow/outstanding", safe(async (req, res) => {
+    try {
+      const { token } = req.body;
+      const access = await verifyManagerAccess(token);
+      if (!access.ok) return res.status(401).json(access);
+
+      const [branches, transactions] = await Promise.all([
+        db.select().from(borrowBranches),
+        db.select().from(borrowTransactions),
+      ]);
+
+      const branchMap = new Map<string, any>(branches.map((b: any) => [b.id, b]));
+
+      type Agg = {
+        branchId: string;
+        branchCode: string;
+        branchName: string;
+        item: string;
+        unit: string;
+        outQty: number;
+        inQty: number;
+        balanceQty: number;
+        lastTxDate: string;
+        lastDueDate?: string | null;
+      };
+
+      const keyOf = (t: any) => `${t.branch}__${t.item}__${t.unit || ""}`;
+      const agg = new Map<string, Agg>();
+
+      for (const t of transactions as any[]) {
+        const k = keyOf(t);
+        const br = branchMap.get(t.branch);
+        const branchCode = br?.code || "";
+        const branchName = br?.name || t.branch;
+        const unit = t.unit || "";
+
+        if (!agg.has(k)) {
+          agg.set(k, {
+            branchId: t.branch,
+            branchCode,
+            branchName,
+            item: t.item,
+            unit,
+            outQty: 0,
+            inQty: 0,
+            balanceQty: 0,
+            lastTxDate: t.txDate,
+            lastDueDate: t.dueDate || null,
+          });
+        }
+
+        const row = agg.get(k)!;
+        const qty = Number(t.qty) || 0;
+        if (t.txType === "borrow_out") row.outQty += qty;
+        if (t.txType === "borrow_in") row.inQty += qty;
+
+        row.balanceQty = row.outQty - row.inQty;
+
+        // lastTxDate = max
+        if (String(t.txDate) > String(row.lastTxDate)) {
+          row.lastTxDate = t.txDate;
+          row.lastDueDate = t.dueDate || null;
+        }
+      }
+
+      const today = todayBangkok();
+      const outstanding = Array.from(agg.values())
+        .filter(r => r.balanceQty !== 0)
+        .map(r => {
+          const overdue = r.balanceQty > 0 && r.lastDueDate && String(r.lastDueDate) < String(today);
+          const overdueDays = overdue ? Math.ceil((new Date(today).getTime() - new Date(String(r.lastDueDate)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          return { ...r, overdue: !!overdue, overdueDays };
+        })
+        .sort((a, b) => Math.abs(b.balanceQty) - Math.abs(a.balanceQty));
+
+      res.json({ ok: true, outstanding });
+    } catch (e: any) {
+      res.json({ ok: false, message: e.message });
+    }
+  }));
+
   // Add Transaction
   app.post("/api/borrow/transactions/add", safe(async (req, res) => {
     try {

@@ -16,19 +16,34 @@ import { Package, Plus, Check, Trash2, Clock, AlertCircle, ArrowDownToLine, Arro
 import { useToast } from "@/hooks/use-toast";
 import { cn, todayBangkok } from "@/lib/utils";
 import { format, subDays, startOfDay, isSameDay } from "date-fns";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   LineChart,
   Line
 } from "recharts";
 import type { BorrowBranch, BorrowItem, BorrowTransaction } from "@shared/schema";
+
+type OutstandingRow = {
+  branchId: string;
+  branchCode: string;
+  branchName: string;
+  item: string;
+  unit: string;
+  outQty: number;
+  inQty: number;
+  balanceQty: number;
+  lastTxDate: string;
+  lastDueDate?: string | null;
+  overdue?: boolean;
+  overdueDays?: number;
+};
 
 // ✅ Import ปุ่มสำหรับดึงไฟล์ Excel/CSV
 import ImportExcelButton from "./components/ImportExcelButton";
@@ -44,6 +59,17 @@ export default function BorrowTrackerPage() {
   const [dashboardMetrics, setDashboardMetrics] = useState({ totalTransactions: 0, totalBorrowIn: 0, totalBorrowOut: 0, overdueCount: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Outstanding (Net balance)
+  const [outstandingRows, setOutstandingRows] = useState<OutstandingRow[]>([]);
+  const [outstandingLoading, setOutstandingLoading] = useState(false);
+  const [outstandingError, setOutstandingError] = useState<string | null>(null);
+
+  // Outstanding filters
+  const [outBranch, setOutBranch] = useState<string>("all");
+  const [outSearch, setOutSearch] = useState<string>("");
+  const [outOnlyNonZero, setOutOnlyNonZero] = useState<boolean>(true);
+  const [outOnlyOverdue, setOutOnlyOverdue] = useState<boolean>(false);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -106,6 +132,34 @@ export default function BorrowTrackerPage() {
     importItems: language === "th" ? "นำเข้ารายการ (Excel/CSV)" : "Import Items",
   };
 
+  const fetchOutstanding = async () => {
+    if (!token) return;
+    setOutstandingLoading(true);
+    setOutstandingError(null);
+    try {
+      const res = await fetch("/api/borrow/outstanding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token })
+      }).then(r => r.json());
+
+      if (!res.ok) {
+        const errMsg = res.message || "Failed to load outstanding";
+        setOutstandingError(errMsg);
+        toast({ title: errMsg, variant: "destructive" });
+        setOutstandingLoading(false);
+        return;
+      }
+      setOutstandingRows(res.outstanding || []);
+    } catch (e) {
+      console.error("Failed to fetch outstanding", e);
+      const errMsg = language === "th" ? "โหลดข้อมูลคงค้างไม่สำเร็จ" : "Failed to load outstanding";
+      setOutstandingError(errMsg);
+      toast({ title: errMsg, variant: "destructive" });
+    }
+    setOutstandingLoading(false);
+  };
+
   const fetchData = async () => {
     if (!token) return;
     setLoading(true);
@@ -128,6 +182,9 @@ export default function BorrowTrackerPage() {
       setItems(itemRes.items || []);
       setTransactions(txRes.transactions || []);
       setDashboardMetrics({ totalTransactions: dashRes.totalTransactions, totalBorrowIn: dashRes.totalBorrowIn, totalBorrowOut: dashRes.totalBorrowOut, overdueCount: dashRes.overdueCount });
+
+      // Keep outstanding in sync (best effort)
+      fetchOutstanding();
     } catch (e) {
       console.error("Failed to fetch borrow data", e);
       setError(language === "th" ? "เกิดข้อผิดพลาด" : "An error occurred");
@@ -257,6 +314,28 @@ export default function BorrowTrackerPage() {
       };
     });
   }, [transactions]);
+
+  const filteredOutstanding = useMemo(() => {
+    let rows = [...outstandingRows];
+
+    if (outOnlyNonZero) rows = rows.filter(r => Number(r.balanceQty) !== 0);
+    if (outOnlyOverdue) rows = rows.filter(r => !!r.overdue);
+    if (outBranch !== "all") rows = rows.filter(r => r.branchId === outBranch);
+
+    const q = outSearch.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(r =>
+        (r.branchName || "").toLowerCase().includes(q) ||
+        (r.branchCode || "").toLowerCase().includes(q) ||
+        (r.item || "").toLowerCase().includes(q) ||
+        (r.unit || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Default sort: biggest absolute balance first
+    rows.sort((a, b) => Math.abs(Number(b.balanceQty)) - Math.abs(Number(a.balanceQty)));
+    return rows;
+  }, [outstandingRows, outOnlyNonZero, outOnlyOverdue, outBranch, outSearch]);
 
   return (
     <div className="space-y-6 pb-12">

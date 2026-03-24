@@ -718,10 +718,12 @@ ${userAddress}เป็น Manager ดังนั้นคุณมีสิท
 - rejectManagerRequest: ปฏิเสธคำขอพนักงาน
 - rememberNote: บันทึก note ระยะยาว เพื่อจำข้อมูลสำคัญข้ามการสนทนา
 - deleteNote: ลบ note ที่บันทึกไว้
+- sendLineNotification: ส่งข้อความหรือรายงานไปยัง LINE group
 
-[กฎการเขียนข้อมูล]
+[กฎการเขียนข้อมูลและ Verify-After-Write]
 - เมื่อ${userAddress}สั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
-- เมื่อบันทึกสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
+- หลังบันทึกสำเร็จ ให้ **อ่านข้อมูลกลับมาตรวจสอบ** ทันทีเพื่อยืนยันว่าข้อมูลถูกบันทึกจริง
+- รายงานผลการตรวจสอบ: "บันทึกสำเร็จ ✓ ตรวจสอบแล้ว — [ข้อมูลที่บันทึก]"
 - ถ้าข้อมูลไม่ครบ ให้ถาม${userAddress}เฉพาะส่วนที่ขาด
 - ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
 ` : ''}${isAdmin ? `
@@ -779,9 +781,10 @@ ${userAddress}เป็น Admin ดังนั้นคุณมีสิท�
 - อธิบาย description ให้ชัดเจน
 - ถ้า build error ให้อ่าน error → แก้ไข → build ใหม่ ทำซ้ำจนสำเร็จ
 
-[กฎการเขียนข้อมูล]
+[กฎการเขียนข้อมูลและ Verify-After-Write]
 - เมื่อ${userAddress}สั่งให้บันทึกข้อมูล ให้ทำทันทีโดยไม่ต้องถามยืนยันซ้ำ
-- เมื่อบันทึกสำเร็จ ให้รายงานสิ่งที่ทำไปอย่างชัดเจน
+- หลังบันทึกสำเร็จ ให้ **อ่านข้อมูลกลับมาตรวจสอบ** ทันทีเพื่อยืนยันว่าข้อมูลถูกบันทึกจริง
+- รายงานผลการตรวจสอบ: "บันทึกสำเร็จ ✓ ตรวจสอบแล้ว — [ข้อมูลที่บันทึก]"
 - ถ้าข้อมูลไม่ครบ ให้ถาม${userAddress}เฉพาะส่วนที่ขาด
 - ทุกการเขียนข้อมูลจะถูก log ไว้ในระบบเพื่อตรวจสอบย้อนหลัง
 ` : ''}
@@ -1740,8 +1743,8 @@ ${pageContext}` : ''}`;
         }
       ];
 
-      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote"]);
-      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "applyCodeEdit", "createSourceFile", "executeShellCommand", "getCodeProposals", "sendLineNotification"]);
+      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote", "sendLineNotification"]);
+      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "applyCodeEdit", "createSourceFile", "executeShellCommand", "getCodeProposals"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
       const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
@@ -2742,6 +2745,9 @@ ${pageContext}` : ''}`;
           const toolNames = loopToolCalls.map(tc => tc.name).filter(Boolean);
           res.write(`data: ${JSON.stringify({ thinking: `กำลังทำขั้นตอน ${rounds}/${MAX_ROUNDS}: ใช้เครื่องมือ ${toolNames.join(", ")}` })}\n\n`);
 
+          const roundWriteActions: string[] = [];
+          const prevToolActionsLen = toolActions.length;
+
           const toolResults: ToolExecResult[] = await Promise.all(
             loopToolCalls.map(async (tc) => ({
               id: tc.id,
@@ -2749,6 +2755,11 @@ ${pageContext}` : ''}`;
               result: await handleToolCall(tc.name, tc.args),
             }))
           );
+
+          const newWriteActions = toolActions.slice(prevToolActionsLen);
+          roundWriteActions.push(...newWriteActions);
+
+          res.write(`data: ${JSON.stringify({ toolProgress: { step: rounds, maxSteps: MAX_ROUNDS, toolNames, writeActions: roundWriteActions } })}\n\n`);
 
           for (const tr of toolResults) {
             aiMessages.push({

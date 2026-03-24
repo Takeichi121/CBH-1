@@ -8,6 +8,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 
+interface ToolProgressStep {
+  step: number;
+  maxSteps: number;
+  toolNames: string[];
+  writeActions: string[];
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -16,6 +23,7 @@ interface ChatMessage {
   toolActions?: string[];
   thinking?: string;
   suggestedReplies?: string[];
+  progressSteps?: ToolProgressStep[];
 }
 
 
@@ -93,7 +101,7 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
               />
             )}
             {msg.thinking && !msg.content && (
-              <div className="space-y-1.5" data-testid={`thinking-chann-${index}`}>
+              <div className="space-y-2" data-testid={`thinking-chann-${index}`}>
                 <div className="flex items-center gap-2 text-xs text-violet-300/80 italic">
                   <div className="flex gap-1">
                     <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -108,6 +116,19 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
                       <Zap className="w-2.5 h-2.5" />
                       {extractActiveToolName(msg.thinking)}
                     </span>
+                  </div>
+                )}
+                {msg.progressSteps && msg.progressSteps.length > 0 && (
+                  <div className="pl-0 space-y-0.5" data-testid={`progress-steps-chann-${index}`}>
+                    {msg.progressSteps.map((ps, pi) => (
+                      <div key={pi} className="flex items-start gap-1.5 text-[10px] text-slate-500">
+                        <span className="text-violet-400/50 font-mono shrink-0">{ps.step}/{ps.maxSteps}</span>
+                        <span className="font-mono text-slate-400/70">{ps.toolNames.join(", ")}</span>
+                        {ps.writeActions.length > 0 && (
+                          <span className="text-emerald-400/60">✓ {ps.writeActions.join(", ")}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -257,6 +278,17 @@ export function FloatingChannChat() {
               setMessages(prev => {
                 const n = [...prev];
                 if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], thinking: parsed.thinking };
+                return n;
+              });
+            }
+            if (parsed.toolProgress) {
+              setMessages(prev => {
+                const n = [...prev];
+                const last = n[n.length - 1];
+                if (last?.role === "assistant") {
+                  const existing = last.progressSteps || [];
+                  n[n.length - 1] = { ...last, progressSteps: [...existing, parsed.toolProgress] };
+                }
                 return n;
               });
             }
@@ -791,13 +823,13 @@ export function FloatingChannChat() {
     {
       label: "ระบบ",
       icon: Database,
-      show: isAdmin,
+      show: isManagerOrAdmin,
       actions: [
+        { label: "ส่งแจ้งเตือน LINE", prompt: "ส่งแจ้งเตือนพร้อมรายงานวันนี้ไปยัง LINE group", icon: Bell },
         { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database },
         { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList },
         { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users },
         { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3 },
-        { label: "ส่งแจ้งเตือน LINE", prompt: "ส่งแจ้งเตือนพร้อมรายงานไปยัง LINE group", icon: Bell },
       ],
     },
   ].filter(c => c.show);

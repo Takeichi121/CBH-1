@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,16 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoading, isStreaming, onSuggestionClick }: MessageBubbleProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const text = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   if (msg.toolActions && msg.toolActions.length > 0) {
     return (
       <div className="flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-action-${index}`}>
@@ -48,9 +58,15 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
   const displayContent = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
   const showSuggestions = msg.role === "assistant" && isLastMsg && !isLoading && !isStreaming && msg.suggestedReplies && msg.suggestedReplies.length > 0;
 
+  const extractActiveToolName = (thinking: string): string | null => {
+    const match = thinking.match(/ใช้เครื่องมือ\s+(.+)$/);
+    if (match) return match[1].trim();
+    return null;
+  };
+
   return (
     <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
-      <div className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}>
+      <div className={cn("flex gap-2.5 group", msg.role === "user" ? "justify-end" : "justify-start")}>
         {msg.role === "assistant" && (
           <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
             <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
@@ -58,41 +74,66 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
             </AvatarFallback>
           </Avatar>
         )}
-        <div
-          className={cn(
-            "max-w-[80%] px-3.5 py-2.5 text-sm",
-            msg.role === "user"
-              ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-violet-500/10"
-              : "bg-slate-800/80 text-slate-200 rounded-2xl rounded-bl-md border border-white/5"
-          )}
-        >
-          {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
-            <img
-              src={msg.imageUrl}
-              alt="sent"
-              className="max-w-full max-h-40 rounded-lg mb-1.5 cursor-pointer"
-              onClick={() => window.open(msg.imageUrl, "_blank")}
-              data-testid={`img-chann-${index}`}
-            />
-          )}
-          {msg.thinking && !msg.content && (
-            <div className="flex items-center gap-2 text-xs text-violet-300/80 italic" data-testid={`thinking-chann-${index}`}>
-              <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        <div className="flex flex-col gap-1 max-w-[80%]">
+          <div
+            className={cn(
+              "px-3.5 py-2.5 text-sm",
+              msg.role === "user"
+                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-violet-500/10"
+                : "bg-slate-800/80 text-slate-200 rounded-2xl rounded-bl-md border border-white/5"
+            )}
+          >
+            {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
+              <img
+                src={msg.imageUrl}
+                alt="sent"
+                className="max-w-full max-h-40 rounded-lg mb-1.5 cursor-pointer"
+                onClick={() => window.open(msg.imageUrl, "_blank")}
+                data-testid={`img-chann-${index}`}
+              />
+            )}
+            {msg.thinking && !msg.content && (
+              <div className="space-y-1.5" data-testid={`thinking-chann-${index}`}>
+                <div className="flex items-center gap-2 text-xs text-violet-300/80 italic">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                  <span>{msg.thinking}</span>
+                </div>
+                {extractActiveToolName(msg.thinking) && (
+                  <div className="flex items-center gap-1.5 pl-0">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25 text-[10px] font-mono text-violet-300 animate-pulse">
+                      <Zap className="w-2.5 h-2.5" />
+                      {extractActiveToolName(msg.thinking)}
+                    </span>
+                  </div>
+                )}
               </div>
-              <span>{msg.thinking}</span>
+            )}
+            {displayContent && displayContent !== "ส่งรูปภาพ" && (
+              msg.role === "assistant" ? (
+                <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 prose-p:text-slate-200 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-slate-700/50 prose-code:px-1 prose-code:rounded">
+                  <ReactMarkdown>{displayContent}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{displayContent}</p>
+              )
+            )}
+          </div>
+          {msg.role === "assistant" && displayContent && displayContent !== "ส่งรูปภาพ" && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all"
+                data-testid={`button-copy-message-${index}`}
+                title="คัดลอกข้อความ"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? "คัดลอกแล้ว" : "คัดลอก"}</span>
+              </button>
             </div>
-          )}
-          {displayContent && displayContent !== "ส่งรูปภาพ" && (
-            msg.role === "assistant" ? (
-              <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 prose-p:text-slate-200 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-slate-700/50 prose-code:px-1 prose-code:rounded">
-                <ReactMarkdown>{displayContent}</ReactMarkdown>
-              </div>
-            ) : (
-              <p className="whitespace-pre-wrap">{displayContent}</p>
-            )
           )}
         </div>
         {msg.role === "user" && (
@@ -710,26 +751,58 @@ export function FloatingChannChat() {
   const isManagerOrAdmin = user?.role === "manager" || user?.role === "admin";
   const isAdmin = user?.role === "admin";
 
-  const quickActions = [
-    { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles, show: true },
-    { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar, show: true },
-    { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList, show: true },
-    { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3, show: isManagerOrAdmin },
-    { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap, show: isManagerOrAdmin },
-    { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users, show: true },
-    { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
-    { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
-    { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar, show: isManagerOrAdmin },
-    { label: "คำขอสลับกะ", prompt: "ดูคำขอสลับกะที่รอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
-    { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
-    { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database, show: isAdmin },
-    { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList, show: isAdmin },
-    { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users, show: isAdmin },
-    { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3, show: isAdmin },
-    { label: "คำขอพนักงาน", prompt: "ดูคำขอของพนักงานทั้งหมดที่ยังรอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
-    { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText, show: isManagerOrAdmin },
-    { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap, show: true },
-  ].filter(a => a.show);
+  const quickActionCategories = [
+    {
+      label: "ภาพรวม",
+      icon: Sparkles,
+      show: true,
+      actions: [
+        { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles },
+        { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar },
+        { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList },
+        { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users },
+        { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap },
+      ],
+    },
+    {
+      label: "ยอดขาย",
+      icon: BarChart3,
+      show: isManagerOrAdmin,
+      actions: [
+        { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3 },
+        { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap },
+        { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3 },
+        { label: "ส่งออก Excel", prompt: "ส่งออกรายงานยอดขายเดือนนี้เป็นไฟล์ Excel", icon: Download },
+        { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database },
+      ],
+    },
+    {
+      label: "พนักงาน",
+      icon: Users,
+      show: isManagerOrAdmin,
+      actions: [
+        { label: "คำขอพนักงาน", prompt: "ดูคำขอของพนักงานทั้งหมดที่ยังรอดำเนินการ", icon: ClipboardList },
+        { label: "คำขอสลับกะ", prompt: "ดูคำขอสลับกะที่รอดำเนินการ", icon: ClipboardList },
+        { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar },
+        { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3 },
+        { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText },
+      ],
+    },
+    {
+      label: "ระบบ",
+      icon: Database,
+      show: isAdmin,
+      actions: [
+        { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database },
+        { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList },
+        { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users },
+        { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3 },
+        { label: "ส่งแจ้งเตือน LINE", prompt: "ส่งแจ้งเตือนพร้อมรายงานไปยัง LINE group", icon: Bell },
+      ],
+    },
+  ].filter(c => c.show);
+
+  const quickActions = quickActionCategories.flatMap(c => c.actions);
 
   const sendQuickActionRef = useRef<(prompt: string) => void>(() => {});
 
@@ -971,19 +1044,29 @@ export function FloatingChannChat() {
 
           <div className="border-t border-white/5 bg-slate-900">
             {showQuickActions && (
-              <div className="p-2 border-b border-white/5 bg-slate-900/50 overflow-x-auto">
-                <div className="flex gap-1.5 flex-wrap">
-                  {quickActions.map((action) => (
-                    <button
-                      key={action.label}
-                      onClick={() => sendQuickAction(action.prompt)}
-                      disabled={isLoading || isStreaming}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-white/5 bg-white/5 hover:bg-violet-500/10 hover:border-violet-500/20 transition-all text-xs font-medium text-slate-400 hover:text-slate-200 whitespace-nowrap"
-                      data-testid={`button-quickbar-${action.label}`}
-                    >
-                      <action.icon className="w-3 h-3" />
-                      {action.label}
-                    </button>
+              <div className="border-b border-white/5 bg-slate-900/80 max-h-64 overflow-y-auto">
+                <div className="p-2.5 space-y-3">
+                  {quickActionCategories.map((cat) => (
+                    <div key={cat.label}>
+                      <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
+                        <cat.icon className="w-3 h-3 text-violet-400" />
+                        <span className="text-[10px] font-semibold tracking-wider uppercase text-violet-400/70">{cat.label}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {cat.actions.map((action) => (
+                          <button
+                            key={action.label}
+                            onClick={() => sendQuickAction(action.prompt)}
+                            disabled={isLoading || isStreaming}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md border border-white/5 bg-white/5 hover:bg-violet-500/10 hover:border-violet-500/20 transition-all text-[11px] font-medium text-slate-400 hover:text-slate-200 whitespace-nowrap"
+                            data-testid={`button-quickbar-${action.label}`}
+                          >
+                            <action.icon className="w-2.5 h-2.5 flex-shrink-0" />
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

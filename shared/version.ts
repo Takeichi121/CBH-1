@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.2.0";
+export const APP_VERSION = "2.3.0";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.3.0",
+    date: "2026-03-24",
+    label: "improvement",
+    changes: [
+      "Chann AI: Quick Actions ใหม่ — แบ่งเป็น 4 หมวด (ภาพรวม, ยอดขาย, พนักงาน, ระบบ) พร้อม header label",
+      "Chann AI: ปุ่ม Copy บน message ของ Chann — hover เพื่อคัดลอกข้อความ",
+      "Chann AI: Tool Progress Badge — แสดงชื่อ tool ที่กำลังรันอยู่ขณะ AI คิด",
+      "Chann AI: เพิ่ม tool exportSalesReport — สร้างไฟล์ Excel รายงานยอดขายรายเดือนพร้อมดาวน์โหลด",
+      "Chann AI: ปรับปรุง System Prompt ด้วย Chain-of-Thought instructions ที่ชัดเจนขึ้น",
+    ],
+  },
   {
     version: "2.2.0",
     date: "2026-03-22",

@@ -689,14 +689,21 @@ borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste,
 - webSearch: ค้นหาข้อมูลจากอินเตอร์เน็ต — ใช้เมื่อถามเรื่องนอกฐานข้อมูล เช่น ราคาตลาด, ข่าวธุรกิจ, เทรนด์
 - webFetch: ดึงเนื้อหาจาก URL เฉพาะ — ใช้ต่อจาก webSearch เพื่อดูรายละเอียด
 - recallNotes: เรียกดู notes ที่เคยบันทึกไว้ — ใช้เพื่อจำ preferences หรือข้อมูลสำคัญของ${userAddress}
+- exportSalesReport: สร้างไฟล์ Excel รายงานยอดขายรายเดือน (พร้อม COL%, TCMH, TA) และคืน download URL — ใช้เมื่อ${userAddress}ต้องการ export หรือดาวน์โหลดข้อมูล
 
-[หลักการทำงานแบบ Multi-Step Agent]
-- วางแผนก่อน: สำหรับ task ซับซ้อน ให้คิดว่าต้องใช้ tool อะไรบ้าง ในลำดับใด
-- ใช้ parallel tool calls: เรียก tool หลายตัวพร้อมกันเมื่อไม่ขึ้นต่อกัน (เช่น ดึงยอดขายและตารางกะพร้อมกัน)
-- recallNotes ก่อนตอบ: ถ้าคิดว่ามี notes สำคัญเกี่ยวกับ${userAddress} ให้เรียกดูก่อน
-- ค้นหาเว็บเมื่อจำเป็น: ใช้ webSearch สำหรับข้อมูล real-time ที่ไม่อยู่ในฐานข้อมูล
+[หลักการทำงานแบบ Chain-of-Thought Agent]
+1. **วิเคราะห์คำถาม**: อ่านคำถามให้เข้าใจ — ต้องการข้อมูลอะไร จากที่ไหน ในช่วงเวลาใด
+2. **วางแผน tool calls**: ระบุว่าจะใช้ tool อะไรบ้าง ตามลำดับที่สมเหตุสมผล
+3. **ดึงข้อมูล**: เรียก tool ที่จำเป็น — ใช้ parallel calls เมื่อ tool ไม่ขึ้นต่อกัน
+4. **คำนวณและตีความ**: วิเคราะห์ข้อมูลที่ได้ คำนวณ metrics เปรียบเทียบกับเป้า
+5. **ตอบกระชับและชัดเจน**: สรุปสิ่งสำคัญ ใช้ตาราง/bullet เมื่อเหมาะสม อย่าพูดซ้ำสิ่งที่ไม่จำเป็น
 
-ใช้ getCrossSystemSummary เมื่อ${userAddress}ถามภาพรวมวันใดวันหนึ่ง หรือใช้เครื่องมืออื่นเมื่อต้องการข้อมูลเฉพาะ
+**กฎการใช้ tool:**
+- ใช้ parallel tool calls เสมอเมื่อ tool ไม่ขึ้นต่อกัน (เช่น ดึงยอดขาย + ตารางกะ + labor พร้อมกัน)
+- recallNotes ก่อนตอบเสมอ ถ้าคิดว่ามี notes เกี่ยวกับ${userAddress}หรือร้าน
+- ใช้ webSearch เมื่อถามเรื่องนอกฐานข้อมูล (ราคาตลาด, ข่าว, เทรนด์ธุรกิจ)
+- ใช้ exportSalesReport เมื่อ${userAddress}ต้องการ download หรือ export ข้อมูลเป็น Excel
+- ใช้ getCrossSystemSummary เมื่อถามภาพรวมวันใดวันหนึ่ง
 ${isManagerOrAdmin && !isAdmin ? `
 [สิทธิ์ Manager - แก้ไขตารางงานและรีพอร์ต]
 ${userAddress}เป็น Manager ดังนั้นคุณมีสิทธิ์ในการ **แก้ไขตารางงานและรีพอร์ต** ได้:
@@ -1131,6 +1138,21 @@ ${pageContext}` : ''}`;
                 query: { type: "string", description: "Optional search query to filter notes by keyword" }
               },
               required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "exportSalesReport",
+            description: "Export monthly sales data as an Excel (.xlsx) file and return a download URL. The file includes daily sales, targets, TC, waste, labor hours, and computed metrics (COL%, TCMH, TA). Use when the user wants to download or export sales data.",
+            parameters: {
+              type: "object",
+              properties: {
+                year: { type: "number", description: "Year (e.g. 2026)" },
+                month: { type: "number", description: "Month (1-12)" }
+              },
+              required: ["year", "month"]
             }
           }
         }
@@ -1801,6 +1823,59 @@ ${pageContext}` : ''}`;
             if (!args.year || !args.month) return JSON.stringify({ error: "Missing required fields: year, month" });
             const monthReports = await storage.getDailySalesReportsForMonth(args.year, args.month);
             return JSON.stringify({ ok: true, reports: monthReports, count: monthReports.length });
+          }
+
+          case "exportSalesReport": {
+            if (!args.year || !args.month) return JSON.stringify({ error: "Missing required fields: year, month" });
+            const [expReports, expTargets, expLaborSettings] = await Promise.all([
+              storage.getDailySalesReportsForMonth(args.year, args.month),
+              storage.getDailyTargetsForMonth(args.year, args.month),
+              storage.getLaborSettings()
+            ]);
+            const ptRate = Number(expLaborSettings?.ptWageRate || 90);
+            const fixedCost = Number(expLaborSettings?.fixedCostDaily || 2600);
+            const targetMap = new Map(expTargets.map((t: any) => [t.targetDate, Number(t.targetSales || 0)]));
+            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            const rows = expReports.map((r: any) => {
+              const sales = Number(r.actualSales || 0);
+              const tc = Number(r.transactionCount || 0);
+              const hrs = Number(r.actualHours || 0);
+              const otHrs = Number(r.otHours || 0);
+              const waste = Number(r.wasteDaily || 0);
+              const target = targetMap.get(r.reportDate) || 0;
+              const laborCost = (hrs * ptRate) + fixedCost + (otHrs * ptRate * 1.5);
+              const col = sales > 0 ? laborCost / sales : 0;
+              const tcmh = hrs > 0 ? tc / hrs : 0;
+              const ta = tc > 0 ? sales / tc : 0;
+              return {
+                "วันที่": r.reportDate,
+                "ยอดขาย (฿)": sales,
+                "เป้า (฿)": target,
+                "% vs เป้า": target > 0 ? Math.round((sales / target) * 100) / 100 : "",
+                "TC": tc,
+                "TA (฿)": tc > 0 ? Math.round(ta) : "",
+                "ชม. จริง": hrs,
+                "OT ชม.": otHrs,
+                "ต้นทุนแรงงาน (฿)": Math.round(laborCost),
+                "COL%": sales > 0 ? Math.round(col * 10000) / 100 : "",
+                "TCMH": hrs > 0 ? Math.round(tcmh * 100) / 100 : "",
+                "Waste (฿)": waste,
+              };
+            });
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 8 }, { wch: 12 }];
+            XLSX.utils.book_append_sheet(wb, ws, `Sales ${monthNames[args.month - 1]} ${args.year}`);
+            const buf = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
+            const exportDir = path.join(process.cwd(), "uploads", "chat-files");
+            if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
+            const fname = `SalesReport_${args.year}_${String(args.month).padStart(2, "0")}_${Date.now()}.xlsx`;
+            const fpath = path.join(exportDir, fname);
+            fs.writeFileSync(fpath, buf);
+            const downloadUrl = `/uploads/chat-files/${fname}`;
+            const totalSales = rows.reduce((s: number, r: any) => s + (Number(r["ยอดขาย (฿)"]) || 0), 0);
+            const reportedDays = rows.filter((r: any) => Number(r["ยอดขาย (฿)"]) > 0).length;
+            return JSON.stringify({ ok: true, downloadUrl, fileName: fname, totalRows: rows.length, reportedDays, totalSales, message: `ไฟล์ Excel พร้อมดาวน์โหลด — ${rows.length} วัน, ${reportedDays} วันที่มีข้อมูล` });
           }
 
           case "getLaborSettings": {

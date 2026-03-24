@@ -118,19 +118,6 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
                     </span>
                   </div>
                 )}
-                {msg.progressSteps && msg.progressSteps.length > 0 && (
-                  <div className="pl-0 space-y-0.5" data-testid={`progress-steps-chann-${index}`}>
-                    {msg.progressSteps.map((ps, pi) => (
-                      <div key={pi} className="flex items-start gap-1.5 text-[10px] text-slate-500">
-                        <span className="text-violet-400/50 font-mono shrink-0">#{ps.step}</span>
-                        <span className="font-mono text-slate-400/70">{ps.toolNames.join(", ")}</span>
-                        {ps.writeActions.length > 0 && (
-                          <span className="text-emerald-400/60">✓ {ps.writeActions.join(", ")}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
             {displayContent && displayContent !== "ส่งรูปภาพ" && (
@@ -141,6 +128,19 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
               ) : (
                 <p className="whitespace-pre-wrap">{displayContent}</p>
               )
+            )}
+            {msg.progressSteps && msg.progressSteps.length > 0 && (
+              <div className={cn("space-y-0.5", msg.content ? "mt-2 pt-2 border-t border-white/5" : "")} data-testid={`progress-steps-chann-${index}`}>
+                {msg.progressSteps.map((ps, pi) => (
+                  <div key={pi} className="flex items-start gap-1.5 text-[10px]">
+                    <span className="text-violet-400/60 font-mono shrink-0 font-semibold">ขั้นตอน {ps.step}/{ps.maxSteps}:</span>
+                    <span className="font-mono text-slate-500">{ps.toolNames.join(", ")}</span>
+                    {ps.writeActions.length > 0 && (
+                      <span className="text-emerald-400/70">✓ {ps.writeActions.join(", ")}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           {msg.role === "assistant" && displayContent && displayContent !== "ส่งรูปภาพ" && (

@@ -789,11 +789,11 @@ export function FloatingChannChat() {
       icon: Sparkles,
       show: true,
       actions: [
-        { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles },
-        { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar },
-        { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList },
-        { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users },
-        { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap },
+        { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles, show: true },
+        { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar, show: true },
+        { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList, show: true },
+        { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users, show: true },
+        { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap, show: true },
       ],
     },
     {
@@ -801,11 +801,11 @@ export function FloatingChannChat() {
       icon: BarChart3,
       show: isManagerOrAdmin,
       actions: [
-        { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3 },
-        { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap },
-        { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3 },
-        { label: "ส่งออก Excel", prompt: "ส่งออกรายงานยอดขายเดือนนี้เป็นไฟล์ Excel", icon: Download },
-        { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database },
+        { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap, show: isManagerOrAdmin },
+        { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "ส่งออก Excel", prompt: "ส่งออกรายงานยอดขายเดือนนี้เป็นไฟล์ Excel", icon: Download, show: isManagerOrAdmin },
+        { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
       ],
     },
     {
@@ -813,11 +813,11 @@ export function FloatingChannChat() {
       icon: Users,
       show: isManagerOrAdmin,
       actions: [
-        { label: "คำขอพนักงาน", prompt: "ดูคำขอของพนักงานทั้งหมดที่ยังรอดำเนินการ", icon: ClipboardList },
-        { label: "คำขอสลับกะ", prompt: "ดูคำขอสลับกะที่รอดำเนินการ", icon: ClipboardList },
-        { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar },
-        { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3 },
-        { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText },
+        { label: "คำขอพนักงาน", prompt: "ดูคำขอของพนักงานทั้งหมดที่ยังรอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
+        { label: "คำขอสลับกะ", prompt: "ดูคำขอสลับกะที่รอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
+        { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar, show: isManagerOrAdmin },
+        { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText, show: isManagerOrAdmin },
       ],
     },
     {
@@ -825,14 +825,14 @@ export function FloatingChannChat() {
       icon: Database,
       show: isManagerOrAdmin,
       actions: [
-        { label: "ส่งแจ้งเตือน LINE", prompt: "ส่งแจ้งเตือนพร้อมรายงานวันนี้ไปยัง LINE group", icon: Bell },
-        { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database },
-        { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList },
-        { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users },
-        { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3 },
+        { label: "ส่งแจ้งเตือน LINE", prompt: "ส่งแจ้งเตือนพร้อมรายงานวันนี้ไปยัง LINE group", icon: Bell, show: isManagerOrAdmin },
+        { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database, show: isAdmin },
+        { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList, show: isAdmin },
+        { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users, show: isAdmin },
+        { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3, show: isAdmin },
       ],
     },
-  ].filter(c => c.show);
+  ].filter(c => c.show).map(c => ({ ...c, actions: c.actions.filter(a => a.show) })).filter(c => c.actions.length > 0);
 
   const quickActions = quickActionCategories.flatMap(c => c.actions);
 

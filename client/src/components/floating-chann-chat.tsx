@@ -122,7 +122,7 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
                   <div className="pl-0 space-y-0.5" data-testid={`progress-steps-chann-${index}`}>
                     {msg.progressSteps.map((ps, pi) => (
                       <div key={pi} className="flex items-start gap-1.5 text-[10px] text-slate-500">
-                        <span className="text-violet-400/50 font-mono shrink-0">{ps.step}/{ps.maxSteps}</span>
+                        <span className="text-violet-400/50 font-mono shrink-0">#{ps.step}</span>
                         <span className="font-mono text-slate-400/70">{ps.toolNames.join(", ")}</span>
                         {ps.writeActions.length > 0 && (
                           <span className="text-emerald-400/60">✓ {ps.writeActions.join(", ")}</span>

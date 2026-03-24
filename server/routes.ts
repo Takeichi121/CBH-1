@@ -689,7 +689,7 @@ borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste,
 - webSearch: ค้นหาข้อมูลจากอินเตอร์เน็ต — ใช้เมื่อถามเรื่องนอกฐานข้อมูล เช่น ราคาตลาด, ข่าวธุรกิจ, เทรนด์
 - webFetch: ดึงเนื้อหาจาก URL เฉพาะ — ใช้ต่อจาก webSearch เพื่อดูรายละเอียด
 - recallNotes: เรียกดู notes ที่เคยบันทึกไว้ — ใช้เพื่อจำ preferences หรือข้อมูลสำคัญของ${userAddress}
-- exportSalesReport: สร้างไฟล์ Excel รายงานยอดขายรายเดือน (พร้อม COL%, TCMH, TA) และคืน download URL — ใช้เมื่อ${userAddress}ต้องการ export หรือดาวน์โหลดข้อมูล
+- exportSalesReport: สร้างไฟล์ Excel รายงานยอดขาย (พร้อม COL%, TCMH, TA) และคืน download URL — รองรับทั้งรายเดือน (year+month) และรายสัปดาห์/ช่วงวัน (startDate+endDate) — ใช้เมื่อ${userAddress}ต้องการ export หรือดาวน์โหลดข้อมูล
 
 [หลักการทำงานแบบ Chain-of-Thought Agent]
 1. **วิเคราะห์คำถาม**: อ่านคำถามให้เข้าใจ — ต้องการข้อมูลอะไร จากที่ไหน ในช่วงเวลาใด
@@ -1148,14 +1148,16 @@ ${pageContext}` : ''}`;
           type: "function" as const,
           function: {
             name: "exportSalesReport",
-            description: "Export monthly sales data as an Excel (.xlsx) file and return a download URL. The file includes daily sales, targets, TC, waste, labor hours, and computed metrics (COL%, TCMH, TA). Use when the user wants to download or export sales data.",
+            description: "Export sales data as an Excel (.xlsx) file and return a download URL. Supports monthly export (year+month) or custom date-range export (startDate+endDate for weekly or any range). The file includes daily sales, targets, TC, waste, labor hours, and computed metrics (COL%, TCMH, TA). Use when the user wants to download or export sales data.",
             parameters: {
               type: "object",
               properties: {
-                year: { type: "number", description: "Year (e.g. 2026)" },
-                month: { type: "number", description: "Month (1-12)" }
+                year: { type: "number", description: "Year for monthly export (e.g. 2026)" },
+                month: { type: "number", description: "Month for monthly export (1-12)" },
+                startDate: { type: "string", description: "Start date for custom range export (YYYY-MM-DD). Use with endDate for weekly or any specific range." },
+                endDate: { type: "string", description: "End date for custom range export (YYYY-MM-DD). Use with startDate for weekly or any specific range." }
               },
-              required: ["year", "month"]
+              required: []
             }
           }
         }
@@ -1829,16 +1831,44 @@ ${pageContext}` : ''}`;
           }
 
           case "exportSalesReport": {
-            if (!args.year || !args.month) return JSON.stringify({ error: "Missing required fields: year, month" });
-            const [expReports, expTargets, expLaborSettings] = await Promise.all([
-              storage.getDailySalesReportsForMonth(args.year, args.month),
-              storage.getDailyTargetsForMonth(args.year, args.month),
-              storage.getLaborSettings()
-            ]);
+            const hasMonthly = args.year && args.month;
+            const hasRange = args.startDate && args.endDate;
+            if (!hasMonthly && !hasRange) return JSON.stringify({ error: "ต้องระบุ year+month (รายเดือน) หรือ startDate+endDate (รายสัปดาห์/ช่วงวัน)" });
+
+            const [expLaborSettings] = await Promise.all([storage.getLaborSettings()]);
             const ptRate = Number(expLaborSettings?.ptWageRate || 90);
             const fixedCost = Number(expLaborSettings?.fixedCostDaily || 2600);
+
+            let expReports: any[] = [];
+            let expTargets: any[] = [];
+            let sheetLabel = "";
+
+            if (hasRange) {
+              expReports = await storage.getDailySalesReportsByDateRange(args.startDate, args.endDate);
+              const startD = new Date(args.startDate);
+              const endD = new Date(args.endDate);
+              const monthSet = new Set<string>();
+              const cur = new Date(startD);
+              while (cur <= endD) {
+                monthSet.add(`${cur.getFullYear()}-${cur.getMonth() + 1}`);
+                cur.setDate(cur.getDate() + 1);
+              }
+              const allTargets: any[] = [];
+              for (const ym of monthSet) {
+                const [y, m] = ym.split("-").map(Number);
+                const mt = await storage.getDailyTargetsForMonth(y, m);
+                allTargets.push(...mt);
+              }
+              expTargets = allTargets.filter((t: any) => t.targetDate >= args.startDate && t.targetDate <= args.endDate);
+              sheetLabel = `${args.startDate}_${args.endDate}`;
+            } else {
+              expReports = await storage.getDailySalesReportsForMonth(args.year, args.month);
+              expTargets = await storage.getDailyTargetsForMonth(args.year, args.month);
+              const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+              sheetLabel = `${monthNames[args.month - 1]} ${args.year}`;
+            }
+
             const targetMap = new Map(expTargets.map((t: any) => [t.targetDate, Number(t.targetSales || 0)]));
-            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
             const rows = expReports.map((r: any) => {
               const sales = Number(r.actualSales || 0);
               const tc = Number(r.transactionCount || 0);
@@ -1868,11 +1898,12 @@ ${pageContext}` : ''}`;
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(rows);
             ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 8 }, { wch: 12 }];
-            XLSX.utils.book_append_sheet(wb, ws, `Sales ${monthNames[args.month - 1]} ${args.year}`);
+            XLSX.utils.book_append_sheet(wb, ws, `Sales ${sheetLabel}`.slice(0, 31));
             const buf = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
             const exportDir = path.join(process.cwd(), "uploads", "chat-files");
             if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
-            const fname = `SalesReport_${args.year}_${String(args.month).padStart(2, "0")}_${Date.now()}.xlsx`;
+            const safeDateLabel = sheetLabel.replace(/[^a-zA-Z0-9_-]/g, "_");
+            const fname = `SalesReport_${safeDateLabel}_${Date.now()}.xlsx`;
             const fpath = path.join(exportDir, fname);
             fs.writeFileSync(fpath, buf);
             const downloadUrl = `/uploads/chat-files/${fname}`;

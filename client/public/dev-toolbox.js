@@ -25,6 +25,17 @@
   };
   const saveState = (st) => localStorage.setItem(STATE_KEY, JSON.stringify(st));
 
+  const sanitizeHtml = (html) => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script").forEach((el) => el.remove());
+    doc.querySelectorAll("*").forEach((el) => {
+      [...el.attributes].forEach((attr) => {
+        if (attr.name.startsWith("on")) el.removeAttribute(attr.name);
+      });
+    });
+    return doc.body.innerHTML;
+  };
+
   const ensureId = (el) => {
     if (!el.getAttribute(ID_ATTR)) el.setAttribute(ID_ATTR, nowId());
     return el.getAttribute(ID_ATTR);
@@ -294,7 +305,7 @@
     const canvasEl = getCanvasEl();
     if (!canvasEl) return;
     const layer = ensureLayer(canvasEl);
-    if (typeof st.canvasHtml === "string") layer.innerHTML = st.canvasHtml;
+    if (typeof st.canvasHtml === "string") layer.innerHTML = sanitizeHtml(st.canvasHtml);
 
     // re-ensure ids for nodes inside layer
     layer.querySelectorAll("*").forEach((el) => ensureId(el));

@@ -176,7 +176,7 @@ import { CHANGELOG } from "@shared/version";
 import { z } from "zod";
 import crypto from "crypto";
 import multer from "multer";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import path from "path";
 import fs from "fs";
 import { 

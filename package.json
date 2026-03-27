@@ -51,6 +51,7 @@
     "@types/mssql": "^9.1.9",
     "@types/multer": "^2.0.0",
     "@types/node-cron": "^3.0.11",
+    "axios": "^1.14.0",
     "better-sqlite3": "^12.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -62,6 +63,7 @@
     "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.7.1",
     "embla-carousel-react": "^8.6.0",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.3.1",
     "express-session": "^1.18.1",
@@ -81,6 +83,7 @@
     "passport-local": "^1.0.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.16.3",
+    "picomatch": "^2.3.2",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -92,13 +95,13 @@
     "resend": "^4.0.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "socket.io-parser": "^4.2.6",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.5",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
-    "xlsx": "^0.18.5",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.5.4"
   },
@@ -131,12 +134,11 @@
     "drizzle-kit": {
       "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
     },
-    "axios": ">=1.13.5",
-    "minimatch": ">=9.0.7",
-    "picomatch": ">=2.3.2",
-    "rollup": ">=4.59.0",
-    "socket": {
-      "io-parser": ">=4.2.6"
+    "tinyglobby": {
+      "picomatch": ">=4.0.4"
+    },
+    "vite": {
+      "picomatch": ">=4.0.4"
     }
   },
   "optionalDependencies": {

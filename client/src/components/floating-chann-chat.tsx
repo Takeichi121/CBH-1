@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -485,23 +485,29 @@ export function FloatingChannChat() {
     
     if (ext === "xlsx" || ext === "xls") {
       if (file.size <= 50 * 1024 * 1024) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            const data = new Uint8Array(event.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: "array" });
-            let allText = "";
-            workbook.SheetNames.forEach((sheetName) => {
-              const ws = workbook.Sheets[sheetName];
-              allText += `\n--- Sheet: ${sheetName} ---\n`;
-              allText += XLSX.utils.sheet_to_csv(ws) + "\n";
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(arrayBuffer);
+          let allText = "";
+          workbook.eachSheet((worksheet) => {
+            allText += `\n--- Sheet: ${worksheet.name} ---\n`;
+            const rows: string[] = [];
+            worksheet.eachRow((row) => {
+              const values = (row.values as any[]).slice(1).map((v: any) => {
+                if (v === null || v === undefined) return "";
+                if (typeof v === "object" && v.text) return v.text;
+                if (v instanceof Date) return v.toISOString().split("T")[0];
+                return String(v);
+              });
+              rows.push(values.join(","));
             });
-            setFileContent(allText);
-          } catch {
-            setFileContent(null);
-          }
-        };
-        reader.readAsArrayBuffer(file);
+            allText += rows.join("\n") + "\n";
+          });
+          setFileContent(allText);
+        } catch {
+          setFileContent(null);
+        }
       } else {
         setFileContent(null);
       }
@@ -604,23 +610,29 @@ export function FloatingChannChat() {
     }
     if (ext === "xlsx" || ext === "xls") {
       if (file.size <= 50 * 1024 * 1024) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          try {
-            const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: "array" });
-            let allText = "";
-            workbook.SheetNames.forEach((sheetName) => {
-              const ws = workbook.Sheets[sheetName];
-              allText += `\n--- Sheet: ${sheetName} ---\n`;
-              allText += XLSX.utils.sheet_to_csv(ws) + "\n";
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(arrayBuffer);
+          let allText = "";
+          workbook.eachSheet((worksheet) => {
+            allText += `\n--- Sheet: ${worksheet.name} ---\n`;
+            const rows: string[] = [];
+            worksheet.eachRow((row) => {
+              const values = (row.values as any[]).slice(1).map((v: any) => {
+                if (v === null || v === undefined) return "";
+                if (typeof v === "object" && v.text) return v.text;
+                if (v instanceof Date) return v.toISOString().split("T")[0];
+                return String(v);
+              });
+              rows.push(values.join(","));
             });
-            setFileContent(allText);
-          } catch {
-            setFileContent(null);
-          }
-        };
-        reader.readAsArrayBuffer(file);
+            allText += rows.join("\n") + "\n";
+          });
+          setFileContent(allText);
+        } catch {
+          setFileContent(null);
+        }
       }
       return;
     }

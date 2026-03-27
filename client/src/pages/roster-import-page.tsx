@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface ParsedShift {
   nickname: string;
@@ -47,8 +47,11 @@ export default function RosterImportPage() {
     );
   }
 
-  const excelDateToString = (serial: number): string => {
-    const date = new Date((serial - 25569) * 86400000);
+  const excelDateToString = (value: number | Date): string => {
+    if (value instanceof Date) {
+      return value.toISOString().split("T")[0];
+    }
+    const date = new Date((value - 25569) * 86400000);
     return date.toISOString().split("T")[0];
   };
 
@@ -97,14 +100,17 @@ export default function RosterImportPage() {
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
       const parsed: ParsedShift[] = [];
 
-      workbook.SheetNames.forEach((sheetName) => {
-        const sheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      workbook.eachSheet((worksheet) => {
+        const data: any[][] = [];
+        worksheet.eachRow((row) => {
+          data.push((row.values as any[]).slice(1));
+        });
 
-        let dateRow: number[] = [];
+        let dateRow: (number | Date)[] = [];
 
         for (let i = 0; i < data.length; i++) {
           const row = data[i];
@@ -113,8 +119,9 @@ export default function RosterImportPage() {
           if (row[0] === "DATE") {
             dateRow = [];
             for (let j = 2; j < row.length; j += 2) {
-              if (typeof row[j] === "number" && row[j] > 40000) {
-                dateRow.push(row[j]);
+              const cell = row[j];
+              if (cell instanceof Date || (typeof cell === "number" && cell > 40000)) {
+                dateRow.push(cell);
               }
             }
             continue;

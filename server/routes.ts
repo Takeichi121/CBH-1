@@ -286,13 +286,22 @@ async function extractTextFromFile(filePath: string, mimeType: string, fileSize:
 
     if (mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
         mimeType === "application/vnd.ms-excel") {
-      const workbook = XLSX.readFile(filePath);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
       const texts: string[] = [];
-      for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const csv = XLSX.utils.sheet_to_csv(sheet);
-        texts.push(`[Sheet: ${sheetName}]\n${csv}`);
-      }
+      workbook.eachSheet((worksheet) => {
+        const rows: string[] = [];
+        worksheet.eachRow((row) => {
+          const values = (row.values as any[]).slice(1).map((v: any) => {
+            if (v === null || v === undefined) return "";
+            if (typeof v === "object" && v.text) return v.text;
+            if (v instanceof Date) return v.toISOString().split("T")[0];
+            return String(v);
+          });
+          rows.push(values.join(","));
+        });
+        texts.push(`[Sheet: ${worksheet.name}]\n${rows.join("\n")}`);
+      });
       return texts.join("\n\n").slice(0, 100000) || null;
     }
 
@@ -1895,17 +1904,21 @@ ${pageContext}` : ''}`;
                 "Waste (฿)": waste,
               };
             });
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(rows);
-            ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 8 }, { wch: 12 }];
-            XLSX.utils.book_append_sheet(wb, ws, `Sales ${sheetLabel}`.slice(0, 31));
-            const buf = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet(`Sales ${sheetLabel}`.slice(0, 31));
+            const colWidths = [12, 14, 14, 10, 8, 10, 10, 10, 18, 8, 8, 12];
+            if (rows.length > 0) {
+              const headers = Object.keys(rows[0]);
+              ws.columns = headers.map((h, i) => ({ header: h, key: h, width: colWidths[i] || 10 }));
+              rows.forEach((row: any) => ws.addRow(row));
+            }
+            const buf = await wb.xlsx.writeBuffer();
             const exportDir = path.join(process.cwd(), "uploads", "chat-files");
             if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
             const safeDateLabel = sheetLabel.replace(/[^a-zA-Z0-9_-]/g, "_");
             const fname = `SalesReport_${safeDateLabel}_${Date.now()}.xlsx`;
             const fpath = path.join(exportDir, fname);
-            fs.writeFileSync(fpath, buf);
+            fs.writeFileSync(fpath, Buffer.from(buf));
             const downloadUrl = `/uploads/chat-files/${fname}`;
             const totalSales = rows.reduce((s: number, r: any) => s + (Number(r["ยอดขาย (฿)"]) || 0), 0);
             const reportedDays = rows.filter((r: any) => Number(r["ยอดขาย (฿)"]) > 0).length;
@@ -5077,9 +5090,21 @@ ${pageContext}` : ''}`;
       if (!access.ok) return res.status(401).json(access);
       if (!req.file) return res.json({ ok: false, message: "No file" });
 
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json<any>(sheet);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(req.file.buffer);
+      const sheet = workbook.worksheets[0];
+      const headers: string[] = [];
+      const data: any[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        const values = (row.values as any[]).slice(1);
+        if (rowNumber === 1) {
+          headers.push(...values.map((v: any) => (v === null || v === undefined ? "" : String(v))));
+        } else {
+          const obj: any = {};
+          headers.forEach((h, i) => { obj[h] = values[i] ?? ""; });
+          data.push(obj);
+        }
+      });
 
       let imported = 0;
       for (const row of data) {
@@ -5184,9 +5209,21 @@ ${pageContext}` : ''}`;
       if (!access.ok) return res.status(401).json(access);
       if (!req.file) return res.json({ ok: false, message: "No file" });
 
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json<any>(sheet);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(req.file.buffer);
+      const sheet = workbook.worksheets[0];
+      const itemHeaders: string[] = [];
+      const data: any[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        const values = (row.values as any[]).slice(1);
+        if (rowNumber === 1) {
+          itemHeaders.push(...values.map((v: any) => (v === null || v === undefined ? "" : String(v))));
+        } else {
+          const obj: any = {};
+          itemHeaders.forEach((h, i) => { obj[h] = values[i] ?? ""; });
+          data.push(obj);
+        }
+      });
 
       let imported = 0;
       let skipped = 0;
@@ -6167,26 +6204,24 @@ ${pageContext}` : ''}`;
         return res.status(403).json({ ok: false, message: "No permission" });
       }
 
-      const toXLDate = (y: number, m: number, d: number) => {
-        const ms = Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30);
-        return ms / 86400000;
-      };
+      const toDate = (y: number, m: number, d: number) => new Date(y, m - 1, d);
 
-      const setCell = (ws: any, addr: string, value: any, type: string = "n") => {
-        const existing = ws[addr] || {};
+      const setCell = (ws: ExcelJS.Worksheet, addr: string, value: any, _type: string = "n") => {
+        const cell = ws.getCell(addr);
         if (value === "" || value === null || value === undefined) {
-          ws[addr] = { ...existing, t: "z", v: undefined, f: undefined, w: undefined };
+          cell.value = null;
         } else {
-          ws[addr] = { ...existing, t: type, v: value, f: undefined, w: type === "n" ? String(value) : value };
+          cell.value = value;
         }
       };
 
       const templatePath = path.join(process.cwd(), "attached_assets", "Sales_Management_Sheet_&_GSI_(Update)_1772056449386.xlsx");
       const templateBuf = fs.readFileSync(templatePath);
-      const wb = XLSX.read(templateBuf, { type: "buffer", cellStyles: true });
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(templateBuf);
 
       // ── Sales Management Sheet ──
-      const ws = wb.Sheets["Sales Management Sheet"];
+      const ws = wb.getWorksheet("Sales Management Sheet")!;
       const dutyCount = Math.round((dutyDailyHours || 0) / 8);
 
       setCell(ws, "D1", storeName || "Grand Diamond", "s");
@@ -6198,7 +6233,7 @@ ${pageContext}` : ''}`;
 
       tableData.forEach((row: any, idx: number) => {
         const r = idx + 4;
-        const d = toXLDate(year, month, row.day);
+        const d = toDate(year, month, row.day);
         const ptSum = (Number(row.actualHours) || 0) + (Number(row.otHours) || 0);
         const fullSum = (dutyDailyHours || 0) + ptSum;
         const colBath = fullSum * (ptWageRate || 0);
@@ -6251,23 +6286,23 @@ ${pageContext}` : ''}`;
 
       for (let i = daysInMonth; i < 31; i++) {
         const r = i + 4;
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(c => { if (ws[`${c}${r}`]) setCell(ws, `${c}${r}`, ""); });
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(c => { setCell(ws, `${c}${r}`, null); });
         ["AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH"].forEach(c => {
-          if (ws[`${c}${r}`]) setCell(ws, `${c}${r}`, "");
+          setCell(ws, `${c}${r}`, null);
         });
       }
 
       // ── COL Daily Sheet ──
-      const cdWs = wb.Sheets["COL Daily"];
+      const cdWs = wb.getWorksheet("COL Daily");
       if (cdWs) {
-        setCell(cdWs, "C2", toXLDate(year, month, 1));
+        setCell(cdWs, "C2", toDate(year, month, 1));
         setCell(cdWs, "E4", ptWageRate || 0);
         setCell(cdWs, "G4", closeShiftDailyCost || 0);
 
         let cdMtdCol = 0;
         tableData.forEach((row: any, idx: number) => {
           const r = idx + 6;
-          const d = toXLDate(year, month, row.day);
+          const d = toDate(year, month, row.day);
           const ptCost = (Number(row.actualHours) || 0) * (ptWageRate || 0);
           const colDay = (fixedCostDaily || 0) + ptCost + (closeShiftDailyCost || 0);
           const actualSls = Number(row.actualSales);
@@ -6290,14 +6325,14 @@ ${pageContext}` : ''}`;
         });
       }
 
-      const buf = XLSX.write(wb, { bookType: "xlsx", type: "buffer", cellStyles: true });
+      const buf = await wb.xlsx.writeBuffer();
       const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const safeStoreName = (storeName || "Store").replace(/[^a-zA-Z0-9]/g, "_");
       const fname = `Sales_${safeStoreName}_${monthNames[month-1]}${year}.xlsx`;
 
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
-      res.send(buf);
+      res.send(Buffer.from(buf));
     } catch (error) {
       console.error("Export Excel Error:", error);
       res.status(500).json({ ok: false, message: "Internal server error during export" });

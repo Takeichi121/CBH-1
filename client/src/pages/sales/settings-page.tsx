@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useAreaLock } from "@/hooks/use-area-lock";
 import { AreaLockBanner } from "@/components/area-lock-banner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 type DailyTarget = {
   id?: number;
@@ -119,6 +120,22 @@ export default function SalesSettingsPage() {
 
   const [originalDailyTargets, setOriginalDailyTargets] = useState<Record<string, string>>({});
   const [originalSalesData, setOriginalSalesData] = useState<Record<string, any>>({});
+
+  // Excel Import State
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importStep, setImportStep] = useState<"upload" | "preview" | "result">("upload");
+  const [importParsed, setImportParsed] = useState<{
+    mapping: Array<{ colIdx: number; header: string; table: string; field: string }>;
+    preview: any[];
+    totalRows: number;
+    skipped: number;
+    rows: any[];
+  } | null>(null);
+  const [importResult, setImportResult] = useState<{ imported: number; errors: number; errorDetails: string[] } | null>(null);
+  const [isImportParsing, setIsImportParsing] = useState(false);
+  const [isImportConfirming, setIsImportConfirming] = useState(false);
+  const [importDragOver, setImportDragOver] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const DUTY_TEAM_HOURS = parseFloat(dutyTeamHours) || 40;
   const HOURLY_RATE = parseFloat(hourlyRate) || 84;
@@ -844,6 +861,79 @@ export default function SalesSettingsPage() {
   };
 
 
+  const FIELD_LABEL: Record<string, string> = {
+    actualSales: "Actual Sales",
+    lastYearSales: "LY Sales",
+    forecastSales: "Forecast",
+    transactionCount: "TC",
+    lastYearTc: "LY TC",
+    targetTc: "Target TC",
+    targetTa: "Target TA",
+    actualHours: "Actual Hr",
+    otHours: "OT Hr",
+    rosterCommit: "Roster",
+    recommendHours: "Rec Hr",
+    wasteRawDaily: "Waste",
+    targetSales: "Target Sales",
+  };
+
+  const handleOpenImportDialog = () => {
+    setImportStep("upload");
+    setImportParsed(null);
+    setImportResult(null);
+    setImportDialogOpen(true);
+  };
+
+  const handleImportFile = useCallback(async (file: File) => {
+    if (!file.name.endsWith(".xlsx")) {
+      toast({ variant: "destructive", title: "ไฟล์ไม่ถูกต้อง", description: "กรุณาเลือกไฟล์ .xlsx เท่านั้น" });
+      return;
+    }
+    setIsImportParsing(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token || "");
+      const res = await fetch("/api/sales/importFromExcel", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!data.ok) {
+        toast({ variant: "destructive", title: "ไม่สามารถอ่านไฟล์ได้", description: data.message });
+        return;
+      }
+      setImportParsed(data);
+      setImportStep("preview");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: e?.message || "ไม่สามารถอัปโหลดไฟล์ได้" });
+    } finally {
+      setIsImportParsing(false);
+    }
+  }, [toast]);
+
+  const handleImportConfirm = async () => {
+    if (!importParsed) return;
+    setIsImportConfirming(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const res = await fetch("/api/sales/confirmImportFromExcel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, rows: importParsed.rows }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        toast({ variant: "destructive", title: "นำเข้าไม่สำเร็จ", description: data.message });
+        return;
+      }
+      setImportResult(data);
+      setImportStep("result");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: e?.message || "นำเข้าไม่สำเร็จ" });
+    } finally {
+      setIsImportConfirming(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <SalesLayout>
@@ -1115,6 +1205,10 @@ export default function SalesSettingsPage() {
                 <FileSpreadsheet className="mr-2 w-4 h-4"/>
                 {t.exportExcel}
               </Button>
+              <Button variant="outline" onClick={handleOpenImportDialog} disabled={areaLocked} className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:border-blue-700 dark:text-blue-300" data-testid="button-import-excel">
+                <Upload className="mr-2 w-4 h-4"/>
+                {language === "th" ? "นำเข้าจาก Excel" : "Import from Excel"}
+              </Button>
               <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
                 {t.applyAll}
               </Button>
@@ -1353,6 +1447,172 @@ export default function SalesSettingsPage() {
           </Card>
         )}
       </div>
+
+      {/* Excel Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={(open) => { if (!open) setImportDialogOpen(false); }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col" data-testid="dialog-import-excel">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5 text-blue-600" />
+              {language === "th" ? "นำเข้าข้อมูลจาก Excel" : "Import Data from Excel"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step: Upload */}
+          {importStep === "upload" && (
+            <div className="flex flex-col items-center justify-center gap-4 py-6">
+              <div
+                className={`w-full border-2 border-dashed rounded-xl p-10 flex flex-col items-center gap-3 cursor-pointer transition-colors ${importDragOver ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-slate-300 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"}`}
+                data-testid="dropzone-import"
+                onDragOver={(e) => { e.preventDefault(); setImportDragOver(true); }}
+                onDragLeave={() => setImportDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setImportDragOver(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file) handleImportFile(file);
+                }}
+                onClick={() => importFileRef.current?.click()}
+              >
+                {isImportParsing ? (
+                  <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-12 h-12 text-slate-400" />
+                )}
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  {isImportParsing
+                    ? (language === "th" ? "กำลังอ่านไฟล์..." : "Reading file...")
+                    : (language === "th" ? "วางไฟล์ .xlsx ที่นี่ หรือคลิกเพื่อเลือก" : "Drop .xlsx file here or click to browse")}
+                </p>
+                <p className="text-xs text-slate-400">{language === "th" ? "รองรับเฉพาะไฟล์ .xlsx" : "Only .xlsx files supported"}</p>
+              </div>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                data-testid="input-import-file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFile(file);
+                  e.target.value = "";
+                }}
+              />
+              <div className="text-xs text-slate-400 text-center space-y-0.5">
+                <p>{language === "th" ? "หัวคอลัมน์ที่รองรับ:" : "Supported column headers:"}</p>
+                <p className="font-mono text-slate-500">Date, Target, Actual Sales, LY Sales, Forecast, TC, LY TC, Target TC, Target TA, Actual Hr, OT Hr, Roster, Waste</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step: Preview */}
+          {importStep === "preview" && importParsed && (
+            <div className="flex flex-col gap-4 overflow-hidden">
+              {/* Mapping Summary */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+                <p className="text-sm font-medium mb-2">{language === "th" ? "การ Map คอลัมน์:" : "Column Mapping:"}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {importParsed.mapping.map((m, i) => (
+                    <Badge key={i} variant="outline" className="text-xs border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-300" data-testid={`badge-mapping-${i}`}>
+                      {m.header} → {FIELD_LABEL[m.field] || m.field}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  {language === "th"
+                    ? `พบ ${importParsed.totalRows} แถว${importParsed.skipped > 0 ? ` / ข้าม ${importParsed.skipped} แถว (ไม่มีวันที่)` : ""}`
+                    : `Found ${importParsed.totalRows} rows${importParsed.skipped > 0 ? ` / ${importParsed.skipped} skipped (no date)` : ""}`}
+                </p>
+              </div>
+
+              {/* Preview Table */}
+              <div className="overflow-auto max-h-60 border rounded-lg">
+                <table className="w-full text-xs border-collapse">
+                  <thead className="sticky top-0 bg-slate-100 dark:bg-slate-700 z-10">
+                    <tr>
+                      <th className="p-2 border border-slate-300 text-left">{language === "th" ? "วันที่" : "Date"}</th>
+                      {importParsed.mapping.map((m, i) => (
+                        <th key={i} className="p-2 border border-slate-300 text-right whitespace-nowrap">{FIELD_LABEL[m.field] || m.field}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importParsed.preview.map((row, ri) => (
+                      <tr key={ri} className="hover:bg-muted/30" data-testid={`row-preview-${ri}`}>
+                        <td className="p-1.5 border border-slate-300 font-mono">{row.reportDate}</td>
+                        {importParsed.mapping.map((m, ci) => (
+                          <td key={ci} className="p-1.5 border border-slate-300 text-right">
+                            {row[m.field] != null && row[m.field] !== "" ? row[m.field] : ""}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {importParsed.totalRows > 10 && (
+                <p className="text-xs text-slate-400 text-center">
+                  {language === "th" ? `แสดง 10 จาก ${importParsed.totalRows} แถว` : `Showing 10 of ${importParsed.totalRows} rows`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step: Result */}
+          {importStep === "result" && importResult && (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <CheckCircle2 className="w-14 h-14 text-green-500" />
+              <p className="text-lg font-semibold text-center">
+                {language === "th" ? "นำเข้าเสร็จสิ้น" : "Import Complete"}
+              </p>
+              <div className="flex gap-6 text-center">
+                <div>
+                  <p className="text-3xl font-bold text-green-600" data-testid="text-import-success">{importResult.imported}</p>
+                  <p className="text-xs text-slate-500">{language === "th" ? "แถวที่สำเร็จ" : "Imported"}</p>
+                </div>
+                {importResult.errors > 0 && (
+                  <div>
+                    <p className="text-3xl font-bold text-red-500" data-testid="text-import-errors">{importResult.errors}</p>
+                    <p className="text-xs text-slate-500">{language === "th" ? "มี error" : "Errors"}</p>
+                  </div>
+                )}
+              </div>
+              {importResult.errorDetails.length > 0 && (
+                <div className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded p-2 w-full max-h-24 overflow-auto">
+                  {importResult.errorDetails.map((d, i) => <p key={i}>{d}</p>)}
+                </div>
+              )}
+              <p className="text-xs text-slate-400">
+                {language === "th" ? "ข้อมูลถูกบันทึกลง DB แล้ว กรุณา Refresh หน้าเพื่อดูข้อมูลที่นำเข้า" : "Data saved to DB. Refresh the page to see imported data."}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 justify-end">
+            {importStep === "upload" && (
+              <Button variant="outline" onClick={() => setImportDialogOpen(false)} data-testid="button-import-cancel">
+                {language === "th" ? "ยกเลิก" : "Cancel"}
+              </Button>
+            )}
+            {importStep === "preview" && (
+              <>
+                <Button variant="outline" onClick={() => setImportStep("upload")} data-testid="button-import-back">
+                  {language === "th" ? "ย้อนกลับ" : "Back"}
+                </Button>
+                <Button onClick={handleImportConfirm} disabled={isImportConfirming} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-import-confirm">
+                  {isImportConfirming ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                  {language === "th" ? "ยืนยันนำเข้า" : "Confirm Import"}
+                </Button>
+              </>
+            )}
+            {importStep === "result" && (
+              <Button onClick={() => setImportDialogOpen(false)} data-testid="button-import-done">
+                {language === "th" ? "เสร็จสิ้น" : "Done"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SalesLayout>
   );
 }

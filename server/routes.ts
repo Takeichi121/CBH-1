@@ -4609,6 +4609,348 @@ ${pageContext}` : ''}`;
       res.json({ ok: false, message: e?.message || "Failed" });
     } // <--- [4] CATCH ENDS
   })); 
+
+  // ==================== Excel Import ====================
+  app.post("/api/sales/importFromExcel", upload.single("file"), safe(async (req, res) => {
+    const token = req.body.token;
+    if (!token) return res.json({ ok: false, message: "Token required" });
+    if (!req.file) return res.json({ ok: false, message: "No file uploaded" });
+
+    // Server-side file type validation
+    const allowedMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const originalName = req.file.originalname || "";
+    if (req.file.mimetype !== allowedMime && !originalName.toLowerCase().endsWith(".xlsx")) {
+      return res.json({ ok: false, message: "รองรับเฉพาะไฟล์ .xlsx เท่านั้น (Only .xlsx files are supported)" });
+    }
+
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    // Column mapping dictionary (lowercase key -> DB field)
+    const COL_MAP: Record<string, { table: "targets" | "sales" | "both"; field: string }> = {
+      // Date columns
+      "date": { table: "both", field: "reportDate" },
+      "วันที่": { table: "both", field: "reportDate" },
+      "day": { table: "both", field: "reportDate" },
+      "วัน": { table: "both", field: "reportDate" },
+
+      // Target columns
+      "target": { table: "targets", field: "targetSales" },
+      "เป้าหมาย": { table: "targets", field: "targetSales" },
+      "target sales": { table: "targets", field: "targetSales" },
+      "เป้ายอดขาย": { table: "targets", field: "targetSales" },
+      "target tc": { table: "targets", field: "targetTc" },
+      "เป้า tc": { table: "targets", field: "targetTc" },
+
+      // Actual Sales
+      "actual sales": { table: "sales", field: "actualSales" },
+      "ยอดขาย": { table: "sales", field: "actualSales" },
+      "actual": { table: "sales", field: "actualSales" },
+      "sales": { table: "sales", field: "actualSales" },
+      "ac": { table: "sales", field: "actualSales" },
+
+      // LY Sales
+      "ly sales": { table: "sales", field: "lastYearSales" },
+      "ly sale": { table: "sales", field: "lastYearSales" },
+      "last year sales": { table: "sales", field: "lastYearSales" },
+      "ยอดขายปีที่แล้ว": { table: "sales", field: "lastYearSales" },
+      "ly": { table: "sales", field: "lastYearSales" },
+
+      // Forecast
+      "forecast": { table: "sales", field: "forecastSales" },
+      "forecast sales": { table: "sales", field: "forecastSales" },
+      "พยากรณ์": { table: "sales", field: "forecastSales" },
+
+      // TC
+      "tc": { table: "sales", field: "transactionCount" },
+      "actual tc": { table: "sales", field: "transactionCount" },
+      "transaction count": { table: "sales", field: "transactionCount" },
+      "จำนวนบิล": { table: "sales", field: "transactionCount" },
+
+      // LY TC
+      "ly tc": { table: "sales", field: "lastYearTc" },
+      "last year tc": { table: "sales", field: "lastYearTc" },
+      "tc ปีที่แล้ว": { table: "sales", field: "lastYearTc" },
+
+      // Target TA
+      "target ta": { table: "sales", field: "targetTa" },
+      "เป้า ta": { table: "sales", field: "targetTa" },
+
+      // Actual Hours
+      "actual hr": { table: "sales", field: "actualHours" },
+      "actual hours": { table: "sales", field: "actualHours" },
+      "actual hour": { table: "sales", field: "actualHours" },
+      "pt hr": { table: "sales", field: "actualHours" },
+      "pt hours": { table: "sales", field: "actualHours" },
+      "ชั่วโมงจริง": { table: "sales", field: "actualHours" },
+
+      // OT Hours
+      "ot": { table: "sales", field: "otHours" },
+      "ot hr": { table: "sales", field: "otHours" },
+      "ot hours": { table: "sales", field: "otHours" },
+      "overtime": { table: "sales", field: "otHours" },
+      "ชั่วโมง ot": { table: "sales", field: "otHours" },
+
+      // Roster
+      "roster": { table: "sales", field: "rosterCommit" },
+      "roster commit": { table: "sales", field: "rosterCommit" },
+      "roaster": { table: "sales", field: "rosterCommit" },
+      "roster hr": { table: "sales", field: "rosterCommit" },
+
+      // Recommend Hours
+      "recommend hr": { table: "sales", field: "recommendHours" },
+      "recommend hours": { table: "sales", field: "recommendHours" },
+      "rec hr": { table: "sales", field: "recommendHours" },
+
+      // Waste
+      "waste": { table: "sales", field: "wasteRawDaily" },
+      "waste raw": { table: "sales", field: "wasteRawDaily" },
+      "waste raw daily": { table: "sales", field: "wasteRawDaily" },
+      "waste daily": { table: "sales", field: "wasteRawDaily" },
+      "วัตถุดิบสูญเสีย": { table: "sales", field: "wasteRawDaily" },
+    };
+
+    function normalizeHeader(h: string): string {
+      return h.trim().toLowerCase().replace(/\s+/g, " ");
+    }
+
+    function parseExcelDate(val: any): string | null {
+      if (!val) return null;
+      if (val instanceof Date) {
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, "0");
+        const d = String(val.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+      const s = String(val).trim();
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      // D/M/YYYY or DD/MM/YYYY or D-M-YYYY
+      const m1 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (m1) {
+        return `${m1[3]}-${m1[2].padStart(2, "0")}-${m1[1].padStart(2, "0")}`;
+      }
+      // Excel numeric date (days since 1900-01-01)
+      const num = Number(s);
+      if (!isNaN(num) && num > 20000 && num < 80000) {
+        const excelEpoch = new Date(1899, 11, 30);
+        const d2 = new Date(excelEpoch.getTime() + num * 86400000);
+        const y2 = d2.getFullYear();
+        const mo = String(d2.getMonth() + 1).padStart(2, "0");
+        const da = String(d2.getDate()).padStart(2, "0");
+        return `${y2}-${mo}-${da}`;
+      }
+      return null;
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(req.file.buffer);
+
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) return res.json({ ok: false, message: "No worksheet found" });
+
+      // Read headers from first row
+      const headerRow = worksheet.getRow(1);
+      const headers: string[] = [];
+      headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const val = cell.text || (cell.value != null ? String(cell.value) : "");
+        headers[colNumber - 1] = val;
+      });
+
+      // Map headers to fields
+      const mapping: Array<{ colIdx: number; header: string; table: string; field: string }> = [];
+      let dateColIdx = -1;
+
+      for (let i = 0; i < headers.length; i++) {
+        const norm = normalizeHeader(headers[i]);
+        if (!norm) continue;
+        const mapped = COL_MAP[norm];
+        if (mapped) {
+          if (mapped.field === "reportDate") {
+            dateColIdx = i;
+          }
+          mapping.push({ colIdx: i, header: headers[i], table: mapped.table, field: mapped.field });
+        }
+      }
+
+      if (dateColIdx === -1) {
+        return res.json({
+          ok: false,
+          message: "ไม่พบคอลัมน์วันที่ (Date/วันที่) ในไฟล์ Excel กรุณาตรวจสอบหัวคอลัมน์"
+        });
+      }
+
+      // Parse rows
+      const previewRows: any[] = [];
+      const importRows: any[] = [];
+      let skippedCount = 0;
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // skip header
+
+        const cellVal = (colIdx: number) => {
+          const cell = row.getCell(colIdx + 1);
+          if (cell.value === null || cell.value === undefined) return null;
+          if (typeof cell.value === "object" && "result" in cell.value) return (cell.value as any).result;
+          if (cell.value instanceof Date) return cell.value;
+          return cell.value;
+        };
+
+        const rawDate = cellVal(dateColIdx);
+        const parsedDate = parseExcelDate(rawDate);
+
+        if (!parsedDate) {
+          skippedCount++;
+          return;
+        }
+
+        const rowData: Record<string, any> = { reportDate: parsedDate };
+        for (const m of mapping) {
+          if (m.field === "reportDate") continue;
+          const v = cellVal(m.colIdx);
+          rowData[m.field] = v !== null && v !== undefined ? String(v) : "";
+        }
+
+        importRows.push(rowData);
+
+        if (previewRows.length < 10) {
+          previewRows.push(rowData);
+        }
+      });
+
+      res.json({
+        ok: true,
+        mapping: mapping.filter(m => m.field !== "reportDate"),
+        preview: previewRows,
+        totalRows: importRows.length,
+        skipped: skippedCount,
+        rows: importRows,
+      });
+
+    } catch (e: any) {
+      console.error("Excel import parse error:", e);
+      res.json({ ok: false, message: e?.message || "Failed to parse Excel file" });
+    }
+  }));
+
+  app.post("/api/sales/confirmImportFromExcel", safe(async (req, res) => {
+    const { token, rows } = req.body;
+    if (!token || !rows || !Array.isArray(rows)) {
+      return res.json({ ok: false, message: "Missing data" });
+    }
+
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) {
+      return res.json({ ok: false, message: "No permission" });
+    }
+
+    let imported = 0;
+    let errors = 0;
+    const errorDetails: string[] = [];
+
+    // Fields in daily_sales_reports that can be imported from Excel
+    const SALES_IMPORTABLE_FIELDS = [
+      "actualSales", "transactionCount", "recommendHours", "rosterCommit",
+      "actualHours", "otHours", "wasteRawDaily", "lastYearSales", "forecastSales",
+      "lastYearTc", "targetTa",
+    ];
+
+    for (const rowData of rows) {
+      try {
+        if (!rowData.reportDate) { errors++; continue; }
+
+        // Fetch existing record to preserve fields not in this import
+        const existing = await storage.getDailySalesReportByDate(rowData.reportDate);
+
+        // Build salesPayload with only the fields present in rowData (from mapped columns)
+        // For each field, use the imported value if present; otherwise keep existing value.
+        // This ensures unmapped columns are never overwritten with zeros.
+        const salesPayload: any = {
+          reportDate: rowData.reportDate,
+          reportBy: "excel_import",
+          workShift: existing?.workShift ?? "full",
+        };
+
+        for (const field of SALES_IMPORTABLE_FIELDS) {
+          if (field in rowData && rowData[field] !== "" && rowData[field] !== null && rowData[field] !== undefined) {
+            // Use imported value
+            salesPayload[field] = String(rowData[field]);
+          } else if (existing) {
+            // Preserve existing value — do not write anything for this field
+            // (upsertDailySalesReportByDate will use existing if we omit the field)
+          } else {
+            // No existing record and no imported value — use "0" as default only for required fields
+            salesPayload[field] = "0";
+          }
+        }
+
+        // Preserve other fields from existing record if not in salesPayload
+        if (existing) {
+          const preserveFields = [
+            "dailyTarget", "cashDeposit", "mtdTarget", "mtdActual", "mtdTc",
+            "dineIn", "dineInTc", "takeAway", "takeAwayTc",
+            "grabfood", "lineman", "shopee", "bkapp", "robin", "gokoo",
+            "osat", "surveyCount", "voidAmount", "voidCount", "sosDaily", "sosMtd",
+            "addCheeseCount", "addCheesePercent", "vMealCount", "vMealPercent",
+            "upSizeCount", "upSizePercent", "wasteMealDaily", "wasteMealDailyPercent",
+            "wasteRawDailyPercent", "wasteRawMtd", "wasteRawMtdPercent",
+            "wasteMealMtd", "wasteMealMtdPercent", "otMtd", "summaryHours",
+            "varianceHours", "laborCost", "colPercent", "laborHour", "tcmh",
+            "closeShiftCount", "managerRosterDate", "managerRosterText", "staffRosterText",
+            "targetTc",
+          ];
+          for (const field of preserveFields) {
+            if (!(field in salesPayload)) {
+              salesPayload[field] = (existing as any)[field] ?? "0";
+            }
+          }
+        }
+
+        await storage.upsertDailySalesReportByDate(salesPayload);
+
+        // Upsert daily_targets only if we have targetSales or targetTc in the import
+        if ("targetSales" in rowData || "targetTc" in rowData) {
+          const existingTarget = await storage.getDailyTarget(rowData.reportDate);
+          const targetPayload: any = {
+            targetDate: rowData.reportDate,
+            targetSales: ("targetSales" in rowData && rowData.targetSales)
+              ? String(rowData.targetSales)
+              : (existingTarget?.targetSales ?? "130000"),
+            targetTc: ("targetTc" in rowData && rowData.targetTc)
+              ? String(rowData.targetTc)
+              : (existingTarget?.targetTc ?? "300"),
+            createdAt: existingTarget?.createdAt ?? new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await storage.upsertDailyTarget(targetPayload);
+        }
+
+        imported++;
+      } catch (e: any) {
+        errors++;
+        errorDetails.push(`${rowData.reportDate}: ${e?.message || "Error"}`);
+      }
+    }
+
+    await storage.log("excel_import", u.username, `imported=${imported}, errors=${errors}`);
+
+    res.json({
+      ok: true,
+      imported,
+      errors,
+      errorDetails: errorDetails.slice(0, 10),
+    });
+  }));
+
   // ==================== Manager Requests ====================
 
   app.post(api.managerRequests.create.path, safe(async (req, res) => {

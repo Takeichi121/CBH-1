@@ -2391,43 +2391,48 @@ ${v.staffRosterText || ""}
                             {t.date}
                           </FormLabel>
                           <FormControl>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                className="p-1.5 rounded border border-input bg-background hover:bg-muted transition-colors flex-shrink-0"
-                                data-testid="button-date-prev"
-                                onClick={() => {
-                                  if (!field.value) return;
-                                  const d = new Date(field.value + "T00:00:00");
-                                  d.setDate(d.getDate() - 1);
-                                  field.onChange(d.toISOString().slice(0, 10));
-                                }}
-                              >
-                                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                              </button>
-                              <Input
-                                type="date"
-                                className="text-sm flex-1 min-w-0"
-                                max={maxAllowedDate}
-                                {...field}
-                                data-testid="input-report-date"
-                              />
-                              <button
-                                type="button"
-                                className="p-1.5 rounded border border-input bg-background hover:bg-muted transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                                data-testid="button-date-next"
-                                disabled={!field.value || field.value >= maxAllowedDate}
-                                onClick={() => {
-                                  if (!field.value) return;
-                                  const d = new Date(field.value + "T00:00:00");
-                                  d.setDate(d.getDate() + 1);
-                                  const next = d.toISOString().slice(0, 10);
-                                  if (next <= maxAllowedDate) field.onChange(next);
-                                }}
-                              >
-                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                              </button>
-                            </div>
+                            {/* Nested fieldset (no disabled) re-enables date nav even inside a disabled parent fieldset */}
+                            <fieldset className="border-0 p-0 m-0 min-w-0">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="p-1.5 rounded border border-input bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                  data-testid="button-date-prev"
+                                  onClick={() => {
+                                    if (!field.value) return;
+                                    const [y, mo, d] = field.value.split('-').map(Number);
+                                    const date = new Date(y, mo - 1, d);
+                                    date.setDate(date.getDate() - 1);
+                                    field.onChange(`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`);
+                                  }}
+                                >
+                                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                                <Input
+                                  type="date"
+                                  className="text-sm flex-1 min-w-0"
+                                  max={maxAllowedDate}
+                                  {...field}
+                                  data-testid="input-report-date"
+                                />
+                                <button
+                                  type="button"
+                                  className="p-1.5 rounded border border-input bg-background hover:bg-muted transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  data-testid="button-date-next"
+                                  disabled={!field.value || field.value >= maxAllowedDate}
+                                  onClick={() => {
+                                    if (!field.value) return;
+                                    const [y, mo, d] = field.value.split('-').map(Number);
+                                    const date = new Date(y, mo - 1, d);
+                                    date.setDate(date.getDate() + 1);
+                                    const next = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                                    if (next <= maxAllowedDate) field.onChange(next);
+                                  }}
+                                >
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                              </div>
+                            </fieldset>
                           </FormControl>
                         </FormItem>
                       )}

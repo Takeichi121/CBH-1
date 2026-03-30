@@ -2285,6 +2285,7 @@ ${v.staffRosterText || ""}
           <CardContent>
             <Form {...form}>
               <form className="space-y-6">
+                <fieldset disabled={reportSavedInDb && !isEditMode} className="min-w-0 border-0 p-0 m-0 [&:disabled]:opacity-60 [&:disabled]:pointer-events-none">
                 <div className="bg-muted/50 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-sm md:text-base font-medium">
@@ -4298,6 +4299,7 @@ ${v.staffRosterText || ""}
                     )}
                   </div>
                 )}
+                </fieldset>
               </form>
             </Form>
           </CardContent>

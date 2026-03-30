@@ -54,8 +54,11 @@ import {
   ClipboardPaste,
   MessageSquare,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
   ChevronsUpDown,
+  Pencil,
 } from "lucide-react";
 import {
   Popover,
@@ -440,6 +443,8 @@ export default function DailySalesPage() {
   const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoadingRef = useRef(false);
   const [isSavingToServer, setIsSavingToServer] = useState(false);
+  const [reportSavedInDb, setReportSavedInDb] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const saveToServer = useCallback(async (values: FormData) => {
     if (!values.reportDate || !values.reportBy) return;
@@ -563,7 +568,7 @@ export default function DailySalesPage() {
       if (values.reportDate && values.reportBy) {
         markAsChanged();
         debouncedSave(values as FormData);
-        if (!isLoadingRef.current) {
+        if (!isLoadingRef.current && (!reportSavedInDb || isEditMode)) {
           debouncedServerSave(values as FormData);
         }
       }
@@ -575,7 +580,7 @@ export default function DailySalesPage() {
         clearTimeout(hideAutoSaveTimerRef.current);
       if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
     };
-  }, [debouncedSave, debouncedServerSave, markAsChanged]);
+  }, [debouncedSave, debouncedServerSave, markAsChanged, reportSavedInDb, isEditMode]);
 
   useEffect(() => {
     const restored = restoreData();
@@ -824,6 +829,8 @@ export default function DailySalesPage() {
 
         // Block autosave during DB load to prevent "0" values overwriting real data
         isLoadingRef.current = true;
+        setReportSavedInDb(false);
+        setIsEditMode(false);
 
         // Reset daily fields first to prevent data from other dates mixing in
         const dailyFieldsToReset = {
@@ -982,6 +989,11 @@ export default function DailySalesPage() {
               setStaffRosterEntries(entries);
             }
           }
+          setReportSavedInDb(true);
+          setIsEditMode(false);
+        } else {
+          setReportSavedInDb(false);
+          setIsEditMode(true);
         }
 
         // Load daily target for this specific date
@@ -1135,6 +1147,8 @@ export default function DailySalesPage() {
         });
         clearData();
         markAsSaved();
+        setReportSavedInDb(true);
+        setIsEditMode(false);
         queryClient.invalidateQueries({ queryKey: ["/api/shift-count-for-date"] });
       } else {
         toast({
@@ -2225,6 +2239,25 @@ ${v.staffRosterText || ""}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {reportSavedInDb && !isEditMode && (
+                  <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-700">
+                    <CheckCircle className="w-3 h-3" />
+                    {language === "th" ? "บันทึกแล้ว" : "Saved"}
+                  </Badge>
+                )}
+                {reportSavedInDb && !isEditMode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 h-7 text-xs"
+                    data-testid="button-edit-report"
+                    onClick={() => setIsEditMode(true)}
+                  >
+                    <Pencil className="w-3 h-3" />
+                    {language === "th" ? "แก้ไข" : "Edit"}
+                  </Button>
+                )}
                 {hasDraft && (
                   <Badge variant="secondary" className="text-xs">
                     <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse mr-1" />
@@ -2357,13 +2390,43 @@ ${v.staffRosterText || ""}
                             {t.date}
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              className="text-sm"
-                              max={maxAllowedDate}
-                              {...field}
-                              data-testid="input-report-date"
-                            />
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="p-1.5 rounded border border-input bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                data-testid="button-date-prev"
+                                onClick={() => {
+                                  if (!field.value) return;
+                                  const d = new Date(field.value + "T00:00:00");
+                                  d.setDate(d.getDate() - 1);
+                                  field.onChange(d.toISOString().slice(0, 10));
+                                }}
+                              >
+                                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                              <Input
+                                type="date"
+                                className="text-sm flex-1 min-w-0"
+                                max={maxAllowedDate}
+                                {...field}
+                                data-testid="input-report-date"
+                              />
+                              <button
+                                type="button"
+                                className="p-1.5 rounded border border-input bg-background hover:bg-muted transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                data-testid="button-date-next"
+                                disabled={!field.value || field.value >= maxAllowedDate}
+                                onClick={() => {
+                                  if (!field.value) return;
+                                  const d = new Date(field.value + "T00:00:00");
+                                  d.setDate(d.getDate() + 1);
+                                  const next = d.toISOString().slice(0, 10);
+                                  if (next <= maxAllowedDate) field.onChange(next);
+                                }}
+                              >
+                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </div>
                           </FormControl>
                         </FormItem>
                       )}

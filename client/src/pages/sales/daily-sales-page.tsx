@@ -2298,6 +2298,7 @@ ${v.staffRosterText || ""}
                           size="sm"
                           className="gap-1"
                           data-testid="button-paste-line-report"
+                          disabled={reportSavedInDb && !isEditMode}
                           onClick={() => {
                             const reportDate = form.getValues("reportDate" as keyof FormData) as string;
                             setPasteDate(reportDate || todayBangkok());
@@ -2455,6 +2456,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
+                <fieldset disabled={reportSavedInDb && !isEditMode} className="border-0 p-0 m-0 space-y-6">
                 <div className="bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
@@ -4300,6 +4302,7 @@ ${v.staffRosterText || ""}
                     )}
                   </div>
                 )}
+                </fieldset>
               </form>
             </Form>
           </CardContent>

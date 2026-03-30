@@ -2446,6 +2446,7 @@ ${v.staffRosterText || ""}
                             <Input
                               className="text-sm"
                               placeholder={t.reporter}
+                              disabled={reportSavedInDb && !isEditMode}
                               {...field}
                               data-testid="input-reporter"
                             />

@@ -4799,6 +4799,42 @@ ${pageContext}` : ''}`;
       "waste raw daily": { table: "sales", field: "wasteRawDaily" },
       "waste daily": { table: "sales", field: "wasteRawDaily" },
       "วัตถุดิบสูญเสีย": { table: "sales", field: "wasteRawDaily" },
+
+      // Delivery Sales (Task #1)
+      "delivery": { table: "sales", field: "salesDelivery" },
+      "delivery sales": { table: "sales", field: "salesDelivery" },
+      "sales delivery": { table: "sales", field: "salesDelivery" },
+      "ยอดขายเดลิเวอรี่": { table: "sales", field: "salesDelivery" },
+      "เดลิเวอรี่": { table: "sales", field: "salesDelivery" },
+
+      // Promotion: VM Set (Task #1)
+      "vm": { table: "sales", field: "vMealCount" },
+      "vm set": { table: "sales", field: "vMealCount" },
+      "value meal": { table: "sales", field: "vMealCount" },
+      "v meal": { table: "sales", field: "vMealCount" },
+      "vmeal": { table: "sales", field: "vMealCount" },
+
+      // Promotion: Up Size (Task #1)
+      "up size": { table: "sales", field: "upSizeCount" },
+      "upsize": { table: "sales", field: "upSizeCount" },
+      "up sz": { table: "sales", field: "upSizeCount" },
+
+      // Promotion: Add Cheese (Task #1)
+      "add cheese": { table: "sales", field: "addCheeseCount" },
+      "cheese": { table: "sales", field: "addCheeseCount" },
+      "ch": { table: "sales", field: "addCheeseCount" },
+
+      // Promotion: Other 1 (Task #1)
+      "other 1": { table: "sales", field: "promotionOther1Qty" },
+      "other1": { table: "sales", field: "promotionOther1Qty" },
+      "oth1": { table: "sales", field: "promotionOther1Qty" },
+      "promo 1": { table: "sales", field: "promotionOther1Qty" },
+
+      // Promotion: Other 2 (Task #1)
+      "other 2": { table: "sales", field: "promotionOther2Qty" },
+      "other2": { table: "sales", field: "promotionOther2Qty" },
+      "oth2": { table: "sales", field: "promotionOther2Qty" },
+      "promo 2": { table: "sales", field: "promotionOther2Qty" },
     };
 
     function normalizeHeader(h: string): string {
@@ -4841,13 +4877,35 @@ ${pageContext}` : ''}`;
       const worksheet = workbook.worksheets[0];
       if (!worksheet) return res.json({ ok: false, message: "No worksheet found" });
 
-      // Read headers from first row
-      const headerRow = worksheet.getRow(1);
-      const headers: string[] = [];
-      headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-        const val = cell.text || (cell.value != null ? String(cell.value) : "");
-        headers[colNumber - 1] = val;
-      });
+      // Scan rows 1–5 to find the header row (the first row containing a recognized date column)
+      let headerRowNumber = -1;
+      let headers: string[] = [];
+
+      for (let rowNum = 1; rowNum <= 5; rowNum++) {
+        const candidateRow = worksheet.getRow(rowNum);
+        const candidateHeaders: string[] = [];
+        candidateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          const val = cell.text || (cell.value != null ? String(cell.value) : "");
+          candidateHeaders[colNumber - 1] = val;
+        });
+        // Check if this row contains a date-like column
+        const hasDateCol = candidateHeaders.some(h => {
+          const norm = normalizeHeader(h || "");
+          return norm === "date" || norm === "วันที่" || norm === "day" || norm === "วัน";
+        });
+        if (hasDateCol) {
+          headerRowNumber = rowNum;
+          headers = candidateHeaders;
+          break;
+        }
+      }
+
+      if (headerRowNumber === -1) {
+        return res.json({
+          ok: false,
+          message: "ไม่พบคอลัมน์วันที่ (Date/วันที่) ในไฟล์ Excel กรุณาตรวจสอบหัวคอลัมน์ (ค้นหาใน 5 แถวแรกแล้ว)"
+        });
+      }
 
       // Map headers to fields
       const mapping: Array<{ colIdx: number; header: string; table: string; field: string }> = [];
@@ -4865,6 +4923,7 @@ ${pageContext}` : ''}`;
         }
       }
 
+      // dateColIdx is guaranteed to be found since we scanned for it above
       if (dateColIdx === -1) {
         return res.json({
           ok: false,
@@ -4872,13 +4931,13 @@ ${pageContext}` : ''}`;
         });
       }
 
-      // Parse rows
+      // Parse rows (skip all rows up to and including the header row)
       const previewRows: any[] = [];
       const importRows: any[] = [];
       let skippedCount = 0;
 
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // skip header
+        if (rowNumber <= headerRowNumber) return; // skip header row(s)
 
         const cellVal = (colIdx: number) => {
           const cell = row.getCell(colIdx + 1);
@@ -4948,6 +5007,9 @@ ${pageContext}` : ''}`;
       "actualSales", "transactionCount", "recommendHours", "rosterCommit",
       "actualHours", "otHours", "wasteRawDaily", "lastYearSales", "forecastSales",
       "lastYearTc", "targetTa",
+      // Task #1 new fields
+      "salesDelivery", "vMealCount", "upSizeCount", "addCheeseCount",
+      "promotionOther1Qty", "promotionOther2Qty",
     ];
 
     for (const rowData of rows) {

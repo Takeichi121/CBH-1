@@ -788,7 +788,7 @@ export default function DailySalesPage() {
 
   // Load daily target, MTD summary, and existing report when date changes
   const reportDate = form.watch("reportDate");
-  const watchedRosterDate = form.watch("managerRosterDate");
+  const watchedRosterDate = form.watch("managerRosterDate") || reportDate;
 
   const rosterLogQuery = useQuery<ShiftLogResponse | null>({
     queryKey: ["/api/shift-count-for-date", watchedRosterDate],

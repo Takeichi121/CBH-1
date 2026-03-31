@@ -1681,7 +1681,8 @@ export default function SalesSettingsPage() {
               />
               <div className="text-xs text-slate-400 text-center space-y-0.5">
                 <p>{language === "th" ? "หัวคอลัมน์ที่รองรับ:" : "Supported column headers:"}</p>
-                <p className="font-mono text-slate-500">Date, Target, Actual Sales, LY Sales, Forecast, TC, LY TC, Target TC, Target TA, Actual Hr, OT Hr, Roster, Waste</p>
+                <p className="font-mono text-slate-500">Date, Target, Actual Sales, LY Sales, Forecast, TC, LY TC, Target TC, Target TA, Actual Hr, OT Hr, Roster, Waste, Delivery, VM Set, Up Size, Add Cheese, Other 1, Other 2</p>
+                <p className="text-slate-400">{language === "th" ? "รองรับหัวคอลัมน์ในแถวที่ 1–5 (สำหรับไฟล์ที่มี Group Header)" : "Header row auto-detected in rows 1–5 (supports group headers)"}</p>
               </div>
             </div>
           )}

@@ -749,7 +749,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTableList(): Promise<{ name: string; count: number }[]> {
-    const tableNames = ["users", "shifts", "config", "systemlog", "sessions", "swap_requests", "daily_sales_reports", "store_settings", "daily_targets", "manager_requests"];
+    const tableNames = [
+      "users", "shifts", "config", "systemlog", "sessions",
+      "swap_requests", "daily_sales_reports", "store_settings",
+      "daily_targets", "manager_requests",
+      "borrow_branches", "borrow_items", "borrow_transactions",
+      "labor_settings", "daily_labor",
+      "chann_notes", "agent_requests",
+      "announcements", "notifications"
+    ];
     const result: { name: string; count: number }[] = [];
     for (const name of tableNames) {
       try {
@@ -775,7 +783,11 @@ export class DatabaseStorage implements IStorage {
       borrow_items: borrowItems,
       borrow_transactions: borrowTransactions,
       labor_settings: laborSettings,
-      daily_labor: dailyLabor
+      daily_labor: dailyLabor,
+      agent_requests: agentRequests,
+      chann_notes: channNotes,
+      announcements,
+      notifications
     };
     const table = allowedTables[tableName];
     if (!table) throw new Error(`Unknown table: ${tableName}`);

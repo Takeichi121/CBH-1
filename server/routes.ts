@@ -481,24 +481,55 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const { query } = req.body;
       if (!query) return res.json({ error: "query required" });
-      // Use DuckDuckGo Instant Answer API (free, no API key needed)
+      // Step 1: Try DuckDuckGo Instant Answer API
       const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-      const ddgRes = await fetch(ddgUrl, { headers: { "User-Agent": "BKGrandDiamond/1.0" } });
+      const ddgRes = await fetch(ddgUrl, { headers: { "User-Agent": "BKGrandDiamond/1.0" }, signal: AbortSignal.timeout(6000) });
       const ddgData = await ddgRes.json() as any;
       const searchAnswer = ddgData.AbstractText || ddgData.Answer || "";
-      const resultPages = [
-        ...(ddgData.RelatedTopics || [])
-          .filter((t: any) => t.FirstURL && t.Text)
-          .slice(0, 5)
-          .map((t: any) => ({ title: t.Text?.slice(0, 80), url: t.FirstURL })),
-        ...(ddgData.Results || [])
-          .filter((r: any) => r.FirstURL && r.Text)
-          .slice(0, 3)
-          .map((r: any) => ({ title: r.Text?.slice(0, 80), url: r.FirstURL })),
+      const instantPages = [
+        ...(ddgData.RelatedTopics || []).filter((t: any) => t.FirstURL && t.Text).slice(0, 5).map((t: any) => ({ title: t.Text?.slice(0, 80), url: t.FirstURL, snippet: "" })),
+        ...(ddgData.Results || []).filter((r: any) => r.FirstURL && r.Text).slice(0, 3).map((r: any) => ({ title: r.Text?.slice(0, 80), url: r.FirstURL, snippet: "" })),
       ].slice(0, 5);
-      const abstractSource = ddgData.AbstractSource || "";
-      const abstractUrl = ddgData.AbstractURL || "";
-      res.json({ searchAnswer, resultPages, abstractSource, abstractUrl, query });
+      if (searchAnswer.length > 50 || instantPages.length >= 3) {
+        return res.json({ searchAnswer, resultPages: instantPages, abstractSource: ddgData.AbstractSource || "", abstractUrl: ddgData.AbstractURL || "", query });
+      }
+      // Step 2: Fall back to DuckDuckGo HTML search
+      const htmlRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml",
+          "Accept-Language": "th,en-US;q=0.9,en;q=0.8",
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      const html = await htmlRes.text();
+      const snippets: string[] = [];
+      const snippetRx = /<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+      let sm: RegExpExecArray | null;
+      while ((sm = snippetRx.exec(html)) !== null) {
+        snippets.push(sm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200));
+      }
+      const htmlPages: { title: string; url: string; snippet: string }[] = [];
+      const linkRx = /<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+      let lm: RegExpExecArray | null;
+      let idx = 0;
+      while ((lm = linkRx.exec(html)) !== null && htmlPages.length < 5) {
+        const rawUrl = lm[1];
+        const title = lm[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        let finalUrl = rawUrl;
+        try {
+          const normalized = rawUrl.startsWith("//") ? "https:" + rawUrl : rawUrl;
+          const urlObj = new URL(normalized);
+          const uddg = urlObj.searchParams.get("uddg");
+          if (uddg) finalUrl = decodeURIComponent(uddg);
+        } catch {}
+        if (title && finalUrl && !finalUrl.includes("duckduckgo.com")) {
+          htmlPages.push({ title, url: finalUrl, snippet: snippets[idx] || "" });
+          idx++;
+        }
+      }
+      const resultPages = htmlPages.length > 0 ? htmlPages : instantPages;
+      res.json({ searchAnswer: searchAnswer || `พบ ${resultPages.length} ผลการค้นหา`, resultPages, abstractSource: ddgData.AbstractSource || "", abstractUrl: ddgData.AbstractURL || "", query });
     } catch (e: any) {
       res.json({ error: e.message || "Web search failed" });
     }
@@ -678,7 +709,7 @@ borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste,
 คุณมีเครื่องมือพิเศษในการดึงข้อมูลข้ามระบบ:
 
 **เครื่องมือ Read (ทุก role ใช้ได้):**
-- getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings, agent_requests)
+- getTableRows: ดูข้อมูลตารางใดก็ได้ (users, shifts, daily_sales_reports, borrow_transactions, borrow_branches, borrow_items, daily_labor, labor_settings, manager_requests, store_settings, agent_requests, chann_notes, announcements, notifications)
 - getShiftsForDate: ดูใครทำกะวันไหน
 - getShiftsInRange: ดูกะในช่วงเวลา
 - getSalesSummary: สรุปยอดขายรายเดือน
@@ -875,7 +906,7 @@ ${pageContext}` : ''}`;
               properties: {
                 tableName: {
                   type: "string",
-                  enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "borrow_branches", "borrow_items", "daily_labor", "labor_settings", "manager_requests", "store_settings"],
+                  enum: ["users", "shifts", "daily_sales_reports", "borrow_transactions", "borrow_branches", "borrow_items", "daily_labor", "labor_settings", "manager_requests", "store_settings", "agent_requests", "chann_notes", "announcements", "notifications"],
                   description: "The name of the table to read"
                 },
                 limit: {
@@ -2311,8 +2342,13 @@ ${pageContext}` : ''}`;
                 results.push({ username: s.username, date: s.date, error: "Missing required fields" });
                 continue;
               }
+              const bulkTargetUser = await storage.getUser(s.username.toLowerCase());
+              if (!bulkTargetUser) {
+                results.push({ username: s.username, date: s.date, error: `User '${s.username}' not found` });
+                continue;
+              }
               try {
-                await storage.upsertShift({ username: s.username, date: s.date, shiftGroup: s.shiftGroup } as any);
+                await storage.upsertShift({ username: s.username.toLowerCase(), date: s.date, shiftGroup: s.shiftGroup } as any);
                 results.push({ username: s.username, date: s.date, ok: true });
               } catch (shiftErr: any) {
                 results.push({ username: s.username, date: s.date, error: shiftErr.message });
@@ -2364,7 +2400,7 @@ ${pageContext}` : ''}`;
               const content = fs.readFileSync(fullPath, "utf-8");
               const lines = content.split("\n");
               const startLine = args.startLine ? Math.max(1, args.startLine) : 1;
-              const endLine = args.endLine ? Math.min(lines.length, args.endLine) : Math.min(lines.length, startLine + 199);
+              const endLine = args.endLine ? Math.min(lines.length, args.endLine) : Math.min(lines.length, startLine + 299);
               const selectedLines = lines.slice(startLine - 1, endLine);
               const numberedContent = selectedLines.map((line: string, i: number) => `${startLine + i}: ${line}`).join("\n");
               return JSON.stringify({
@@ -2602,15 +2638,59 @@ ${pageContext}` : ''}`;
 
           case "webSearch": {
             try {
+              // Step 1: Try DuckDuckGo Instant Answer API (great for facts/definitions)
               const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(args.query)}&format=json&no_html=1&skip_disambig=1`;
-              const ddgRes = await fetch(ddgUrl, { headers: { "User-Agent": "BKGrandDiamond/1.0" } });
+              const ddgRes = await fetch(ddgUrl, { headers: { "User-Agent": "BKGrandDiamond/1.0" }, signal: AbortSignal.timeout(6000) });
               const ddgData = await ddgRes.json() as any;
-              const searchAnswer = ddgData.AbstractText || ddgData.Answer || "(ไม่พบคำตอบตรงๆ แต่มีลิงก์ที่เกี่ยวข้อง)";
-              const resultPages = [
-                ...(ddgData.RelatedTopics || []).filter((t: any) => t.FirstURL && t.Text).slice(0, 5).map((t: any) => ({ title: t.Text?.slice(0, 100), url: t.FirstURL })),
-                ...(ddgData.Results || []).filter((r: any) => r.FirstURL && r.Text).slice(0, 3).map((r: any) => ({ title: r.Text?.slice(0, 100), url: r.FirstURL })),
+              const searchAnswer = ddgData.AbstractText || ddgData.Answer || "";
+              const instantPages = [
+                ...(ddgData.RelatedTopics || []).filter((t: any) => t.FirstURL && t.Text).slice(0, 5).map((t: any) => ({ title: t.Text?.slice(0, 100), url: t.FirstURL, snippet: "" })),
+                ...(ddgData.Results || []).filter((r: any) => r.FirstURL && r.Text).slice(0, 3).map((r: any) => ({ title: r.Text?.slice(0, 100), url: r.FirstURL, snippet: "" })),
               ].slice(0, 6);
-              return JSON.stringify({ searchAnswer, resultPages, abstractSource: ddgData.AbstractSource || "", abstractUrl: ddgData.AbstractURL || "", query: args.query });
+              // Return immediately if instant answer has enough content
+              if (searchAnswer.length > 50 || instantPages.length >= 3) {
+                return JSON.stringify({ searchAnswer: searchAnswer || `พบ ${instantPages.length} ผลการค้นหา`, resultPages: instantPages, abstractSource: ddgData.AbstractSource || "", abstractUrl: ddgData.AbstractURL || "", query: args.query });
+              }
+              // Step 2: Fall back to DuckDuckGo HTML search for richer results
+              const htmlRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(args.query)}`, {
+                headers: {
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                  "Accept": "text/html,application/xhtml+xml",
+                  "Accept-Language": "th,en-US;q=0.9,en;q=0.8",
+                },
+                signal: AbortSignal.timeout(8000),
+              });
+              const html = await htmlRes.text();
+              // Parse snippets
+              const snippets: string[] = [];
+              const snippetRegex = /<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+              let sm: RegExpExecArray | null;
+              while ((sm = snippetRegex.exec(html)) !== null) {
+                snippets.push(sm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200));
+              }
+              // Parse result links
+              const htmlPages: { title: string; url: string; snippet: string }[] = [];
+              const linkRegex = /<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+              let lm: RegExpExecArray | null;
+              let idx = 0;
+              while ((lm = linkRegex.exec(html)) !== null && htmlPages.length < 6) {
+                const rawUrl = lm[1];
+                const title = lm[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+                let finalUrl = rawUrl;
+                try {
+                  const normalized = rawUrl.startsWith("//") ? "https:" + rawUrl : rawUrl;
+                  const urlObj = new URL(normalized);
+                  const uddg = urlObj.searchParams.get("uddg");
+                  if (uddg) finalUrl = decodeURIComponent(uddg);
+                } catch {}
+                if (title && finalUrl && !finalUrl.includes("duckduckgo.com")) {
+                  htmlPages.push({ title, url: finalUrl, snippet: snippets[idx] || "" });
+                  idx++;
+                }
+              }
+              const resultPages = htmlPages.length > 0 ? htmlPages : instantPages;
+              const finalAnswer = searchAnswer || (resultPages.length > 0 ? `พบ ${resultPages.length} ผลการค้นหา` : "ไม่พบผลการค้นหาสำหรับคำค้นนี้ ลองเปลี่ยนคำค้นหรือใช้ webFetch กับ URL โดยตรง");
+              return JSON.stringify({ searchAnswer: finalAnswer, resultPages, abstractSource: ddgData.AbstractSource || "", abstractUrl: ddgData.AbstractURL || "", query: args.query });
             } catch (searchErr: any) {
               return JSON.stringify({ error: `Web search error: ${searchErr.message}` });
             }

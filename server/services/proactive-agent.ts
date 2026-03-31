@@ -81,16 +81,17 @@ function scheduleOneTimeAlert22h45() {
   console.log(`[Chann] ⏰ ตั้ง 22:45 alert ไว้แล้ว (อีก ${minutesLeft} นาที)`);
 
   setTimeout(() => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long" });
     pushToBoss("chann-alert", {
-      title: "📋 Chann แจ้งเตือน — งานค้างรอดำเนินการ",
+      title: "📋 Chann แจ้งเตือน — ใกล้ปิดร้านแล้วครับ",
       message:
-        "1️⃣ Session Plan ยังค้างอยู่\n" +
-        "• banner แจ้งกำหนดส่งรายงาน (Daily & Weekly)\n" +
-        "• auto-populate ยอด Sale/TC/Waste จาก Daily\n" +
-        "• ประวัติรายงาน Weekly (History)\n\n" +
-        "2️⃣ Aloha DBF Integration\n" +
-        "• รอตัวอย่างไฟล์ .DBF จากเครื่อง Back Office\n" +
-        "• ส่งมาเพื่อวิเคราะห์โครงสร้างก่อน build",
+        `🕙 ${dateStr}\n\n` +
+        "กรุณาตรวจสอบก่อนปิดร้านคืนนี้:\n" +
+        "• ✅ บันทึกยอดขายวันนี้แล้วหรือยัง?\n" +
+        "• ✅ บันทึกชั่วโมงแรงงาน (COL) แล้วหรือยัง?\n" +
+        "• ✅ อนุมัติคำขอพนักงานที่รอดำเนินการ?\n\n" +
+        "พิมพ์ผ่าน Chann ได้เลยครับ 😊",
     });
     console.log("[Chann] ✅ ส่ง 22:45 alert เรียบร้อย");
   }, delayMs);

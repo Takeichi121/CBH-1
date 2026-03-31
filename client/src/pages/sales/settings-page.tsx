@@ -106,6 +106,12 @@ export default function SalesSettingsPage() {
     targetTc: string;
     targetTa: string;
     closeShiftCount: string;
+    salesDelivery: string;
+    vMealCount: string;
+    upSizeCount: string;
+    addCheeseCount: string;
+    promotionOther1Qty: string;
+    promotionOther2Qty: string;
   }>>({});
 
   const [defaultTarget, setDefaultTarget] = useState("130000");
@@ -226,6 +232,12 @@ export default function SalesSettingsPage() {
     let runningForecast = 0;
     let runningLastYearTc = 0;
     let runningTargetTc = 0;
+    let runningSalesDelivery = 0;
+    let runningVMeal = 0;
+    let runningUpSize = 0;
+    let runningAddCheese = 0;
+    let runningPromoOther1 = 0;
+    let runningPromoOther2 = 0;
     
     return monthDates.map(({ date, day, displayDate }) => {
       const targetSales = parseFloat(dailyTargets[date]) || 0;
@@ -243,16 +255,29 @@ export default function SalesSettingsPage() {
       const lastYearTc = parseFloat(editable.lastYearTc) || 0;
       const targetTc = parseFloat(editable.targetTc) || 0;
       const targetTa = parseFloat(editable.targetTa) || 0;
+      const salesDelivery = parseFloat(editable.salesDelivery) || 0;
+      const vMealCount = parseFloat(editable.vMealCount) || 0;
+      const upSizeCount = parseFloat(editable.upSizeCount) || 0;
+      const addCheeseCount = parseFloat(editable.addCheeseCount) || 0;
+      const promotionOther1Qty = parseFloat(editable.promotionOther1Qty) || 0;
+      const promotionOther2Qty = parseFloat(editable.promotionOther2Qty) || 0;
       
       runningActualSales += actualSales;
       runningActualTc += actualTc;
       runningRoster += rosterCommit;
       runningWaste += wasteDaily;
       runningTargetSales += targetSales;
+      const targetSalesMtd = runningTargetSales;
       runningLastYearSales += lastYearSales;
       runningForecast += forecastSales;
       runningLastYearTc += lastYearTc;
       runningTargetTc += targetTc;
+      runningSalesDelivery += salesDelivery;
+      runningVMeal += vMealCount;
+      runningUpSize += upSizeCount;
+      runningAddCheese += addCheeseCount;
+      runningPromoOther1 += promotionOther1Qty;
+      runningPromoOther2 += promotionOther2Qty;
 
       const summaryHours = DUTY_TEAM_HOURS + actualHours + otHours;
       runningWorkHours += summaryHours;
@@ -275,12 +300,24 @@ export default function SalesSettingsPage() {
       const lastYearTa = lastYearTc > 0 ? lastYearSales / lastYearTc : 0;
       const actualTa = actualTc > 0 ? actualSales / actualTc : 0;
       const varianceTa = actualTa - targetTa;
+      const varianceFromTargetDaily = actualSales - targetSales;
+      const varianceFromTargetMtd = runningActualSales - runningTargetSales;
+      const varianceFromForecast = actualSales - forecastSales;
+      const varianceTcFromTarget = actualTc - targetTc;
+      const varianceTcFromLy = actualTc - lastYearTc;
+
+      const vMealPct = actualTc > 0 ? (vMealCount / actualTc) * 100 : 0;
+      const upSizePct = actualTc > 0 ? (upSizeCount / actualTc) * 100 : 0;
+      const addCheesePct = actualTc > 0 ? (addCheeseCount / actualTc) * 100 : 0;
+      const promoOther1Pct = actualTc > 0 ? (promotionOther1Qty / actualTc) * 100 : 0;
+      const promoOther2Pct = actualTc > 0 ? (promotionOther2Qty / actualTc) * 100 : 0;
       
       return {
         date,
         day,
         displayDate,
         targetSales,
+        targetSalesMtd,
         actualSales,
         actualSalesMtd: runningActualSales,
         actualTc,
@@ -320,6 +357,28 @@ export default function SalesSettingsPage() {
         targetTa,
         actualTa,
         varianceTa,
+        varianceFromTargetDaily,
+        varianceFromTargetMtd,
+        varianceFromForecast,
+        varianceTcFromTarget,
+        varianceTcFromLy,
+        salesDelivery,
+        salesDeliveryMtd: runningSalesDelivery,
+        vMealCount,
+        vMealMtd: runningVMeal,
+        vMealPct,
+        upSizeCount,
+        upSizeMtd: runningUpSize,
+        upSizePct,
+        addCheeseCount,
+        addCheeseMtd: runningAddCheese,
+        addCheesePct,
+        promotionOther1Qty,
+        promoOther1Mtd: runningPromoOther1,
+        promoOther1Pct,
+        promotionOther2Qty,
+        promoOther2Mtd: runningPromoOther2,
+        promoOther2Pct,
       };
     });
   }, [monthDates, dailyTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE, fixedCostDaily, closeShiftDailyCost]);
@@ -329,6 +388,7 @@ export default function SalesSettingsPage() {
     if (!lastRow) return null;
     return {
       targetSales: tableData.reduce((sum, row) => sum + row.targetSales, 0),
+      targetSalesMtd: lastRow.targetSalesMtd,
       actualSales: tableData.reduce((sum, row) => sum + row.actualSales, 0),
       actualSalesMtd: lastRow.actualSalesMtd,
       actualTc: tableData.reduce((sum, row) => sum + row.actualTc, 0),
@@ -356,6 +416,18 @@ export default function SalesSettingsPage() {
       targetTc: tableData.reduce((sum, row) => sum + row.targetTc, 0),
       targetTcMtd: lastRow.targetTcMtd,
       targetTa: tableData.reduce((sum, row) => sum + row.targetTa, 0),
+      salesDelivery: tableData.reduce((sum, row) => sum + row.salesDelivery, 0),
+      salesDeliveryMtd: lastRow.salesDeliveryMtd,
+      vMealCount: tableData.reduce((sum, row) => sum + row.vMealCount, 0),
+      vMealMtd: lastRow.vMealMtd,
+      upSizeCount: tableData.reduce((sum, row) => sum + row.upSizeCount, 0),
+      upSizeMtd: lastRow.upSizeMtd,
+      addCheeseCount: tableData.reduce((sum, row) => sum + row.addCheeseCount, 0),
+      addCheeseMtd: lastRow.addCheeseMtd,
+      promotionOther1Qty: tableData.reduce((sum, row) => sum + row.promotionOther1Qty, 0),
+      promoOther1Mtd: lastRow.promoOther1Mtd,
+      promotionOther2Qty: tableData.reduce((sum, row) => sum + row.promotionOther2Qty, 0),
+      promoOther2Mtd: lastRow.promoOther2Mtd,
     };
   }, [tableData]);
 
@@ -484,7 +556,7 @@ export default function SalesSettingsPage() {
         const data = await res.json();
         if (data.ok && data.reports) {
           const editableMap: Record<string, any> = {};
-          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0" };
+          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
           data.reports.forEach((report: any) => {
             editableMap[report.reportDate] = {
               actualSales: (parseFloat(report.actualSales) || 0).toString(),
@@ -500,6 +572,12 @@ export default function SalesSettingsPage() {
               targetTc: (parseFloat(report.targetTc) || 0).toString(),
               targetTa: (parseFloat(report.targetTa) || 0).toString(),
               closeShiftCount: (parseInt(report.closeShiftCount) || 0).toString(),
+              salesDelivery: (parseFloat(report.salesDelivery) || 0).toString(),
+              vMealCount: (parseFloat(report.vMealCount) || 0).toString(),
+              upSizeCount: (parseFloat(report.upSizeCount) || 0).toString(),
+              addCheeseCount: (parseFloat(report.addCheeseCount) || 0).toString(),
+              promotionOther1Qty: (parseFloat(report.promotionOther1Qty) || 0).toString(),
+              promotionOther2Qty: (parseFloat(report.promotionOther2Qty) || 0).toString(),
             };
           });
           const newMap: Record<string, any> = {};
@@ -513,7 +591,7 @@ export default function SalesSettingsPage() {
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
         } else {
-          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0" };
+          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
           const newMap: Record<string, any> = {};
           monthDates.forEach(({ date }) => {
             newMap[date] = { ...emptyRow };
@@ -637,8 +715,14 @@ export default function SalesSettingsPage() {
           lastYearTc: parseFloat(editable.lastYearTc) || 0,
           targetTc: parseFloat(editable.targetTc) || 0,
           targetTa: parseFloat(editable.targetTa) || 0,
+          salesDelivery: parseFloat(editable.salesDelivery) || 0,
+          vMealCount: parseFloat(editable.vMealCount) || 0,
+          upSizeCount: parseFloat(editable.upSizeCount) || 0,
+          addCheeseCount: parseFloat(editable.addCheeseCount) || 0,
+          promotionOther1Qty: parseFloat(editable.promotionOther1Qty) || 0,
+          promotionOther2Qty: parseFloat(editable.promotionOther2Qty) || 0,
         };
-      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0 || d.lastYearSales > 0 || d.forecastSales > 0 || d.lastYearTc > 0 || d.targetTc > 0 || d.targetTa > 0 || d.rosterCommit > 0 || d.recommendHours > 0);
+      }).filter(d => d.actualSales > 0 || d.transactionCount > 0 || d.actualHours > 0 || d.wasteDaily > 0 || d.lastYearSales > 0 || d.forecastSales > 0 || d.lastYearTc > 0 || d.targetTc > 0 || d.targetTa > 0 || d.rosterCommit > 0 || d.recommendHours > 0 || d.salesDelivery > 0 || d.vMealCount > 0 || d.upSizeCount > 0 || d.addCheeseCount > 0 || d.promotionOther1Qty > 0 || d.promotionOther2Qty > 0);
       
       const res = await apiRequest("POST", "/api/sales/saveDailySalesData", {
         token,
@@ -1028,78 +1112,120 @@ export default function SalesSettingsPage() {
               </div>
               <div className="overflow-x-auto scrollbar-visible pb-3" style={{ scrollbarWidth: 'auto', scrollbarColor: '#888 #f1f1f1' }}>
                 <div>
-                  <table className="w-full text-xs border-collapse min-w-[4300px]">
+                  <table className="w-full text-xs border-collapse min-w-[6300px]">
                     <thead className="sticky top-0 z-20 shadow-sm">
-                      <tr className="bg-slate-200 dark:bg-slate-700 text-center">
-                        <th className="p-2 border border-slate-300 min-w-[80px] sticky left-0 z-30 bg-slate-200 dark:bg-slate-700">{t.date}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-yellow-100 dark:bg-yellow-900">{t.targetSales}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-green-100 dark:bg-green-900">{t.actSales}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.actSalesMtd}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-orange-100 dark:bg-orange-900">{t.lyDailySales}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.lyMtdSales}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-orange-100 dark:bg-orange-900">{t.forecastSales}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.forecastMtd}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.achievePercent}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.compSalesPercent}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-green-100 dark:bg-green-900">{t.actTc}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.actTcMtd}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-orange-100 dark:bg-orange-900">{t.lyTc}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.lyTcMtd}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-orange-100 dark:bg-orange-900">{t.targetTcLabel}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.targetTcMtd}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.compTcPercent}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.lyTa}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-orange-100 dark:bg-orange-900">{t.targetTaLabel}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.actualTa}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.varianceTa}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.recHours}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.roster}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.mtdRoster}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-gray-200 dark:bg-gray-600 text-gray-500">{t.dutyTeam}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px] bg-blue-100 dark:bg-blue-900">{t.actHours}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-blue-100 dark:bg-blue-900">{t.otHours}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px] font-bold">{t.sumHours}</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px]">{t.mtdHours}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.variance}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-indigo-100 dark:bg-indigo-900">Duty Cost</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-indigo-100 dark:bg-indigo-900">PT+OT Cost</th>
-                        <th className="p-2 border border-slate-300 min-w-[70px] bg-indigo-100 dark:bg-indigo-900">Fixed</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px] bg-indigo-100 dark:bg-indigo-900">คนปิด</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-indigo-100 dark:bg-indigo-900">ค่าปิดร้าน</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.colBath}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.mtdCol}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.colPercent}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.tcmh}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px] bg-red-100 dark:bg-red-900">{t.wasteDaily}</th>
-                        <th className="p-2 border border-slate-300 min-w-[80px]">{t.wasteMtd}</th>
-                        <th className="p-2 border border-slate-300 min-w-[60px]">{t.wastePercent}</th>
+                      <tr className="text-center font-bold">
+                        <th className="p-2 border border-slate-300 min-w-[80px] sticky left-0 z-30 bg-slate-200 dark:bg-slate-700" rowSpan={2}>{t.date}</th>
+                        <th className="p-2 border border-slate-300 bg-green-200 dark:bg-green-800" colSpan={16}>Sales</th>
+                        <th className="p-2 border border-slate-300 bg-sky-200 dark:bg-sky-800" colSpan={9}>TC</th>
+                        <th className="p-2 border border-slate-300 bg-purple-200 dark:bg-purple-800" colSpan={4}>TA</th>
+                        <th className="p-2 border border-slate-300 bg-orange-200 dark:bg-orange-800" colSpan={18}>Labor</th>
+                        <th className="p-2 border border-slate-300 bg-pink-200 dark:bg-pink-800" colSpan={15}>Promotion</th>
+                      </tr>
+                      <tr className="bg-slate-100 dark:bg-slate-700 text-center">
+                        {/* Sales columns (15) */}
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-orange-50 dark:bg-orange-950">LY Sales Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-orange-50 dark:bg-orange-950">LY Sales MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-yellow-50 dark:bg-yellow-950">Target (Incentive)</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-yellow-50 dark:bg-yellow-950">Target MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-orange-50 dark:bg-orange-950">Forecast NBO</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-green-50 dark:bg-green-950">Actual Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-green-50 dark:bg-green-950">Actual MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px]">Variance Target</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px]">Variance MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-blue-50 dark:bg-blue-950">Delivery Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px]">Delivery MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Achieve %</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Var Forecast</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Comp Sales %</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-red-50 dark:bg-red-950">Waste (฿)</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">Waste %</th>
+                        {/* TC columns (9) */}
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-orange-50 dark:bg-orange-950">LY TC Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-orange-50 dark:bg-orange-950">LY TC MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-yellow-50 dark:bg-yellow-950">Target TC</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-yellow-50 dark:bg-yellow-950">Target TC MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-green-50 dark:bg-green-950">Actual TC</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-green-50 dark:bg-green-950">Actual TC MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Var Target</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Var LY</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Comp TC %</th>
+                        {/* TA columns (4) */}
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-orange-50 dark:bg-orange-950">LY TA</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-yellow-50 dark:bg-yellow-950">Target TA</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-green-50 dark:bg-green-950">Actual TA</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">Var Target vs Actual</th>
+                        {/* Labor columns (18) */}
+                        <th className="p-1 border border-slate-300 min-w-[70px] bg-blue-50 dark:bg-blue-950">Rec Hr</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px] bg-blue-50 dark:bg-blue-950">Roster</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">MTD Roster</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-gray-200 dark:bg-gray-600 text-gray-500">Duty</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px] bg-blue-50 dark:bg-blue-950">Actual Hr</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-blue-50 dark:bg-blue-950">OT Hr</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px] font-bold">Sum Hr</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px]">MTD Hr</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">Var Hr</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-indigo-50 dark:bg-indigo-950">Duty Cost</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-indigo-50 dark:bg-indigo-950">PT+OT Cost</th>
+                        <th className="p-1 border border-slate-300 min-w-[70px] bg-indigo-50 dark:bg-indigo-950">Fixed</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px] bg-indigo-50 dark:bg-indigo-950">คนปิด</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px] bg-indigo-50 dark:bg-indigo-950">ค่าปิดร้าน</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px]">COL (฿)</th>
+                        <th className="p-1 border border-slate-300 min-w-[80px]">MTD COL</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">COL %</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">TCMH</th>
+                        {/* Promotion columns (15) */}
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-pink-50 dark:bg-pink-950">VM Set</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">VM MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">VM %TC</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-pink-50 dark:bg-pink-950">UP Size</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">UP MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">UP %TC</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-pink-50 dark:bg-pink-950">Add Cheese</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">Ch MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">Ch %TC</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-pink-50 dark:bg-pink-950">Other 1</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">Oth1 MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">Oth1 %TC</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-pink-50 dark:bg-pink-950">Other 2</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">Oth2 MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[60px]">Oth2 %TC</th>
                       </tr>
                     </thead>
                     <tbody>
                       {tableData.map((row) => (
                         <tr key={row.date} className="hover:bg-muted/30 text-center">
                           <td className="p-1 border border-slate-300 font-medium bg-slate-50 dark:bg-slate-800 sticky left-0 z-10">{row.displayDate}</td>
-                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={dailyTargets[row.date] || ""} onChange={(e) => handleTargetChange(row.date, e.target.value)} data-testid={`input-target-${row.date}`} />
-                          </td>
-                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualSales', e.target.value)} data-testid={`input-sales-${row.date}`} />
-                          </td>
-                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualSalesMtd)}</td>
+                          {/* Sales section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearSales', e.target.value)} data-testid={`input-ly-sales-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.lastYearSalesMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={dailyTargets[row.date] || ""} onChange={(e) => handleTargetChange(row.date, e.target.value)} data-testid={`input-target-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.targetSalesMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.forecastSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'forecastSales', e.target.value)} data-testid={`input-forecast-${row.date}`} />
                           </td>
-                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.forecastMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualSales', e.target.value)} data-testid={`input-sales-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualSalesMtd)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceFromTargetDaily >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceFromTargetDaily)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceFromTargetMtd >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceFromTargetMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.salesDelivery || ""} onChange={(e) => handleSalesDataChange(row.date, 'salesDelivery', e.target.value)} data-testid={`input-delivery-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.salesDeliveryMtd)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.achievePercent >= 100 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.achievePercent)}%</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceFromForecast >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceFromForecast)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.compSalesPercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.compSalesPercent)}%</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualTc', e.target.value)} data-testid={`input-tc-${row.date}`} />
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-red-700 dark:text-red-300" value={editableSalesData[row.date]?.wasteDaily || ""} onChange={(e) => handleSalesDataChange(row.date, 'wasteDaily', e.target.value)} data-testid={`input-waste-${row.date}`} />
                           </td>
-                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualTcMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.wastePercent)}%</td>
+                          {/* TC section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearTc', e.target.value)} data-testid={`input-ly-tc-${row.date}`} />
                           </td>
@@ -1108,13 +1234,21 @@ export default function SalesSettingsPage() {
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTc', e.target.value)} data-testid={`input-target-tc-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.targetTcMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualTc', e.target.value)} data-testid={`input-tc-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualTcMtd)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceTcFromTarget >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceTcFromTarget)}</td>
+                          <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceTcFromLy >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceTcFromLy)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.compTcPercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.compTcPercent)}%</td>
+                          {/* TA section */}
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.lastYearTa)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTa || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTa', e.target.value)} data-testid={`input-target-ta-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.actualTa)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceTa >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.varianceTa)}</td>
+                          {/* Labor section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
                             <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.recommendHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'recommendHours', e.target.value)} data-testid={`input-rec-hours-${row.date}`} />
                           </td>
@@ -1141,37 +1275,71 @@ export default function SalesSettingsPage() {
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.mtdCol)}</td>
                           <td className={`p-1 border border-slate-300 text-right pr-2 font-medium ${row.colPercent <= 12 ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300" : row.colPercent <= 14 ? "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300" : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"}`}>{fmtDec(row.colPercent)}%</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.tcmh)}</td>
+                          {/* Promotion section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-red-700 dark:text-red-300" value={editableSalesData[row.date]?.wasteDaily || ""} onChange={(e) => handleSalesDataChange(row.date, 'wasteDaily', e.target.value)} data-testid={`input-waste-${row.date}`} />
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.vMealCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'vMealCount', e.target.value)} data-testid={`input-vmeal-${row.date}`} />
                           </td>
-                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.wasteMtd)}</td>
-                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.wastePercent)}%</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.vMealMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.vMealPct)}%</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.upSizeCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'upSizeCount', e.target.value)} data-testid={`input-upsize-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.upSizeMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.upSizePct)}%</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.addCheeseCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'addCheeseCount', e.target.value)} data-testid={`input-addcheese-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.addCheeseMtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.addCheesePct)}%</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.promotionOther1Qty || ""} onChange={(e) => handleSalesDataChange(row.date, 'promotionOther1Qty', e.target.value)} data-testid={`input-promo-other1-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.promoOther1Mtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.promoOther1Pct)}%</td>
+                          <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
+                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.promotionOther2Qty || ""} onChange={(e) => handleSalesDataChange(row.date, 'promotionOther2Qty', e.target.value)} data-testid={`input-promo-other2-${row.date}`} />
+                          </td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.promoOther2Mtd)}</td>
+                          <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.promoOther2Pct)}%</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="sticky bottom-0 z-20 font-bold bg-slate-200 dark:bg-slate-700">
                       <tr>
                         <td className="p-2 border border-slate-300 sticky left-0 bg-slate-200 dark:bg-slate-700">Total</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetSales)}</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSales)}</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSalesMtd)}</td>
+                        {/* Sales totals */}
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearSales)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearSalesMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetSales)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetSalesMtd)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.forecastSales)}</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.forecastMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSales)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualSalesMtd)}</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTc)}</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.salesDelivery)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.salesDeliveryMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.wasteDaily)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        {/* TC totals */}
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearTc)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.lastYearTcMtd)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetTc)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.targetTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTc)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.actualTcMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        {/* TA totals */}
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
-                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        {/* Labor totals */}
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.recommendHours)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.rosterCommit)}</td>
                         <td className="p-2 border border-slate-300 text-right">{totals && fmtDec(totals.mtdRoster)}</td>
@@ -1190,8 +1358,21 @@ export default function SalesSettingsPage() {
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.wasteDaily)}</td>
-                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.wasteMtd)}</td>
+                        {/* Promotion totals */}
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.vMealCount)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.vMealMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.upSizeCount)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.upSizeMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.addCheeseCount)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.addCheeseMtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.promotionOther1Qty)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.promoOther1Mtd)}</td>
+                        <td className="p-2 border border-slate-300 text-center">-</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.promotionOther2Qty)}</td>
+                        <td className="p-2 border border-slate-300 text-right">{totals && fmtNum(totals.promoOther2Mtd)}</td>
                         <td className="p-2 border border-slate-300 text-center">-</td>
                       </tr>
                     </tfoot>

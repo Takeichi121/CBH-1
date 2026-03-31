@@ -4678,6 +4678,12 @@ ${pageContext}` : ''}`;
           lastYearTc: String(data.lastYearTc ?? "0"),
           targetTc: String(data.targetTc ?? "0"),
           targetTa: String(data.targetTa ?? "0"),
+          salesDelivery: String(data.salesDelivery ?? "0"),
+          vMealCount: String(data.vMealCount ?? "0"),
+          upSizeCount: String(data.upSizeCount ?? "0"),
+          addCheeseCount: String(data.addCheeseCount ?? "0"),
+          promotionOther1Qty: String(data.promotionOther1Qty ?? "0"),
+          promotionOther2Qty: String(data.promotionOther2Qty ?? "0"),
         } as any);
       } // <--- [2] FOR LOOP ENDS
 

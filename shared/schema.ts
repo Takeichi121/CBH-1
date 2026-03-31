@@ -258,6 +258,13 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   targetTc: text("target_tc").default("0"),
   targetTa: text("target_ta").default("0"),
 
+  // Sales Delivery
+  salesDelivery: text("sales_delivery").default("0"),
+
+  // Promotion (extra items)
+  promotionOther1Qty: text("promotion_other1_qty").default("0"),
+  promotionOther2Qty: text("promotion_other2_qty").default("0"),
+
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [

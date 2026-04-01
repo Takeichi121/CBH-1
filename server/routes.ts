@@ -4836,11 +4836,16 @@ ${pageContext}` : ''}`;
       "up size": { table: "sales", field: "upSizeCount" },
       "upsize": { table: "sales", field: "upSizeCount" },
       "up sz": { table: "sales", field: "upSizeCount" },
+      "up size set": { table: "sales", field: "upSizeCount" },
 
       // Promotion: Add Cheese (Task #1)
       "add cheese": { table: "sales", field: "addCheeseCount" },
       "cheese": { table: "sales", field: "addCheeseCount" },
       "ch": { table: "sales", field: "addCheeseCount" },
+      "add cheese set": { table: "sales", field: "addCheeseCount" },
+
+      // Value Meal Set aliases (GSI)
+      "value meal set": { table: "sales", field: "vMealCount" },
 
       // Promotion: Other 1 (Task #1)
       "other 1": { table: "sales", field: "promotionOther1Qty" },
@@ -4905,7 +4910,7 @@ ${pageContext}` : ''}`;
       return null;
     }
 
-    // Helper: count how many cells in first N rows match COL_MAP (exact or partial)
+    // Helper: score a worksheet by how many cells in first 5 rows match COL_MAP (exact=2, partial=1)
     function scoreWorksheetFn(ws: ExcelJS.Worksheet): number {
       let score = 0;
       const sortedKeys = Object.keys(COL_MAP).filter(k => k.length >= 5).sort((a, b) => b.length - a.length);
@@ -4978,44 +4983,49 @@ ${pageContext}` : ''}`;
 
       // 2-row header support: check if the row immediately after the date row is also a sub-header
       // (not data) — common in GSI-style sheets where row 2 = group names, row 3 = column names
+      // sortedColMapEntries is also used by the mapping loop below
+      const sortedColMapEntries = Object.entries(COL_MAP).sort((a, b) => b[0].length - a[0].length);
+      function matchHeader(h: string): { table: string; field: string } | undefined {
+        const norm = normalizeHeader(h || "");
+        if (!norm) return undefined;
+        if (COL_MAP[norm]) return COL_MAP[norm];
+        for (const [key, val] of sortedColMapEntries) {
+          if (key.length >= 5 && norm.includes(key)) return val;
+        }
+        return undefined;
+      }
+
       let dataStartRow = headerRowNumber + 1;
-      {
-        const sortedKeys = Object.keys(COL_MAP).filter(k => k.length >= 5).sort((a, b) => b.length - a.length);
-        const subHeaderRow = worksheet.getRow(headerRowNumber + 1);
-        const subHeaders: (string | undefined)[] = [];
-        subHeaderRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          subHeaders[colNumber - 1] = cell.text || (cell.value != null ? String(cell.value) : "");
-        });
+      const nextRow = worksheet.getRow(headerRowNumber + 1);
+      const nextHeaders: string[] = [];
+      nextRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const val = cell.text || (cell.value != null ? String(cell.value) : "");
+        nextHeaders[colNumber - 1] = val;
+      });
 
-        const findMatch = (norm: string) => {
-          if (!norm) return null;
-          if (COL_MAP[norm]) return COL_MAP[norm];
-          for (const key of sortedKeys) {
-            if (norm.includes(key)) return COL_MAP[key];
+      // Check if the next row looks like a second header row (has COL_MAP matches and is NOT all data/dates)
+      const nextRowMatches = nextHeaders.filter(h => matchHeader(h) !== undefined).length;
+      const isSecondHeaderRow = nextRowMatches >= 2;
+
+      if (isSecondHeaderRow) {
+        // Merge: for each column, use nextRow header if it gives a non-date COL_MAP match,
+        // otherwise keep the upper (date) row header to preserve date columns.
+        const mergedHeaders = [...headers];
+        for (let i = 0; i < Math.max(headers.length, nextHeaders.length); i++) {
+          const lowerH = nextHeaders[i] || "";
+          const lowerMatch = matchHeader(lowerH);
+          const upperH = headers[i] || "";
+          const upperMatch = matchHeader(upperH);
+          if (lowerMatch && lowerMatch.field !== "reportDate") {
+            mergedHeaders[i] = lowerH;
+          } else if (upperMatch) {
+            mergedHeaders[i] = upperH;
+          } else {
+            mergedHeaders[i] = lowerH || upperH;
           }
-          return null;
-        };
-
-        let subMatchCount = 0;
-        for (let i = 0; i < subHeaders.length; i++) {
-          const subNorm = normalizeHeader(subHeaders[i] || "");
-          if (findMatch(subNorm)) subMatchCount++;
         }
-
-        if (subMatchCount > 0) {
-          // Merge: for each column, prefer sub-header if it has a COL_MAP match and main header does not
-          const maxLen = Math.max(headers.length, subHeaders.length);
-          for (let i = 0; i < maxLen; i++) {
-            const mainNorm = normalizeHeader(headers[i] || "");
-            const subNorm = normalizeHeader(subHeaders[i] || "");
-            const mainMapped = findMatch(mainNorm);
-            const subMapped = findMatch(subNorm);
-            if (!mainMapped && subMapped && subHeaders[i]) {
-              headers[i] = subHeaders[i]!;
-            }
-          }
-          dataStartRow = headerRowNumber + 2; // skip both header rows
-        }
+        headers = mergedHeaders;
+        dataStartRow = headerRowNumber + 2; // skip both header rows
       }
 
       // Map headers to fields
@@ -5030,8 +5040,7 @@ ${pageContext}` : ''}`;
         // Fallback: contains matching, longest keys first to prefer specific matches
         // (key must be >= 5 chars to avoid false positives like "ac", "ly", "ot")
         if (!mapped) {
-          const sortedEntries = Object.entries(COL_MAP).sort((a, b) => b[0].length - a[0].length);
-          for (const [key, val] of sortedEntries) {
+          for (const [key, val] of sortedColMapEntries) {
             if (key.length >= 5 && norm.includes(key)) {
               mapped = val;
               break;

@@ -4493,7 +4493,10 @@ ${pageContext}` : ''}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const mtdTargetSum = await storage.getMtdTargetSum(year, month, upToDate);
+      // Use store's default daily target as fallback for days without explicit per-day entries
+      const storeSettings = await storage.getStoreSettings();
+      const defaultPerDay = parseFloat(storeSettings?.dailyTarget || "0");
+      const mtdTargetSum = await storage.getMtdTargetSum(year, month, upToDate, defaultPerDay);
       res.json({ ok: true, mtdTargetSum });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get MTD target sum" });

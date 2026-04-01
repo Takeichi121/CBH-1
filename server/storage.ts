@@ -110,7 +110,7 @@ export interface IStorage {
   getDailyTarget(date: string): Promise<DailyTarget | undefined>;
   upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget>;
   bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void>;
-  getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number>;
+  getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay?: number): Promise<number>;
 
   // Weekly Sales Reports
   getWeeklySalesReport(weekStartDate: string): Promise<WeeklySalesReport | undefined>;
@@ -601,11 +601,21 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getMtdTargetSum(year: number, month: number, upToDate: string): Promise<number> {
+  async getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay: number = 0): Promise<number> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const targets = await db.select().from(dailyTargets)
       .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate)));
-    return targets.reduce((sum, t) => sum + parseFloat(t.targetSales || "0"), 0);
+    // Build date → targetSales map
+    const targetMap = new Map<string, number>();
+    targets.forEach(t => targetMap.set(t.targetDate, parseFloat(t.targetSales || "0")));
+    // Enumerate every date in range; use defaultPerDay for dates with no explicit entry
+    let sum = 0;
+    const end = new Date(upToDate + "T00:00:00Z");
+    for (let d = new Date(startDate + "T00:00:00Z"); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const dateStr = d.toISOString().slice(0, 10);
+      sum += targetMap.has(dateStr) ? targetMap.get(dateStr)! : defaultPerDay;
+    }
+    return sum;
   }
 
   // Waste Targets

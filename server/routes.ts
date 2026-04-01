@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
-import { setSocketIO } from "./socket";
+import { setSocketIO, getSocketIO } from "./socket";
 // ── LINE Messaging API ──────────────────────────────
 async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -33,10 +33,9 @@ function buildDailyReportText(report: any, _storeName: string) {
   const parts = (report.reportDate || "").split("-");
   const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : report.reportDate;
 
-  const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-  const pct = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";
-  const fmtVariance = (n: number) => (n >= 0 ? "+" : "") + fmt(Math.round(n));
-  const fmtMtdVariance = (n: number) => (n >= 0 ? "+฿" : "-฿") + Math.abs(Math.round(n)).toLocaleString("en-US");
+  const fmt   = (n: number) => Math.round(n).toLocaleString("en-US");
+  const pctI  = (a: number, b: number) => b > 0 ? Math.round((a / b) * 100) : 0;          // integer %
+  const pct2  = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";     // 2-decimal %
 
   const actual   = Number(report.actualSales) || 0;
   const target   = Number(report.dailyTarget) || 0;
@@ -46,119 +45,66 @@ function buildDailyReportText(report: any, _storeName: string) {
   const mtdTc    = Number(report.mtdTc) || 0;
   const dailyTa  = tc > 0 ? Math.round(actual / tc) : 0;
   const mtdTa    = mtdTc > 0 ? Math.round(mtdAct / mtdTc) : 0;
-  const dailyVariance = actual - target;
-  const mtdVariance   = mtdAct - mtdTgt;
 
-  const dineIn      = Number(report.dineIn) || 0;
-  const dineInTc    = Number(report.dineInTc) || 0;
-  const takeAway    = Number(report.takeAway) || 0;
-  const takeAwayTc  = Number(report.takeAwayTc) || 0;
-  const inStore     = dineIn + takeAway;
-  const grab        = Number(report.grabfood) || 0;
-  const lineman     = Number(report.lineman) || 0;
-  const shopee      = Number(report.shopee) || 0;
-  const bkapp       = Number(report.bkapp) || 0;
-  const robin       = Number(report.robin) || 0;
-  const gokoo       = Number(report.gokoo) || 0;
-  const delivery    = grab + lineman + shopee + bkapp + robin + gokoo;
+  const dineIn   = Number(report.dineIn) || 0;
+  const takeAway = Number(report.takeAway) || 0;
+  const grab     = Number(report.grabfood) || 0;
+  const lineman  = Number(report.lineman) || 0;
+  const shopee   = Number(report.shopee) || 0;
+  const bkapp    = Number(report.bkapp) || 0;
+  const robin    = Number(report.robin) || 0;
+  const gokoo    = Number(report.gokoo) || 0;
+  const delivery = grab + lineman + shopee + bkapp + robin + gokoo;
 
-  const osat        = report.osat || "0";
-  const surveyCount = report.surveyCount || "0";
-  const voidAmount  = Number(report.voidAmount) || 0;
-  const voidCount   = report.voidCount || "0";
+  const osat     = report.osat || "0";
+  const hours    = Number(report.actualHours) || 0;
+  const sosD     = Number(report.sosDaily) || 0;
+  const sosMd    = Number(report.sosMtd) || 0;
 
-  const addCheeseN   = Number(report.addCheeseCount) || 0;
-  const vMealN       = Number(report.vMealCount) || 0;
-  const upSizeN      = Number(report.upSizeCount) || 0;
-
-  const colPct      = Number(report.colPercent) || 0;
-  const hours       = Number(report.actualHours) || 0;
-  const otHours     = Number(report.otHours) || 0;
-  const tcmh        = Number(report.tcmh) || 0;
-  const sosD        = Number(report.sosDaily) || 0;
-  const sosMd       = Number(report.sosMtd) || 0;
-
-  const wasteRawD   = Number(report.wasteRawDaily) || 0;
-  const wasteMealD  = Number(report.wasteMealDaily) || 0;
-  const totalWasteD = wasteRawD + wasteMealD;
-  const wasteRawMtd = Number(report.wasteRawMtd) || 0;
+  const wasteRawD    = Number(report.wasteRawDaily) || 0;
+  const wasteMealD   = Number(report.wasteMealDaily) || 0;
+  const totalWasteD  = wasteRawD + wasteMealD;
+  const wasteRawMtd  = Number(report.wasteRawMtd) || 0;
   const wasteMealMtd = Number(report.wasteMealMtd) || 0;
   const totalWasteMtd = wasteRawMtd + wasteMealMtd;
 
-  const managerRosterDate = (() => {
-    const d = report.managerRosterDate || report.reportDate || "";
-    const p = d.split("-");
-    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
-  })();
   const managerRoster = report.managerRosterText || "";
   const staffRoster   = report.staffRosterText || "";
   const reportBy      = report.reportBy || "";
 
-  const deliveryLines: string[] = [
-    `🛵 Grab: ${fmt(grab)}/${pct(grab, actual)}%`,
-    `🛵 LINE MAN: ${fmt(lineman)}/${pct(lineman, actual)}%`,
-    `🛵 Shoppee Food: ${fmt(shopee)}/${pct(shopee, actual)}%`,
-    `🛵 BK App/Web: ${fmt(bkapp)}/${pct(bkapp, actual)}%`,
-  ];
-  if (robin > 0) deliveryLines.push(`🛵 Robin: ${fmt(robin)}/${pct(robin, actual)}%`);
-  if (gokoo > 0) deliveryLines.push(`🛵 GoKOO: ${fmt(gokoo)}/${pct(gokoo, actual)}%`);
-
   const lines: string[] = [
-    `💎 Daily Sales Report 💎`,
-    `Grand Diamond`,
-    `Date: ${dateStr}`,
-    `========================`,
+    `🗓️${dateStr}`,
     ``,
-    `📊 Daily`,
-    `💰 TG: ${fmt(target)}`,
-    `💵 AC: ${fmt(actual)}`,
-    `📉 Variance: ${fmtVariance(dailyVariance)}`,
-    `👥 TC: ${fmt(tc)}`,
-    `🧾 TA: ${fmt(dailyTa)}`,
+    `💵Daily Sales=${fmt(actual)}/${fmt(target)}`,
+    `MTD Sale=${fmt(mtdAct)}/${fmt(mtdTgt)}`,
     ``,
-    `📈 MTD`,
-    `💰 MTD TG: ${fmt(mtdTgt)}`,
-    `💵 MTD AC: ${fmt(mtdAct)}`,
-    `📉 Variance: ${fmtMtdVariance(mtdVariance)}`,
-    `👥 MTD TC: ${fmt(mtdTc)}`,
-    `🧾 MTD TA: ${fmt(mtdTa)}`,
+    `👨‍👩‍👧‍👦Daily TC =${fmt(tc)}`,
+    `👨‍👩‍👧‍👦MTD TC =${fmt(mtdTc)}`,
+    `👑 Daily TA =${dailyTa}`,
+    `👑 MTD TA =${mtdTa}`,
     ``,
-    `🏪 Restaurant`,
-    `🍽️ Dine In: ${fmt(dineIn)}/${pct(dineIn, actual)}%`,
-    `TC: ${dineInTc}`,
-    `🥡 Take Away: ${fmt(takeAway)}/${pct(takeAway, actual)}%`,
-    `TC: ${takeAwayTc}`,
-    `🏪 In Store Total: ${fmt(inStore)}/${pct(inStore, actual)}%`,
+    `🍽 Dinein :${fmt(dineIn)}/${pctI(dineIn, actual)}%`,
+    `🛍Takeaway :${fmt(takeAway)}/${pctI(takeAway, actual)}%`,
+    `🛵Delivery :${fmt(delivery)}/${pctI(delivery, actual)}%`,
     ``,
-    `🛵 DELIVERY`,
-    ...deliveryLines,
-    `📦 Delivery Total: ${fmt(delivery)}/${pct(delivery, actual)}%`,
+    `🛵Grab Food :${fmt(grab)}/${pctI(grab, actual)}%`,
+    `🛵Line Man :${fmt(lineman)}/${pctI(lineman, actual)}%`,
+    `🛵Shopeefood:${fmt(shopee)}/${pctI(shopee, actual)}%`,
+    `🛵BK App:${fmt(bkapp)}/${pctI(bkapp, actual)}%`,
+    `🛵Robin:${fmt(robin)}/${pctI(robin, actual)}%`,
+    `🛵GoKOO:${fmt(gokoo)}/${pctI(gokoo, actual)}%`,
     ``,
-    `========================`,
+    `🏃🏻‍♀️SOS =${sosD.toFixed(2)}`,
+    `🏃🏻MTD SOS =${sosMd.toFixed(2)}`,
     ``,
-    `⭐ OSAT: ${osat}`,
-    `📋 Survey count: ${surveyCount}`,
-    `❌ Void: -฿${voidAmount.toFixed(2)}`,
-    `📋 count: ${voidCount} Bill`,
-    `🧀 Add Cheese: ${addCheeseN}/${pct(addCheeseN, tc)}%`,
-    `🍔 V-meal: ${vMealN}/${pct(vMealN, tc)}%`,
-    `🥤 Up Size: ${upSizeN}/${pct(upSizeN, tc)}%`,
+    `🗑WasteDaily :${totalWasteD.toFixed(2)}/${pct2(totalWasteD, actual)}%`,
+    `🗑WasteMTD:${totalWasteMtd.toFixed(2)}/${pct2(totalWasteMtd, mtdAct)}%`,
     ``,
-    `========================`,
-    `👷 COL: ${colPct.toFixed(2)}%`,
-    `⏰ Hour: ${hours.toFixed(2)}`,
-    `🕒 OT: ${otHours > 0 ? otHours.toFixed(2) : ""}`,
-    `📊 TCMH = ${tcmh.toFixed(2)}`,
-    `🚀 SOS Daily: ${sosD}`,
-    `📈 SOS MTD: ${sosMd}`,
-    `========================`,
-    `🗑️ WASTE`,
-    `Daily: ${totalWasteD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${pct(totalWasteD, actual)}%`,
-    `MTD: ${totalWasteMtd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${pct(totalWasteMtd, mtdAct)}%`,
-    `========================`,
+    `🕰Work Hour :${hours % 1 === 0 ? hours.toFixed(1) : hours.toFixed(2)}`,
     ``,
-    `📅 Manager Roster`,
-    `Date: ${managerRosterDate}`,
+    `📝OSAT:${osat}`,
+    ``,
+    `👨‍💼 Roster Manager`,
     managerRoster,
     ``,
     `👥 Roster Staff`,
@@ -730,6 +676,8 @@ borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste,
 - webFetch: ดึงเนื้อหาจาก URL เฉพาะ — ใช้ต่อจาก webSearch เพื่อดูรายละเอียด
 - recallNotes: เรียกดู notes ที่เคยบันทึกไว้ — ใช้เพื่อจำ preferences หรือข้อมูลสำคัญของ${userAddress}
 - exportSalesReport: สร้างไฟล์ Excel รายงานยอดขาย (พร้อม COL%, TCMH, TA) และคืน download URL — รองรับทั้งรายเดือน (year+month) และรายสัปดาห์/ช่วงวัน (startDate+endDate) — ใช้เมื่อ${userAddress}ต้องการ export หรือดาวน์โหลดข้อมูล
+- readStaffChat: อ่านข้อความล่าสุดใน Staff Chat (group messages)
+- getWeeklySalesReport: ดูรายงานยอดขายรายสัปดาห์ (sale, TC, TA, waste, SOS, OSAT, COL, delivery)
 
 [หลักการทำงานแบบ Chain-of-Thought Agent]
 1. **วิเคราะห์คำถาม**: อ่านคำถามให้เข้าใจ — ต้องการข้อมูลอะไร จากที่ไหน ในช่วงเวลาใด
@@ -754,8 +702,13 @@ ${userAddress}เป็น Manager ดังนั้นคุณมีสิท
 - deleteShift: ลบกะของพนักงาน
 - bulkSaveShifts: จองกะหลายคน/หลายวันพร้อมกัน
 - saveDailyLabor: บันทึกชั่วโมงแรงงานรายวัน (actual + OT)
-- approveManagerRequest: อนุมัติคำขอพนักงาน
+- approveManagerRequest: อนุมัติคำขอพนักงาน (ลา/หยุด)
 - rejectManagerRequest: ปฏิเสธคำขอพนักงาน
+- approveSwapRequest: อนุมัติคำขอสลับกะระหว่างพนักงาน
+- rejectSwapRequest: ปฏิเสธคำขอสลับกะ
+- sendStaffChatMessage: ส่งข้อความใน Staff Chat ในนาม Chann AI
+- createAnnouncement: สร้างประกาศใหม่ให้พนักงานเห็นในแอป
+- deleteAnnouncement: ลบประกาศ
 - rememberNote: บันทึก note ระยะยาว เพื่อจำข้อมูลสำคัญข้ามการสนทนา
 - deleteNote: ลบ note ที่บันทึกไว้
 - sendLineNotification: ส่งข้อความหรือรายงานไปยัง LINE group
@@ -778,8 +731,13 @@ ${userAddress}เป็น Admin ดังนั้นคุณมีสิท�
 - deleteShift: ลบกะของพนักงาน
 - bulkSaveShifts: จองกะหลายคน/หลายวันพร้อมกัน
 - saveDailyLabor: บันทึกชั่วโมงแรงงานรายวัน (actual + OT)
-- approveManagerRequest: อนุมัติคำขอพนักงาน
+- approveManagerRequest: อนุมัติคำขอพนักงาน (ลา/หยุด)
 - rejectManagerRequest: ปฏิเสธคำขอพนักงาน
+- approveSwapRequest: อนุมัติคำขอสลับกะ
+- rejectSwapRequest: ปฏิเสธคำขอสลับกะ
+- sendStaffChatMessage: ส่งข้อความใน Staff Chat ในนาม Chann AI
+- createAnnouncement: สร้างประกาศใหม่
+- deleteAnnouncement: ลบประกาศ
 - rememberNote: บันทึก note ระยะยาว เพื่อจำข้อมูลสำคัญข้ามการสนทนา
 - deleteNote: ลบ note ที่บันทึกไว้
 
@@ -1196,6 +1154,35 @@ ${pageContext}` : ''}`;
                 month: { type: "number", description: "Month for monthly export (1-12)" },
                 startDate: { type: "string", description: "Start date for custom range export (YYYY-MM-DD). Use with endDate for weekly or any specific range." },
                 endDate: { type: "string", description: "End date for custom range export (YYYY-MM-DD). Use with startDate for weekly or any specific range." }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "readStaffChat",
+            description: "Read recent group messages from Staff Chat. Returns the latest messages sent in the staff group chat.",
+            parameters: {
+              type: "object",
+              properties: {
+                limit: { type: "number", description: "Number of messages to return (default: 30, max: 100)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getWeeklySalesReport",
+            description: "Get weekly sales report(s). Returns summary data for the week including sales, TC, TA, waste, SOS, OSAT, COL, and delivery metrics.",
+            parameters: {
+              type: "object",
+              properties: {
+                weekStartDate: { type: "string", description: "Week start date (YYYY-MM-DD) to get a specific week. Leave blank to get recent weeks." },
+                limit: { type: "number", description: "Number of recent weekly reports to return (default: 4)" }
               },
               required: []
             }
@@ -1782,10 +1769,89 @@ ${pageContext}` : ''}`;
               required: ["id"]
             }
           }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "sendStaffChatMessage",
+            description: "Send a message to the Staff Chat group on behalf of Chann AI. Use when asked to notify the team, share info, or post a message in staff chat.",
+            parameters: {
+              type: "object",
+              properties: {
+                message: { type: "string", description: "Message text to send to the staff chat group" }
+              },
+              required: ["message"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "createAnnouncement",
+            description: "Create a new announcement that will be shown to staff in the app.",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Announcement title (English)" },
+                titleTh: { type: "string", description: "Announcement title (Thai, optional)" },
+                content: { type: "string", description: "Announcement body content (English)" },
+                contentTh: { type: "string", description: "Announcement body content (Thai, optional)" },
+                priority: { type: "string", enum: ["low", "normal", "high", "urgent"], description: "Priority level (default: normal)" },
+                targetAudience: { type: "string", enum: ["all", "staff", "manager", "admin"], description: "Who should see this (default: all)" },
+                isPinned: { type: "number", enum: [0, 1], description: "1 = pin to top, 0 = normal (default: 0)" },
+                expiresAt: { type: "string", description: "Expiry date in YYYY-MM-DD format (optional)" }
+              },
+              required: ["title", "content"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "deleteAnnouncement",
+            description: "Delete an announcement by its ID.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "The ID of the announcement to delete" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "approveSwapRequest",
+            description: "Approve a shift swap request between two staff members.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "The ID of the swap request to approve" },
+                note: { type: "string", description: "Optional note for the approval" }
+              },
+              required: ["id"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "rejectSwapRequest",
+            description: "Reject a shift swap request.",
+            parameters: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "The ID of the swap request to reject" },
+                note: { type: "string", description: "Reason for rejection (recommended)" }
+              },
+              required: ["id"]
+            }
+          }
         }
       ];
 
-      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote", "sendLineNotification"]);
+      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote", "sendLineNotification", "sendStaffChatMessage", "createAnnouncement", "deleteAnnouncement", "approveSwapRequest", "rejectSwapRequest"]);
       const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "applyCodeEdit", "createSourceFile", "executeShellCommand", "getCodeProposals"]);
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
@@ -2634,6 +2700,102 @@ ${pageContext}` : ''}`;
             await storage.updateManagerRequestStatus(args.id, "rejected", username, args.reason || "ปฏิเสธโดย Chann");
             toolActions.push(`❌ ปฏิเสธคำขอ #${args.id} ของ ${mgReq2.requestedBy} (${mgReq2.requestType})`);
             return JSON.stringify({ ok: true, message: `ปฏิเสธคำขอ #${args.id} สำเร็จ` });
+          }
+
+          case "readStaffChat": {
+            const chatLimit = Math.min(Number(args.limit) || 30, 100);
+            const chatMsgs = await db.select().from(staffChatMessages)
+              .where(isNull(staffChatMessages.recipientUsername))
+              .orderBy(desc(staffChatMessages.id))
+              .limit(chatLimit);
+            const msgs = chatMsgs.reverse().map((m: any) => ({
+              id: m.id,
+              sender: m.senderDisplayName || m.senderUsername,
+              text: m.text,
+              type: m.messageType,
+              at: m.createdAt,
+            }));
+            return JSON.stringify({ ok: true, count: msgs.length, messages: msgs });
+          }
+
+          case "sendStaffChatMessage": {
+            if (!args.message) return JSON.stringify({ error: "ต้องระบุ message" });
+            const now2 = nowIso();
+            await db.insert(staffChatMessages).values({
+              senderUsername: "chann",
+              senderDisplayName: "Chann AI 🤖",
+              recipientUsername: null,
+              text: args.message,
+              messageType: "text",
+              isRead: 0,
+              createdAt: now2,
+            });
+            const ioForChat = getSocketIO();
+            if (ioForChat) {
+              ioForChat.emit("staff_chat_message", {
+                senderUsername: "chann",
+                senderDisplayName: "Chann AI 🤖",
+                recipientUsername: null,
+                text: args.message,
+                messageType: "text",
+                isRead: 0,
+                createdAt: now2,
+              });
+            }
+            toolActions.push(`💬 ส่งข้อความใน Staff Chat: "${args.message.slice(0, 50)}..."`);
+            return JSON.stringify({ ok: true, message: "ส่งข้อความใน Staff Chat สำเร็จ" });
+          }
+
+          case "getWeeklySalesReport": {
+            if (args.weekStartDate) {
+              const wr = await storage.getWeeklySalesReport(args.weekStartDate);
+              return JSON.stringify({ ok: true, report: wr || null });
+            }
+            const wrs = await storage.getWeeklySalesReports(args.limit || 4);
+            return JSON.stringify({ ok: true, count: wrs.length, reports: wrs });
+          }
+
+          case "createAnnouncement": {
+            if (!args.title || !args.content) return JSON.stringify({ error: "ต้องระบุ title และ content" });
+            const nowStr = nowIso();
+            const newAnn = await storage.createAnnouncement({
+              title: args.title,
+              titleTh: args.titleTh || null,
+              content: args.content,
+              contentTh: args.contentTh || null,
+              priority: args.priority || "normal",
+              targetAudience: args.targetAudience || "all",
+              isPinned: args.isPinned || 0,
+              expiresAt: args.expiresAt || null,
+              createdAt: nowStr,
+              createdBy: username,
+              updatedAt: nowStr,
+            });
+            toolActions.push(`📢 สร้างประกาศใหม่: "${args.title}"`);
+            return JSON.stringify({ ok: true, announcement: newAnn, message: `สร้างประกาศ "${args.title}" สำเร็จ` });
+          }
+
+          case "deleteAnnouncement": {
+            if (!args.id) return JSON.stringify({ error: "ต้องระบุ id" });
+            await storage.deleteAnnouncement(args.id);
+            toolActions.push(`🗑️ ลบประกาศ ID ${args.id}`);
+            return JSON.stringify({ ok: true, message: `ลบประกาศ ID ${args.id} สำเร็จ` });
+          }
+
+          case "approveSwapRequest": {
+            const swapReq = await storage.getSwapRequestById(args.id);
+            if (!swapReq) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
+            await storage.updateSwapRequestStatus(args.id, "approved", username, args.note || "อนุมัติโดย Chann");
+            toolActions.push(`✅ อนุมัติ swap request #${args.id} (${swapReq.requesterUsername} ↔ ${swapReq.targetUsername || "?"})`);
+            return JSON.stringify({ ok: true, message: `อนุมัติ swap request #${args.id} สำเร็จ` });
+          }
+
+          case "rejectSwapRequest": {
+            const swapReq2 = await storage.getSwapRequestById(args.id);
+            if (!swapReq2) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
+            await storage.updateSwapRequestStatus(args.id, "rejected", username, args.note || "ปฏิเสธโดย Chann");
+            toolActions.push(`❌ ปฏิเสธ swap request #${args.id}`);
+            return JSON.stringify({ ok: true, message: `ปฏิเสธ swap request #${args.id} สำเร็จ` });
           }
 
           case "webSearch": {

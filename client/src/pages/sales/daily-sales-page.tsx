@@ -733,6 +733,13 @@ export default function DailySalesPage() {
     loadDropdownOptions();
   }, []);
 
+  // Sync rosterCommit from laborSettings when it loads (handles race with date effect)
+  useEffect(() => {
+    if (!reportSavedInDb) {
+      form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
+    }
+  }, [laborSettings.rosterHours]);
+
   // Update staffRosterText when entries change
   useEffect(() => {
     const text = staffRosterEntries

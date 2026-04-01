@@ -218,6 +218,7 @@ const formSchema = z.object({
   staffRosterText: z.string().default(""),
   managerPhongsathon: z.string().default(""),
   managerNuttarika: z.string().default(""),
+  managerSuppawit: z.string().default(""),
   managerBoonyisa: z.string().default(""),
   managerChanon: z.string().default(""),
   managerWashiraphan: z.string().default(""),
@@ -226,6 +227,7 @@ const formSchema = z.object({
 const MANAGER_NAMES = [
   { key: "managerPhongsathon", name: "Phongsathon" },
   { key: "managerNuttarika", name: "Nuttarika" },
+  { key: "managerSuppawit", name: "Suppawit" },
   { key: "managerBoonyisa", name: "Boonyisa" },
   { key: "managerChanon", name: "Chanon" },
   { key: "managerWashiraphan", name: "Washiraphan" },
@@ -415,6 +417,7 @@ export default function DailySalesPage() {
       staffRosterText: "",
       managerPhongsathon: "",
       managerNuttarika: "",
+      managerSuppawit: "",
       managerBoonyisa: "",
       managerChanon: "",
       managerWashiraphan: "",
@@ -466,6 +469,7 @@ export default function DailySalesPage() {
       wasteMtdTotal: _wmt2,
       managerPhongsathon: _mp2,
       managerNuttarika: _mn2,
+      managerSuppawit: _ms2,
       managerBoonyisa: _mb2,
       managerChanon: _mc2,
       managerWashiraphan: _mw2,
@@ -610,6 +614,7 @@ export default function DailySalesPage() {
             [
               "managerPhongsathon",
               "managerNuttarika",
+              "managerSuppawit",
               "managerBoonyisa",
               "managerChanon",
               "managerWashiraphan",
@@ -745,6 +750,7 @@ export default function DailySalesPage() {
   // Update managerRosterText when manager shifts change
   const managerPhongsathon = form.watch("managerPhongsathon");
   const managerNuttarika = form.watch("managerNuttarika");
+  const managerSuppawit = form.watch("managerSuppawit");
   const managerBoonyisa = form.watch("managerBoonyisa");
   const managerChanon = form.watch("managerChanon");
   const managerWashiraphan = form.watch("managerWashiraphan");
@@ -753,6 +759,7 @@ export default function DailySalesPage() {
     const lines = [];
     if (managerPhongsathon) lines.push(`Phongsathon: ${managerPhongsathon}`);
     if (managerNuttarika) lines.push(`Nuttarika: ${managerNuttarika}`);
+    if (managerSuppawit) lines.push(`Suppawit: ${managerSuppawit}`);
     if (managerBoonyisa) lines.push(`Boonyisa: ${managerBoonyisa}`);
     if (managerChanon) lines.push(`Chanon: ${managerChanon}`);
     if (managerWashiraphan) lines.push(`Washiraphan: ${managerWashiraphan}`);
@@ -760,6 +767,7 @@ export default function DailySalesPage() {
   }, [
     managerPhongsathon,
     managerNuttarika,
+    managerSuppawit,
     managerBoonyisa,
     managerChanon,
     managerWashiraphan,
@@ -869,6 +877,7 @@ export default function DailySalesPage() {
           cashDeposit: "0",
           managerPhongsathon: "",
           managerNuttarika: "",
+          managerSuppawit: "",
           managerBoonyisa: "",
           managerChanon: "",
           managerWashiraphan: "",
@@ -965,6 +974,7 @@ export default function DailySalesPage() {
                   [
                     "managerPhongsathon",
                     "managerNuttarika",
+                    "managerSuppawit",
                     "managerBoonyisa",
                     "managerChanon",
                     "managerWashiraphan",

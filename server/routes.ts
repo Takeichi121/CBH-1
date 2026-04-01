@@ -4378,6 +4378,19 @@ ${pageContext}` : ''}`;
       const existing = report?.reportDate ? await storage.getDailySalesReportByDate(report.reportDate) : null;
       const isNewReport = !existing;
       const saved = await storage.upsertDailySalesReportByDate(report);
+
+      // Sync dailyTarget → daily_targets table so Overview table stays in sync with the form
+      if (report?.reportDate) {
+        const formTarget = parseFloat(report.dailyTarget || "0");
+        const formTargetTc = parseInt(report.targetTc || "0");
+        if (formTarget > 0 || formTargetTc > 0) {
+          const payload: any = { targetDate: report.reportDate };
+          if (formTarget > 0) payload.targetSales = String(formTarget);
+          if (formTargetTc > 0) payload.targetTc = String(formTargetTc);
+          await storage.upsertDailyTarget(payload).catch(() => {});
+        }
+      }
+
       if (isNewReport) {
         (async () => {
           try {

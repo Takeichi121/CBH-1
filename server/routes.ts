@@ -4905,12 +4905,46 @@ ${pageContext}` : ''}`;
       return null;
     }
 
+    // Helper: count how many cells in first N rows match COL_MAP (exact or partial)
+    function scoreWorksheetFn(ws: ExcelJS.Worksheet): number {
+      let score = 0;
+      const sortedKeys = Object.keys(COL_MAP).filter(k => k.length >= 5).sort((a, b) => b.length - a.length);
+      for (let rowNum = 1; rowNum <= 5; rowNum++) {
+        const r = ws.getRow(rowNum);
+        r.eachCell({ includeEmpty: false }, (cell) => {
+          const norm = normalizeHeader(cell.text || (cell.value != null ? String(cell.value) : ""));
+          if (!norm) return;
+          if (COL_MAP[norm]) { score += 2; return; }
+          for (const key of sortedKeys) {
+            if (norm.includes(key)) { score += 1; return; }
+          }
+        });
+      }
+      return score;
+    }
+
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(req.file.buffer);
 
-      const worksheet = workbook.worksheets[0];
-      if (!worksheet) return res.json({ ok: false, message: "No worksheet found" });
+      const allSheets = workbook.worksheets;
+      if (!allSheets.length) return res.json({ ok: false, message: "No worksheet found" });
+
+      // Smart worksheet selection:
+      // 1. Prefer sheet whose name contains "sales management" (case-insensitive)
+      // 2. Otherwise pick sheet with highest COL_MAP match score
+      // 3. Fall back to first sheet
+      let worksheet = allSheets[0];
+      const namedSheet = allSheets.find(ws => ws.name.toLowerCase().includes("sales management"));
+      if (namedSheet) {
+        worksheet = namedSheet;
+      } else if (allSheets.length > 1) {
+        let bestScore = scoreWorksheetFn(allSheets[0]);
+        for (let si = 1; si < allSheets.length; si++) {
+          const s = scoreWorksheetFn(allSheets[si]);
+          if (s > bestScore) { bestScore = s; worksheet = allSheets[si]; }
+        }
+      }
 
       // Scan rows 1–5 to find the header row (the first row containing a recognized date column)
       let headerRowNumber = -1;
@@ -4940,6 +4974,48 @@ ${pageContext}` : ''}`;
           ok: false,
           message: "ไม่พบคอลัมน์วันที่ (Date/วันที่) ในไฟล์ Excel กรุณาตรวจสอบหัวคอลัมน์ (ค้นหาใน 5 แถวแรกแล้ว)"
         });
+      }
+
+      // 2-row header support: check if the row immediately after the date row is also a sub-header
+      // (not data) — common in GSI-style sheets where row 2 = group names, row 3 = column names
+      let dataStartRow = headerRowNumber + 1;
+      {
+        const sortedKeys = Object.keys(COL_MAP).filter(k => k.length >= 5).sort((a, b) => b.length - a.length);
+        const subHeaderRow = worksheet.getRow(headerRowNumber + 1);
+        const subHeaders: (string | undefined)[] = [];
+        subHeaderRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          subHeaders[colNumber - 1] = cell.text || (cell.value != null ? String(cell.value) : "");
+        });
+
+        const findMatch = (norm: string) => {
+          if (!norm) return null;
+          if (COL_MAP[norm]) return COL_MAP[norm];
+          for (const key of sortedKeys) {
+            if (norm.includes(key)) return COL_MAP[key];
+          }
+          return null;
+        };
+
+        let subMatchCount = 0;
+        for (let i = 0; i < subHeaders.length; i++) {
+          const subNorm = normalizeHeader(subHeaders[i] || "");
+          if (findMatch(subNorm)) subMatchCount++;
+        }
+
+        if (subMatchCount > 0) {
+          // Merge: for each column, prefer sub-header if it has a COL_MAP match and main header does not
+          const maxLen = Math.max(headers.length, subHeaders.length);
+          for (let i = 0; i < maxLen; i++) {
+            const mainNorm = normalizeHeader(headers[i] || "");
+            const subNorm = normalizeHeader(subHeaders[i] || "");
+            const mainMapped = findMatch(mainNorm);
+            const subMapped = findMatch(subNorm);
+            if (!mainMapped && subMapped && subHeaders[i]) {
+              headers[i] = subHeaders[i]!;
+            }
+          }
+          dataStartRow = headerRowNumber + 2; // skip both header rows
+        }
       }
 
       // Map headers to fields
@@ -4984,7 +5060,7 @@ ${pageContext}` : ''}`;
         .filter(m => m.field === "reportDate")
         .map(m => m.colIdx);
 
-      const firstDataRow = worksheet.getRow(headerRowNumber + 1);
+      const firstDataRow = worksheet.getRow(dataStartRow);
       let validatedDateColIdx = -1;
       for (const candidateIdx of allDateColIdxs) {
         const testCell = firstDataRow.getCell(candidateIdx + 1);
@@ -4999,13 +5075,13 @@ ${pageContext}` : ''}`;
         dateColIdx = validatedDateColIdx;
       }
 
-      // Parse rows (skip all rows up to and including the header row)
+      // Parse rows (skip all header rows, start from dataStartRow)
       const previewRows: any[] = [];
       const importRows: any[] = [];
       let skippedCount = 0;
 
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber <= headerRowNumber) return; // skip header row(s)
+        if (rowNumber < dataStartRow) return; // skip header row(s)
 
         const cellVal = (colIdx: number) => {
           const cell = row.getCell(colIdx + 1);

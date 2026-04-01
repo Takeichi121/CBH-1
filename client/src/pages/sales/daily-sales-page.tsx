@@ -1004,6 +1004,7 @@ export default function DailySalesPage() {
         } else {
           setReportSavedInDb(false);
           setIsEditMode(true);
+          form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
         }
 
         // Load daily target for this specific date

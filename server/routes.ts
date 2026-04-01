@@ -4724,6 +4724,8 @@ ${pageContext}` : ''}`;
       "วันที่": { table: "both", field: "reportDate" },
       "day": { table: "both", field: "reportDate" },
       "วัน": { table: "both", field: "reportDate" },
+      "month": { table: "both", field: "reportDate" },
+      "เดือน": { table: "both", field: "reportDate" },
 
       // Target columns
       "target": { table: "targets", field: "targetSales" },
@@ -4857,6 +4859,23 @@ ${pageContext}` : ''}`;
       if (m1) {
         return `${m1[3]}-${m1[2].padStart(2, "0")}-${m1[1].padStart(2, "0")}`;
       }
+      // D-Mon or D-Mon-YY or D-Mon-YYYY (e.g. "1-Apr", "2-Apr-26", "1-Apr-2026")
+      const MONTH_ABBR: Record<string, string> = {
+        jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+        jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+      };
+      const m2 = s.match(/^(\d{1,2})[\-\/](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)(?:[\-\/](\d{2,4}))?$/i);
+      if (m2) {
+        const dd = m2[1].padStart(2, "0");
+        const mm = MONTH_ABBR[m2[2].toLowerCase()];
+        let yyyy: string;
+        if (m2[3]) {
+          yyyy = m2[3].length === 2 ? `20${m2[3]}` : m2[3];
+        } else {
+          yyyy = String(new Date().getFullYear());
+        }
+        return `${yyyy}-${mm}-${dd}`;
+      }
       // Excel numeric date (days since 1900-01-01)
       const num = Number(s);
       if (!isNaN(num) && num > 20000 && num < 80000) {
@@ -4891,7 +4910,7 @@ ${pageContext}` : ''}`;
         // Check if this row contains a date-like column
         const hasDateCol = candidateHeaders.some(h => {
           const norm = normalizeHeader(h || "");
-          return norm === "date" || norm === "วันที่" || norm === "day" || norm === "วัน";
+          return norm === "date" || norm === "วันที่" || norm === "day" || norm === "วัน" || norm === "month" || norm === "เดือน";
         });
         if (hasDateCol) {
           headerRowNumber = rowNum;
@@ -4914,9 +4933,21 @@ ${pageContext}` : ''}`;
       for (let i = 0; i < headers.length; i++) {
         const norm = normalizeHeader(headers[i]);
         if (!norm) continue;
-        const mapped = COL_MAP[norm];
+        // Exact match first
+        let mapped = COL_MAP[norm];
+        // Fallback: contains matching, longest keys first to prefer specific matches
+        // (key must be >= 5 chars to avoid false positives like "ac", "ly", "ot")
+        if (!mapped) {
+          const sortedEntries = Object.entries(COL_MAP).sort((a, b) => b[0].length - a[0].length);
+          for (const [key, val] of sortedEntries) {
+            if (key.length >= 5 && norm.includes(key)) {
+              mapped = val;
+              break;
+            }
+          }
+        }
         if (mapped) {
-          if (mapped.field === "reportDate") {
+          if (mapped.field === "reportDate" && dateColIdx === -1) {
             dateColIdx = i;
           }
           mapping.push({ colIdx: i, header: headers[i], table: mapped.table, field: mapped.field });
@@ -4929,6 +4960,27 @@ ${pageContext}` : ''}`;
           ok: false,
           message: "ไม่พบคอลัมน์วันที่ (Date/วันที่) ในไฟล์ Excel กรุณาตรวจสอบหัวคอลัมน์"
         });
+      }
+
+      // Validate that the detected date column actually produces parseable dates.
+      // If not (e.g. "Day" column has "Wed", "Thu"), try other reportDate-mapped columns.
+      const allDateColIdxs = mapping
+        .filter(m => m.field === "reportDate")
+        .map(m => m.colIdx);
+
+      const firstDataRow = worksheet.getRow(headerRowNumber + 1);
+      let validatedDateColIdx = -1;
+      for (const candidateIdx of allDateColIdxs) {
+        const testCell = firstDataRow.getCell(candidateIdx + 1);
+        let testVal: any = testCell.value;
+        if (typeof testVal === "object" && testVal !== null && "result" in testVal) testVal = (testVal as any).result;
+        if (parseExcelDate(testVal) !== null) {
+          validatedDateColIdx = candidateIdx;
+          break;
+        }
+      }
+      if (validatedDateColIdx !== -1) {
+        dateColIdx = validatedDateColIdx;
       }
 
       // Parse rows (skip all rows up to and including the header row)

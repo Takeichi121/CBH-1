@@ -140,8 +140,8 @@ export function OnboardingTour() {
   const isFirst = currentStep === 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="container-onboarding">
-      <Card className="w-[400px] max-w-[90vw] shadow-2xl border-2 border-primary/20 animate-in fade-in zoom-in duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="container-onboarding" onClick={skipTour}>
+      <Card className="w-[400px] max-w-[90vw] shadow-2xl border-2 border-primary/20 animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
         <CardContent className="p-0">
           <div className="relative">
             <Button

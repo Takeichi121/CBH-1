@@ -572,7 +572,16 @@ export default function SalesSettingsPage() {
               targetTc: (parseFloat(report.targetTc) || 0).toString(),
               targetTa: (parseFloat(report.targetTa) || 0).toString(),
               closeShiftCount: (parseInt(report.closeShiftCount) || 0).toString(),
-              salesDelivery: (parseFloat(report.salesDelivery) || 0).toString(),
+              salesDelivery: (() => {
+                const channelSum =
+                  (parseFloat(report.grabfood) || 0) +
+                  (parseFloat(report.lineman) || 0) +
+                  (parseFloat(report.shopee) || 0) +
+                  (parseFloat(report.bkapp) || 0) +
+                  (parseFloat(report.robin) || 0) +
+                  (parseFloat(report.gokoo) || 0);
+                return (channelSum > 0 ? channelSum : (parseFloat(report.salesDelivery) || 0)).toString();
+              })(),
               vMealCount: (parseFloat(report.vMealCount) || 0).toString(),
               upSizeCount: (parseFloat(report.upSizeCount) || 0).toString(),
               addCheeseCount: (parseFloat(report.addCheeseCount) || 0).toString(),

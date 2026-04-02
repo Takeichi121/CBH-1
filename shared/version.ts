@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.4.0";
+export const APP_VERSION = "2.4.1";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.4.1",
+    date: "2026-04-02",
+    label: "bugfix",
+    changes: [
+      "แก้ไข Delivery Daily ในตาราง Settings — คำนวณจากผลรวม Grab + LINE MAN + Shopee + BK App + Robin + GoKOO อัตโนมัติ",
+      "Fallback: ถ้าไม่มีข้อมูล channel ใดเลย ระบบจะอ่านค่า salesDelivery เดิมแทน",
+    ],
+  },
   {
     version: "2.4.0",
     date: "2026-04-02",

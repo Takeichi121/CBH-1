@@ -205,6 +205,11 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.4.1 (April 2, 2026) — Delivery Daily Auto-sum Fix
+
+- **Delivery Daily column**: ตอนนี้คำนวณจากผลรวม Grab + LINE MAN + Shopee + BK App + Robin + GoKOO อัตโนมัติ
+- **Fallback**: ถ้าไม่มีข้อมูล channel ใดเลย อ่านค่า salesDelivery เดิมแทน
+
 ### Version 2.4.0 (April 2, 2026) — 7 Chann Tools + LINE Report Format
 
 - **Chann AI: 7 New Tools** — readStaffChat, getWeeklySalesReport (ทุก role); sendStaffChatMessage, createAnnouncement, deleteAnnouncement, approveSwapRequest, rejectSwapRequest (Manager+)

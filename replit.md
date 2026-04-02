@@ -205,6 +205,22 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.4.0 (April 2, 2026) — 7 Chann Tools + LINE Report Format
+
+- **Chann AI: 7 New Tools** — readStaffChat, getWeeklySalesReport (ทุก role); sendStaffChatMessage, createAnnouncement, deleteAnnouncement, approveSwapRequest, rejectSwapRequest (Manager+)
+- **Staff Chat via Chann**: Manager สั่ง Chann ส่งข้อความใน Staff Chat group ได้จริง (real-time via Socket.IO)
+- **LINE Report Format**: อัพเดท format ใหม่ตรง template — compact, emoji icons, ทุกช่องทาง Delivery (Dine In/Grab/LINE MAN/Shopee/BK App/Robin/GoKOO), integer %, Waste 2 decimal
+
+### Version 2.3.2 (April 2, 2026) — Excel Import GSI Sales Management Sheet
+
+- **Smart Sheet Selection**: ค้นหาชีทอัตโนมัติ (ชื่อ "sales management" → score COL_MAP → fallback first sheet)
+- **2-Row Header Merge**: รองรับ header 2 แถวใน GSI sheet — merge ค่าจากแถวบน+ล่างก่อน map คอลัมน์
+
+### Version 2.3.1 (April 2, 2026) — Excel Import Grand Diamond Fix
+
+- **Excel Import Grand Diamond**: แก้ไขสูตรคำนวณ TC/TA ใน import flow
+- **Labor Settings Auto-fill**: ค่า default โหลดจาก DB อัตโนมัติเมื่อเปิดหน้า Settings
+
 ### Version 2.2.0 (March 22, 2026) — Notification Events + Version History
 - **Notification Bell**: กระดิ่งแจ้งเตือนใน header พร้อม badge, unread dot, icon ตาม event type
 - **Event Notifications**: แจ้งเตือนอัตโนมัติทุก event: Manager Request (create/approve/reject), Borrow Transaction, Roster Import, Daily Report (first submit)

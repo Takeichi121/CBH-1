@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.3.0";
+export const APP_VERSION = "2.4.0";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,35 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.4.0",
+    date: "2026-04-02",
+    label: "feature",
+    changes: [
+      "Chann AI: เพิ่ม 7 tools ใหม่ — readStaffChat, getWeeklySalesReport, sendStaffChatMessage, createAnnouncement, deleteAnnouncement, approveSwapRequest, rejectSwapRequest",
+      "Chann AI: Manager สามารถให้ Chann ส่งข้อความใน Staff Chat กลุ่มได้โดยตรง (real-time via Socket.IO)",
+      "Chann AI: สร้าง/ลบประกาศ และอนุมัติ/ปฏิเสธคำขอสลับกะผ่าน Chann ได้เลย",
+      "LINE Report: อัพเดท format ใหม่ตรงตาม template — วันที่, Net Sales, MTD, TC/TA, ช่องทาง Delivery (พร้อม Robin/GoKOO), SOS, Waste, Work Hour, OSAT, Roster",
+    ],
+  },
+  {
+    version: "2.3.2",
+    date: "2026-04-02",
+    label: "bugfix",
+    changes: [
+      "แก้ไข Excel Import (GSI Sales Management Sheet) — ระบบค้นหาชีทที่ใช่อัตโนมัติ (ชื่อ 'sales management' หรือ score COL_MAP สูงสุด)",
+      "รองรับ header 2 แถว ใน GSI sheet — ผสานค่าจาก header แถวบน+ล่างก่อน map คอลัมน์",
+    ],
+  },
+  {
+    version: "2.3.1",
+    date: "2026-04-02",
+    label: "bugfix",
+    changes: [
+      "แก้ไข Excel Import Grand Diamond — สูตรคำนวณ TC/TA ใน import flow ใช้ค่าที่ถูกต้อง",
+      "Labor Settings: ค่า default โหลดจาก DB อัตโนมัติเมื่อเปิดหน้า Settings",
+    ],
+  },
   {
     version: "2.3.0",
     date: "2026-03-24",

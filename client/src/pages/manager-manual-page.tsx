@@ -6,7 +6,7 @@ import {
   ChevronLeft, Users, BarChart3, ClipboardList, Settings, Package,
   Lock, Unlock, Calendar, LayoutDashboard, ArrowRight, CheckCircle,
   XCircle, AlertTriangle, Lightbulb, Send, Upload, Shield, BookOpen,
-  UserCheck, Clock, TrendingUp, FileSpreadsheet, MessageSquare,
+  UserCheck, Clock, TrendingUp, FileSpreadsheet, MessageSquare, Bot,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { APP_VERSION } from "@shared/version";
@@ -493,8 +493,49 @@ export default function ManagerManualPage() {
         <TipBox>กดปุ่ม "ล็อก" บน Banner เขียวได้ตลอดเวลาถ้าต้องการล็อกก่อนครบ 30 นาที</TipBox>
       </SectionCard>
 
-      {/* ===== 10. ปัญหาที่พบบ่อย ===== */}
-      <SectionCard icon={MessageSquare} title="10. ปัญหาที่พบบ่อย (FAQ)" color="blue">
+      {/* ===== 10. Chann AI ===== */}
+      <SectionCard icon={Bot} title="10. Chann AI Assistant" color="purple">
+        <p className="text-sm text-muted-foreground">Chann คือ AI ประจำสาขาที่เชื่อมต่อกับระบบทุกส่วน — ถามข้อมูล สั่งบันทึก หรือดำเนินการต่างๆ ผ่านภาษาธรรมชาติได้เลย</p>
+
+        <div className="grid grid-cols-2 gap-3 my-3">
+          <div className="rounded-xl border bg-blue-50 dark:bg-blue-950 p-3">
+            <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-2">📖 อ่านข้อมูล (ทุก Role)</p>
+            <ul className="text-[10px] text-muted-foreground space-y-0.5 list-disc pl-3">
+              <li>ยอดขาย, MTD, รายสัปดาห์</li>
+              <li>ตารางงาน, คำขอพนักงาน</li>
+              <li>Waste, Labor, Borrow</li>
+              <li>Staff Chat (ล่าสุด)</li>
+              <li>ประกาศ, คำขอสลับกะ</li>
+            </ul>
+          </div>
+          <div className="rounded-xl border bg-green-50 dark:bg-green-950 p-3">
+            <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-2">✏️ บันทึกข้อมูล (Manager+)</p>
+            <ul className="text-[10px] text-muted-foreground space-y-0.5 list-disc pl-3">
+              <li>บันทึกยอดขาย, กะ, Labor</li>
+              <li>ส่งข้อความใน Staff Chat</li>
+              <li>สร้าง / ลบประกาศ</li>
+              <li>อนุมัติ / ปฏิเสธสลับกะ</li>
+              <li>ส่ง LINE Report</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-lg border bg-purple-50 dark:bg-purple-950 text-sm my-2">
+          <p className="font-semibold text-purple-700 dark:text-purple-300 mb-1 text-xs">ตัวอย่างคำสั่งที่ Manager ใช้ได้</p>
+          <ul className="text-muted-foreground text-[10px] space-y-1 list-disc pl-4">
+            <li>"ส่งข้อความใน Staff Chat ว่า 'วันนี้ประชุม 14:00'"</li>
+            <li>"สร้างประกาศ: ปิดสาขาวันที่ 5 เม.ย."</li>
+            <li>"อนุมัติคำขอสลับกะของ พนักงาน A"</li>
+            <li>"สรุปยอดขายรายสัปดาห์ให้หน่อย"</li>
+            <li>"อ่านข้อความ Staff Chat 10 ข้อความล่าสุด"</li>
+          </ul>
+        </div>
+
+        <TipBox>Chann มีมากกว่า 63 tools — เชื่อมต่อกับทุกระบบในแอป ถามได้ทุกเรื่อง</TipBox>
+      </SectionCard>
+
+      {/* ===== 11. ปัญหาที่พบบ่อย ===== */}
+      <SectionCard icon={MessageSquare} title="11. ปัญหาที่พบบ่อย (FAQ)" color="blue">
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-xs">
             <thead>
@@ -525,7 +566,7 @@ export default function ManagerManualPage() {
 
       {/* Footer */}
       <div className="text-center text-xs text-muted-foreground pt-2 pb-4 border-t border-border">
-        <p>คู่มือผู้จัดการ — Grand Diamond · v{APP_VERSION}</p>
+        <p>คู่มือผู้จัดการ — CBH (Chann Back House) · v{APP_VERSION}</p>
         <p className="mt-1">ติดต่อ Admin เพื่อแก้ไขหรือเพิ่มเติมข้อมูล</p>
       </div>
     </div>

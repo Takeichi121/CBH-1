@@ -383,19 +383,20 @@ export default function HandbookPage() {
             <p className="text-sm font-medium">Chann AI Assistant</p>
             <div className="space-y-2">
               <Step n={1}>กดปุ่ม <strong>Chann</strong> (ไอคอน AI ล่างขวา) เพื่อเปิด chat กับ AI</Step>
-              <Step n={2}>ถามเกี่ยวกับ: ยอดขาย, ตารางงาน, คู่มือ, คำแนะนำต่างๆ</Step>
-              <Step n={3}>Chann สามารถ <strong>ดึงข้อมูลจากระบบให้ได้จริง</strong> เช่น "ยอดขายวันนี้เท่าไหร่?", "ใครทำงานพรุ่งนี้?"</Step>
+              <Step n={2}>ถามเกี่ยวกับ: ยอดขาย, ตารางงาน, Staff Chat, คู่มือ, คำแนะนำต่างๆ</Step>
+              <Step n={3}>Chann สามารถ <strong>ดึงข้อมูลจากระบบได้จริง</strong> เช่น "ยอดขายวันนี้เท่าไหร่?", "ใครทำงานพรุ่งนี้?", "อ่าน Staff Chat ล่าสุดให้หน่อย"</Step>
             </div>
             <div className="p-3 rounded-lg border bg-purple-50 dark:bg-purple-950 text-sm">
-              <p className="font-semibold text-purple-700 dark:text-purple-300 mb-1">ตัวอย่างคำถามที่ถาม Chann ได้</p>
+              <p className="font-semibold text-purple-700 dark:text-purple-300 mb-1">ตัวอย่างคำถามที่ถาม Chann ได้ (63+ tools)</p>
               <ul className="text-muted-foreground text-xs space-y-1 list-disc pl-4">
                 <li>"ยอดขาย MTD เดือนนี้เท่าไหร่?"</li>
                 <li>"ใครอยู่กะดึกพรุ่งนี้?"</li>
                 <li>"Waste สัปดาห์นี้สูงแค่ไหน?"</li>
-                <li>"ช่วยสรุปรายงานยอดขายสัปดาห์นี้"</li>
+                <li>"สรุปรายงานยอดขายรายสัปดาห์"</li>
+                <li>"อ่านข้อความ Staff Chat ล่าสุด 10 ข้อความ"</li>
               </ul>
             </div>
-            <Note>Manager ขึ้นไปสามารถให้ Chann <strong>บันทึกข้อมูล</strong> ในระบบได้ด้วย เช่น "บันทึกยอดขายวันนี้ 50,000 บาท"</Note>
+            <Note>Manager ขึ้นไปสามารถให้ Chann <strong>บันทึกข้อมูล / ส่งข้อความ / สร้างประกาศ / อนุมัติคำขอ</strong> ในระบบได้ด้วย</Note>
           </AccordionContent>
         </AccordionItem>
 
@@ -418,7 +419,7 @@ export default function HandbookPage() {
             <div className="space-y-2">
               <Step n={1}>กรอกข้อมูลใน Daily Sales ให้ครบ</Step>
               <Step n={2}>กด <strong>"ส่ง Daily Report ไป LINE"</strong> (ปุ่มสีเขียวบนหน้า Daily Sales)</Step>
-              <Step n={3}>รายงานที่ส่งประกอบด้วย: Date, Net Sales, TC, TA, Delivery แต่ละช่องทาง, Waste, Work Hour, OSAT, Survey Count, Roster Manager/Staff</Step>
+              <Step n={3}>รายงานที่ส่งประกอบด้วย: Date, Net Sales/MTD, TC/TA, ช่องทาง Delivery ทั้งหมด (Dine In, Grab, LINE MAN, Shopee, BK App, Robin, GoKOO), SOS, Waste, Work Hour, OSAT, Roster Manager/Staff</Step>
             </div>
             <Note>หากปุ่มไม่ปรากฏ ตรวจสอบว่าได้ตั้งค่า LINE Token แล้วหรือยัง</Note>
           </AccordionContent>

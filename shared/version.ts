@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.4.1";
+export const APP_VERSION = "2.4.2";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.4.2",
+    date: "2026-04-02",
+    label: "improvement",
+    changes: [
+      "LINE Report: อัพเดท format ใหม่ — header 💎, Daily/MTD section, Restaurant (Dine In/Take Away + TC), DELIVERY, OSAT/Survey/Void/AddCheese/V-meal/UpSize, COL/Hour/OT/TCMH/SOS, WASTE, Roster (ถัดไป +1 วัน)",
+      "Roster date ในรายงาน LINE ใช้วันถัดจากวันที่รายงาน (เพื่อแสดงตารางงานของวันพรุ่งนี้)",
+      "Robin/GoKOO แสดงใน DELIVERY เฉพาะเมื่อมียอดขาย (> 0)",
+    ],
+  },
   {
     version: "2.4.1",
     date: "2026-04-02",

@@ -29,13 +29,23 @@ function lineRow(label: string, value: string, valueColor = "#333333") {
   };
 }
 
-function buildDailyReportText(report: any, _storeName: string) {
+function buildDailyReportText(report: any, storeName: string) {
   const parts = (report.reportDate || "").split("-");
   const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : report.reportDate;
 
-  const fmt   = (n: number) => Math.round(n).toLocaleString("en-US");
-  const pctI  = (a: number, b: number) => b > 0 ? Math.round((a / b) * 100) : 0;          // integer %
-  const pct2  = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";     // 2-decimal %
+  // Compute next-day date for roster
+  let rosterDateStr = dateStr;
+  if (parts.length === 3) {
+    const d = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
+    d.setDate(d.getDate() + 1);
+    const rp = d.toISOString().split("T")[0].split("-");
+    rosterDateStr = `${rp[2]}/${rp[1]}/${rp[0]}`;
+  }
+
+  const fmt  = (n: number) => Math.round(n).toLocaleString("en-US");
+  const pct2 = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(2) : "0.00";
+  const fmtSos = (v: number) => v % 1 === 0 ? v.toFixed(0) : v.toFixed(2);
+  const signedFmt = (n: number) => n >= 0 ? `+${fmt(n)}` : `-${fmt(Math.abs(n))}`;
 
   const actual   = Number(report.actualSales) || 0;
   const target   = Number(report.dailyTarget) || 0;
@@ -46,8 +56,11 @@ function buildDailyReportText(report: any, _storeName: string) {
   const dailyTa  = tc > 0 ? Math.round(actual / tc) : 0;
   const mtdTa    = mtdTc > 0 ? Math.round(mtdAct / mtdTc) : 0;
 
-  const dineIn   = Number(report.dineIn) || 0;
-  const takeAway = Number(report.takeAway) || 0;
+  const dineIn      = Number(report.dineIn) || 0;
+  const dineInTc    = Number(report.dineInTc) || 0;
+  const takeAway    = Number(report.takeAway) || 0;
+  const takeAwayTc  = Number(report.takeAwayTc) || 0;
+  const inStoreTotal = dineIn + takeAway;
   const grab     = Number(report.grabfood) || 0;
   const lineman  = Number(report.lineman) || 0;
   const shopee   = Number(report.shopee) || 0;
@@ -56,8 +69,18 @@ function buildDailyReportText(report: any, _storeName: string) {
   const gokoo    = Number(report.gokoo) || 0;
   const delivery = grab + lineman + shopee + bkapp + robin + gokoo;
 
-  const osat     = report.osat || "0";
+  const osat        = report.osat || "0";
+  const surveyCount = Number(report.surveyCount) || 0;
+  const voidAmount  = Math.abs(Number(report.voidAmount) || 0);
+  const voidCount   = Number(report.voidCount) || 0;
+  const addCheese   = Number(report.addCheeseCount) || 0;
+  const vMeal       = Number(report.vMealCount) || 0;
+  const upSize      = Number(report.upSizeCount) || 0;
+
   const hours    = Number(report.actualHours) || 0;
+  const otHours  = Number(report.otHours) || 0;
+  const colPct   = Number(report.colPercent) || 0;
+  const tcmh     = (hours + otHours) > 0 ? (tc / (hours + otHours)).toFixed(2) : "0.00";
   const sosD     = Number(report.sosDaily) || 0;
   const sosMd    = Number(report.sosMtd) || 0;
 
@@ -71,40 +94,73 @@ function buildDailyReportText(report: any, _storeName: string) {
   const managerRoster = report.managerRosterText || "";
   const staffRoster   = report.staffRosterText || "";
   const reportBy      = report.reportBy || "";
+  const sep = "========================";
+
+  const deliveryLines: string[] = [
+    `🛵 Grab: ${fmt(grab)}/${pct2(grab, actual)}%`,
+    `🛵 LINE MAN: ${fmt(lineman)}/${pct2(lineman, actual)}%`,
+    `🛵 Shoppee Food: ${fmt(shopee)}/${pct2(shopee, actual)}%`,
+    `🛵 BK App/Web: ${fmt(bkapp)}/${pct2(bkapp, actual)}%`,
+  ];
+  if (robin > 0) deliveryLines.push(`🛵 Robin: ${fmt(robin)}/${pct2(robin, actual)}%`);
+  if (gokoo > 0) deliveryLines.push(`🛵 GoKOO: ${fmt(gokoo)}/${pct2(gokoo, actual)}%`);
+  deliveryLines.push(`📦 Delivery Total: ${fmt(delivery)}/${pct2(delivery, actual)}%`);
 
   const lines: string[] = [
-    `🗓️${dateStr}`,
+    `💎 Daily Sales Report 💎`,
+    storeName || "Grand Diamond",
+    `Date: ${dateStr}`,
+    sep,
     ``,
-    `💵Daily Sales=${fmt(actual)}/${fmt(target)}`,
-    `MTD Sale=${fmt(mtdAct)}/${fmt(mtdTgt)}`,
+    `📊 Daily`,
+    `💰 TG: ${fmt(target)}`,
+    `💵 AC: ${fmt(actual)}`,
+    `📉 Variance: ${signedFmt(actual - target)}`,
+    `👥 TC: ${fmt(tc)}`,
+    `🧾 TA: ${dailyTa}`,
     ``,
-    `👨‍👩‍👧‍👦Daily TC =${fmt(tc)}`,
-    `👨‍👩‍👧‍👦MTD TC =${fmt(mtdTc)}`,
-    `👑 Daily TA =${dailyTa}`,
-    `👑 MTD TA =${mtdTa}`,
+    `📈 MTD`,
+    `💰 MTD TG: ${fmt(mtdTgt)}`,
+    `💵 MTD AC: ${fmt(mtdAct)}`,
+    `📉 Variance: ${signedFmt(mtdAct - mtdTgt)}`,
+    `👥 MTD TC: ${fmt(mtdTc)}`,
+    `🧾 MTD TA: ${mtdTa}`,
     ``,
-    `🍽 Dinein :${fmt(dineIn)}/${pctI(dineIn, actual)}%`,
-    `🛍Takeaway :${fmt(takeAway)}/${pctI(takeAway, actual)}%`,
-    `🛵Delivery :${fmt(delivery)}/${pctI(delivery, actual)}%`,
+    `🏪 Restaurant`,
+    `🍽️ Dine In: ${fmt(dineIn)}/${pct2(dineIn, actual)}%`,
+    `TC: ${dineInTc}`,
+    `🥡 Take Away: ${fmt(takeAway)}/${pct2(takeAway, actual)}%`,
+    `TC: ${takeAwayTc}`,
+    `🏪 In Store Total: ${fmt(inStoreTotal)}/${pct2(inStoreTotal, actual)}%`,
     ``,
-    `🛵Grab Food :${fmt(grab)}/${pctI(grab, actual)}%`,
-    `🛵Line Man :${fmt(lineman)}/${pctI(lineman, actual)}%`,
-    `🛵Shopeefood:${fmt(shopee)}/${pctI(shopee, actual)}%`,
-    `🛵BK App:${fmt(bkapp)}/${pctI(bkapp, actual)}%`,
-    `🛵Robin:${fmt(robin)}/${pctI(robin, actual)}%`,
-    `🛵GoKOO:${fmt(gokoo)}/${pctI(gokoo, actual)}%`,
+    `🛵 DELIVERY`,
+    ...deliveryLines,
     ``,
-    `🏃🏻‍♀️SOS =${sosD.toFixed(2)}`,
-    `🏃🏻MTD SOS =${sosMd.toFixed(2)}`,
+    sep,
     ``,
-    `🗑WasteDaily :${totalWasteD.toFixed(2)}/${pct2(totalWasteD, actual)}%`,
-    `🗑WasteMTD:${totalWasteMtd.toFixed(2)}/${pct2(totalWasteMtd, mtdAct)}%`,
+    `⭐ OSAT: ${osat}`,
+    `📋 Survey count: ${surveyCount}`,
+    `❌ Void: -฿${voidAmount.toFixed(2)}`,
+    `📋 count: ${voidCount} Bill`,
+    `🧀 Add Cheese: ${addCheese}/${pct2(addCheese, tc)}%`,
+    `🍔 V-meal: ${vMeal}/${pct2(vMeal, tc)}%`,
+    `🥤 Up Size: ${upSize}/${pct2(upSize, tc)}%`,
     ``,
-    `🕰Work Hour :${hours % 1 === 0 ? hours.toFixed(1) : hours.toFixed(2)}`,
+    sep,
+    `👷 COL: ${colPct.toFixed(2)}%`,
+    `⏰ Hour: ${hours.toFixed(2)}`,
+    `🕒 OT: ${otHours.toFixed(2)}`,
+    `📊 TCMH = ${tcmh}`,
+    `🚀 SOS Daily: ${fmtSos(sosD)}`,
+    `📈 SOS MTD: ${fmtSos(sosMd)}`,
+    sep,
+    `🗑️ WASTE`,
+    `Daily: ${totalWasteD.toFixed(2)}/${pct2(totalWasteD, actual)}%`,
+    `MTD: ${totalWasteMtd.toFixed(2)}/${pct2(totalWasteMtd, mtdAct)}%`,
+    sep,
     ``,
-    `📝OSAT:${osat}`,
-    ``,
-    `👨‍💼 Roster Manager`,
+    `📅 Manager Roster`,
+    `Date: ${rosterDateStr}`,
     managerRoster,
     ``,
     `👥 Roster Staff`,

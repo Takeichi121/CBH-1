@@ -205,6 +205,13 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.4.2 (April 2, 2026) — LINE Report Format Overhaul
+
+- **Format ใหม่**: header 💎, Daily/MTD sections, Restaurant (Dine In+TC, Take Away+TC, In Store Total), DELIVERY, OSAT/Survey/Void/AddCheese/V-meal/UpSize, COL/Hour/OT/TCMH/SOS, WASTE
+- **Roster date**: ใช้วันถัดจากวันที่รายงาน (+1 วัน) — แสดงตารางงานพรุ่งนี้
+- **Robin/GoKOO**: แสดงเฉพาะเมื่อมียอดขาย (> 0)
+- **% ทศนิยม 2 ตำแหน่ง**: ทุก channel เช่น 44.02%, 27.47%
+
 ### Version 2.4.1 (April 2, 2026) — Delivery Daily Auto-sum Fix
 
 - **Delivery Daily column**: ตอนนี้คำนวณจากผลรวม Grab + LINE MAN + Shopee + BK App + Robin + GoKOO อัตโนมัติ

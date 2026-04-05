@@ -701,7 +701,7 @@ export default function SettingsPage() {
 
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground pt-6 border-t border-border/50 space-y-2">
-        <p>&copy; 2025 Grand Diamond. Developed by Chanon</p>
+        <p>&copy; 2025 Chann Back House. Developed by Chanon</p>
         <p>Version {APP_VERSION} | Last updated: {CHANGELOG[0]?.date || "N/A"}</p>
         <Link href="/dev-toolbox">
           <Button variant="ghost" size="sm" className="text-muted-foreground/50 hover:text-muted-foreground gap-1" data-testid="button-dev-toolbox">

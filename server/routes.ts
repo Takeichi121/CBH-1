@@ -4516,6 +4516,15 @@ ${pageContext}` : ''}`;
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
+      // Guard note fields: only admin users may set section guide notes on create
+      if (u.role !== "admin" && report) {
+        const NOTE_FIELDS = ["noteDaily", "noteMtd", "noteInStore", "noteDelivery", "notePerformance", "noteAddons"] as const;
+        type NoteField = typeof NOTE_FIELDS[number];
+        for (const field of NOTE_FIELDS) {
+          report[field as NoteField] = null;
+        }
+      }
+
       const created = await storage.createDailySalesReport(report);
       await storage.log("create_sales_report", u.username, `date=${report.reportDate}`);
       res.json({ ok: true, report: created });
@@ -4549,6 +4558,18 @@ ${pageContext}` : ''}`;
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
     try {
+      // Guard note fields: only admin users may change section guide notes
+      if (u.role !== "admin" && report) {
+        const NOTE_FIELDS = ["noteDaily", "noteMtd", "noteInStore", "noteDelivery", "notePerformance", "noteAddons"] as const;
+        type NoteField = typeof NOTE_FIELDS[number];
+        const existing = await storage.getDailySalesReport(id);
+        for (const field of NOTE_FIELDS) {
+          if (field in report) {
+            report[field as NoteField] = existing ? existing[field as NoteField] ?? null : null;
+          }
+        }
+      }
+
       const updated = await storage.updateDailySalesReport(id, report);
       await storage.log("update_sales_report", u.username, `id=${id}`);
       res.json({ ok: true, report: updated });
@@ -4598,6 +4619,19 @@ ${pageContext}` : ''}`;
     try {
       const existing = report?.reportDate ? await storage.getDailySalesReportByDate(report.reportDate) : null;
       const isNewReport = !existing;
+
+      // Guard note fields: only admin users may change section guide notes
+      if (u.role !== "admin" && report) {
+        const NOTE_FIELDS = ["noteDaily", "noteMtd", "noteInStore", "noteDelivery", "notePerformance", "noteAddons"] as const;
+        type NoteField = typeof NOTE_FIELDS[number];
+        for (const field of NOTE_FIELDS) {
+          if (field in report) {
+            // Restore existing note value — non-admin cannot modify notes
+            report[field as NoteField] = existing ? existing[field as NoteField] ?? null : null;
+          }
+        }
+      }
+
       const saved = await storage.upsertDailySalesReportByDate(report);
 
       // Sync dailyTarget → daily_targets table so Overview table stays in sync with the form

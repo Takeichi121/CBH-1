@@ -265,6 +265,14 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   promotionOther1Qty: text("promotion_other1_qty").default("0"),
   promotionOther2Qty: text("promotion_other2_qty").default("0"),
 
+  // Section guide notes (admin-editable)
+  noteDaily: text("note_daily"),
+  noteMtd: text("note_mtd"),
+  noteInStore: text("note_in_store"),
+  noteDelivery: text("note_delivery"),
+  notePerformance: text("note_performance"),
+  noteAddons: text("note_addons"),
+
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [

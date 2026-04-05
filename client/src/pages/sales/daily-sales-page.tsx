@@ -222,6 +222,14 @@ const formSchema = z.object({
   managerBoonyisa: z.string().default(""),
   managerChanon: z.string().default(""),
   managerWashiraphan: z.string().default(""),
+
+  // Section guide notes (admin-editable)
+  noteDaily: z.string().optional().default(""),
+  noteMtd: z.string().optional().default(""),
+  noteInStore: z.string().optional().default(""),
+  noteDelivery: z.string().optional().default(""),
+  notePerformance: z.string().optional().default(""),
+  noteAddons: z.string().optional().default(""),
 });
 
 const MANAGER_NAMES = [
@@ -329,6 +337,37 @@ const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
 
 type FormData = z.infer<typeof formSchema>;
 
+interface SectionNoteProps {
+  value: string;
+  onChange: (v: string) => void;
+  isAdmin: boolean;
+  testId: string;
+}
+
+function SectionNote({ value, onChange, isAdmin, testId }: SectionNoteProps) {
+  if (isAdmin) {
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="เพิ่มคำแนะนำ..."
+        className="ml-2 flex-1 min-w-0 text-xs bg-transparent border-0 border-b border-dashed border-muted-foreground/40 focus:border-muted-foreground/80 focus:outline-none text-muted-foreground placeholder:text-muted-foreground/50 py-0 px-0"
+        data-testid={testId}
+      />
+    );
+  }
+  if (!value) return null;
+  return (
+    <span
+      className="ml-2 text-xs text-muted-foreground italic truncate"
+      data-testid={testId}
+    >
+      {value}
+    </span>
+  );
+}
+
 export default function DailySalesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -352,6 +391,7 @@ export default function DailySalesPage() {
   };
 
   const isManager = user?.role === "manager" || user?.role === "admin" || user?.role === "area";
+  const isAdmin = user?.role === "admin";
   const { isAreaUser, isUnlocked } = useAreaLock();
   const areaLocked = isAreaUser && !isUnlocked;
 
@@ -421,6 +461,13 @@ export default function DailySalesPage() {
       managerBoonyisa: "",
       managerChanon: "",
       managerWashiraphan: "",
+
+      noteDaily: "",
+      noteMtd: "",
+      noteInStore: "",
+      noteDelivery: "",
+      notePerformance: "",
+      noteAddons: "",
     },
   });
 
@@ -891,6 +938,12 @@ export default function DailySalesPage() {
           managerRosterText: "",
           staffRosterText: "",
           workShift: "full",
+          noteDaily: "",
+          noteMtd: "",
+          noteInStore: "",
+          noteDelivery: "",
+          notePerformance: "",
+          noteAddons: "",
         };
         Object.entries(dailyFieldsToReset).forEach(([key, value]) => {
           form.setValue(key as keyof FormData, value);
@@ -968,6 +1021,14 @@ export default function DailySalesPage() {
           if (r.managerRosterDate)
             form.setValue("managerRosterDate", r.managerRosterDate);
           if (r.workShift) form.setValue("workShift", r.workShift);
+
+          // Load section guide notes
+          form.setValue("noteDaily", r.noteDaily || "");
+          form.setValue("noteMtd", r.noteMtd || "");
+          form.setValue("noteInStore", r.noteInStore || "");
+          form.setValue("noteDelivery", r.noteDelivery || "");
+          form.setValue("notePerformance", r.notePerformance || "");
+          form.setValue("noteAddons", r.noteAddons || "");
 
           // Hydrate manager roster dropdowns from saved text
           if (r.managerRosterText) {
@@ -2478,14 +2539,22 @@ ${v.staffRosterText || ""}
                 <fieldset disabled={reportSavedInDb && !isEditMode} className="border-0 p-0 m-0 space-y-6">
                 <div className="bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm md:text-base font-medium">
-                      {t.daily}
-                    </h3>
+                    <div className="flex items-center flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm md:text-base font-medium shrink-0">
+                        {t.daily}
+                      </h3>
+                      <SectionNote
+                        value={form.watch("noteDaily") || ""}
+                        onChange={(v) => form.setValue("noteDaily", v)}
+                        isAdmin={isAdmin}
+                        testId="note-section-daily"
+                      />
+                    </div>
                     <Button
                       type="button"
                       variant="default"
                       size="sm"
-                      className="h-6 text-xs px-2"
+                      className="h-6 text-xs px-2 shrink-0"
                       onClick={() => {
                         const values = form.getValues();
                         if (!values.reportDate || !values.reportBy) {
@@ -2615,13 +2684,21 @@ ${v.staffRosterText || ""}
 
                 <div className="bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm md:text-base font-medium">
-                      {t.mtd}
-                    </h3>
+                    <div className="flex items-center flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm md:text-base font-medium shrink-0">
+                        {t.mtd}
+                      </h3>
+                      <SectionNote
+                        value={form.watch("noteMtd") || ""}
+                        onChange={(v) => form.setValue("noteMtd", v)}
+                        isAdmin={isAdmin}
+                        testId="note-section-mtd"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => toggleSection("mtd")}
-                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                       data-testid="button-toggle-mtd"
                     >
                       <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["mtd"] ? "-rotate-90" : ""}`} />
@@ -2691,13 +2768,21 @@ ${v.staffRosterText || ""}
 
                 <div className="bg-orange-50 dark:bg-orange-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm md:text-base font-medium">
-                      {t.inStore}
-                    </h3>
+                    <div className="flex items-center flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm md:text-base font-medium shrink-0">
+                        {t.inStore}
+                      </h3>
+                      <SectionNote
+                        value={form.watch("noteInStore") || ""}
+                        onChange={(v) => form.setValue("noteInStore", v)}
+                        isAdmin={isAdmin}
+                        testId="note-section-instore"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => toggleSection("inStore")}
-                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                       data-testid="button-toggle-inStore"
                     >
                       <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["inStore"] ? "-rotate-90" : ""}`} />
@@ -2815,10 +2900,18 @@ ${v.staffRosterText || ""}
 
                 <div className="bg-purple-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm md:text-base font-medium">
-                      {t.delivery}
-                    </h3>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm md:text-base font-medium shrink-0">
+                        {t.delivery}
+                      </h3>
+                      <SectionNote
+                        value={form.watch("noteDelivery") || ""}
+                        onChange={(v) => form.setValue("noteDelivery", v)}
+                        isAdmin={isAdmin}
+                        testId="note-section-delivery"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-[10px] text-muted-foreground uppercase font-bold leading-none">Total</p>
                         <p className="text-sm font-bold text-primary">฿{deliveryTotal.toLocaleString()}</p>
@@ -3049,13 +3142,21 @@ ${v.staffRosterText || ""}
 
                 <div className="bg-yellow-50 dark:bg-yellow-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm md:text-base font-medium">
-                      {t.performance}
-                    </h3>
+                    <div className="flex items-center flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm md:text-base font-medium shrink-0">
+                        {t.performance}
+                      </h3>
+                      <SectionNote
+                        value={form.watch("notePerformance") || ""}
+                        onChange={(v) => form.setValue("notePerformance", v)}
+                        isAdmin={isAdmin}
+                        testId="note-section-performance"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => toggleSection("performance")}
-                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                       data-testid="button-toggle-performance"
                     >
                       <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["performance"] ? "-rotate-90" : ""}`} />
@@ -3173,9 +3274,17 @@ ${v.staffRosterText || ""}
 
                 <div className="bg-pink-50 dark:bg-pink-950/30 p-3 md:p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm md:text-base font-medium">
-                      {t.addons}
-                    </h3>
+                    <div className="flex items-center flex-1 min-w-0 mr-2">
+                      <h3 className="text-sm md:text-base font-medium shrink-0">
+                        {t.addons}
+                      </h3>
+                      <SectionNote
+                        value={form.watch("noteAddons") || ""}
+                        onChange={(v) => form.setValue("noteAddons", v)}
+                        isAdmin={isAdmin}
+                        testId="note-section-addons"
+                      />
+                    </div>
                     <Dialog
                       open={addonDialogOpen}
                       onOpenChange={setAddonDialogOpen}

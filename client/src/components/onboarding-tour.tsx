@@ -89,7 +89,7 @@ export function OnboardingTour() {
   const [hasSeenTour, setHasSeenTour] = useState(true);
 
   useEffect(() => {
-    if (user && !user.mustChangePassword) {
+    if (user && !user.mustChangePassword && user.role !== "viewer") {
       const tourKey = `bk_onboarding_${user.username}`;
       const seen = localStorage.getItem(tourKey);
       if (!seen) {

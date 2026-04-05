@@ -38,8 +38,12 @@ export function Layout({ children }: { children: ReactNode }) {
   }
 
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
+  const isViewer = user.role === "viewer";
 
-  const desktopNavItems = [
+  const desktopNavItems = isViewer ? [
+    { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
+    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
+  ] : [
     { href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard },
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     ...(isManagerOrAdmin ? [
@@ -51,7 +55,10 @@ export function Layout({ children }: { children: ReactNode }) {
     ] : []),
   ];
 
-  const mobileNavItems = [
+  const mobileNavItems = isViewer ? [
+    { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
+    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
+  ] : [
     { href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard },
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
@@ -153,15 +160,17 @@ export function Layout({ children }: { children: ReactNode }) {
                       <p className="font-bold text-sm leading-tight truncate">{user.fullName || user.username}</p>
                       <p className="text-xs text-primary-foreground/70 truncate mt-0.5">{displayEmail}</p>
                     </div>
-                    <Link href="/settings">
-                      <a
-                        className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors shrink-0"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        data-testid="button-edit-profile-mobile"
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-primary-foreground/80" />
-                      </a>
-                    </Link>
+                    {!isViewer && (
+                      <Link href="/settings">
+                        <a
+                          className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors shrink-0"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          data-testid="button-edit-profile-mobile"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-primary-foreground/80" />
+                        </a>
+                      </Link>
+                    )}
                   </div>
                 </div>
 
@@ -329,40 +338,48 @@ export function Layout({ children }: { children: ReactNode }) {
                     <p className="font-bold text-sm leading-tight truncate">{user.fullName || user.username}</p>
                     <p className="text-xs text-primary-foreground/70 truncate mt-0.5">{displayEmail}</p>
                   </div>
-                  <Link href="/settings">
-                    <a className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors shrink-0" data-testid="button-edit-profile-desktop">
-                      <Pencil className="h-3.5 w-3.5 text-primary-foreground/80" />
-                    </a>
-                  </Link>
+                  {!isViewer && (
+                    <Link href="/settings">
+                      <a className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors shrink-0" data-testid="button-edit-profile-desktop">
+                        <Pencil className="h-3.5 w-3.5 text-primary-foreground/80" />
+                      </a>
+                    </Link>
+                  )}
                 </div>
               </div>
 
               {/* Menu Items */}
               <div className="py-1">
-                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                  <Link href="/work">
-                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-home">
-                      <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>Home (My Work)</span>
-                    </a>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                  <Link href="/settings">
-                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-profile">
-                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>โปรไฟล์ของฉัน</span>
-                    </a>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                  <Link href="/admin">
-                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-activity">
-                      <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>กิจกรรมของฉัน</span>
-                    </a>
-                  </Link>
-                </DropdownMenuItem>
+                {!isViewer && (
+                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                    <Link href="/work">
+                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-home">
+                        <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>Home (My Work)</span>
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {!isViewer && (
+                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                    <Link href="/settings">
+                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-profile">
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>โปรไฟล์ของฉัน</span>
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {!isViewer && (
+                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                    <Link href="/admin">
+                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-activity">
+                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>กิจกรรมของฉัน</span>
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 {isManagerOrAdmin && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/admin">
@@ -382,14 +399,16 @@ export function Layout({ children }: { children: ReactNode }) {
                     </a>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                  <Link href="/handbook">
-                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-changelog">
-                      <History className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{language === "th" ? "ประวัติเวอร์ชัน" : "Version History"}</span>
-                    </a>
-                  </Link>
-                </DropdownMenuItem>
+                {!isViewer && (
+                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                    <Link href="/handbook">
+                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-changelog">
+                        <History className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{language === "th" ? "ประวัติเวอร์ชัน" : "Version History"}</span>
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </div>
 
               <DropdownMenuSeparator />

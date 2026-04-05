@@ -97,10 +97,13 @@ export function BottomNav() {
   if (!user) return null;
 
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin" || user.role === "area";
+  const isViewer = user.role === "viewer";
 
   const chatLabel = language === "th" ? "แชท" : "Chat";
 
-  const navItems = [
+  const navItems = isViewer ? [
+    { href: "/sales", label: language === "th" ? "ยอดขาย" : "Sales", icon: BarChart3 },
+  ] : [
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
     ...(isManagerOrAdmin

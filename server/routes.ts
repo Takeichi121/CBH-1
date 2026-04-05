@@ -3420,6 +3420,9 @@ ${pageContext}` : ''}`;
     if (!await storage.getUser("kitti01")) {
       await storage.createUser({ username: "kitti01", passhash: await hashPassword("1234"), role: "area", fullName: "Kitti", nickName: "", phone: "", email: "", position: "area_manager", active: 1, mustChangePassword: 1, createdAt: nowIso() });
     }
+    if (!await storage.getUser("bk1040")) {
+      await storage.createUser({ username: "bk1040", passhash: await hashPassword("bk1040"), role: "viewer", fullName: "BK1040 Shared", nickName: "BK1040", phone: "", email: "", position: "Viewer", active: 1, createdAt: nowIso() });
+    }
 
     await storage.log("setup_ok", "system", "setup completed");
     res.json({ ok: true, message: "setup ok" });

@@ -11,6 +11,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2.4.3",
+    date: "2026-04-05",
+    label: "feature",
+    changes: [
+      "เพิ่ม 'viewer' role — user ที่ใช้ร่วมกัน bk1040 / bk1040",
+      "Viewer เข้าได้เฉพาะ: Sales Report (Dashboard, Daily, Weekly, Reports, Manual) และ Handbook",
+      "Navigation, dropdown, profile menu — ซ่อนเมนูที่ไม่ได้รับอนุญาตทั้งหมด",
+      "Auto-redirect ไป /sales เมื่อ viewer พยายามเข้า route ที่ไม่อนุญาต",
+      "Chann AI Chat ซ่อนสำหรับ viewer",
+    ],
+  },
+  {
     version: "2.4.2",
     date: "2026-04-02",
     label: "improvement",

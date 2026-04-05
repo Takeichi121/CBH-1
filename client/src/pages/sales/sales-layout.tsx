@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
+import { useAuth } from "@/hooks/use-auth";
 import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,45 +11,56 @@ interface SalesLayoutProps {
 
 export function SalesLayout({ children }: SalesLayoutProps) {
   const { language } = useI18n();
+  const { user } = useAuth();
   const [location] = useLocation();
+  const isViewer = user?.role === "viewer";
 
-  const tabs = [
+  const allTabs = [
     {
       href: "/sales",
       label: language === "th" ? "ภาพรวม" : "Dashboard",
       icon: LayoutDashboard,
+      viewerAllowed: true,
     },
     {
       href: "/sales/daily",
       label: language === "th" ? "กรอกข้อมูล" : "Daily Sales",
       icon: FileEdit,
+      viewerAllowed: true,
     },
     {
       href: "/sales/weekly",
       label: language === "th" ? "รายสัปดาห์" : "Weekly",
       icon: CalendarRange,
+      viewerAllowed: true,
     },
     {
       href: "/sales/reports",
       label: language === "th" ? "รายงาน" : "Reports",
       icon: FileText,
+      viewerAllowed: true,
     },
     {
       href: "/sales/settings",
       label: language === "th" ? "ตั้งค่า" : "Settings",
       icon: Settings,
+      viewerAllowed: false,
     },
     {
       href: "/sales/manual",
       label: language === "th" ? "คู่มือ" : "Manual",
       icon: BookOpen,
+      viewerAllowed: true,
     },
     {
       href: "/sales/import",
       label: language === "th" ? "Import DBF" : "Import DBF",
       icon: Database,
+      viewerAllowed: false,
     },
   ];
+
+  const tabs = isViewer ? allTabs.filter(t => t.viewerAllowed) : allTabs;
 
   return (
     <div className="space-y-4">

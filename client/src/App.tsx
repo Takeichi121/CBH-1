@@ -66,6 +66,15 @@ function AdminProtectedRoute({ component: Component }: { component: React.Compon
   return <Component />;
 }
 
+const VIEWER_ALLOWED_PATHS = [
+  "/sales",
+  "/sales/daily",
+  "/sales/weekly",
+  "/sales/reports",
+  "/sales/manual",
+  "/handbook",
+];
+
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType, path: string }) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -73,11 +82,18 @@ function ProtectedRoute({ component: Component, path }: { component: React.Compo
   useEffect(() => {
     if (!isLoading && !user) {
       setLocation("/");
+    } else if (!isLoading && user && user.role === "viewer") {
+      const allowed = VIEWER_ALLOWED_PATHS.some(p => path === p || path.startsWith(p + "/"));
+      if (!allowed) setLocation("/sales");
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, isLoading, setLocation, path]);
 
   if (isLoading) return <LoadingScreen />;
   if (!user) return null;
+  if (user.role === "viewer") {
+    const allowed = VIEWER_ALLOWED_PATHS.some(p => path === p || path.startsWith(p + "/"));
+    if (!allowed) return null;
+  }
 
   return <Component />;
 }

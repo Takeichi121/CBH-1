@@ -50,7 +50,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      const targetPath = user.role === "manager" ? "/roster" : "/work";
+      const targetPath = user.role === "viewer" ? "/sales" : user.role === "manager" ? "/roster" : "/work";
       setLocation(targetPath);
     }
   }, [user, isLoading, setLocation]);

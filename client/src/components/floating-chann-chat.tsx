@@ -955,7 +955,7 @@ export function FloatingChannChat() {
     }
   };
 
-  if (!user) return null;
+  if (!user || user.role === "viewer") return null;
 
   return (
     <div className="fixed bottom-32 md:bottom-16 right-4 z-[51]">

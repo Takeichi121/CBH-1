@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation, Link } from "wouter";
-import { Calendar, BarChart3, Package, MessageCircle, Settings, Briefcase, X, LayoutGrid } from "lucide-react";
+import { Calendar, BarChart3, Package, MessageCircle, Settings, Briefcase, X, LayoutGrid, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 
@@ -103,6 +103,7 @@ export function BottomNav() {
 
   const navItems = isViewer ? [
     { href: "/sales", label: language === "th" ? "ยอดขาย" : "Sales", icon: BarChart3 },
+    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
   ] : [
     { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
     { href: "/roster", label: t("roster") || "Roster", icon: Calendar },

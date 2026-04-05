@@ -134,6 +134,7 @@ export function OnboardingTour() {
   if (!user || hasSeenTour) return null;
   if (!isOpen) return null;
   if (user.mustChangePassword) return null;
+  if (user.role === "viewer") return null;
 
   const step = steps[currentStep];
   const isLast = currentStep === steps.length - 1;

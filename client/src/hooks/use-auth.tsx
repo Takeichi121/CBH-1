@@ -7,7 +7,7 @@ import { z } from "zod";
 
 type User = {
   username: string;
-  role: "staff" | "manager" | "admin" | "area";
+  role: "staff" | "manager" | "admin" | "area" | "viewer";
   fullName: string;
   fullNameTh?: string;
   nickName?: string;

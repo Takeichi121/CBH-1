@@ -83,17 +83,13 @@ function ProtectedRoute({ component: Component, path }: { component: React.Compo
     if (!isLoading && !user) {
       setLocation("/");
     } else if (!isLoading && user && user.role === "viewer") {
-      const allowed = VIEWER_ALLOWED_PATHS.some(p => path === p || path.startsWith(p + "/"));
-      if (!allowed) setLocation("/sales");
+      if (!VIEWER_ALLOWED_PATHS.includes(path)) setLocation("/sales");
     }
   }, [user, isLoading, setLocation, path]);
 
   if (isLoading) return <LoadingScreen />;
   if (!user) return null;
-  if (user.role === "viewer") {
-    const allowed = VIEWER_ALLOWED_PATHS.some(p => path === p || path.startsWith(p + "/"));
-    if (!allowed) return null;
-  }
+  if (user.role === "viewer" && !VIEWER_ALLOWED_PATHS.includes(path)) return null;
 
   return <Component />;
 }

@@ -3422,9 +3422,9 @@ ${pageContext}` : ''}`;
     }
     const bk1040User = await storage.getUser("bk1040");
     if (!bk1040User) {
-      await storage.createUser({ username: "bk1040", passhash: await hashPassword("bk1040"), role: "viewer", fullName: "BK1040 Shared", nickName: "BK1040", phone: "", email: "", position: "Viewer", active: 1, createdAt: nowIso() });
-    } else if (bk1040User.role !== "viewer") {
-      await db.update(users).set({ role: "viewer" }).where(eq(users.username, "bk1040"));
+      await storage.createUser({ username: "bk1040", passhash: await hashPassword("bk1040"), role: "manager", fullName: "BK1040 Shared", nickName: "BK1040", phone: "", email: "", position: "Manager", active: 1, createdAt: nowIso() });
+    } else if (bk1040User.role !== "manager") {
+      await db.update(users).set({ role: "manager" }).where(eq(users.username, "bk1040"));
     }
 
     await storage.log("setup_ok", "system", "setup completed");

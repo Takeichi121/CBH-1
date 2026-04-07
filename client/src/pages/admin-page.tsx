@@ -310,15 +310,6 @@ export default function AdminPage() {
           </Button>
         </div>
 
-        {isAdmin && (
-          <Link href="/admin/permissions">
-            <Button variant="outline" data-testid="button-permissions">
-              <Key className="w-4 h-4 mr-2" />
-              {language === "th" ? "กำหนดสิทธิ์ฟีเจอร์" : "Feature Permissions"}
-            </Button>
-          </Link>
-        )}
-
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-profile">
@@ -451,6 +442,37 @@ export default function AdminPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {isAdmin && (
+        <Link href="/admin/permissions">
+          <Card
+            className="glass-card border-2 border-primary/30 shadow-lg hover:border-primary/60 hover:shadow-xl transition-all cursor-pointer"
+            data-testid="card-feature-permissions"
+          >
+            <div className="flex items-center gap-4 p-5">
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Key className="w-7 h-7 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {language === "th" ? "กำหนดสิทธิ์ฟีเจอร์" : "Feature Permissions"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {language === "th"
+                    ? "จัดการสิทธิ์การเข้าถึงฟีเจอร์สำหรับแต่ละบทบาท"
+                    : "Manage feature access permissions for each role"}
+                </p>
+              </div>
+              <div className="text-primary font-medium text-sm flex items-center gap-1">
+                {language === "th" ? "จัดการ" : "Manage"}
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      )}
 
       <Card className="glass-card border-none shadow-xl overflow-hidden">
         <div className="overflow-x-auto">

@@ -1,0 +1,20 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Zpxs8r3pXQedIFKXHyGmG"
+uri = "file://client/public/cbh-icon-512.png"
+type = "image"
+title = "CBH Logo (512×512)"
+
+[[outputs]]
+id = "0jKMkEkyXruI-UcDFDQzr"
+uri = "file://client/public/cbh-icon-192.png"
+type = "image"
+title = "CBH Logo (192×192)"
+
+[[outputs]]
+id = "_-mBV0CnJPZuAbnOu2DVy"
+uri = "file://client/public/favicon.png"
+type = "image"
+title = "CBH Favicon"

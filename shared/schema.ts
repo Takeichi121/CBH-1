@@ -53,6 +53,7 @@ export const users = pgTable("users", {
   active: integer("active").notNull().default(1),
   mustChangePassword: integer("must_change_password").notNull().default(0),
   createdAt: text("created_at").notNull(),
+  allowedFeatures: text("allowed_features"),
 });
 
 // ==========================================
@@ -536,6 +537,63 @@ export const CHAT_STICKERS = [
   { id: "clock", icon: "Clock", label: "Time" },
   { id: "message-circle", icon: "MessageCircle", label: "Message" },
 ] as const;
+
+// ==========================================
+// 🔑 Feature Permission Keys
+// ==========================================
+
+export const featureKeys = [
+  "dashboard",
+  "handbook",
+  "settings",
+  "work",
+  "roster",
+  "requests",
+  "sales",
+  "sales_settings",
+  "sales_import",
+  "borrow",
+  "chat",
+  "admin",
+  "chann",
+] as const;
+
+export type FeatureKey = typeof featureKeys[number];
+
+export const featureGroups: { group: { en: string; th: string }; keys: FeatureKey[] }[] = [
+  {
+    group: { en: "General", th: "ทั่วไป" },
+    keys: ["dashboard", "handbook", "settings"],
+  },
+  {
+    group: { en: "Work", th: "งาน" },
+    keys: ["work", "roster", "requests"],
+  },
+  {
+    group: { en: "Sales", th: "ยอดขาย" },
+    keys: ["sales", "sales_settings", "sales_import"],
+  },
+  {
+    group: { en: "Other", th: "อื่นๆ" },
+    keys: ["borrow", "chat", "admin", "chann"],
+  },
+];
+
+export const featureLabels: Record<FeatureKey, { en: string; th: string }> = {
+  dashboard: { en: "Dashboard", th: "หน้า Dashboard" },
+  handbook: { en: "Employee Handbook", th: "คู่มือพนักงาน" },
+  settings: { en: "App Settings", th: "ตั้งค่า App" },
+  work: { en: "My Work / Schedule", th: "My Work / ตารางงาน" },
+  roster: { en: "Roster (Manager View)", th: "ตารางงาน (Manager View)" },
+  requests: { en: "Manager Requests", th: "Manager Requests" },
+  sales: { en: "Sales Report", th: "Sales Report (Dashboard/Daily/Weekly/Reports/Manual)" },
+  sales_settings: { en: "Sales Settings Tab", th: "Sales Settings tab" },
+  sales_import: { en: "Import DBF Tab", th: "Import DBF tab" },
+  borrow: { en: "Borrow Tracker", th: "Borrow Tracker" },
+  chat: { en: "Staff Chat", th: "Staff Chat" },
+  admin: { en: "Manage Team", th: "Manage Team" },
+  chann: { en: "Chann AI Chat", th: "Chann AI Chat" },
+};
 
 // ==========================================
 // 🛡️ Zod Schemas

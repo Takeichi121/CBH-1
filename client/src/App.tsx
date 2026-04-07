@@ -35,6 +35,7 @@ import DashboardPage from "@/pages/dashboard-page";
 import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
 import AgentRequestsPage from "@/pages/agent-requests-page";
+import AdminPermissionsPage from "@/pages/admin-permissions-page";
 
 // Settings Pages
 import DropdownSettingsPage from "@/pages/settings/dropdown-settings-page";
@@ -75,21 +76,75 @@ const VIEWER_ALLOWED_PATHS = [
   "/handbook",
 ];
 
+const PATH_TO_FEATURE: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/handbook": "handbook",
+  "/manager-manual": "handbook",
+  "/settings": "settings",
+  "/settings/dropdowns": "settings",
+  "/work": "work",
+  "/roster": "roster",
+  "/roster/import": "roster",
+  "/requests": "requests",
+  "/sales": "sales",
+  "/sales/daily": "sales",
+  "/sales/weekly": "sales",
+  "/sales/reports": "sales",
+  "/sales/manual": "sales",
+  "/sales/settings": "sales_settings",
+  "/sales/import": "sales_import",
+  "/borrow": "borrow",
+  "/borrow/transactions": "borrow",
+  "/borrow/history": "borrow",
+  "/borrow/branches": "borrow",
+  "/borrow/items": "borrow",
+  "/borrow/settings": "borrow",
+  "/borrow/help": "borrow",
+  "/admin": "admin",
+  "/admin/permissions": "admin",
+};
+
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType, path: string }) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
+  const featureKey = PATH_TO_FEATURE[path];
+
+  const isViewerPath = user?.role === "viewer";
+  const featureDenied = !!user?.allowedFeatures && !!featureKey && !user.allowedFeatures.includes(featureKey);
+  const viewerPathDenied = isViewerPath && !VIEWER_ALLOWED_PATHS.includes(path);
+
+  const getFirstAllowedRoute = () => {
+    if (!user?.allowedFeatures) return user?.role === "viewer" ? "/sales" : "/work";
+    const candidates = user.role === "viewer"
+      ? [{ path: "/sales", key: "sales" }, { path: "/handbook", key: "handbook" }]
+      : [
+          { path: "/dashboard", key: "dashboard" },
+          { path: "/work", key: "work" },
+          { path: "/sales", key: "sales" },
+          { path: "/roster", key: "roster" },
+          { path: "/borrow", key: "borrow" },
+          { path: "/handbook", key: "handbook" },
+          { path: "/settings", key: "settings" },
+        ];
+    const first = candidates.find((c) => user.allowedFeatures!.includes(c.key));
+    return first?.path || "/";
+  };
+
   useEffect(() => {
     if (!isLoading && !user) {
       setLocation("/");
-    } else if (!isLoading && user && user.role === "viewer") {
-      if (!VIEWER_ALLOWED_PATHS.includes(path)) setLocation("/sales");
+    } else if (!isLoading && user && viewerPathDenied) {
+      setLocation(getFirstAllowedRoute());
+    } else if (!isLoading && user && !viewerPathDenied && featureDenied) {
+      setLocation(getFirstAllowedRoute());
     }
-  }, [user, isLoading, setLocation, path]);
+  }, [user, isLoading, setLocation, path, featureDenied, viewerPathDenied]);
 
   if (isLoading) return <LoadingScreen />;
   if (!user) return null;
-  if (user.role === "viewer" && !VIEWER_ALLOWED_PATHS.includes(path)) return null;
+  if (viewerPathDenied) return null;
+  if (featureDenied) return null;
 
   return <Component />;
 }
@@ -207,6 +262,10 @@ function Router() {
           
           <Route path="/agent-requests">
             <AdminProtectedRoute component={AgentRequestsPage} />
+          </Route>
+          
+          <Route path="/admin/permissions">
+            <ProtectedRoute component={AdminPermissionsPage} path="/admin/permissions" />
           </Route>
           
           <Route component={NotFound} />

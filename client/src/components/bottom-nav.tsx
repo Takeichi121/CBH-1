@@ -99,23 +99,29 @@ export function BottomNav() {
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin" || user.role === "area";
   const isViewer = user.role === "viewer";
 
+  const hasFeature = (key: string): boolean => {
+    if (!user.allowedFeatures) return true;
+    return user.allowedFeatures.includes(key);
+  };
+
   const chatLabel = language === "th" ? "แชท" : "Chat";
 
   const navItems = isViewer ? [
-    { href: "/sales", label: language === "th" ? "ยอดขาย" : "Sales", icon: BarChart3 },
-    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
+    ...(hasFeature("sales") ? [{ href: "/sales", label: language === "th" ? "ยอดขาย" : "Sales", icon: BarChart3 }] : []),
+    ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
   ] : [
-    { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
-    { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
-    ...(isManagerOrAdmin
-      ? [
-          { href: "/sales", label: language === "th" ? "ยอดขาย" : "Sales", icon: BarChart3 },
-          { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
-        ]
-      : [
-          { href: "/dashboard", label: chatLabel, icon: MessageCircle },
-        ]),
-    { href: "/settings", label: t("settings") || "Settings", icon: Settings },
+    ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
+    ...(hasFeature("roster") ? [{ href: "/roster", label: t("roster") || "Roster", icon: Calendar }] : []),
+    ...(isManagerOrAdmin && hasFeature("sales")
+      ? [{ href: "/sales", label: language === "th" ? "ยอดขาย" : "Sales", icon: BarChart3 }]
+      : []),
+    ...(isManagerOrAdmin && hasFeature("borrow")
+      ? [{ href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package }]
+      : []),
+    ...(!isManagerOrAdmin && hasFeature("dashboard")
+      ? [{ href: "/dashboard", label: chatLabel, icon: MessageCircle }]
+      : []),
+    ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
   ];
 
   const isActive = (href: string) => {

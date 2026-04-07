@@ -411,6 +411,7 @@ export function FloatingChat() {
   })();
 
   if (!user) return null;
+  if (user.allowedFeatures && !user.allowedFeatures.includes("chat")) return null;
 
   const StickerPicker = () => (
     <Popover open={showStickers} onOpenChange={setShowStickers}>

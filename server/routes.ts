@@ -210,13 +210,24 @@ import {
   channConversations,
   codeProposals,
   dropdownOptions,
-  notifications
+  notifications,
+  featureKeys
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const AREA_VERIFY_CODE = (process.env.AREA_VERIFY_CODE || "bkarea").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
+
+const safeParseAllowedFeatures = (raw: string | null | undefined): string[] | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
 
 const versionNotifiedSessions = new Set<string>();
 
@@ -3458,7 +3469,8 @@ ${pageContext}` : ''}`;
     triggerVersionNotifications(u.username).catch(() => {});
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
-    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
+    const allowedFeatures = safeParseAllowedFeatures(u.allowedFeatures);
+    res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword, allowedFeatures } });
   }));
 
   // Auth: Validate
@@ -3483,7 +3495,8 @@ ${pageContext}` : ''}`;
 
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
-    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword } });
+    const allowedFeatures = safeParseAllowedFeatures(u.allowedFeatures);
+    res.json({ ok: true, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword, allowedFeatures } });
   }));
 
   // Auth: Logout
@@ -4253,7 +4266,26 @@ ${pageContext}` : ''}`;
     if (!u || u.role === "staff") return res.json({ ok: false, message: "No permission" });
 
     const allUsers = await storage.getUsers();
-    res.json({ ok: true, users: allUsers.map(user => ({ ...user, passhash: undefined })), creatorRank: getUserRank(u), canManageAll: canManageUsers(u) });
+    res.json({ ok: true, users: allUsers.map(user => ({ ...user, passhash: undefined, allowedFeatures: safeParseAllowedFeatures(user.allowedFeatures) })), creatorRank: getUserRank(u), canManageAll: canManageUsers(u) });
+  }));
+
+  app.post("/api/admin/save-permissions", safe(async (req, res) => {
+    const { token, username, allowedFeatures } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+
+    const targetUser = await storage.getUser(username);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+
+    const filteredFeatures = Array.isArray(allowedFeatures)
+      ? allowedFeatures.filter((k: unknown) => typeof k === "string" && featureKeys.includes(k as typeof featureKeys[number]))
+      : null;
+    const featuresValue = filteredFeatures !== null ? JSON.stringify(filteredFeatures) : null;
+    await storage.updateUserFeatures(username, featuresValue);
+    await storage.log("admin_set_permissions", u.username, `set permissions for ${username}: ${featuresValue}`);
+    res.json({ ok: true });
   }));
 
   app.post("/api/admin/updateUserProfile", safe(async (req, res) => {

@@ -40,39 +40,53 @@ export function Layout({ children }: { children: ReactNode }) {
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
   const isViewer = user.role === "viewer";
 
+  // Feature permission helper: if allowedFeatures is null/undefined, fall back to role-based access
+  const hasFeature = (key: string): boolean => {
+    if (!user.allowedFeatures) return true;
+    return user.allowedFeatures.includes(key);
+  };
+
   const desktopNavItems = isViewer ? [
-    { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
-    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
+    ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
+    ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
   ] : [
-    { href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard },
-    { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
-    ...(isManagerOrAdmin ? [
+    ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
+    ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
+    ...(isManagerOrAdmin && hasFeature("sales") ? [
       { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
+    ] : []),
+    ...(isManagerOrAdmin && hasFeature("borrow") ? [
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
     ] : []),
-    ...(user.role === "admin" ? [
+    ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
   ];
 
   const mobileNavItems = isViewer ? [
-    { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
-    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
+    ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
+    ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
   ] : [
-    { href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard },
-    { href: "/work", label: t("myWork") || "My Work", icon: Briefcase },
-    { href: "/roster", label: t("roster") || "Roster", icon: Calendar },
-    ...(isManagerOrAdmin ? [
+    ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
+    ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
+    ...(hasFeature("roster") ? [{ href: "/roster", label: t("roster") || "Roster", icon: Calendar }] : []),
+    ...(isManagerOrAdmin && hasFeature("sales") ? [
       { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
+    ] : []),
+    ...(isManagerOrAdmin && hasFeature("borrow") ? [
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
+    ] : []),
+    ...(isManagerOrAdmin && hasFeature("requests") ? [
       { href: "/requests", label: t("managerRequest") || "Request", icon: FileText },
+    ] : []),
+    ...(isManagerOrAdmin && hasFeature("admin") ? [
       { href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield },
     ] : []),
-    ...(user.role === "admin" ? [
+    ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
-    { href: "/settings", label: t("settings") || "Settings", icon: Settings },
-    { href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen },
+    ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
+    ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
   ];
 
   const displayEmail = (user as any).email || user.username;
@@ -244,14 +258,16 @@ export function Layout({ children }: { children: ReactNode }) {
                         </a>
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/requests">
-                        <a className="flex items-center gap-2 w-full cursor-pointer">
-                          <FileText className="w-4 h-4 text-muted-foreground" />
-                          <span>{t("managerRequest") || "Request"}</span>
-                        </a>
-                      </Link>
-                    </DropdownMenuItem>
+                    {hasFeature("requests") && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/requests">
+                          <a className="flex items-center gap-2 w-full cursor-pointer">
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span>{t("managerRequest") || "Request"}</span>
+                          </a>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               );
@@ -350,7 +366,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {/* Menu Items */}
               <div className="py-1">
-                {!isViewer && (
+                {!isViewer && hasFeature("work") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/work">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-home">
@@ -360,7 +376,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {!isViewer && (
+                {!isViewer && hasFeature("settings") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/settings">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-profile">
@@ -370,7 +386,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {!isViewer && (
+                {!isViewer && hasFeature("admin") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/admin">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-activity">
@@ -380,7 +396,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {isManagerOrAdmin && (
+                {isManagerOrAdmin && hasFeature("admin") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/admin">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-manage-team">
@@ -391,15 +407,17 @@ export function Layout({ children }: { children: ReactNode }) {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                  <Link href="/handbook">
-                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-handbook">
-                      <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{language === "th" ? "คู่มือพนักงาน" : "Handbook"}</span>
-                    </a>
-                  </Link>
-                </DropdownMenuItem>
-                {!isViewer && (
+                {hasFeature("handbook") && (
+                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                    <Link href="/handbook">
+                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-handbook">
+                        <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{language === "th" ? "คู่มือพนักงาน" : "Handbook"}</span>
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {!isViewer && hasFeature("handbook") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/handbook">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-changelog">

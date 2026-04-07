@@ -17,6 +17,7 @@ type User = {
   profilePicture?: string;
   profileComplete?: boolean;
   mustChangePassword?: boolean;
+  allowedFeatures?: string[] | null;
 };
 
 type AuthContextType = {

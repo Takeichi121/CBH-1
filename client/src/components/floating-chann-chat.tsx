@@ -8,6 +8,106 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 
+// Small draggable wrapper for floating UI (mouse + touch)
+type DragAxis = "both" | "x" | "y";
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function useDraggableFloating(options?: {
+  axis?: DragAxis;
+  enabled?: boolean;
+  initial?: { x: number; y: number };
+}) {
+  const axis = options?.axis ?? "both";
+  const enabled = options?.enabled ?? true;
+  const initial = options?.initial ?? { x: 0, y: 0 };
+
+  const [pos, setPos] = useState(initial);
+  const draggingRef = useRef(false);
+  const startRef = useRef({
+    pointerX: 0,
+    pointerY: 0,
+    startX: 0,
+    startY: 0,
+  });
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled) return;
+      // only left click for mouse
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((e as any).button != null && (e as any).button !== 0) return;
+
+      draggingRef.current = true;
+      startRef.current = {
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        startX: pos.x,
+        startY: pos.y,
+      };
+
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+    },
+    [enabled, pos.x, pos.y]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled) return;
+      if (!draggingRef.current) return;
+
+      const dx = e.clientX - startRef.current.pointerX;
+      const dy = e.clientY - startRef.current.pointerY;
+
+      setPos(prev => {
+        let nextX = startRef.current.startX + dx;
+        let nextY = startRef.current.startY + dy;
+
+        if (axis === "x") nextY = prev.y;
+        if (axis === "y") nextX = prev.x;
+
+        // clamp to viewport (keep a small margin)
+        const margin = 8;
+        const maxX = window.innerWidth - margin;
+        const maxY = window.innerHeight - margin;
+        nextX = clamp(nextX, -maxX, maxX);
+        nextY = clamp(nextY, -maxY, maxY);
+
+        return { x: nextX, y: nextY };
+      });
+    },
+    [enabled, axis]
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled) return;
+      draggingRef.current = false;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      } catch {
+        // ignore
+      }
+    },
+    [enabled]
+  );
+
+  return {
+    pos,
+    setPos,
+    bind: enabled
+      ? {
+          onPointerDown,
+          onPointerMove,
+          onPointerUp,
+          onPointerCancel: onPointerUp,
+        }
+      : {},
+  };
+}
+
 interface ToolProgressStep {
   step: number;
   maxSteps: number;
@@ -958,8 +1058,41 @@ export function FloatingChannChat() {
   if (!user || user.role === "viewer") return null;
   if (user.allowedFeatures && !user.allowedFeatures.includes("chann")) return null;
 
+  // Draggable floating position (drag by header)
+  const { pos, setPos, bind } = useDraggableFloating({
+    enabled: true,
+    axis: "both",
+    initial: { x: 0, y: 0 },
+  });
+
+  // persist position per user/device
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("chann_floating_pos");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+          setPos({ x: parsed.x, y: parsed.y });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [setPos]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chann_floating_pos", JSON.stringify(pos));
+    } catch {
+      // ignore
+    }
+  }, [pos]);
+
   return (
-    <div className="fixed bottom-32 md:bottom-16 right-4 z-[51]">
+    <div
+      className="fixed bottom-36 md:bottom-20 right-4 z-[51]"
+      style={{ transform: `translate3d(${pos.x}px, ${pos.y}px, 0)` }}
+    >
       {isOpen ? (
         <div
           className="w-[min(calc(100vw-2rem),420px)] h-[500px] md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
@@ -976,7 +1109,11 @@ export function FloatingChannChat() {
               <p className="text-violet-300/70 text-sm mt-1">รองรับทุกชนิดไฟล์</p>
             </div>
           )}
-          <div className="bg-gradient-to-r from-slate-900 via-violet-950 to-slate-900 px-4 py-3">
+          <div
+            className="bg-gradient-to-r from-slate-900 via-violet-950 to-slate-900 px-4 py-3 cursor-grab active:cursor-grabbing select-none"
+            title="ลากเพื่อย้ายตำแหน่ง"
+            {...bind}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">

@@ -1055,9 +1055,6 @@ export function FloatingChannChat() {
     }
   };
 
-  if (!user || user.role === "viewer") return null;
-  if (user.allowedFeatures && !user.allowedFeatures.includes("chann")) return null;
-
   // Draggable floating position (drag by header)
   const { pos, setPos, bind } = useDraggableFloating({
     enabled: true,
@@ -1087,6 +1084,9 @@ export function FloatingChannChat() {
       // ignore
     }
   }, [pos]);
+
+  if (!user || user.role === "viewer") return null;
+  if (user.allowedFeatures && !user.allowedFeatures.includes("chann")) return null;
 
   return (
     <div

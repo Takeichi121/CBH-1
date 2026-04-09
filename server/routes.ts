@@ -6451,6 +6451,61 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  // ==========================================
+  // 📝 Field Descriptions (Admin-editable)
+  // ==========================================
+
+  const VALID_FIELD_KEYS = [
+    "target", "actual", "tc", "ta", "cashDeposit",
+    "mtdTarget", "mtdActual", "mtdTc", "mtdTa",
+    "dineIn", "dineInTc", "takeAway", "takeAwayTc",
+    "grabfood", "lineman", "shopee", "bkapp", "robin", "gokoo",
+    "osat", "surveyCount", "voidCount", "sosDaily", "sosMtd",
+    "addCheese", "vMeal", "upSize",
+    "wasteRawDaily", "wasteMealDaily", "wasteRawMtd", "wasteMealMtd",
+    "recommendHours", "rosterCommit", "actualHours", "col", "laborCost", "tcmh",
+  ] as const;
+
+  app.post("/api/settings/get-field-descriptions", safe(async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const cfg = await storage.getConfig();
+    const descriptions: Record<string, string> = {};
+    for (const key of VALID_FIELD_KEYS) {
+      const cfgKey = `field_desc:${key}`;
+      if (cfg[cfgKey]) descriptions[key] = cfg[cfgKey];
+    }
+    res.json({ ok: true, descriptions });
+  }));
+
+  app.post("/api/settings/save-field-descriptions", safe(async (req, res) => {
+    const { token, descriptions } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+
+    if (typeof descriptions !== "object" || descriptions === null) {
+      return res.json({ ok: false, message: "Invalid descriptions" });
+    }
+
+    for (const key of VALID_FIELD_KEYS) {
+      const value = descriptions[key];
+      const cfgKey = `field_desc:${key}`;
+      if (typeof value === "string") {
+        if (value.trim() === "") {
+          // delete by setting empty string (or skip - just store empty)
+          await storage.setConfig(cfgKey, "");
+        } else {
+          await storage.setConfig(cfgKey, value.trim());
+        }
+      }
+    }
+    res.json({ ok: true });
+  }));
+
   // Calculate Labor Logic Helper
   async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }) {
     // 1. Get Settings

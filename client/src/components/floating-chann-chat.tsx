@@ -1090,8 +1090,9 @@ export function FloatingChannChat() {
 
   return (
     <div
-      className="fixed bottom-36 md:bottom-20 right-4 z-[51]"
+      className="fixed bottom-36 md:bottom-20 right-4 z-[51] touch-none"
       style={{ transform: `translate3d(${pos.x}px, ${pos.y}px, 0)` }}
+      {...bind}
     >
       {isOpen ? (
         <div

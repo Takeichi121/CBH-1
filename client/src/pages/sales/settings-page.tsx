@@ -1427,7 +1427,6 @@ export default function SalesSettingsPage() {
               </CardTitle>
               <CardDescription>
                 ดึงข้อมูลไปวิเคราะห์ใน Excel แบบ Real-time ผ่าน Power Query
-                <br/><span className="text-xs font-semibold text-amber-600">วิธีใช้: เปิด Excel → Data → Get Data → From Other Sources → From OData Feed</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-5 space-y-4">
@@ -1446,7 +1445,7 @@ export default function SalesSettingsPage() {
                     onClick={() => {
                       const url = `${window.location.origin}/api/odata/sales?key=${exportKey}&month=${selectedMonth}&year=${selectedYear}`;
                       navigator.clipboard.writeText(url);
-                      toast({ title: "คัดลอก URL สำเร็จ", description: "นำไปวางในช่อง OData Feed ของ Excel ได้เลย" });
+                      toast({ title: "คัดลอก URL สำเร็จ", description: "นำไปวางในช่อง OData Feed URL ของ Excel ได้เลย" });
                     }}
                     data-testid="button-copy-odata-url"
                   >
@@ -1455,7 +1454,20 @@ export default function SalesSettingsPage() {
                   </Button>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  * คุณสามารถเปลี่ยนเลข <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">month=</code> และ <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">year=</code> ใน URL เพื่อดึงข้อมูลของเดือนอื่นๆ ได้โดยไม่ต้องกลับมาหน้าเว็บ
+                  * เปลี่ยนเลข <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">month=</code> และ <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">year=</code> ใน URL เพื่อดึงข้อมูลเดือนอื่นๆ
+                </p>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">วิธีเชื่อมต่อใน Excel (Power Query)</p>
+                <ol className="text-xs text-amber-700 dark:text-amber-400 space-y-1.5 list-none">
+                  <li className="flex gap-2"><span className="font-bold shrink-0">1.</span><span>เปิด Excel → แท็บ <b>Data</b> → <b>Get Data</b> → <b>From Other Sources</b> → <b>From OData Feed</b></span></li>
+                  <li className="flex gap-2"><span className="font-bold shrink-0">2.</span><span>วาง URL ด้านบนในช่อง URL แล้วกด OK</span></li>
+                  <li className="flex gap-2"><span className="font-bold shrink-0">3.</span><span>เมื่อ Excel ถามการยืนยันตัวตน ให้เลือก <b>Anonymous</b> (ไม่ต้องใส่รหัส) แล้วกด Connect</span></li>
+                  <li className="flex gap-2"><span className="font-bold shrink-0">4.</span><span>เลือกตาราง <b>DailySales</b> แล้วกด <b>Load</b> หรือ <b>Transform Data</b></span></li>
+                </ol>
+                <p className="text-[11px] text-amber-600 dark:text-amber-500 border-t border-amber-200 dark:border-amber-700 pt-2">
+                  หมายเหตุ: ถ้า Excel ถามซ้ำว่า "Privacy Level" ให้เลือก <b>Public</b> แล้วกด Save
                 </p>
               </div>
 

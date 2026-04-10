@@ -7413,11 +7413,69 @@ ${pageContext}` : ''}`;
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     res.setHeader("Content-Type", "application/json;odata.metadata=minimal");
+    res.setHeader("OData-Version", "4.0");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, OData-Version, OData-MaxVersion");
     res.json({
       "@odata.context": `${baseUrl}/api/odata/$metadata#DailySales`,
       value: value,
     });
   }));
+
+  // OData $metadata endpoint — required by Excel Power Query
+  app.get(/^\/api\/odata\/\$metadata$/, (req, res) => {
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const edmx = `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="CBH" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EntityType Name="DailySale">
+        <Key><PropertyRef Name="Date"/></Key>
+        <Property Name="Date"           Type="Edm.String"  Nullable="false"/>
+        <Property Name="Day"            Type="Edm.Int32"/>
+        <Property Name="ActualSales"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="TargetSales"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="LastYearSales"  Type="Edm.Decimal" Scale="2"/>
+        <Property Name="ForecastSales"  Type="Edm.Decimal" Scale="2"/>
+        <Property Name="ActualTC"       Type="Edm.Int32"/>
+        <Property Name="TargetTC"       Type="Edm.Int32"/>
+        <Property Name="LastYearTC"     Type="Edm.Int32"/>
+        <Property Name="ActualTA"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="TargetTA"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="ActualHours"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="OTHours"        Type="Edm.Decimal" Scale="2"/>
+        <Property Name="DutyHours"      Type="Edm.Decimal" Scale="2"/>
+        <Property Name="RosterCommit"   Type="Edm.Decimal" Scale="2"/>
+        <Property Name="WasteDaily"     Type="Edm.Decimal" Scale="2"/>
+        <Property Name="COLDaily"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="COLPercent"     Type="Edm.Decimal" Scale="4"/>
+        <Property Name="RecommendHours" Type="Edm.Decimal" Scale="2"/>
+      </EntityType>
+      <EntityContainer Name="Container">
+        <EntitySet Name="DailySales" EntityType="CBH.DailySale"/>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`;
+    res.setHeader("Content-Type", "application/xml;charset=utf-8");
+    res.setHeader("OData-Version", "4.0");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(edmx);
+  });
+
+  // OData service root — returns entity list for Power Query discovery
+  app.get("/api/odata", (req, res) => {
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    res.setHeader("Content-Type", "application/json;odata.metadata=minimal");
+    res.setHeader("OData-Version", "4.0");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.json({
+      "@odata.context": `${baseUrl}/api/odata/$metadata`,
+      value: [
+        { name: "DailySales", kind: "EntitySet", url: "sales" },
+      ],
+    });
+  });
 
   // ── LINE OA Configuration ────────────────────────────────
   app.post("/api/settings/save-line-config", safe(async (req, res) => {

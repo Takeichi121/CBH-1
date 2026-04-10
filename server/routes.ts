@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO, getSocketIO } from "./socket";
+import ExcelJS from "exceljs";
 // ── LINE Messaging API ──────────────────────────────
 async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -7476,6 +7477,206 @@ ${pageContext}` : ''}`;
       ],
     });
   });
+
+  // ── Excel Export (formatted .xlsx download) ──────────────
+  app.get("/api/export/excel/monthly", safe(async (req, res) => {
+    const configs = await storage.getConfig();
+    if (!configs["EXPORT_API_KEY"] || req.query.key !== configs["EXPORT_API_KEY"]) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const month = Number(req.query.month) || new Date().getMonth() + 1;
+    const year  = Number(req.query.year)  || new Date().getFullYear();
+
+    const targetMonthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const [reports, targets, laborCfg, storeCfg, wasteTargetRow] = await Promise.all([
+      storage.getDailySalesReportsForMonth(year, month),
+      storage.getDailyTargetsForMonth(year, month),
+      storage.getLaborSettings(),
+      storage.getStoreSettings(),
+      storage.getWasteTarget(targetMonthStr),
+    ]);
+
+    const targetMap: Record<string, number> = {};
+    targets.forEach(t => { targetMap[t.targetDate] = Number(t.targetSales || 0); });
+
+    const storeName   = storeCfg?.storeName || "Grand Diamond";
+    const monthNames  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const dayNames    = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const wasteTarget = Number(wasteTargetRow?.mtdPercent || 0.75) / 100;
+
+    // Build rows with running MTD accumulators
+    let runLastYearMtd   = 0;
+    let runDeliveryMtd   = 0;
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Monthly Sales");
+
+    // ── Column widths ──────────────────────────────────────
+    ws.columns = [
+      { key: "day",        width: 6  },
+      { key: "date",       width: 10 },
+      { key: "lyDaily",    width: 16 },
+      { key: "lyMtd",      width: 16 },
+      { key: "tgtDaily",   width: 18 },
+      { key: "tgtMtd",     width: 16 },
+      { key: "forecast",   width: 18 },
+      { key: "acDaily",    width: 16 },
+      { key: "acMtd",      width: 16 },
+      { key: "varTgt",     width: 16 },
+      { key: "varMtd",     width: 16 },
+      { key: "delDaily",   width: 16 },
+      { key: "delMtd",     width: 16 },
+      { key: "varForecast",width: 18 },
+      { key: "pctVsTgt",   width: 10 },
+      { key: "compPct",    width: 12 },
+      { key: "wasteBaht",  width: 16 },
+      { key: "wastePct",   width: 14 },
+    ];
+
+    // ── Row 1: Store header ────────────────────────────────
+    const r1 = ws.getRow(1);
+    r1.getCell(1).value = "Store name :";
+    r1.getCell(2).value = storeName;
+    r1.getCell(2).font  = { bold: true, size: 12 };
+    r1.getCell(18).value = `Target Waste ${(wasteTarget * 100).toFixed(2)}%`;
+    r1.getCell(18).font  = { bold: true, color: { argb: "FFFF6600" } };
+    r1.height = 20;
+
+    // ── Row 2: "Sales" group header ───────────────────────
+    const r2 = ws.getRow(2);
+    r2.getCell(3).value = "Sales";
+    ws.mergeCells("C2:P2");
+    r2.getCell(3).alignment = { horizontal: "center" };
+    r2.getCell(3).font      = { bold: true, color: { argb: "FFFFFFFF" } };
+    r2.getCell(3).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F497D" } };
+    r2.height = 16;
+
+    // ── Row 3: Column headers ──────────────────────────────
+    const headerNames = [
+      "Day","Month",
+      "Last Year Sales\n(Daily)","Last Year Sales\nMTD",
+      "Target Sales\n(Incentive) Daily","Target Sales\nMTD",
+      "Forecast Sales\nFrom NBO",
+      "Actual Sales\n(Daily)","Actual Sales\nMTD",
+      "Variance From\nTarget","Variance\nMTD",
+      "Sales Delivery\n(Daily)","Sales Delivery\nMTD",
+      "Variance From\nForecast",
+      "% vs Target","Comp Sales %",
+      "Waste Daily\n(Baht)","Waste Daily\n(%)",
+    ];
+    const r3 = ws.getRow(3);
+    r3.height = 36;
+    headerNames.forEach((name, i) => {
+      const cell = r3.getCell(i + 1);
+      cell.value     = name;
+      cell.font      = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F497D" } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border    = {
+        top: { style: "thin", color: { argb: "FFFFFFFF" } },
+        left: { style: "thin", color: { argb: "FFFFFFFF" } },
+        bottom: { style: "thin", color: { argb: "FFFFFFFF" } },
+        right: { style: "thin", color: { argb: "FFFFFFFF" } },
+      };
+    });
+
+    // ── Data rows ──────────────────────────────────────────
+    reports.forEach((r, idx) => {
+      const dateObj    = new Date(r.reportDate + "T00:00:00");
+      const dayName    = dayNames[dateObj.getDay()];
+      const dateLabel  = `${dateObj.getDate()}-${monthNames[dateObj.getMonth()]}`;
+
+      const acDaily    = Number(r.actualSales || 0);
+      const acMtd      = Number(r.mtdActual || 0);
+      const lyDaily    = Number(r.lastYearSales || 0);
+      const tgtDaily   = targetMap[r.reportDate] || Number(r.dailyTarget || 0);
+      const tgtMtd     = Number(r.mtdTarget || 0);
+      const forecast   = Number(r.forecastSales || 0);
+      const delivery   = Number(r.salesDelivery || 0) ||
+                         (Number(r.grabfood||0) + Number(r.lineman||0) + Number(r.shopee||0) +
+                          Number(r.bkapp||0)    + Number(r.robin||0)  + Number(r.gokoo||0));
+      const wasteRaw   = Number(r.wasteRawDaily || 0);
+      const wastePct   = acDaily > 0 ? wasteRaw / acDaily : 0;
+
+      runLastYearMtd += lyDaily;
+      runDeliveryMtd += delivery;
+
+      const varTgt      = acDaily - tgtDaily;
+      const varMtd      = acMtd - tgtMtd;
+      const varForecast = acDaily - forecast;
+      const pctVsTgt    = tgtDaily > 0 ? acDaily / tgtDaily : 0;
+      const compPct     = lyDaily  > 0 ? acDaily / lyDaily  : 0;
+
+      const rowNum = idx + 4;
+      const dr     = ws.getRow(rowNum);
+      dr.height    = 15;
+
+      const vals = [
+        dayName, dateLabel,
+        lyDaily, runLastYearMtd,
+        tgtDaily, tgtMtd,
+        forecast,
+        acDaily, acMtd,
+        varTgt, varMtd,
+        delivery, runDeliveryMtd,
+        varForecast,
+        pctVsTgt, compPct,
+        wasteRaw, wastePct,
+      ];
+
+      vals.forEach((v, ci) => {
+        const cell = dr.getCell(ci + 1);
+        cell.value = v;
+        cell.font  = { size: 9 };
+        cell.border = {
+          top: { style: "hair" }, bottom: { style: "hair" },
+          left: { style: "hair" }, right: { style: "hair" },
+        };
+
+        // Number formats
+        if (ci === 0 || ci === 1) {
+          cell.alignment = { horizontal: "center" };
+        } else if (ci === 14 || ci === 15) {
+          cell.numFmt = "0.0%";
+          cell.alignment = { horizontal: "center" };
+        } else if (ci === 17) {
+          cell.numFmt = "0.00%";
+          cell.alignment = { horizontal: "center" };
+          // Red if over waste target
+          if (wastePct > wasteTarget) {
+            cell.font = { size: 9, color: { argb: "FFFF0000" } };
+          }
+        } else {
+          cell.numFmt = "#,##0";
+          cell.alignment = { horizontal: "right" };
+          // Variance columns: red for negative
+          if ((ci === 9 || ci === 10 || ci === 13) && typeof v === "number" && v < 0) {
+            cell.font = { size: 9, color: { argb: "FFFF0000" } };
+          }
+        }
+      });
+
+      // Alternate row shading
+      if (idx % 2 === 1) {
+        vals.forEach((_, ci) => {
+          const cell = dr.getCell(ci + 1);
+          if (!cell.fill || (cell.fill as any).fgColor?.argb === undefined) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
+          }
+        });
+      }
+    });
+
+    // ── Freeze top 3 rows ──────────────────────────────────
+    ws.views = [{ state: "frozen", xSplit: 2, ySplit: 3, topLeftCell: "C4" }];
+
+    const fileName = `CBH_Sales_${year}_${String(month).padStart(2, "0")}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    await wb.xlsx.write(res);
+    res.end();
+  }));
 
   // ── LINE OA Configuration ────────────────────────────────
   app.post("/api/settings/save-line-config", safe(async (req, res) => {

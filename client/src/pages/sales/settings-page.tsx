@@ -1458,8 +1458,35 @@ export default function SalesSettingsPage() {
                 </p>
               </div>
 
+              <div className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40 rounded-lg p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-300 flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    ดาวน์โหลด Excel ไฟล์สำเร็จรูป
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                    ได้รับไฟล์ .xlsx พร้อม header, สีสัน และคำนวณครบ — เปิดใช้งานได้ทันที
+                  </p>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="shrink-0 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    if (!exportKey) return;
+                    const url = `${window.location.origin}/api/export/excel/monthly?key=${exportKey}&month=${selectedMonth}&year=${selectedYear}`;
+                    window.open(url, "_blank");
+                  }}
+                  disabled={!exportKey}
+                  data-testid="button-download-excel"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  ดาวน์โหลด Excel
+                </Button>
+              </div>
+
               <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">วิธีเชื่อมต่อใน Excel (Power Query)</p>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">วิธีเชื่อมต่อ Live Feed ใน Excel (Power Query)</p>
                 <ol className="text-xs text-amber-700 dark:text-amber-400 space-y-1.5 list-none">
                   <li className="flex gap-2"><span className="font-bold shrink-0">1.</span><span>เปิด Excel → แท็บ <b>Data</b> → <b>Get Data</b> → <b>From Other Sources</b> → <b>From OData Feed</b></span></li>
                   <li className="flex gap-2"><span className="font-bold shrink-0">2.</span><span>วาง URL ด้านบนในช่อง URL แล้วกด OK</span></li>

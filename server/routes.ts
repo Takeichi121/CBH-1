@@ -7377,38 +7377,107 @@ ${pageContext}` : ''}`;
     const targetMap: Record<string, number> = {};
     targets.forEach(t => { targetMap[t.targetDate] = Number(t.targetSales || 0); });
 
-    const dutyHrs = Number(laborCfg?.dutyDailyHours || 40);
-    const pph     = Number(laborCfg?.ptWageRate || 84);
+    const dutyHrs   = Number(laborCfg?.dutyDailyHours || 40);
+    const pph       = Number(laborCfg?.ptWageRate || 84);
+    const dayNames  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    let runLYMtd = 0, runDelMtd = 0;
 
     const value = reports.map(r => {
+      const dateObj   = new Date(r.reportDate + "T00:00:00");
       const actual    = Number(r.actualSales || 0);
       const tc        = Number(r.transactionCount || 0);
       const actHrs    = Number(r.actualHours || 0);
       const otHrs     = Number(r.otHours || 0);
       const fullHrs   = dutyHrs + actHrs + otHrs;
       const colD      = fullHrs * pph;
-      const targetSls = targetMap[r.reportDate] || 0;
+      const targetSls = targetMap[r.reportDate] || Number(r.dailyTarget || 0);
+      const lyDaily   = Number(r.lastYearSales || 0);
+      const acMtd     = Number(r.mtdActual || 0);
+      const tgtMtd    = Number(r.mtdTarget || 0);
+      const forecast  = Number(r.forecastSales || 0);
+      const delivery  = Number(r.salesDelivery || 0) ||
+                        (Number(r.grabfood||0) + Number(r.lineman||0) + Number(r.shopee||0) +
+                         Number(r.bkapp||0)    + Number(r.robin||0)  + Number(r.gokoo||0));
+      const wasteRaw  = Number(r.wasteRawDaily || 0);
+      const wasteMeal = Number(r.wasteMealDaily || 0);
+
+      runLYMtd  += lyDaily;
+      runDelMtd += delivery;
 
       return {
-        Date:           r.reportDate,
-        Day:            new Date(r.reportDate).getDate(),
-        ActualSales:    actual,
-        TargetSales:    targetSls,
-        LastYearSales:  Number(r.lastYearSales || 0),
-        ForecastSales:  Number(r.forecastSales || 0),
-        ActualTC:       tc,
-        TargetTC:       Number(r.targetTc || 0),
-        LastYearTC:     Number(r.lastYearTc || 0),
-        ActualTA:       tc > 0 ? actual / tc : 0,
-        TargetTA:       Number(r.targetTa || 0),
-        ActualHours:    actHrs,
-        OTHours:        otHrs,
-        DutyHours:      dutyHrs,
-        RosterCommit:   Number(r.rosterCommit || 0),
-        WasteDaily:     Number(r.wasteRawDaily || 0),
-        COLDaily:       colD,
-        COLPercent:     actual > 0 ? colD / actual : 0,
-        RecommendHours: Number(r.recommendHours || 0),
+        // Identity
+        Date:              r.reportDate,
+        DayOfWeek:         dayNames[dateObj.getDay()],
+        DayNum:            dateObj.getDate(),
+        MonthName:         monthNames[dateObj.getMonth()],
+        ReportBy:          r.reportBy || "",
+        // Sales — Daily
+        ActualSales:       actual,
+        TargetSales:       targetSls,
+        LastYearSales:     lyDaily,
+        ForecastSales:     forecast,
+        VarianceTarget:    actual - targetSls,
+        VarianceForecast:  actual - forecast,
+        PctVsTarget:       targetSls > 0 ? actual / targetSls : 0,
+        CompSalesPct:      lyDaily  > 0 ? actual / lyDaily   : 0,
+        // Sales — MTD
+        ActualSalesMTD:    acMtd,
+        TargetSalesMTD:    tgtMtd,
+        LastYearSalesMTD:  runLYMtd,
+        VarianceMTD:       acMtd - tgtMtd,
+        // TC / TA
+        ActualTC:          tc,
+        TargetTC:          Number(r.targetTc || 0),
+        LastYearTC:        Number(r.lastYearTc || 0),
+        ActualMTDTC:       Number(r.mtdTc || 0),
+        ActualTA:          tc > 0 ? actual / tc : 0,
+        TargetTA:          Number(r.targetTa || 0),
+        // Channel breakdown
+        DineIn:            Number(r.dineIn || 0),
+        DineInTC:          Number(r.dineInTc || 0),
+        TakeAway:          Number(r.takeAway || 0),
+        TakeAwayTC:        Number(r.takeAwayTc || 0),
+        // Delivery platforms
+        DeliveryDaily:     delivery,
+        DeliveryMTD:       runDelMtd,
+        GrabFood:          Number(r.grabfood || 0),
+        Lineman:           Number(r.lineman || 0),
+        Shopee:            Number(r.shopee || 0),
+        BKApp:             Number(r.bkapp || 0),
+        Robin:             Number(r.robin || 0),
+        GoKoo:             Number(r.gokoo || 0),
+        // Performance
+        OSAT:              Number(r.osat || 0),
+        SurveyCount:       Number(r.surveyCount || 0),
+        VoidCount:         Number(r.voidCount || 0),
+        SOSDaily:          Number(r.sosDaily || 0),
+        SOSMtd:            Number(r.sosMtd || 0),
+        // Add-ons
+        AddCheeseCount:    Number(r.addCheeseCount || 0),
+        AddCheesePct:      Number(r.addCheesePercent || 0) / 100,
+        VMealCount:        Number(r.vMealCount || 0),
+        VMealPct:          Number(r.vMealPercent || 0) / 100,
+        UpSizeCount:       Number(r.upSizeCount || 0),
+        UpSizePct:         Number(r.upSizePercent || 0) / 100,
+        // Waste
+        WasteDailyBaht:    wasteRaw,
+        WasteDailyPct:     actual > 0 ? wasteRaw / actual : 0,
+        WasteMealDailyBaht:wasteMeal,
+        WasteRawMtd:       Number(r.wasteRawMtd || 0),
+        WasteMealMtd:      Number(r.wasteMealMtd || 0),
+        // Labor
+        ActualHours:       actHrs,
+        OTHours:           otHrs,
+        OTMtd:             Number(r.otMtd || 0),
+        DutyHours:         dutyHrs,
+        RosterCommit:      Number(r.rosterCommit || 0),
+        RecommendHours:    Number(r.recommendHours || 0),
+        COLDaily:          colD,
+        COLPercent:        actual > 0 ? colD / actual : 0,
+        TCMH:              actHrs > 0 ? tc / actHrs : 0,
+        CloseShift:        Number(r.closeShiftCount || 0),
       };
     });
 
@@ -7432,25 +7501,77 @@ ${pageContext}` : ''}`;
     <Schema Namespace="CBH" xmlns="http://docs.oasis-open.org/odata/ns/edm">
       <EntityType Name="DailySale">
         <Key><PropertyRef Name="Date"/></Key>
-        <Property Name="Date"           Type="Edm.String"  Nullable="false"/>
-        <Property Name="Day"            Type="Edm.Int32"/>
-        <Property Name="ActualSales"    Type="Edm.Decimal" Scale="2"/>
-        <Property Name="TargetSales"    Type="Edm.Decimal" Scale="2"/>
-        <Property Name="LastYearSales"  Type="Edm.Decimal" Scale="2"/>
-        <Property Name="ForecastSales"  Type="Edm.Decimal" Scale="2"/>
-        <Property Name="ActualTC"       Type="Edm.Int32"/>
-        <Property Name="TargetTC"       Type="Edm.Int32"/>
-        <Property Name="LastYearTC"     Type="Edm.Int32"/>
-        <Property Name="ActualTA"       Type="Edm.Decimal" Scale="2"/>
-        <Property Name="TargetTA"       Type="Edm.Decimal" Scale="2"/>
-        <Property Name="ActualHours"    Type="Edm.Decimal" Scale="2"/>
-        <Property Name="OTHours"        Type="Edm.Decimal" Scale="2"/>
-        <Property Name="DutyHours"      Type="Edm.Decimal" Scale="2"/>
-        <Property Name="RosterCommit"   Type="Edm.Decimal" Scale="2"/>
-        <Property Name="WasteDaily"     Type="Edm.Decimal" Scale="2"/>
-        <Property Name="COLDaily"       Type="Edm.Decimal" Scale="2"/>
-        <Property Name="COLPercent"     Type="Edm.Decimal" Scale="4"/>
-        <Property Name="RecommendHours" Type="Edm.Decimal" Scale="2"/>
+        <!-- Identity -->
+        <Property Name="Date"              Type="Edm.String"  Nullable="false"/>
+        <Property Name="DayOfWeek"         Type="Edm.String"/>
+        <Property Name="DayNum"            Type="Edm.Int32"/>
+        <Property Name="MonthName"         Type="Edm.String"/>
+        <Property Name="ReportBy"          Type="Edm.String"/>
+        <!-- Sales Daily -->
+        <Property Name="ActualSales"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="TargetSales"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="LastYearSales"     Type="Edm.Decimal" Scale="2"/>
+        <Property Name="ForecastSales"     Type="Edm.Decimal" Scale="2"/>
+        <Property Name="VarianceTarget"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="VarianceForecast"  Type="Edm.Decimal" Scale="2"/>
+        <Property Name="PctVsTarget"       Type="Edm.Decimal" Scale="4"/>
+        <Property Name="CompSalesPct"      Type="Edm.Decimal" Scale="4"/>
+        <!-- Sales MTD -->
+        <Property Name="ActualSalesMTD"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="TargetSalesMTD"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="LastYearSalesMTD"  Type="Edm.Decimal" Scale="2"/>
+        <Property Name="VarianceMTD"       Type="Edm.Decimal" Scale="2"/>
+        <!-- TC / TA -->
+        <Property Name="ActualTC"          Type="Edm.Int32"/>
+        <Property Name="TargetTC"          Type="Edm.Int32"/>
+        <Property Name="LastYearTC"        Type="Edm.Int32"/>
+        <Property Name="ActualMTDTC"       Type="Edm.Int32"/>
+        <Property Name="ActualTA"          Type="Edm.Decimal" Scale="2"/>
+        <Property Name="TargetTA"          Type="Edm.Decimal" Scale="2"/>
+        <!-- Channel -->
+        <Property Name="DineIn"            Type="Edm.Decimal" Scale="2"/>
+        <Property Name="DineInTC"          Type="Edm.Int32"/>
+        <Property Name="TakeAway"          Type="Edm.Decimal" Scale="2"/>
+        <Property Name="TakeAwayTC"        Type="Edm.Int32"/>
+        <!-- Delivery -->
+        <Property Name="DeliveryDaily"     Type="Edm.Decimal" Scale="2"/>
+        <Property Name="DeliveryMTD"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="GrabFood"          Type="Edm.Decimal" Scale="2"/>
+        <Property Name="Lineman"           Type="Edm.Decimal" Scale="2"/>
+        <Property Name="Shopee"            Type="Edm.Decimal" Scale="2"/>
+        <Property Name="BKApp"             Type="Edm.Decimal" Scale="2"/>
+        <Property Name="Robin"             Type="Edm.Decimal" Scale="2"/>
+        <Property Name="GoKoo"             Type="Edm.Decimal" Scale="2"/>
+        <!-- Performance -->
+        <Property Name="OSAT"              Type="Edm.Decimal" Scale="2"/>
+        <Property Name="SurveyCount"       Type="Edm.Int32"/>
+        <Property Name="VoidCount"         Type="Edm.Int32"/>
+        <Property Name="SOSDaily"          Type="Edm.Decimal" Scale="2"/>
+        <Property Name="SOSMtd"            Type="Edm.Decimal" Scale="2"/>
+        <!-- Add-ons -->
+        <Property Name="AddCheeseCount"    Type="Edm.Int32"/>
+        <Property Name="AddCheesePct"      Type="Edm.Decimal" Scale="4"/>
+        <Property Name="VMealCount"        Type="Edm.Int32"/>
+        <Property Name="VMealPct"          Type="Edm.Decimal" Scale="4"/>
+        <Property Name="UpSizeCount"       Type="Edm.Int32"/>
+        <Property Name="UpSizePct"         Type="Edm.Decimal" Scale="4"/>
+        <!-- Waste -->
+        <Property Name="WasteDailyBaht"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="WasteDailyPct"     Type="Edm.Decimal" Scale="4"/>
+        <Property Name="WasteMealDailyBaht" Type="Edm.Decimal" Scale="2"/>
+        <Property Name="WasteRawMtd"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="WasteMealMtd"      Type="Edm.Decimal" Scale="2"/>
+        <!-- Labor -->
+        <Property Name="ActualHours"       Type="Edm.Decimal" Scale="2"/>
+        <Property Name="OTHours"           Type="Edm.Decimal" Scale="2"/>
+        <Property Name="OTMtd"             Type="Edm.Decimal" Scale="2"/>
+        <Property Name="DutyHours"         Type="Edm.Decimal" Scale="2"/>
+        <Property Name="RosterCommit"      Type="Edm.Decimal" Scale="2"/>
+        <Property Name="RecommendHours"    Type="Edm.Decimal" Scale="2"/>
+        <Property Name="COLDaily"          Type="Edm.Decimal" Scale="2"/>
+        <Property Name="COLPercent"        Type="Edm.Decimal" Scale="4"/>
+        <Property Name="TCMH"              Type="Edm.Decimal" Scale="2"/>
+        <Property Name="CloseShift"        Type="Edm.Int32"/>
       </EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="DailySales" EntityType="CBH.DailySale"/>

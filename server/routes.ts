@@ -7377,42 +7377,64 @@ ${pageContext}` : ''}`;
     const targetMap: Record<string, number> = {};
     targets.forEach(t => { targetMap[t.targetDate] = Number(t.targetSales || 0); });
 
-    const dutyHrs   = Number(laborCfg?.dutyDailyHours || 40);
-    const pph       = Number(laborCfg?.ptWageRate || 84);
-    const dayNames  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    // Build a report lookup keyed by date string (YYYY-MM-DD)
+    const reportMap: Record<string, typeof reports[0]> = {};
+    reports.forEach(r => { reportMap[r.reportDate] = r; });
+
+    const dutyHrs    = Number(laborCfg?.dutyDailyHours || 40);
+    const pph        = Number(laborCfg?.ptWageRate || 84);
+    const dayNames   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
     const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // Generate every calendar day of the requested month
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const allDays: string[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const mm = String(month).padStart(2, "0");
+      const dd = String(d).padStart(2, "0");
+      allDays.push(`${year}-${mm}-${dd}`);
+    }
 
     let runLYMtd = 0, runDelMtd = 0;
 
-    const value = reports.map(r => {
-      const dateObj   = new Date(r.reportDate + "T00:00:00");
-      const actual    = Number(r.actualSales || 0);
-      const tc        = Number(r.transactionCount || 0);
-      const actHrs    = Number(r.actualHours || 0);
-      const otHrs     = Number(r.otHours || 0);
-      const fullHrs   = dutyHrs + actHrs + otHrs;
-      const colD      = fullHrs * pph;
-      const targetSls = targetMap[r.reportDate] || Number(r.dailyTarget || 0);
-      const lyDaily   = Number(r.lastYearSales || 0);
-      const acMtd     = Number(r.mtdActual || 0);
-      const tgtMtd    = Number(r.mtdTarget || 0);
-      const forecast  = Number(r.forecastSales || 0);
-      const delivery  = Number(r.salesDelivery || 0) ||
-                        (Number(r.grabfood||0) + Number(r.lineman||0) + Number(r.shopee||0) +
-                         Number(r.bkapp||0)    + Number(r.robin||0)  + Number(r.gokoo||0));
-      const wasteRaw  = Number(r.wasteRawDaily || 0);
-      const wasteMeal = Number(r.wasteMealDaily || 0);
+    const value = allDays.map(dateStr => {
+      const dateObj   = new Date(dateStr + "T00:00:00");
+      const r         = reportMap[dateStr];   // undefined → no report for this day
+      const hasReport = !!r;
 
-      runLYMtd  += lyDaily;
-      runDelMtd += delivery;
+      const actual    = hasReport ? Number(r.actualSales || 0) : 0;
+      const tc        = hasReport ? Number(r.transactionCount || 0) : 0;
+      const actHrs    = hasReport ? Number(r.actualHours || 0) : 0;
+      const otHrs     = hasReport ? Number(r.otHours || 0) : 0;
+      const fullHrs   = dutyHrs + actHrs + otHrs;
+      const colD      = hasReport ? fullHrs * pph : 0;
+      const targetSls = targetMap[dateStr] || (hasReport ? Number(r.dailyTarget || 0) : 0);
+      const lyDaily   = hasReport ? Number(r.lastYearSales || 0) : 0;
+      const acMtd     = hasReport ? Number(r.mtdActual || 0) : 0;
+      const tgtMtd    = hasReport ? Number(r.mtdTarget || 0) : 0;
+      const forecast  = hasReport ? Number(r.forecastSales || 0) : 0;
+      const delivery  = hasReport
+        ? (Number(r.salesDelivery || 0) ||
+           (Number(r.grabfood||0) + Number(r.lineman||0) + Number(r.shopee||0) +
+            Number(r.bkapp||0)    + Number(r.robin||0)  + Number(r.gokoo||0)))
+        : 0;
+      const wasteRaw  = hasReport ? Number(r.wasteRawDaily || 0) : 0;
+      const wasteMeal = hasReport ? Number(r.wasteMealDaily || 0) : 0;
+
+      // Only accumulate MTD when a real report exists
+      if (hasReport) {
+        runLYMtd  += lyDaily;
+        runDelMtd += delivery;
+      }
 
       return {
         // Identity
-        Date:              r.reportDate,
+        Date:              dateStr,
         DayOfWeek:         dayNames[dateObj.getDay()],
         DayNum:            dateObj.getDate(),
         MonthName:         monthNames[dateObj.getMonth()],
-        ReportBy:          r.reportBy || "",
+        ReportBy:          hasReport ? (r.reportBy || "") : "",
+        HasReport:         hasReport ? 1 : 0,
         // Sales — Daily
         ActualSales:       actual,
         TargetSales:       targetSls,
@@ -7429,55 +7451,55 @@ ${pageContext}` : ''}`;
         VarianceMTD:       acMtd - tgtMtd,
         // TC / TA
         ActualTC:          tc,
-        TargetTC:          Number(r.targetTc || 0),
-        LastYearTC:        Number(r.lastYearTc || 0),
-        ActualMTDTC:       Number(r.mtdTc || 0),
+        TargetTC:          hasReport ? Number(r.targetTc || 0) : 0,
+        LastYearTC:        hasReport ? Number(r.lastYearTc || 0) : 0,
+        ActualMTDTC:       hasReport ? Number(r.mtdTc || 0) : 0,
         ActualTA:          tc > 0 ? actual / tc : 0,
-        TargetTA:          Number(r.targetTa || 0),
+        TargetTA:          hasReport ? Number(r.targetTa || 0) : 0,
         // Channel breakdown
-        DineIn:            Number(r.dineIn || 0),
-        DineInTC:          Number(r.dineInTc || 0),
-        TakeAway:          Number(r.takeAway || 0),
-        TakeAwayTC:        Number(r.takeAwayTc || 0),
+        DineIn:            hasReport ? Number(r.dineIn || 0) : 0,
+        DineInTC:          hasReport ? Number(r.dineInTc || 0) : 0,
+        TakeAway:          hasReport ? Number(r.takeAway || 0) : 0,
+        TakeAwayTC:        hasReport ? Number(r.takeAwayTc || 0) : 0,
         // Delivery platforms
         DeliveryDaily:     delivery,
         DeliveryMTD:       runDelMtd,
-        GrabFood:          Number(r.grabfood || 0),
-        Lineman:           Number(r.lineman || 0),
-        Shopee:            Number(r.shopee || 0),
-        BKApp:             Number(r.bkapp || 0),
-        Robin:             Number(r.robin || 0),
-        GoKoo:             Number(r.gokoo || 0),
+        GrabFood:          hasReport ? Number(r.grabfood || 0) : 0,
+        Lineman:           hasReport ? Number(r.lineman || 0) : 0,
+        Shopee:            hasReport ? Number(r.shopee || 0) : 0,
+        BKApp:             hasReport ? Number(r.bkapp || 0) : 0,
+        Robin:             hasReport ? Number(r.robin || 0) : 0,
+        GoKoo:             hasReport ? Number(r.gokoo || 0) : 0,
         // Performance
-        OSAT:              Number(r.osat || 0),
-        SurveyCount:       Number(r.surveyCount || 0),
-        VoidCount:         Number(r.voidCount || 0),
-        SOSDaily:          Number(r.sosDaily || 0),
-        SOSMtd:            Number(r.sosMtd || 0),
+        OSAT:              hasReport ? Number(r.osat || 0) : 0,
+        SurveyCount:       hasReport ? Number(r.surveyCount || 0) : 0,
+        VoidCount:         hasReport ? Number(r.voidCount || 0) : 0,
+        SOSDaily:          hasReport ? Number(r.sosDaily || 0) : 0,
+        SOSMtd:            hasReport ? Number(r.sosMtd || 0) : 0,
         // Add-ons
-        AddCheeseCount:    Number(r.addCheeseCount || 0),
-        AddCheesePct:      Number(r.addCheesePercent || 0) / 100,
-        VMealCount:        Number(r.vMealCount || 0),
-        VMealPct:          Number(r.vMealPercent || 0) / 100,
-        UpSizeCount:       Number(r.upSizeCount || 0),
-        UpSizePct:         Number(r.upSizePercent || 0) / 100,
+        AddCheeseCount:    hasReport ? Number(r.addCheeseCount || 0) : 0,
+        AddCheesePct:      hasReport ? Number(r.addCheesePercent || 0) / 100 : 0,
+        VMealCount:        hasReport ? Number(r.vMealCount || 0) : 0,
+        VMealPct:          hasReport ? Number(r.vMealPercent || 0) / 100 : 0,
+        UpSizeCount:       hasReport ? Number(r.upSizeCount || 0) : 0,
+        UpSizePct:         hasReport ? Number(r.upSizePercent || 0) / 100 : 0,
         // Waste
         WasteDailyBaht:    wasteRaw,
         WasteDailyPct:     actual > 0 ? wasteRaw / actual : 0,
         WasteMealDailyBaht:wasteMeal,
-        WasteRawMtd:       Number(r.wasteRawMtd || 0),
-        WasteMealMtd:      Number(r.wasteMealMtd || 0),
+        WasteRawMtd:       hasReport ? Number(r.wasteRawMtd || 0) : 0,
+        WasteMealMtd:      hasReport ? Number(r.wasteMealMtd || 0) : 0,
         // Labor
         ActualHours:       actHrs,
         OTHours:           otHrs,
-        OTMtd:             Number(r.otMtd || 0),
+        OTMtd:             hasReport ? Number(r.otMtd || 0) : 0,
         DutyHours:         dutyHrs,
-        RosterCommit:      Number(r.rosterCommit || 0),
-        RecommendHours:    Number(r.recommendHours || 0),
+        RosterCommit:      hasReport ? Number(r.rosterCommit || 0) : 0,
+        RecommendHours:    hasReport ? Number(r.recommendHours || 0) : 0,
         COLDaily:          colD,
         COLPercent:        actual > 0 ? colD / actual : 0,
         TCMH:              actHrs > 0 ? tc / actHrs : 0,
-        CloseShift:        Number(r.closeShiftCount || 0),
+        CloseShift:        hasReport ? Number(r.closeShiftCount || 0) : 0,
       };
     });
 
@@ -7507,6 +7529,7 @@ ${pageContext}` : ''}`;
         <Property Name="DayNum"            Type="Edm.Int32"/>
         <Property Name="MonthName"         Type="Edm.String"/>
         <Property Name="ReportBy"          Type="Edm.String"/>
+        <Property Name="HasReport"         Type="Edm.Int32"/>
         <!-- Sales Daily -->
         <Property Name="ActualSales"       Type="Edm.Decimal" Scale="2"/>
         <Property Name="TargetSales"       Type="Edm.Decimal" Scale="2"/>

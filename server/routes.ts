@@ -7434,7 +7434,6 @@ ${pageContext}` : ''}`;
         DayNum:            dateObj.getDate(),
         MonthName:         monthNames[dateObj.getMonth()],
         ReportBy:          hasReport ? (r.reportBy || "") : "",
-        HasReport:         hasReport ? 1 : 0,
         // Sales — Daily
         ActualSales:       actual,
         TargetSales:       targetSls,
@@ -7529,7 +7528,6 @@ ${pageContext}` : ''}`;
         <Property Name="DayNum"            Type="Edm.Int32"/>
         <Property Name="MonthName"         Type="Edm.String"/>
         <Property Name="ReportBy"          Type="Edm.String"/>
-        <Property Name="HasReport"         Type="Edm.Int32"/>
         <!-- Sales Daily -->
         <Property Name="ActualSales"       Type="Edm.Decimal" Scale="2"/>
         <Property Name="TargetSales"       Type="Edm.Decimal" Scale="2"/>

@@ -7439,14 +7439,15 @@ ${pageContext}` : ''}`;
         TargetSales:       targetSls,
         LastYearSales:     lyDaily,
         ForecastSales:     forecast,
-        VarianceTarget:    actual - targetSls,
-        VarianceForecast:  actual - forecast,
-        PctVsTarget:       targetSls > 0 ? actual / targetSls : 0,
-        CompSalesPct:      lyDaily  > 0 ? actual / lyDaily   : 0,
-        // Sales — MTD
+        // Variance / ratios — 0 when no report (avoid showing -target as "missed")
+        VarianceTarget:    hasReport ? actual - targetSls : 0,
+        VarianceForecast:  hasReport ? actual - forecast  : 0,
+        PctVsTarget:       hasReport && targetSls > 0 ? actual / targetSls : 0,
+        CompSalesPct:      hasReport && lyDaily  > 0 ? actual / lyDaily   : 0,
+        // Sales — MTD (0 for no-report days; MTD comes from submitted reports only)
         ActualSalesMTD:    acMtd,
         TargetSalesMTD:    tgtMtd,
-        LastYearSalesMTD:  runLYMtd,
+        LastYearSalesMTD:  hasReport ? runLYMtd  : 0,
         VarianceMTD:       acMtd - tgtMtd,
         // TC / TA
         ActualTC:          tc,
@@ -7460,9 +7461,9 @@ ${pageContext}` : ''}`;
         DineInTC:          hasReport ? Number(r.dineInTc || 0) : 0,
         TakeAway:          hasReport ? Number(r.takeAway || 0) : 0,
         TakeAwayTC:        hasReport ? Number(r.takeAwayTc || 0) : 0,
-        // Delivery platforms
+        // Delivery platforms — MTD 0 for no-report days (avoid stuck accumulator)
         DeliveryDaily:     delivery,
-        DeliveryMTD:       runDelMtd,
+        DeliveryMTD:       hasReport ? runDelMtd : 0,
         GrabFood:          hasReport ? Number(r.grabfood || 0) : 0,
         Lineman:           hasReport ? Number(r.lineman || 0) : 0,
         Shopee:            hasReport ? Number(r.shopee || 0) : 0,

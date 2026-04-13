@@ -2868,7 +2868,7 @@ ${pageContext}` : ''}`;
           }
 
           case "approveSwapRequest": {
-            const swapReq = await storage.getSwapRequestById(args.id);
+            const swapReq = await storage.getSwapRequestById(args.id, user.storeId || 'BK001GDP');
             if (!swapReq) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "approved", username, args.note || "อนุมัติโดย Chann");
             toolActions.push(`✅ อนุมัติ swap request #${args.id} (${swapReq.requesterUsername} ↔ ${swapReq.targetUsername || "?"})`);
@@ -2876,7 +2876,7 @@ ${pageContext}` : ''}`;
           }
 
           case "rejectSwapRequest": {
-            const swapReq2 = await storage.getSwapRequestById(args.id);
+            const swapReq2 = await storage.getSwapRequestById(args.id, user.storeId || 'BK001GDP');
             if (!swapReq2) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "rejected", username, args.note || "ปฏิเสธโดย Chann");
             toolActions.push(`❌ ปฏิเสธ swap request #${args.id}`);
@@ -4571,7 +4571,8 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    const request = await storage.getSwapRequestById(requestId);
+    const storeId = u.storeId || 'BK001GDP';
+    const request = await storage.getSwapRequestById(requestId, storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
     try {
@@ -4601,7 +4602,8 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    const request = await storage.getSwapRequestById(requestId);
+    const storeId = u.storeId || 'BK001GDP';
+    const request = await storage.getSwapRequestById(requestId, storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
     await storage.updateSwapRequestStatus(requestId, "rejected", u.username, note);

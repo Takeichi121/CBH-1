@@ -470,11 +470,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertDailySalesReportByDate(report: InsertDailySales, storeId: string = 'BK001GDP'): Promise<DailySalesReport> {
-    const sId = (report as any).storeId || storeId;
+    const sId = report.storeId || storeId;
     const existing = await this.getDailySalesReportByDate(report.reportDate, sId);
     if (existing) {
       const existingActual = parseFloat(existing.actualSales || "0");
-      const incomingActual = parseFloat((report as any).actualSales || "0");
+      const incomingActual = parseFloat(report.actualSales || "0");
 
       // Guard: if existing record has real sales data but incoming has 0 (autosave of empty form),
       // preserve non-zero values to prevent accidental overwrite.
@@ -599,7 +599,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertDailyTarget(target: InsertDailyTarget, storeId: string = 'BK001GDP'): Promise<DailyTarget> {
-    const sId = (target as any).storeId || storeId;
+    const sId = target.storeId || storeId;
     const existing = await this.getDailyTarget(target.targetDate, sId);
     if (existing) {
       const [updated] = await db.update(dailyTargets)
@@ -1099,7 +1099,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertWeeklySalesReport(report: InsertWeeklySales, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport> {
-    const sId = (report as any).storeId || storeId;
+    const sId = report.storeId || storeId;
     const existing = await this.getWeeklySalesReport(report.weekStartDate, sId);
     if (existing) {
       const [updated] = await db.update(weeklySalesReports)

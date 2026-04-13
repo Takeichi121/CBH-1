@@ -424,13 +424,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   const getSessionStoreId = async (token: string, bodyStoreId?: string): Promise<string> => {
     try {
       const session = await storage.getSession(token);
-      if (!session) return bodyStoreId || 'BK001GDP';
+      if (!session) return 'BK001GDP';
       const user = await storage.getUser(session.username);
-      if (!user) return bodyStoreId || 'BK001GDP';
+      if (!user) return 'BK001GDP';
       const isAdminLike = user.role === 'admin' || user.role === 'area';
+      // Only admin/area roles may override storeId via request body; others are locked to their assigned store
       return (isAdminLike && bodyStoreId) ? bodyStoreId : (user.storeId || 'BK001GDP');
     } catch {
-      return bodyStoreId || 'BK001GDP';
+      return 'BK001GDP';
     }
   };
 

@@ -107,11 +107,12 @@ export const shifts = pgTable("shifts", {
   startTime: text("start_time").notNull(), // HH:MM
   endTime: text("end_time").notNull(), // HH:MM
   note: text("note"),
+  storeId: text("store_id").notNull().default("BK001GDP"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   updatedBy: text("updated_by"),
 }, (t) => ({
-  uniqueUserDate: unique().on(t.username, t.date),
+  uniqueUserDateStore: unique().on(t.username, t.date, t.storeId),
 }));
 
 export const swapRequests = pgTable("swap_requests", {
@@ -183,6 +184,7 @@ export const managerRequests = pgTable("manager_requests", {
   approvedBy: text("approved_by"),
   approvedAt: text("approved_at"),
   rejectionReason: text("rejection_reason"),
+  storeId: text("store_id").notNull().default("BK001GDP"),
 
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -490,11 +492,14 @@ export const storeSettings = pgTable("store_settings", {
   id: serial("id").primaryKey(),
   storeName: text("store_name").notNull(),
   storeCode: text("store_code").notNull(),
+  storeId: text("store_id").notNull().default("BK001GDP"),
   dailyTarget: text("daily_target").notNull().default("250000"),
   mtdTarget: text("mtd_target").default("7500000"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  uniqueStoreSettings: unique().on(t.storeId),
+}));
 
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -520,6 +525,7 @@ export const announcements = pgTable("announcements", {
   targetAudience: text("target_audience").notNull().default("all"), 
   isPinned: integer("is_pinned").notNull().default(0),
   expiresAt: text("expires_at"), 
+  storeId: text("store_id").notNull().default("BK001GDP"),
   createdAt: text("created_at").notNull(),
   createdBy: text("created_by").notNull(),
   updatedAt: text("updated_at").notNull(),

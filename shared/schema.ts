@@ -126,6 +126,7 @@ export const swapRequests = pgTable("swap_requests", {
   updatedAt: text("updated_at").notNull(),
   approvedBy: text("approved_by"),
   note: text("note"),
+  storeId: text("store_id").notNull().default("BK001GDP"),
 });
 
 // ==========================================

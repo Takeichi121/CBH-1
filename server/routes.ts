@@ -2512,7 +2512,7 @@ ${pageContext}` : ''}`;
 
           case "getSwapRequests": {
             const swapStatus = args.status === "all" ? undefined : args.status;
-            const swaps = await storage.getSwapRequests(swapStatus);
+            const swaps = await storage.getSwapRequests(swapStatus, user.storeId || 'BK001GDP');
             return JSON.stringify({ ok: true, swaps, count: swaps.length });
           }
 
@@ -4543,7 +4543,7 @@ ${pageContext}` : ''}`;
     const now = nowIso();
     await storage.createSwapRequest({
       requesterUsername: me.username, requesterDate: myDate, targetUsername: target.username, targetDate: targetDate,
-      status: "pending", createdAt: now, updatedAt: now,
+      status: "pending", createdAt: now, updatedAt: now, storeId: me.storeId || 'BK001GDP',
     });
 
     await storage.log("swap_request", me.username, `request swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
@@ -4557,8 +4557,9 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
+    const storeId = u.storeId || 'BK001GDP';
     const isManager = isManagerLike(u.role);
-    const requests = await storage.getSwapRequests(isManager ? "pending" : undefined);
+    const requests = await storage.getSwapRequests(isManager ? "pending" : undefined, storeId);
     const filteredRequests = isManager ? requests : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
     res.json({ ok: true, requests: filteredRequests });
   }));

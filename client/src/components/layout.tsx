@@ -2,7 +2,9 @@ import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoDataHouse } from "@/components/logo";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -27,11 +29,27 @@ import { NotificationBell } from "@/components/notification-bell";
 import { useI18n } from "@/hooks/use-i18n";
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, selectedStoreId, setSelectedStoreId, token } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const isAdminLike = user?.role === 'admin' || user?.role === 'area';
+
+  const { data: storesData } = useQuery({
+    queryKey: ["/api/admin/stores", token],
+    enabled: !!isAdminLike && !!token,
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/stores", { token });
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const stores: Array<{ id: string; name: string; nameTh?: string | null; isActive: number }> = storesData?.stores || [];
+  const effectiveStoreId = selectedStoreId || (stores[0]?.id) || 'BK001GDP';
+  const currentStore = stores.find(s => s.id === effectiveStoreId) || stores[0];
 
   if (!user) {
     return <div className="min-h-screen bg-background">{children}</div>;
@@ -292,6 +310,37 @@ export function Layout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="flex items-center gap-2">
+          {/* Store Switcher (admin/area only, when multiple stores exist) */}
+          {isAdminLike && stores.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-9 px-3 rounded-full border-primary/20 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all max-w-[180px]"
+                  data-testid="button-store-switcher"
+                >
+                  <Store className="w-4 h-4 shrink-0" />
+                  <span className="text-xs font-medium truncate">{currentStore?.name || effectiveStoreId}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {stores.filter(s => s.isActive === 1).map(store => (
+                  <DropdownMenuItem
+                    key={store.id}
+                    onClick={() => setSelectedStoreId(store.id)}
+                    className={effectiveStoreId === store.id ? "bg-primary/10 text-primary font-semibold" : ""}
+                    data-testid={`store-option-${store.id}`}
+                  >
+                    <Store className="w-4 h-4 mr-2 shrink-0" />
+                    <span className="truncate">{store.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <Button
             variant="outline"
             size="sm"

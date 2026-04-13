@@ -18,7 +18,10 @@ type User = {
   profileComplete?: boolean;
   mustChangePassword?: boolean;
   allowedFeatures?: string[] | null;
+  storeId?: string | null;
 };
+
+const SELECTED_STORE_KEY = "selected_store_id";
 
 type AuthContextType = {
   user: User | null;
@@ -33,6 +36,8 @@ type AuthContextType = {
   setUserProfileComplete: (profileData?: { nickName?: string; phone?: string; email?: string }) => void;
   setUserPasswordChanged: () => void;
   setUserProfilePicture: (profilePicture: string) => void;
+  selectedStoreId: string | null;
+  setSelectedStoreId: (id: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -49,9 +54,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedStoreId, setSelectedStoreIdState] = useState<string | null>(
+    () => localStorage.getItem(SELECTED_STORE_KEY)
+  );
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const setSelectedStoreId = (id: string) => {
+    localStorage.setItem(SELECTED_STORE_KEY, id);
+    setSelectedStoreIdState(id);
+    // Invalidate all queries so data refreshes for new store
+    queryClient.invalidateQueries();
+  };
 
   const clearSession = () => {
     localStorage.removeItem(TOKEN_KEY);
@@ -146,6 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserProfileComplete,
       setUserPasswordChanged,
       setUserProfilePicture,
+      selectedStoreId,
+      setSelectedStoreId,
     }),
     [
       user,
@@ -157,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerManagerMutation,
       completeProfileMutation,
       forceChangePasswordMutation,
+      selectedStoreId,
     ]
   );
 

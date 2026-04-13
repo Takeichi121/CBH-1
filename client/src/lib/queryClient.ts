@@ -1,5 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const SELECTED_STORE_KEY = "selected_store_id";
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     if (res.status === 401) {
@@ -24,10 +26,20 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  let body = data;
+
+  // For POST requests, inject storeId from localStorage if admin/area has selected a store
+  if (method === "POST" && data && typeof data === "object" && !Array.isArray(data)) {
+    const selectedStoreId = localStorage.getItem(SELECTED_STORE_KEY);
+    if (selectedStoreId && !("storeId" in (data as Record<string, unknown>))) {
+      body = { ...(data as Record<string, unknown>), storeId: selectedStoreId };
+    }
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
   });
 

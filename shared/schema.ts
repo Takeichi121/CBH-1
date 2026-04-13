@@ -54,6 +54,22 @@ export const users = pgTable("users", {
   mustChangePassword: integer("must_change_password").notNull().default(0),
   createdAt: text("created_at").notNull(),
   allowedFeatures: text("allowed_features"),
+  storeId: text("store_id").default("BK001GDP"),
+});
+
+// ==========================================
+// 🏪 Stores (Multi-Store Support)
+// ==========================================
+
+export const stores = pgTable("stores", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  nameTh: text("name_th"),
+  code: text("code").notNull(),
+  address: text("address"),
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
 
 // ==========================================
@@ -274,6 +290,7 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   notePerformance: text("note_performance"),
   noteAddons: text("note_addons"),
 
+  storeId: text("store_id").notNull().default("BK001GDP"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [
@@ -303,10 +320,11 @@ export const weeklySalesReports = pgTable("weekly_sales_reports", {
   wasteTop3: text("waste_top3").default(""),
   unaccountedTop3: text("unaccounted_top3").default(""),
 
+  storeId: text("store_id").notNull().default("BK001GDP"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
-  uniqueWeek: unique().on(t.weekStartDate),
+  uniqueWeekStore: unique().on(t.weekStartDate, t.storeId),
 }));
 
 export const dailyTargets = pgTable("daily_targets", {
@@ -316,10 +334,11 @@ export const dailyTargets = pgTable("daily_targets", {
   targetTc: text("target_tc").default("300"),
   wasteRawDaily: text("waste_raw_daily").default("0"),
   wasteMealDaily: text("waste_meal_daily").default("0"),
+  storeId: text("store_id").notNull().default("BK001GDP"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
-  uniqueDate: unique().on(t.targetDate),
+  uniqueDateStore: unique().on(t.targetDate, t.storeId),
 }));
 
 export const wasteTargets = pgTable("waste_targets", {
@@ -331,10 +350,11 @@ export const wasteTargets = pgTable("waste_targets", {
   mealPercent: text("meal_percent").default("0"),
   rawAmount: text("raw_amount").default("0"),
   rawPercent: text("raw_percent").default("0"),
+  storeId: text("store_id").notNull().default("BK001GDP"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
-  uniqueMonth: unique().on(t.targetMonth),
+  uniqueMonthStore: unique().on(t.targetMonth, t.storeId),
 }));
 
 // ==========================================
@@ -405,12 +425,14 @@ export const laborSettings = pgTable("labor_settings", {
   fixedCostDaily: decimal("fixed_cost_daily", { precision: 10, scale: 2 }).default("0"),  
   closeShiftDailyCost: decimal("close_shift_daily_cost", { precision: 10, scale: 2 }).default("0"), 
   ptWageRate: decimal("pt_wage_rate", { precision: 10, scale: 2 }).default("45"),         
+  storeId: text("store_id").notNull().default("BK001GDP"),
   updatedAt: text("updated_at"),
 });
 
 export const dailyLabor = pgTable("daily_labor", {
   id: serial("id").primaryKey(),
-  date: text("date").notNull().unique(), // YYYY-MM-DD
+  date: text("date").notNull(), // YYYY-MM-DD
+  storeId: text("store_id").notNull().default("BK001GDP"),
   actualHours: decimal("actual_hours", { precision: 10, scale: 2 }).default("0"), 
   otHours: decimal("ot_hours", { precision: 10, scale: 2 }).default("0"),         
   summaryHours: decimal("summary_hours", { precision: 10, scale: 2 }).default("0"),     
@@ -419,7 +441,9 @@ export const dailyLabor = pgTable("daily_labor", {
   colPercent: decimal("col_percent", { precision: 10, scale: 2 }).default("0"),         
   tcmh: decimal("tcmh", { precision: 10, scale: 2 }).default("0"),                      
   updatedAt: text("updated_at"),
-});
+}, (t) => ({
+  uniqueDateStore: unique().on(t.date, t.storeId),
+}));
 
 // ==========================================
 // 🔧 System & Config
@@ -598,6 +622,10 @@ export const featureLabels: Record<FeatureKey, { en: string; th: string }> = {
 // ==========================================
 // 🛡️ Zod Schemas
 // ==========================================
+
+export const insertStoreSchema = createInsertSchema(stores).omit({ createdAt: true, updatedAt: true });
+export type InsertStore = z.infer<typeof insertStoreSchema>;
+export type Store = typeof stores.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);

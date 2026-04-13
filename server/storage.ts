@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 export class StorageError extends Error {
@@ -85,14 +85,14 @@ export interface IStorage {
   // Daily Sales Reports
   createDailySalesReport(report: InsertDailySales): Promise<DailySalesReport>;
   getDailySalesReport(id: number): Promise<DailySalesReport | undefined>;
-  getDailySalesReportByDate(date: string): Promise<DailySalesReport | undefined>;
-  getDailySalesReports(date?: string, limit?: number): Promise<DailySalesReport[]>;
-  getDailySalesReportsForMonth(year: number, month: number): Promise<DailySalesReport[]>;
-  getDailySalesReportsByDateRange(startDate: string, endDate: string): Promise<DailySalesReport[]>;
+  getDailySalesReportByDate(date: string, storeId?: string): Promise<DailySalesReport | undefined>;
+  getDailySalesReports(date?: string, limit?: number, storeId?: string): Promise<DailySalesReport[]>;
+  getDailySalesReportsForMonth(year: number, month: number, storeId?: string): Promise<DailySalesReport[]>;
+  getDailySalesReportsByDateRange(startDate: string, endDate: string, storeId?: string): Promise<DailySalesReport[]>;
   updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport>;
-  upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport>;
+  upsertDailySalesReportByDate(report: InsertDailySales, storeId?: string): Promise<DailySalesReport>;
   deleteDailySalesReport(id: number): Promise<boolean>;
-  getMtdSummary(year: number, month: number, beforeDate?: string): Promise<{
+  getMtdSummary(year: number, month: number, beforeDate?: string, storeId?: string): Promise<{
     mtdActual: number;
     mtdTc: number;
     mtdTarget: number;
@@ -107,20 +107,20 @@ export interface IStorage {
   updateStoreSettings(settings: InsertStoreSettings): Promise<StoreSettings>;
 
   // Daily Targets
-  getDailyTargetsForMonth(year: number, month: number): Promise<DailyTarget[]>;
-  getDailyTarget(date: string): Promise<DailyTarget | undefined>;
-  upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget>;
-  bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void>;
-  getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay?: number): Promise<number>;
+  getDailyTargetsForMonth(year: number, month: number, storeId?: string): Promise<DailyTarget[]>;
+  getDailyTarget(date: string, storeId?: string): Promise<DailyTarget | undefined>;
+  upsertDailyTarget(target: InsertDailyTarget, storeId?: string): Promise<DailyTarget>;
+  bulkUpsertDailyTargets(targets: InsertDailyTarget[], storeId?: string): Promise<void>;
+  getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay?: number, storeId?: string): Promise<number>;
 
   // Weekly Sales Reports
-  getWeeklySalesReport(weekStartDate: string): Promise<WeeklySalesReport | undefined>;
-  upsertWeeklySalesReport(report: InsertWeeklySales): Promise<WeeklySalesReport>;
-  getWeeklySalesReports(limit?: number): Promise<WeeklySalesReport[]>;
+  getWeeklySalesReport(weekStartDate: string, storeId?: string): Promise<WeeklySalesReport | undefined>;
+  upsertWeeklySalesReport(report: InsertWeeklySales, storeId?: string): Promise<WeeklySalesReport>;
+  getWeeklySalesReports(limit?: number, storeId?: string): Promise<WeeklySalesReport[]>;
 
   // Waste Targets
-  getWasteTarget(targetMonth: string): Promise<WasteTarget | undefined>;
-  upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>): Promise<WasteTarget>;
+  getWasteTarget(targetMonth: string, storeId?: string): Promise<WasteTarget | undefined>;
+  upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>, storeId?: string): Promise<WasteTarget>;
 
   // Manager Requests
   createManagerRequest(request: InsertManagerRequest): Promise<ManagerRequest>;
@@ -168,12 +168,12 @@ export interface IStorage {
   getBorrowDashboardMetrics(): Promise<{ totalTransactions: number; totalBorrowIn: number; totalBorrowOut: number }>;
 
   // Labor Settings
-  getLaborSettings(): Promise<LaborSettings | undefined>;
-  saveLaborSettings(data: Partial<InsertLaborSettings>): Promise<LaborSettings>;
+  getLaborSettings(storeId?: string): Promise<LaborSettings | undefined>;
+  saveLaborSettings(data: Partial<InsertLaborSettings>, storeId?: string): Promise<LaborSettings>;
   
   // Daily Labor
-  getDailyLabor(date: string): Promise<DailyLabor | undefined>;
-  saveDailyLabor(date: string, data: Partial<InsertDailyLabor>): Promise<DailyLabor>;
+  getDailyLabor(date: string, storeId?: string): Promise<DailyLabor | undefined>;
+  saveDailyLabor(date: string, data: Partial<InsertDailyLabor>, storeId?: string): Promise<DailyLabor>;
 
   // Chann Agent Notes (Memory)
   saveChannNote(username: string, title: string, content: string): Promise<ChannNote>;
@@ -191,6 +191,13 @@ export interface IStorage {
   createDropdownOption(data: InsertDropdownOption): Promise<DropdownOption>;
   updateDropdownOption(id: number, data: Partial<InsertDropdownOption>): Promise<DropdownOption>;
   deleteDropdownOption(id: number): Promise<void>;
+
+  // Stores
+  getStores(): Promise<Store[]>;
+  getStore(id: string): Promise<Store | undefined>;
+  createStore(data: InsertStore): Promise<Store>;
+  updateStore(id: string, data: Partial<InsertStore>): Promise<Store>;
+  toggleStoreActive(id: string): Promise<Store>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -415,35 +422,36 @@ export class DatabaseStorage implements IStorage {
     return report;
   }
 
-  async getDailySalesReportByDate(date: string): Promise<DailySalesReport | undefined> {
-    const [report] = await db.select().from(dailySalesReports).where(eq(dailySalesReports.reportDate, date));
+  async getDailySalesReportByDate(date: string, storeId: string = 'BK001GDP'): Promise<DailySalesReport | undefined> {
+    const [report] = await db.select().from(dailySalesReports).where(and(eq(dailySalesReports.reportDate, date), eq(dailySalesReports.storeId, storeId)));
     return report;
   }
 
-  async getDailySalesReports(date?: string, limit: number = 30): Promise<DailySalesReport[]> {
+  async getDailySalesReports(date?: string, limit: number = 30, storeId: string = 'BK001GDP'): Promise<DailySalesReport[]> {
     if (date) {
       return await db.select().from(dailySalesReports)
-        .where(eq(dailySalesReports.reportDate, date))
+        .where(and(eq(dailySalesReports.reportDate, date), eq(dailySalesReports.storeId, storeId)))
         .orderBy(desc(dailySalesReports.reportDate))
         .limit(limit);
     }
     return await db.select().from(dailySalesReports)
+      .where(eq(dailySalesReports.storeId, storeId))
       .orderBy(desc(dailySalesReports.reportDate))
       .limit(limit);
   }
 
-  async getDailySalesReportsForMonth(year: number, month: number): Promise<DailySalesReport[]> {
+  async getDailySalesReportsForMonth(year: number, month: number, storeId: string = 'BK001GDP'): Promise<DailySalesReport[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     return await db.select().from(dailySalesReports)
-      .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate)))
+      .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate), eq(dailySalesReports.storeId, storeId)))
       .orderBy(dailySalesReports.reportDate);
   }
 
-  async getDailySalesReportsByDateRange(startDate: string, endDate: string): Promise<DailySalesReport[]> {
+  async getDailySalesReportsByDateRange(startDate: string, endDate: string, storeId: string = 'BK001GDP'): Promise<DailySalesReport[]> {
     return await db.select().from(dailySalesReports)
-      .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate)))
+      .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate), eq(dailySalesReports.storeId, storeId)))
       .orderBy(dailySalesReports.reportDate);
   }
 
@@ -461,8 +469,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async upsertDailySalesReportByDate(report: InsertDailySales): Promise<DailySalesReport> {
-    const existing = await this.getDailySalesReportByDate(report.reportDate);
+  async upsertDailySalesReportByDate(report: InsertDailySales, storeId: string = 'BK001GDP'): Promise<DailySalesReport> {
+    const sId = (report as any).storeId || storeId;
+    const existing = await this.getDailySalesReportByDate(report.reportDate, sId);
     if (existing) {
       const existingActual = parseFloat(existing.actualSales || "0");
       const incomingActual = parseFloat((report as any).actualSales || "0");
@@ -507,7 +516,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // MTD Summary - Calculate from saved reports
-  async getMtdSummary(year: number, month: number, beforeDate?: string): Promise<{
+  async getMtdSummary(year: number, month: number, beforeDate?: string, storeId: string = 'BK001GDP'): Promise<{
     mtdActual: number;
     mtdTc: number;
     mtdTarget: number;
@@ -534,7 +543,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           gte(dailySalesReports.reportDate, startOfMonth),
-          lte(dailySalesReports.reportDate, endDate)
+          lte(dailySalesReports.reportDate, endDate),
+          eq(dailySalesReports.storeId, storeId)
         )
       );
 
@@ -574,31 +584,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Daily Targets
-  async getDailyTargetsForMonth(year: number, month: number): Promise<DailyTarget[]> {
+  async getDailyTargetsForMonth(year: number, month: number, storeId: string = 'BK001GDP'): Promise<DailyTarget[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     return await db.select().from(dailyTargets)
-      .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, endDate)))
+      .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, endDate), eq(dailyTargets.storeId, storeId)))
       .orderBy(dailyTargets.targetDate);
   }
 
-  async getDailyTarget(date: string): Promise<DailyTarget | undefined> {
-    const [target] = await db.select().from(dailyTargets).where(eq(dailyTargets.targetDate, date));
+  async getDailyTarget(date: string, storeId: string = 'BK001GDP'): Promise<DailyTarget | undefined> {
+    const [target] = await db.select().from(dailyTargets).where(and(eq(dailyTargets.targetDate, date), eq(dailyTargets.storeId, storeId)));
     return target;
   }
 
-  async upsertDailyTarget(target: InsertDailyTarget): Promise<DailyTarget> {
-    const existing = await this.getDailyTarget(target.targetDate);
+  async upsertDailyTarget(target: InsertDailyTarget, storeId: string = 'BK001GDP'): Promise<DailyTarget> {
+    const sId = (target as any).storeId || storeId;
+    const existing = await this.getDailyTarget(target.targetDate, sId);
     if (existing) {
       const [updated] = await db.update(dailyTargets)
-        .set({ ...target, updatedAt: new Date().toISOString() })
+        .set({ ...target, storeId: sId, updatedAt: new Date().toISOString() })
         .where(eq(dailyTargets.id, existing.id))
         .returning();
       return updated;
     } else {
       const [created] = await db.insert(dailyTargets).values({
         ...target,
+        storeId: sId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }).returning();
@@ -606,16 +618,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async bulkUpsertDailyTargets(targets: InsertDailyTarget[]): Promise<void> {
+  async bulkUpsertDailyTargets(targets: InsertDailyTarget[], storeId: string = 'BK001GDP'): Promise<void> {
     for (const target of targets) {
-      await this.upsertDailyTarget(target);
+      await this.upsertDailyTarget(target, storeId);
     }
   }
 
-  async getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay: number = 0): Promise<number> {
+  async getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay: number = 0, storeId: string = 'BK001GDP'): Promise<number> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const targets = await db.select().from(dailyTargets)
-      .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate)));
+      .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate), eq(dailyTargets.storeId, storeId)));
     // Build date → targetSales map
     const targetMap = new Map<string, number>();
     targets.forEach(t => targetMap.set(t.targetDate, parseFloat(t.targetSales || "0")));
@@ -630,13 +642,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Waste Targets
-  async getWasteTarget(targetMonth: string): Promise<WasteTarget | undefined> {
-    const [target] = await db.select().from(wasteTargets).where(eq(wasteTargets.targetMonth, targetMonth));
+  async getWasteTarget(targetMonth: string, storeId: string = 'BK001GDP'): Promise<WasteTarget | undefined> {
+    const [target] = await db.select().from(wasteTargets).where(and(eq(wasteTargets.targetMonth, targetMonth), eq(wasteTargets.storeId, storeId)));
     return target;
   }
 
-  async upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>): Promise<WasteTarget> {
-    const existing = await this.getWasteTarget(targetMonth);
+  async upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>, storeId: string = 'BK001GDP'): Promise<WasteTarget> {
+    const existing = await this.getWasteTarget(targetMonth, storeId);
     if (existing) {
       const [updated] = await db.update(wasteTargets)
         .set({ ...data, updatedAt: new Date().toISOString() })
@@ -652,6 +664,7 @@ export class DatabaseStorage implements IStorage {
         mealPercent: data.mealPercent || "0",
         rawAmount: data.rawAmount || "0",
         rawPercent: data.rawPercent || "0",
+        storeId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }).returning();
@@ -1035,13 +1048,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Labor Settings
-  async getLaborSettings(): Promise<LaborSettings | undefined> {
-    const [settings] = await db.select().from(laborSettings).limit(1);
+  async getLaborSettings(storeId: string = 'BK001GDP'): Promise<LaborSettings | undefined> {
+    const [settings] = await db.select().from(laborSettings).where(eq(laborSettings.storeId, storeId)).limit(1);
     return settings;
   }
 
-  async saveLaborSettings(data: Partial<InsertLaborSettings>): Promise<LaborSettings> {
-    const existing = await this.getLaborSettings();
+  async saveLaborSettings(data: Partial<InsertLaborSettings>, storeId: string = 'BK001GDP'): Promise<LaborSettings> {
+    const existing = await this.getLaborSettings(storeId);
     if (existing) {
       const [updated] = await db.update(laborSettings)
         .set({ ...data, updatedAt: new Date().toISOString() })
@@ -1050,20 +1063,20 @@ export class DatabaseStorage implements IStorage {
       return updated;
     } else {
       const [inserted] = await db.insert(laborSettings)
-        .values({ ...data, updatedAt: new Date().toISOString() })
+        .values({ ...data, storeId, updatedAt: new Date().toISOString() })
         .returning();
       return inserted;
     }
   }
 
   // Daily Labor
-  async getDailyLabor(date: string): Promise<DailyLabor | undefined> {
-    const [labor] = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date));
+  async getDailyLabor(date: string, storeId: string = 'BK001GDP'): Promise<DailyLabor | undefined> {
+    const [labor] = await db.select().from(dailyLabor).where(and(eq(dailyLabor.date, date), eq(dailyLabor.storeId, storeId)));
     return labor;
   }
 
-  async saveDailyLabor(date: string, data: Partial<InsertDailyLabor>): Promise<DailyLabor> {
-    const existing = await this.getDailyLabor(date);
+  async saveDailyLabor(date: string, data: Partial<InsertDailyLabor>, storeId: string = 'BK001GDP'): Promise<DailyLabor> {
+    const existing = await this.getDailyLabor(date, storeId);
     if (existing) {
       const [updated] = await db.update(dailyLabor)
         .set({ ...data, updatedAt: new Date().toISOString() })
@@ -1072,20 +1085,22 @@ export class DatabaseStorage implements IStorage {
       return updated;
     } else {
       const [inserted] = await db.insert(dailyLabor)
-        .values({ date, ...data, updatedAt: new Date().toISOString() })
+        .values({ date, storeId, ...data, updatedAt: new Date().toISOString() })
         .returning();
       return inserted;
     }
   }
+
   // Weekly Sales Reports
-  async getWeeklySalesReport(weekStartDate: string): Promise<WeeklySalesReport | undefined> {
+  async getWeeklySalesReport(weekStartDate: string, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport | undefined> {
     const [report] = await db.select().from(weeklySalesReports)
-      .where(eq(weeklySalesReports.weekStartDate, weekStartDate));
+      .where(and(eq(weeklySalesReports.weekStartDate, weekStartDate), eq(weeklySalesReports.storeId, storeId)));
     return report;
   }
 
-  async upsertWeeklySalesReport(report: InsertWeeklySales): Promise<WeeklySalesReport> {
-    const existing = await this.getWeeklySalesReport(report.weekStartDate);
+  async upsertWeeklySalesReport(report: InsertWeeklySales, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport> {
+    const sId = (report as any).storeId || storeId;
+    const existing = await this.getWeeklySalesReport(report.weekStartDate, sId);
     if (existing) {
       const [updated] = await db.update(weeklySalesReports)
         .set({ ...report, updatedAt: new Date().toISOString() })
@@ -1094,13 +1109,13 @@ export class DatabaseStorage implements IStorage {
       return updated;
     }
     const [created] = await db.insert(weeklySalesReports)
-      .values({ ...report, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .values({ ...report, storeId: sId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
       .returning();
     return created;
   }
 
-  async getWeeklySalesReports(limit?: number): Promise<WeeklySalesReport[]> {
-    const q = db.select().from(weeklySalesReports).orderBy(desc(weeklySalesReports.weekStartDate));
+  async getWeeklySalesReports(limit?: number, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport[]> {
+    const q = db.select().from(weeklySalesReports).where(eq(weeklySalesReports.storeId, storeId)).orderBy(desc(weeklySalesReports.weekStartDate));
     if (limit) return await q.limit(limit);
     return await q;
   }
@@ -1277,6 +1292,43 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  // Stores
+  async getStores(): Promise<Store[]> {
+    return db.select().from(stores).orderBy(stores.name);
+  }
+
+  async getStore(id: string): Promise<Store | undefined> {
+    const [store] = await db.select().from(stores).where(eq(stores.id, id));
+    return store;
+  }
+
+  async createStore(data: InsertStore): Promise<Store> {
+    const now = new Date().toISOString();
+    const [store] = await db.insert(stores).values({
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return store;
+  }
+
+  async updateStore(id: string, data: Partial<InsertStore>): Promise<Store> {
+    const now = new Date().toISOString();
+    const [store] = await db.update(stores).set({ ...data, updatedAt: now }).where(eq(stores.id, id)).returning();
+    if (!store) throw new Error("Store not found");
+    return store;
+  }
+
+  async toggleStoreActive(id: string): Promise<Store> {
+    const existing = await this.getStore(id);
+    if (!existing) throw new Error("Store not found");
+    const [store] = await db.update(stores)
+      .set({ isActive: existing.isActive === 1 ? 0 : 1, updatedAt: new Date().toISOString() })
+      .where(eq(stores.id, id))
+      .returning();
+    return store;
   }
 }
 

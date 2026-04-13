@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 import { Link } from "wouter";
@@ -28,10 +28,14 @@ const positionHierarchy: Record<string, number> = {
 };
 
 export default function AdminPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { language } = useI18n();
   const { toast } = useToast();
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [showStoresSection, setShowStoresSection] = useState(false);
+  const [showCreateStoreDialog, setShowCreateStoreDialog] = useState(false);
+  const [newStore, setNewStore] = useState({ id: "", name: "", nameTh: "", code: "", address: "" });
+  const [isCreatingStore, setIsCreatingStore] = useState(false);
   const [viewingUser, setViewingUser] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "" });
@@ -50,6 +54,58 @@ export default function AdminPage() {
     enabled: user?.role !== "staff",
     staleTime: 0, // Ensure we always get fresh data
   });
+
+  const { data: storesData, refetch: refetchStores } = useQuery({
+    queryKey: ["/api/admin/stores"],
+    queryFn: async () => {
+      const t = token || localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/admin/stores", { token: t });
+      return res.json();
+    },
+    enabled: user?.role === "admin" || user?.role === "area",
+    staleTime: 0,
+  });
+  const storesList: Array<{ id: string; name: string; nameTh?: string | null; code: string; address?: string | null; isActive: number }> = storesData?.stores || [];
+
+  const handleCreateStore = async () => {
+    if (!newStore.id || !newStore.name || !newStore.code) {
+      toast({ title: "กรุณากรอก Store ID, ชื่อ, และ Code", variant: "destructive" });
+      return;
+    }
+    setIsCreatingStore(true);
+    try {
+      const t = token || localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/admin/stores/create", { token: t, ...newStore });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "สร้าง Store สำเร็จ" });
+        setNewStore({ id: "", name: "", nameTh: "", code: "", address: "" });
+        setShowCreateStoreDialog(false);
+        refetchStores();
+      } else {
+        toast({ title: data.message || "เกิดข้อผิดพลาด", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    } finally {
+      setIsCreatingStore(false);
+    }
+  };
+
+  const handleToggleStore = async (id: string) => {
+    try {
+      const t = token || localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/admin/stores/toggle", { token: t, id });
+      const data = await res.json();
+      if (data.ok) {
+        refetchStores();
+      } else {
+        toast({ title: data.message || "เกิดข้อผิดพลาด", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+  };
 
   const handleRefreshConfig = () => {
     refetch();
@@ -847,6 +903,146 @@ export default function AdminPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Stores Management Section (Admin only) */}
+      {isAdmin && (
+        <div className="mt-6">
+          <div
+            className="flex items-center justify-between cursor-pointer py-3 px-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+            onClick={() => setShowStoresSection(!showStoresSection)}
+          >
+            <div className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-bold">
+                {language === "th" ? "จัดการสาขา (Stores)" : "Stores Management"}
+              </h2>
+              <Badge variant="secondary">{storesList.length}</Badge>
+            </div>
+            <Button variant="ghost" size="sm">
+              {showStoresSection ? <Shield className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {showStoresSection && (
+            <Card className="mt-3 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {language === "th" ? "ระบบรองรับหลายสาขา กำหนดข้อมูลขายแยกตาม Store" : "Multi-store support. Sales data is isolated per store."}
+                </p>
+                <Dialog open={showCreateStoreDialog} onOpenChange={setShowCreateStoreDialog}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      {language === "th" ? "เพิ่มสาขา" : "Add Store"}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{language === "th" ? "เพิ่มสาขาใหม่" : "Add New Store"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Store ID *</label>
+                        <Input
+                          placeholder="e.g. BK002ABC"
+                          value={newStore.id}
+                          onChange={e => setNewStore(p => ({ ...p, id: e.target.value.toUpperCase() }))}
+                          data-testid="input-store-id"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ชื่อสาขา (EN) *" : "Store Name (EN) *"}</label>
+                        <Input
+                          placeholder="e.g. BK Central World"
+                          value={newStore.name}
+                          onChange={e => setNewStore(p => ({ ...p, name: e.target.value }))}
+                          data-testid="input-store-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ชื่อสาขา (TH)" : "Store Name (TH)"}</label>
+                        <Input
+                          placeholder="e.g. บีเค เซ็นทรัลเวิลด์"
+                          value={newStore.nameTh}
+                          onChange={e => setNewStore(p => ({ ...p, nameTh: e.target.value }))}
+                          data-testid="input-store-name-th"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Code *</label>
+                        <Input
+                          placeholder="e.g. CWL"
+                          value={newStore.code}
+                          onChange={e => setNewStore(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                          data-testid="input-store-code"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ที่อยู่" : "Address"}</label>
+                        <Input
+                          placeholder={language === "th" ? "ที่อยู่สาขา" : "Store address"}
+                          value={newStore.address}
+                          onChange={e => setNewStore(p => ({ ...p, address: e.target.value }))}
+                          data-testid="input-store-address"
+                        />
+                      </div>
+                      <Button onClick={handleCreateStore} disabled={isCreatingStore} className="w-full">
+                        {isCreatingStore ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {language === "th" ? "สร้างสาขา" : "Create Store"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>{language === "th" ? "ชื่อสาขา" : "Name"}</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>{language === "th" ? "สถานะ" : "Status"}</TableHead>
+                    <TableHead>{language === "th" ? "จัดการ" : "Actions"}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {storesList.map(store => (
+                    <TableRow key={store.id} data-testid={`row-store-${store.id}`}>
+                      <TableCell className="font-mono text-xs">{store.id}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{store.name}</p>
+                          {store.nameTh && <p className="text-xs text-muted-foreground">{store.nameTh}</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{store.code}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={store.isActive === 1 ? "default" : "secondary"}>
+                          {store.isActive === 1 ? (language === "th" ? "เปิด" : "Active") : (language === "th" ? "ปิด" : "Inactive")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleStore(store.id)}
+                          data-testid={`button-toggle-store-${store.id}`}
+                          disabled={store.id === 'BK001GDP'}
+                          title={store.id === 'BK001GDP' ? 'Default store cannot be deactivated' : ''}
+                        >
+                          {store.isActive === 1 ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -400,7 +400,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   // 🛡️ Helpers
   // ==========================================
-  const verifyManagerAccess = async (token: string) => {
+  const verifyManagerAccess = async (token: string, storeIdOverride?: string) => {
     if (!token) return { ok: false as const, message: "Token required" };
 
     // ตรวจสอบ Session จาก DB โดยตรง
@@ -415,7 +415,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!isManagerLike(user[0].role)) {
       return { ok: false as const, message: "No permission" };
     }
-    return { ok: true as const, user: user[0] };
+    // Admin/area can override storeId via request body; manager uses their own store
+    const isAdminLike = user[0].role === 'admin' || user[0].role === 'area';
+    const storeId = (isAdminLike && storeIdOverride) ? storeIdOverride : (user[0].storeId || 'BK001GDP');
+    return { ok: true as const, user: user[0], storeId };
+  };
+
+  const getSessionStoreId = async (token: string, bodyStoreId?: string): Promise<string> => {
+    try {
+      const session = await storage.getSession(token);
+      if (!session) return bodyStoreId || 'BK001GDP';
+      const user = await storage.getUser(session.username);
+      if (!user) return bodyStoreId || 'BK001GDP';
+      const isAdminLike = user.role === 'admin' || user.role === 'area';
+      return (isAdminLike && bodyStoreId) ? bodyStoreId : (user.storeId || 'BK001GDP');
+    } catch {
+      return bodyStoreId || 'BK001GDP';
+    }
   };
 
   // ==========================================
@@ -4315,6 +4331,66 @@ ${pageContext}` : ''}`;
   }));
 
   // ==========================================
+  // 🏪 Stores Management (Admin only)
+  // ==========================================
+
+  app.post("/api/admin/stores", safe(async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || !['admin', 'area'].includes(u.role)) return res.json({ ok: false, message: "No permission" });
+    const storesList = await storage.getStores();
+    res.json({ ok: true, stores: storesList });
+  }));
+
+  app.post("/api/admin/stores/create", safe(async (req, res) => {
+    const { token, id, name, nameTh, code, address } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== 'admin') return res.json({ ok: false, message: "Admin only" });
+    if (!id || !name || !code) return res.json({ ok: false, message: "id, name, code required" });
+    try {
+      const store = await storage.createStore({ id, name, nameTh, code, address, isActive: 1 });
+      await storage.log("create_store", u.username, `storeId=${id}`);
+      res.json({ ok: true, store });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to create store" });
+    }
+  }));
+
+  app.post("/api/admin/stores/update", safe(async (req, res) => {
+    const { token, id, name, nameTh, code, address } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== 'admin') return res.json({ ok: false, message: "Admin only" });
+    try {
+      const store = await storage.updateStore(id, { name, nameTh, code, address });
+      await storage.log("update_store", u.username, `storeId=${id}`);
+      res.json({ ok: true, store });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to update store" });
+    }
+  }));
+
+  app.post("/api/admin/stores/toggle", safe(async (req, res) => {
+    const { token, id } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== 'admin') return res.json({ ok: false, message: "Admin only" });
+    try {
+      const store = await storage.toggleStoreActive(id);
+      await storage.log("toggle_store", u.username, `storeId=${id} isActive=${store.isActive}`);
+      res.json({ ok: true, store });
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message || "Failed to toggle store" });
+    }
+  }));
+
+  // ==========================================
   // 📋 Shifts Management (Admin/Manager)
   // ==========================================
 
@@ -4579,10 +4655,11 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getReports.path, safe(async (req, res) => {
-    const { token, date, limit } = req.body;
+    const { token, date, limit, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    const reports = await storage.getDailySalesReports(date, limit);
+    const sId = await getSessionStoreId(token, storeId);
+    const reports = await storage.getDailySalesReports(date, limit, sId);
     res.json({ ok: true, reports });
   }));
 
@@ -4653,7 +4730,9 @@ ${pageContext}` : ''}`;
     }
 
     try {
-      const existing = report?.reportDate ? await storage.getDailySalesReportByDate(report.reportDate) : null;
+      const sId = await getSessionStoreId(token, report?.storeId);
+      if (report) report.storeId = sId;
+      const existing = report?.reportDate ? await storage.getDailySalesReportByDate(report.reportDate, sId) : null;
       const isNewReport = !existing;
 
       // Guard note fields: only admin users may change section guide notes
@@ -4668,17 +4747,17 @@ ${pageContext}` : ''}`;
         }
       }
 
-      const saved = await storage.upsertDailySalesReportByDate(report);
+      const saved = await storage.upsertDailySalesReportByDate(report, sId);
 
       // Sync dailyTarget → daily_targets table so Overview table stays in sync with the form
       if (report?.reportDate) {
         const formTarget = parseFloat(report.dailyTarget || "0");
         const formTargetTc = parseInt(report.targetTc || "0");
         if (formTarget > 0 || formTargetTc > 0) {
-          const payload: any = { targetDate: report.reportDate };
+          const payload: any = { targetDate: report.reportDate, storeId: sId };
           if (formTarget > 0) payload.targetSales = String(formTarget);
           if (formTargetTc > 0) payload.targetTc = String(formTargetTc);
-          await storage.upsertDailyTarget(payload).catch(() => {});
+          await storage.upsertDailyTarget(payload, sId).catch(() => {});
         }
       }
 
@@ -4710,19 +4789,21 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getReportByDate.path, safe(async (req, res) => {
-    const { token, date } = req.body;
+    const { token, date, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    const report = await storage.getDailySalesReportByDate(date);
+    const sId = await getSessionStoreId(token, storeId);
+    const report = await storage.getDailySalesReportByDate(date, sId);
     res.json({ ok: true, report: report || null });
   }));
 
   app.post(api.sales.getMtdSummary.path, safe(async (req, res) => {
-    const { token, year, month, beforeDate } = req.body;
+    const { token, year, month, beforeDate, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const summary = await storage.getMtdSummary(year, month, beforeDate);
+      const sId = await getSessionStoreId(token, storeId);
+      const summary = await storage.getMtdSummary(year, month, beforeDate, sId);
       res.json({ ok: true, ...summary });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get MTD summary" });
@@ -4754,11 +4835,12 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getDailyTargets.path, safe(async (req, res) => {
-    const { token, year, month } = req.body;
+    const { token, year, month, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const targets = await storage.getDailyTargetsForMonth(year, month);
+      const sId = await getSessionStoreId(token, storeId);
+      const targets = await storage.getDailyTargetsForMonth(year, month, sId);
       res.json({ ok: true, targets });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get daily targets" });
@@ -4766,13 +4848,14 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.saveDailyTargets.path, safe(async (req, res) => {
-    const { token, targets } = req.body;
+    const { token, targets, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
     try {
-      await storage.bulkUpsertDailyTargets(targets);
+      const sId = await getSessionStoreId(token, storeId);
+      await storage.bulkUpsertDailyTargets(targets, sId);
       await storage.log("save_daily_targets", u.username, `count=${targets.length}`);
       res.json({ ok: true });
     } catch (e: any) {
@@ -4781,11 +4864,12 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getDailyTargetForDate.path, safe(async (req, res) => {
-    const { token, date } = req.body;
+    const { token, date, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const target = await storage.getDailyTarget(date);
+      const sId = await getSessionStoreId(token, storeId);
+      const target = await storage.getDailyTarget(date, sId);
       res.json({ ok: true, target });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get daily target" });
@@ -4793,14 +4877,15 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getMtdTargetSum.path, safe(async (req, res) => {
-    const { token, year, month, upToDate } = req.body;
+    const { token, year, month, upToDate, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
+      const sId = await getSessionStoreId(token, storeId);
       // Use store's default daily target as fallback for days without explicit per-day entries
       const storeSettings = await storage.getStoreSettings();
       const defaultPerDay = parseFloat(storeSettings?.dailyTarget || "0");
-      const mtdTargetSum = await storage.getMtdTargetSum(year, month, upToDate, defaultPerDay);
+      const mtdTargetSum = await storage.getMtdTargetSum(year, month, upToDate, defaultPerDay, sId);
       res.json({ ok: true, mtdTargetSum });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get MTD target sum" });
@@ -4808,11 +4893,12 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getMonthlyReports.path, safe(async (req, res) => {
-    const { token, year, month } = req.body;
+    const { token, year, month, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const reports = await storage.getDailySalesReportsForMonth(year, month);
+      const sId = await getSessionStoreId(token, storeId);
+      const reports = await storage.getDailySalesReportsForMonth(year, month, sId);
       res.json({ ok: true, reports });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get monthly reports" });
@@ -4821,7 +4907,7 @@ ${pageContext}` : ''}`;
 
   // Sales History for Dashboard Chart (Manager/Admin only)
   app.post("/api/sales/history", safe(async (req, res) => {
-    const { token, days = 7 } = req.body;
+    const { token, days = 7, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     
@@ -4831,7 +4917,8 @@ ${pageContext}` : ''}`;
     }
     
     try {
-      const salesData = await storage.getDailySalesReports(undefined, days);
+      const sId = await getSessionStoreId(token, storeId);
+      const salesData = await storage.getDailySalesReports(undefined, days, sId);
       const formattedData = salesData
         .sort((a, b) => new Date(a.reportDate).getTime() - new Date(b.reportDate).getTime())
         .map(item => ({
@@ -4847,13 +4934,14 @@ ${pageContext}` : ''}`;
 
   // Weekly Sales Reports
   app.post(api.sales.upsertWeeklyReport.path, safe(async (req, res) => {
-    const { token, report } = req.body;
+    const { token, report, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
     try {
-      const saved = await storage.upsertWeeklySalesReport(report);
+      const sId = await getSessionStoreId(token, storeId);
+      const saved = await storage.upsertWeeklySalesReport(report, sId);
       res.json({ ok: true, report: saved });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to save weekly report" });
@@ -4861,19 +4949,21 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getWeeklyReport.path, safe(async (req, res) => {
-    const { token, weekStartDate } = req.body;
+    const { token, weekStartDate, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
-    const report = await storage.getWeeklySalesReport(weekStartDate);
+    const sId = await getSessionStoreId(token, storeId);
+    const report = await storage.getWeeklySalesReport(weekStartDate, sId);
     res.json({ ok: true, report: report || null });
   }));
 
   app.post(api.sales.getWeeklyReports.path, safe(async (req, res) => {
-    const { token, limit } = req.body;
+    const { token, limit, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const reports = await storage.getWeeklySalesReports(limit || 20);
+      const sId = await getSessionStoreId(token, storeId);
+      const reports = await storage.getWeeklySalesReports(limit || 20, sId);
       res.json({ ok: true, reports });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get weekly reports" });
@@ -4881,11 +4971,12 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getDailySummaryForWeek.path, safe(async (req, res) => {
-    const { token, weekStartDate, weekEndDate } = req.body;
+    const { token, weekStartDate, weekEndDate, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
-      const reports = await storage.getDailySalesReportsByDateRange(weekStartDate, weekEndDate);
+      const sId = await getSessionStoreId(token, storeId);
+      const reports = await storage.getDailySalesReportsByDateRange(weekStartDate, weekEndDate, sId);
       const totalSale = reports.reduce((sum, r) => sum + (Number(r.actualSales) || 0), 0);
       const totalTc = reports.reduce((sum, r) => sum + (Number(r.transactionCount) || 0), 0);
       const totalWaste = reports.reduce((sum, r) => sum + (parseFloat(r.wasteRawDaily || "0") || 0), 0);
@@ -4908,12 +4999,13 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.getWasteTargets.path, safe(async (req, res) => {
-    const { token, year, month } = req.body;
+    const { token, year, month, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     try {
+      const sId = await getSessionStoreId(token, storeId);
       const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
-      const wasteTarget = await storage.getWasteTarget(targetMonth);
+      const wasteTarget = await storage.getWasteTarget(targetMonth, sId);
       res.json({ ok: true, wasteTarget });
     } catch (e: any) {
       res.json({ ok: false, message: e?.message || "Failed to get waste targets" });
@@ -4921,14 +5013,15 @@ ${pageContext}` : ''}`;
   }));
 
   app.post(api.sales.saveWasteTargets.path, safe(async (req, res) => {
-    const { token, year, month, wasteTarget } = req.body;
+    const { token, year, month, wasteTarget, storeId } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
     try {
+      const sId = await getSessionStoreId(token, storeId);
       const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
-      await storage.upsertWasteTarget(targetMonth, wasteTarget);
+      await storage.upsertWasteTarget(targetMonth, wasteTarget, sId);
       await storage.log("save_waste_targets", u.username, `month=${targetMonth}`);
       res.json({ ok: true });
     } catch (e: any) {
@@ -6404,9 +6497,10 @@ ${pageContext}` : ''}`;
 
   // Get Labor Settings
   app.post("/api/settings/get-labor", safe(async (req, res) => {
+    const { token, storeId } = req.body;
     try {
-      const result = await db.select().from(laborSettings).limit(1);
-      const settings = result[0] || { 
+      const sId = await getSessionStoreId(token, storeId);
+      const settings = await storage.getLaborSettings(sId) || { 
         rosterHours: "88", 
         dutyDailyHours: "40", 
         ptWageRate: "45", 
@@ -6421,31 +6515,18 @@ ${pageContext}` : ''}`;
 
   // Save Labor Settings
   app.post("/api/settings/save-labor", safe(async (req, res) => {
-    const { token, rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost } = req.body;
-    const access = await verifyManagerAccess(token);
+    const { token, rosterHours, dutyDailyHours, ptWageRate, fixedCostDaily, closeShiftDailyCost, storeId } = req.body;
+    const access = await verifyManagerAccess(token, storeId);
     if (!access.ok) return res.json(access);
 
     try {
-      const existing = await db.select().from(laborSettings).limit(1);
-      if (existing.length > 0) {
-        await db.update(laborSettings).set({
-          rosterHours: String(rosterHours || 88),
-          dutyDailyHours: String(dutyDailyHours || 40),
-          ptWageRate: String(ptWageRate || 45),
-          fixedCostDaily: String(fixedCostDaily || 0),
-          closeShiftDailyCost: String(closeShiftDailyCost || 0),
-          updatedAt: nowIso()
-        }).where(eq(laborSettings.id, existing[0].id));
-      } else {
-        await db.insert(laborSettings).values({
-          rosterHours: String(rosterHours || 88),
-          dutyDailyHours: String(dutyDailyHours || 40),
-          ptWageRate: String(ptWageRate || 45),
-          fixedCostDaily: String(fixedCostDaily || 0),
-          closeShiftDailyCost: String(closeShiftDailyCost || 0),
-          updatedAt: nowIso()
-        });
-      }
+      await storage.saveLaborSettings({
+        rosterHours: String(rosterHours || 88),
+        dutyDailyHours: String(dutyDailyHours || 40),
+        ptWageRate: String(ptWageRate || 45),
+        fixedCostDaily: String(fixedCostDaily || 0),
+        closeShiftDailyCost: String(closeShiftDailyCost || 0),
+      }, access.storeId);
       res.json({ ok: true });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
@@ -6508,13 +6589,12 @@ ${pageContext}` : ''}`;
   }));
 
   // Calculate Labor Logic Helper
-  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }) {
+  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }, storeId: string = 'BK001GDP') {
     // 1. Get Settings
-    const settingsRes = await db.select().from(laborSettings).limit(1);
-    const cfg = settingsRes[0] || { rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", fixedCostDaily: "0", closeShiftDailyCost: "0" };
+    const cfg = await storage.getLaborSettings(storeId) || { rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", fixedCostDaily: "0", closeShiftDailyCost: "0" };
 
     // 2. Get Sales data for that date
-    const salesRes = await db.select().from(dailySalesReports).where(eq(dailySalesReports.reportDate, date)).limit(1);
+    const salesRes = await db.select().from(dailySalesReports).where(and(eq(dailySalesReports.reportDate, date), eq(dailySalesReports.storeId, storeId))).limit(1);
     const salesData = salesRes[0];
     const sales = Number(salesData?.actualSales || 0);
     const tc = Number(salesData?.transactionCount || 0);
@@ -6550,20 +6630,15 @@ ${pageContext}` : ''}`;
 
   // Save Daily Labor
   app.post("/api/sales/save-daily-labor", safe(async (req, res) => {
-    const { token, date, actualHours, otHours } = req.body;
-    const access = await verifyManagerAccess(token);
+    const { token, date, actualHours, otHours, storeId } = req.body;
+    const access = await verifyManagerAccess(token, storeId);
     if (!access.ok) return res.json(access);
 
     try {
-      const result = await calculateLaborLogic(date, { actualHours, otHours });
+      const result = await calculateLaborLogic(date, { actualHours, otHours }, access.storeId);
 
-      // Upsert daily labor
-      const existing = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date)).limit(1);
-      if (existing.length > 0) {
-        await db.update(dailyLabor).set({ ...result, updatedAt: nowIso() }).where(eq(dailyLabor.id, existing[0].id));
-      } else {
-        await db.insert(dailyLabor).values({ date, ...result, updatedAt: nowIso() });
-      }
+      // Upsert daily labor using storage (which handles storeId)
+      await storage.saveDailyLabor(date, { ...result }, access.storeId);
 
       res.json({ ok: true, data: result });
     } catch (e: any) {
@@ -6573,10 +6648,11 @@ ${pageContext}` : ''}`;
 
   // Get Daily Labor
   app.post("/api/sales/get-daily-labor", safe(async (req, res) => {
-    const { date } = req.body;
+    const { date, token, storeId } = req.body;
     try {
-      const result = await db.select().from(dailyLabor).where(eq(dailyLabor.date, date)).limit(1);
-      res.json({ ok: true, data: result[0] || null });
+      const sId = await getSessionStoreId(token || '', storeId);
+      const labor = await storage.getDailyLabor(date, sId);
+      res.json({ ok: true, data: labor || null });
     } catch (e: any) {
       res.json({ ok: false, message: e.message });
     }

@@ -79,7 +79,7 @@ export interface IStorage {
   // Swap Requests
   createSwapRequest(request: InsertSwapRequest): Promise<SwapRequest>;
   getSwapRequests(status?: string, storeId?: string): Promise<SwapRequest[]>;
-  getSwapRequestById(id: number, storeId?: string): Promise<SwapRequest | undefined>;
+  getSwapRequestById(id: number, storeId?: string | null): Promise<SwapRequest | undefined>;
   updateSwapRequestStatus(id: number, status: string, approvedBy?: string, note?: string): Promise<void>;
 
   // Daily Sales Reports
@@ -383,13 +383,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(swapRequests.createdAt));
   }
 
-  async getSwapRequestById(id: number, storeId?: string): Promise<SwapRequest | undefined> {
-    if (storeId) {
-      const [request] = await db.select().from(swapRequests)
-        .where(and(eq(swapRequests.id, id), eq(swapRequests.storeId, storeId)));
-      return request;
-    }
-    const [request] = await db.select().from(swapRequests).where(eq(swapRequests.id, id));
+  async getSwapRequestById(id: number, storeId: string = 'BK001GDP'): Promise<SwapRequest | undefined> {
+    const [request] = await db.select().from(swapRequests)
+      .where(and(eq(swapRequests.id, id), eq(swapRequests.storeId, storeId)));
     return request;
   }
 

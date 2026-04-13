@@ -1062,14 +1062,22 @@ export function FloatingChannChat() {
     initial: { x: 0, y: 0 },
   });
 
-  // persist position per user/device
+  // persist position per user/device — clamp to viewport on restore
   useEffect(() => {
     try {
       const saved = localStorage.getItem("chann_floating_pos");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
-          setPos({ x: parsed.x, y: parsed.y });
+          // If position is out of a safe range, reset to 0,0 (button returns to default corner)
+          const safeX = window.innerWidth  * 0.5;
+          const safeY = window.innerHeight * 0.5;
+          if (Math.abs(parsed.x) > safeX || Math.abs(parsed.y) > safeY) {
+            localStorage.removeItem("chann_floating_pos");
+            setPos({ x: 0, y: 0 });
+          } else {
+            setPos({ x: parsed.x, y: parsed.y });
+          }
         }
       }
     } catch {

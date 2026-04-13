@@ -40,8 +40,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
   const isViewer = user.role === "viewer";
 
-  // Feature permission helper: if allowedFeatures is null/undefined, fall back to role-based access
+  // Feature permission helper: admin always has full access; others check allowedFeatures
   const hasFeature = (key: string): boolean => {
+    if (user.role === "admin") return true;
     if (!user.allowedFeatures) return true;
     return user.allowedFeatures.includes(key);
   };

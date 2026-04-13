@@ -1086,7 +1086,8 @@ export function FloatingChannChat() {
   }, [pos]);
 
   if (!user || user.role === "viewer") return null;
-  if (user.allowedFeatures && !user.allowedFeatures.includes("chann")) return null;
+  // Admin role always has Chann access regardless of allowedFeatures
+  if (user.role !== "admin" && user.allowedFeatures && !user.allowedFeatures.includes("chann")) return null;
 
   return (
     <div

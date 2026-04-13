@@ -227,53 +227,62 @@ export default function AdminPermissionsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {useCustom ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleResetToRole}
-                      className="h-8 text-xs gap-1.5"
-                      data-testid="button-reset-to-role"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      {language === "th" ? "รีเซ็ตเป็น Role" : "Reset to Role"}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleEnableCustom}
-                      className="h-8 text-xs gap-1.5"
-                      data-testid="button-enable-custom"
-                    >
-                      <Key className="w-3.5 h-3.5" />
-                      {language === "th" ? "กำหนดเอง" : "Customize"}
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={savePermissionsMutation.isPending}
-                    className="h-8 gap-1.5"
-                    data-testid="button-save-permissions"
-                  >
-                    {savePermissionsMutation.isPending ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {selectedUser.role !== "admin" && (
+                  <div className="flex items-center gap-2">
+                    {useCustom ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetToRole}
+                        className="h-8 text-xs gap-1.5"
+                        data-testid="button-reset-to-role"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        {language === "th" ? "รีเซ็ตเป็น Role" : "Reset to Role"}
+                      </Button>
                     ) : (
-                      <Save className="w-3.5 h-3.5" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEnableCustom}
+                        className="h-8 text-xs gap-1.5"
+                        data-testid="button-enable-custom"
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                        {language === "th" ? "กำหนดเอง" : "Customize"}
+                      </Button>
                     )}
-                    {language === "th" ? "บันทึก" : "Save"}
-                  </Button>
-                </div>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={savePermissionsMutation.isPending}
+                      className="h-8 gap-1.5"
+                      data-testid="button-save-permissions"
+                    >
+                      {savePermissionsMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Save className="w-3.5 h-3.5" />
+                      )}
+                      {language === "th" ? "บันทึก" : "Save"}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Mode indicator */}
-              <div className={`px-4 py-2 text-xs border-b ${useCustom ? "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300" : "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300"}`}>
-                {useCustom
-                  ? (language === "th" ? "โหมด: กำหนดเอง — เลือก feature ที่ต้องการเปิดด้านล่าง" : "Mode: Custom — toggle features below")
-                  : (language === "th" ? "โหมด: Role-based (ค่าเริ่มต้น) — ใช้สิทธิ์ตาม role ปัจจุบัน" : "Mode: Role-based (default) — uses current role permissions")}
-              </div>
+              {selectedUser.role === "admin" ? (
+                <div className="px-4 py-2 text-xs border-b bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>{language === "th" ? "Admin มีสิทธิ์เข้าถึงทุก feature เสมอ — การตั้งค่าที่นี่ไม่มีผลกับ admin role" : "Admin always has full access — settings here have no effect on admin role"}</span>
+                </div>
+              ) : (
+                <div className={`px-4 py-2 text-xs border-b ${useCustom ? "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300" : "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300"}`}>
+                  {useCustom
+                    ? (language === "th" ? "โหมด: กำหนดเอง — เลือก feature ที่ต้องการเปิดด้านล่าง" : "Mode: Custom — toggle features below")
+                    : (language === "th" ? "โหมด: Role-based (ค่าเริ่มต้น) — ใช้สิทธิ์ตาม role ปัจจุบัน" : "Mode: Role-based (default) — uses current role permissions")}
+                </div>
+              )}
 
               {/* Feature Groups */}
               <div className="flex-1 overflow-y-auto p-4 space-y-6">

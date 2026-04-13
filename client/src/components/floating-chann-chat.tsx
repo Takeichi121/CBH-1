@@ -1086,8 +1086,8 @@ export function FloatingChannChat() {
   }, [pos]);
 
   if (!user || user.role === "viewer") return null;
-  // Admin role always has Chann access regardless of allowedFeatures
-  if (user.role !== "admin" && user.allowedFeatures && !user.allowedFeatures.includes("chann")) return null;
+  // Chann is available to all non-viewer roles regardless of allowedFeatures
+  // (it is an AI assistant tool, not a page/feature that should be restricted)
 
   return (
     <div

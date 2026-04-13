@@ -32,23 +32,24 @@ function useDraggableFloating(options?: {
     startY: 0,
   });
 
+  const DRAG_THRESHOLD = 6; // px — must move this far before drag starts
+  const hasDraggedRef = useRef(false);
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (!enabled) return;
-      // only left click for mouse
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((e as any).button != null && (e as any).button !== 0) return;
 
       draggingRef.current = true;
+      hasDraggedRef.current = false;
       startRef.current = {
         pointerX: e.clientX,
         pointerY: e.clientY,
         startX: pos.x,
         startY: pos.y,
       };
-
-      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-      e.preventDefault();
+      // Do NOT preventDefault here — we only capture after threshold is exceeded
     },
     [enabled, pos.x, pos.y]
   );
@@ -60,6 +61,15 @@ function useDraggableFloating(options?: {
 
       const dx = e.clientX - startRef.current.pointerX;
       const dy = e.clientY - startRef.current.pointerY;
+
+      // Only start real drag after threshold to preserve clicks
+      if (!hasDraggedRef.current) {
+        if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+        hasDraggedRef.current = true;
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        } catch { /* ignore */ }
+      }
 
       setPos(prev => {
         let nextX = startRef.current.startX + dx;

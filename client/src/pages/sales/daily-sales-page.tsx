@@ -59,6 +59,7 @@ import {
   Check,
   ChevronsUpDown,
   Pencil,
+  RefreshCw,
 } from "lucide-react";
 import {
   Popover,
@@ -761,6 +762,7 @@ export default function DailySalesPage() {
 
   // State for default target from settings
   const [defaultDailyTarget, setDefaultDailyTarget] = useState("250000");
+  const [isReloadingTarget, setIsReloadingTarget] = useState(false);
 
   const [shiftCountData, setShiftCountData] = useState<any>(null);
   
@@ -1216,6 +1218,27 @@ export default function DailySalesPage() {
     };
     loadDailyTargetAndMtd();
   }, [reportDate, defaultDailyTarget]);
+
+  const reloadTargetFromSettings = useCallback(async () => {
+    if (!reportDate) return;
+    setIsReloadingTarget(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const targetRes = await apiRequest("POST", "/api/sales/getDailyTargetForDate", { token, date: reportDate });
+      const targetData = await targetRes.json();
+      const target = (targetData.ok && targetData.target)
+        ? (targetData.target.targetSales || defaultDailyTarget)
+        : defaultDailyTarget;
+      form.setValue("dailyTarget", target);
+      if (!reportSavedInDb) {
+        form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
+      }
+    } catch (e) {
+      console.error("Failed to reload target from settings:", e);
+    } finally {
+      setIsReloadingTarget(false);
+    }
+  }, [reportDate, defaultDailyTarget, reportSavedInDb, laborSettings.rosterHours, form]);
 
   const handleSaveReport = async () => {
     try {
@@ -2620,6 +2643,21 @@ ${v.staffRosterText || ""}
                         testId="note-section-daily"
                       />
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs px-2 shrink-0 mr-1"
+                      onClick={reloadTargetFromSettings}
+                      disabled={isReloadingTarget}
+                      data-testid="button-load-from-settings"
+                    >
+                      {isReloadingTarget
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <RefreshCw className="w-3 h-3 mr-1" />
+                      }
+                      {!isReloadingTarget && (language === "th" ? "โหลดจาก Setting" : "Load from Settings")}
+                    </Button>
                     <Button
                       type="button"
                       variant="default"

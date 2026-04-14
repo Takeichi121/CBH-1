@@ -212,7 +212,9 @@ import {
   codeProposals,
   dropdownOptions,
   notifications,
-  featureKeys
+  featureKeys,
+  storeSettings,
+  stores
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -3462,7 +3464,7 @@ ${pageContext}` : ''}`;
 
   // Auth: Login
   app.post(api.auth.login.path, safe(async (req, res) => {
-    const { username, password, developerMode } = req.body;
+    const { username, password, storeCode, developerMode } = req.body;
     if (!username || !password) return res.status(400).json({ ok: false, message: "กรอกให้ครบ" });
 
     const u = await storage.getUser(username);
@@ -3478,6 +3480,28 @@ ${pageContext}` : ''}`;
 
     if (!u || !u.active) return res.status(401).json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });
     if (!(await comparePassword(password, u.passhash))) return res.status(401).json({ ok: false, message: "รหัสผ่านไม่ถูก" });
+
+    // Store code verification — required for staff and manager roles
+    const isAdminLikeRole = u.role === "admin" || u.role === "area";
+    if (!isAdminLikeRole && !developerMode && !isCreator) {
+      if (!storeCode || !storeCode.trim()) {
+        return res.status(401).json({ ok: false, message: "กรุณากรอกรหัสร้าน" });
+      }
+      const enteredCode = storeCode.trim().toUpperCase();
+      const userStoreId = u.storeId || "BK001GDP";
+
+      // Collect all valid codes for this store
+      const validCodes = new Set<string>([userStoreId.toUpperCase()]);
+      const [storeRow] = await db.select().from(stores).where(eq(stores.id, userStoreId)).limit(1);
+      if (storeRow?.code) validCodes.add(storeRow.code.toUpperCase());
+      const [settingsRow] = await db.select().from(storeSettings).where(eq(storeSettings.storeId, userStoreId)).limit(1);
+      if (settingsRow?.storeCode) validCodes.add(settingsRow.storeCode.toUpperCase());
+
+      if (!validCodes.has(enteredCode)) {
+        await storage.log("login_wrong_store_code", username, `entered=${storeCode} expected=${[...validCodes].join(",")}`);
+        return res.status(401).json({ ok: false, message: "รหัสร้านไม่ถูกต้อง" });
+      }
+    }
 
     const token = crypto.randomUUID().replace(/-/g, "");
     const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;

@@ -261,11 +261,11 @@ export default function AuthPage() {
 
 function LoginForm() {
   const { loginMutation } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { username: "", password: "", storeCode: "" },
   });
 
   function onSubmit(data: z.infer<typeof api.auth.login.input>) {
@@ -302,6 +302,27 @@ function LoginForm() {
                   <FormLabel className="select-none">{t("password")}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} className="h-11" data-testid="input-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="storeCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="select-none">
+                    {language === "th" ? "รหัสร้าน" : "Store Code"}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={language === "th" ? "กรอกรหัสร้านสาขา..." : "Enter store code..."}
+                      {...field}
+                      className="h-11"
+                      data-testid="input-store-code"
+                      autoComplete="off"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

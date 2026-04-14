@@ -954,13 +954,15 @@ export default function DailySalesPage() {
 
   // Shared helper — fetch daily target for a date, set form value, and reset rosterCommit for new reports.
   // Used by both the initial date-change effect and the manual "Load from Settings" button.
-  const fetchAndApplyDailyTarget = useCallback(async (date: string, hasSavedReport: boolean) => {
+  // customFallback overrides the in-memory defaultDailyTarget (used when caller has freshly fetched settings).
+  const fetchAndApplyDailyTarget = useCallback(async (date: string, hasSavedReport: boolean, customFallback?: string) => {
     const token = localStorage.getItem("bk_token");
     const targetRes = await apiRequest("POST", "/api/sales/getDailyTargetForDate", { token, date });
     const targetData = await targetRes.json();
+    const fallback = customFallback ?? defaultDailyTarget;
     const target = (targetData.ok && targetData.target)
-      ? (targetData.target.targetSales || defaultDailyTarget)
-      : defaultDailyTarget;
+      ? (targetData.target.targetSales || fallback)
+      : fallback;
     form.setValue("dailyTarget", target);
     if (!hasSavedReport) {
       form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
@@ -1218,18 +1220,29 @@ export default function DailySalesPage() {
     loadDailyTargetAndMtd();
   }, [reportDate, fetchAndApplyDailyTarget]);
 
-  // Button handler — wraps shared helper with loading state
+  // Button handler — fetches fresh store settings first, then reloads target via shared helper
   const reloadTargetFromSettings = useCallback(async () => {
     if (!reportDate) return;
     setIsReloadingTarget(true);
     try {
-      await fetchAndApplyDailyTarget(reportDate, reportSavedInDb);
+      const token = localStorage.getItem("bk_token");
+      // Fetch latest settings so fallback reflects any mid-month target changes
+      const settingsRes = await apiRequest("POST", "/api/sales/getSettings", { token });
+      const settingsData = await settingsRes.json();
+      const freshDefault = (settingsData.ok && settingsData.settings?.dailyTarget)
+        ? settingsData.settings.dailyTarget
+        : defaultDailyTarget;
+      // Update in-memory state so subsequent date navigations also use the fresh value
+      if (settingsData.ok && settingsData.settings?.dailyTarget) {
+        setDefaultDailyTarget(settingsData.settings.dailyTarget);
+      }
+      await fetchAndApplyDailyTarget(reportDate, reportSavedInDb, freshDefault);
     } catch (e) {
       console.error("Failed to reload target from settings:", e);
     } finally {
       setIsReloadingTarget(false);
     }
-  }, [reportDate, reportSavedInDb, fetchAndApplyDailyTarget]);
+  }, [reportDate, reportSavedInDb, defaultDailyTarget, fetchAndApplyDailyTarget]);
 
   const handleSaveReport = async () => {
     try {

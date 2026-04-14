@@ -213,7 +213,8 @@ import {
   dropdownOptions,
   notifications,
   featureKeys,
-  storeSettings
+  storeSettings,
+  stores
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -3482,15 +3483,18 @@ ${pageContext}` : ''}`;
 
     // Store code verification — required for staff and manager roles only
     const requiresStoreCode = u.role === "staff" || u.role === "manager";
-    if (requiresStoreCode && !developerMode && !isCreator) {
+    // developerMode bypass is only trusted in non-production environments
+    const isDevEnv = process.env.NODE_ENV !== "production";
+    const isDevBypass = developerMode && isDevEnv;
+    if (requiresStoreCode && !isCreator && !isDevBypass) {
       if (!storeCode || !storeCode.trim()) {
         return res.status(401).json({ ok: false, message: "กรุณากรอกรหัสร้าน" });
       }
       if (!u.storeId) {
         return res.status(401).json({ ok: false, message: "รหัสร้านไม่ถูกต้อง" });
       }
-      const [settingsRow] = await db.select().from(storeSettings).where(eq(storeSettings.storeId, u.storeId)).limit(1);
-      if (!settingsRow || storeCode.trim().toUpperCase() !== settingsRow.storeCode.toUpperCase()) {
+      const [storeRow] = await db.select().from(stores).where(eq(stores.id, u.storeId)).limit(1);
+      if (!storeRow || storeCode.trim().toUpperCase() !== storeRow.code.toUpperCase()) {
         await storage.log("login_wrong_store_code", username, "mismatch");
         return res.status(401).json({ ok: false, message: "รหัสร้านไม่ถูกต้อง" });
       }

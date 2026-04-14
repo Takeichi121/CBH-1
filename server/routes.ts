@@ -419,21 +419,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     // Admin/area can override storeId via request body; manager uses their own store
     const isAdminLike = user[0].role === 'admin' || user[0].role === 'area';
-    const storeId = (isAdminLike && storeIdOverride) ? storeIdOverride : (user[0].storeId || 'BK001GDP');
+    const storeId = (isAdminLike && storeIdOverride) ? storeIdOverride : (user[0].storeId || 'BK1040');
     return { ok: true as const, user: user[0], storeId };
   };
 
   const getSessionStoreId = async (token: string, bodyStoreId?: string): Promise<string> => {
     try {
       const session = await storage.getSession(token);
-      if (!session) return 'BK001GDP';
+      if (!session) return 'BK1040';
       const user = await storage.getUser(session.username);
-      if (!user) return 'BK001GDP';
+      if (!user) return 'BK1040';
       const isAdminLike = user.role === 'admin' || user.role === 'area';
       // Only admin/area roles may override storeId via request body; others are locked to their assigned store
-      return (isAdminLike && bodyStoreId) ? bodyStoreId : (user.storeId || 'BK001GDP');
+      return (isAdminLike && bodyStoreId) ? bodyStoreId : (user.storeId || 'BK1040');
     } catch {
-      return 'BK001GDP';
+      return 'BK1040';
     }
   };
 
@@ -2514,7 +2514,7 @@ ${pageContext}` : ''}`;
 
           case "getSwapRequests": {
             const swapStatus = args.status === "all" ? undefined : args.status;
-            const swaps = await storage.getSwapRequests(swapStatus, user.storeId || 'BK001GDP');
+            const swaps = await storage.getSwapRequests(swapStatus, user.storeId || 'BK1040');
             return JSON.stringify({ ok: true, swaps, count: swaps.length });
           }
 
@@ -2870,7 +2870,7 @@ ${pageContext}` : ''}`;
           }
 
           case "approveSwapRequest": {
-            const swapReq = await storage.getSwapRequestById(args.id, user.storeId || 'BK001GDP');
+            const swapReq = await storage.getSwapRequestById(args.id, user.storeId || 'BK1040');
             if (!swapReq) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "approved", username, args.note || "อนุมัติโดย Chann");
             toolActions.push(`✅ อนุมัติ swap request #${args.id} (${swapReq.requesterUsername} ↔ ${swapReq.targetUsername || "?"})`);
@@ -2878,7 +2878,7 @@ ${pageContext}` : ''}`;
           }
 
           case "rejectSwapRequest": {
-            const swapReq2 = await storage.getSwapRequestById(args.id, user.storeId || 'BK001GDP');
+            const swapReq2 = await storage.getSwapRequestById(args.id, user.storeId || 'BK1040');
             if (!swapReq2) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "rejected", username, args.note || "ปฏิเสธโดย Chann");
             toolActions.push(`❌ ปฏิเสธ swap request #${args.id}`);
@@ -4564,7 +4564,7 @@ ${pageContext}` : ''}`;
     const now = nowIso();
     await storage.createSwapRequest({
       requesterUsername: me.username, requesterDate: myDate, targetUsername: target.username, targetDate: targetDate,
-      status: "pending", createdAt: now, updatedAt: now, storeId: me.storeId || 'BK001GDP',
+      status: "pending", createdAt: now, updatedAt: now, storeId: me.storeId || 'BK1040',
     });
 
     await storage.log("swap_request", me.username, `request swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
@@ -4578,7 +4578,7 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    const storeId = u.storeId || 'BK001GDP';
+    const storeId = u.storeId || 'BK1040';
     const isManager = isManagerLike(u.role);
     const requests = await storage.getSwapRequests(isManager ? "pending" : undefined, storeId);
     const filteredRequests = isManager ? requests : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
@@ -4592,7 +4592,7 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    const storeId = u.storeId || 'BK001GDP';
+    const storeId = u.storeId || 'BK1040';
     const request = await storage.getSwapRequestById(requestId, storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
@@ -4623,7 +4623,7 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    const storeId = u.storeId || 'BK001GDP';
+    const storeId = u.storeId || 'BK1040';
     const request = await storage.getSwapRequestById(requestId, storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
@@ -6614,7 +6614,7 @@ ${pageContext}` : ''}`;
   }));
 
   // Calculate Labor Logic Helper
-  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }, storeId: string = 'BK001GDP') {
+  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }, storeId: string = 'BK1040') {
     // 1. Get Settings
     const cfg = await storage.getLaborSettings(storeId) || { rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", fixedCostDaily: "0", closeShiftDailyCost: "0" };
 

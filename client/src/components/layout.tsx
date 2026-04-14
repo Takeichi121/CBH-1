@@ -48,7 +48,7 @@ export function Layout({ children }: { children: ReactNode }) {
   });
 
   const stores: Array<{ id: string; name: string; nameTh?: string | null; isActive: number }> = storesData?.stores || [];
-  const effectiveStoreId = selectedStoreId || (stores[0]?.id) || 'BK001GDP';
+  const effectiveStoreId = selectedStoreId || (stores[0]?.id) || 'BK1040';
   const currentStore = stores.find(s => s.id === effectiveStoreId) || stores[0];
 
   if (!user) {

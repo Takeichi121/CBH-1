@@ -149,6 +149,48 @@ app.use((req, res, next) => {
       console.warn("Dropdown seed skipped (table may not exist yet):", seedErr instanceof Error ? seedErr.message : seedErr);
     }
 
+    try {
+      const { db } = await import("./db");
+      const { eq } = await import("drizzle-orm");
+      const {
+        users, shifts, swapRequests, managerRequests, dailySalesReports,
+        weeklySalesReports, dailyTargets, wasteTargets, laborSettings,
+        dailyLabor, storeSettings, announcements,
+      } = await import("@shared/schema");
+      const OLD_ID = 'BK001GDP';
+      const NEW_ID = 'BK1040';
+      const migrations: Array<{ name: string; run: () => Promise<unknown> }> = [
+        { name: 'users',                run: () => db.update(users).set({ storeId: NEW_ID }).where(eq(users.storeId, OLD_ID)) },
+        { name: 'shifts',               run: () => db.update(shifts).set({ storeId: NEW_ID }).where(eq(shifts.storeId, OLD_ID)) },
+        { name: 'swap_requests',        run: () => db.update(swapRequests).set({ storeId: NEW_ID }).where(eq(swapRequests.storeId, OLD_ID)) },
+        { name: 'manager_requests',     run: () => db.update(managerRequests).set({ storeId: NEW_ID }).where(eq(managerRequests.storeId, OLD_ID)) },
+        { name: 'daily_sales_reports',  run: () => db.update(dailySalesReports).set({ storeId: NEW_ID }).where(eq(dailySalesReports.storeId, OLD_ID)) },
+        { name: 'weekly_sales_reports', run: () => db.update(weeklySalesReports).set({ storeId: NEW_ID }).where(eq(weeklySalesReports.storeId, OLD_ID)) },
+        { name: 'daily_targets',        run: () => db.update(dailyTargets).set({ storeId: NEW_ID }).where(eq(dailyTargets.storeId, OLD_ID)) },
+        { name: 'waste_targets',        run: () => db.update(wasteTargets).set({ storeId: NEW_ID }).where(eq(wasteTargets.storeId, OLD_ID)) },
+        { name: 'labor_settings',       run: () => db.update(laborSettings).set({ storeId: NEW_ID }).where(eq(laborSettings.storeId, OLD_ID)) },
+        { name: 'daily_labor',          run: () => db.update(dailyLabor).set({ storeId: NEW_ID }).where(eq(dailyLabor.storeId, OLD_ID)) },
+        { name: 'store_settings',       run: () => db.update(storeSettings).set({ storeId: NEW_ID }).where(eq(storeSettings.storeId, OLD_ID)) },
+        { name: 'announcements',        run: () => db.update(announcements).set({ storeId: NEW_ID }).where(eq(announcements.storeId, OLD_ID)) },
+      ];
+      const failed: string[] = [];
+      for (const m of migrations) {
+        try {
+          await m.run();
+        } catch (err) {
+          failed.push(m.name);
+          console.warn(`[migration] Failed to update ${m.name}:`, err instanceof Error ? err.message : err);
+        }
+      }
+      if (failed.length > 0) {
+        console.warn(`[migration] Store ID migration completed with failures in: ${failed.join(', ')}`);
+      } else {
+        log("Store ID migration BK001GDP → BK1040 complete");
+      }
+    } catch (migErr) {
+      console.warn("Store ID migration skipped:", migErr instanceof Error ? migErr.message : migErr);
+    }
+
     initProactiveChann();
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

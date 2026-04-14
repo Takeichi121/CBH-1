@@ -372,7 +372,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getSwapRequests(status?: string, storeId: string = 'BK001GDP'): Promise<SwapRequest[]> {
+  async getSwapRequests(status?: string, storeId: string = 'BK1040'): Promise<SwapRequest[]> {
     if (status) {
       return await db.select().from(swapRequests)
         .where(and(eq(swapRequests.status, status), eq(swapRequests.storeId, storeId)))
@@ -383,7 +383,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(swapRequests.createdAt));
   }
 
-  async getSwapRequestById(id: number, storeId: string = 'BK001GDP'): Promise<SwapRequest | undefined> {
+  async getSwapRequestById(id: number, storeId: string = 'BK1040'): Promise<SwapRequest | undefined> {
     const [request] = await db.select().from(swapRequests)
       .where(and(eq(swapRequests.id, id), eq(swapRequests.storeId, storeId)));
     return request;
@@ -425,12 +425,12 @@ export class DatabaseStorage implements IStorage {
     return report;
   }
 
-  async getDailySalesReportByDate(date: string, storeId: string = 'BK001GDP'): Promise<DailySalesReport | undefined> {
+  async getDailySalesReportByDate(date: string, storeId: string = 'BK1040'): Promise<DailySalesReport | undefined> {
     const [report] = await db.select().from(dailySalesReports).where(and(eq(dailySalesReports.reportDate, date), eq(dailySalesReports.storeId, storeId)));
     return report;
   }
 
-  async getDailySalesReports(date?: string, limit: number = 30, storeId: string = 'BK001GDP'): Promise<DailySalesReport[]> {
+  async getDailySalesReports(date?: string, limit: number = 30, storeId: string = 'BK1040'): Promise<DailySalesReport[]> {
     if (date) {
       return await db.select().from(dailySalesReports)
         .where(and(eq(dailySalesReports.reportDate, date), eq(dailySalesReports.storeId, storeId)))
@@ -443,7 +443,7 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  async getDailySalesReportsForMonth(year: number, month: number, storeId: string = 'BK001GDP'): Promise<DailySalesReport[]> {
+  async getDailySalesReportsForMonth(year: number, month: number, storeId: string = 'BK1040'): Promise<DailySalesReport[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -452,7 +452,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(dailySalesReports.reportDate);
   }
 
-  async getDailySalesReportsByDateRange(startDate: string, endDate: string, storeId: string = 'BK001GDP'): Promise<DailySalesReport[]> {
+  async getDailySalesReportsByDateRange(startDate: string, endDate: string, storeId: string = 'BK1040'): Promise<DailySalesReport[]> {
     return await db.select().from(dailySalesReports)
       .where(and(gte(dailySalesReports.reportDate, startDate), lte(dailySalesReports.reportDate, endDate), eq(dailySalesReports.storeId, storeId)))
       .orderBy(dailySalesReports.reportDate);
@@ -472,7 +472,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async upsertDailySalesReportByDate(report: InsertDailySales, storeId: string = 'BK001GDP'): Promise<DailySalesReport> {
+  async upsertDailySalesReportByDate(report: InsertDailySales, storeId: string = 'BK1040'): Promise<DailySalesReport> {
     const sId = report.storeId || storeId;
     const existing = await this.getDailySalesReportByDate(report.reportDate, sId);
     if (existing) {
@@ -519,7 +519,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // MTD Summary - Calculate from saved reports
-  async getMtdSummary(year: number, month: number, beforeDate?: string, storeId: string = 'BK001GDP'): Promise<{
+  async getMtdSummary(year: number, month: number, beforeDate?: string, storeId: string = 'BK1040'): Promise<{
     mtdActual: number;
     mtdTc: number;
     mtdTarget: number;
@@ -587,7 +587,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Daily Targets
-  async getDailyTargetsForMonth(year: number, month: number, storeId: string = 'BK001GDP'): Promise<DailyTarget[]> {
+  async getDailyTargetsForMonth(year: number, month: number, storeId: string = 'BK1040'): Promise<DailyTarget[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -596,12 +596,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(dailyTargets.targetDate);
   }
 
-  async getDailyTarget(date: string, storeId: string = 'BK001GDP'): Promise<DailyTarget | undefined> {
+  async getDailyTarget(date: string, storeId: string = 'BK1040'): Promise<DailyTarget | undefined> {
     const [target] = await db.select().from(dailyTargets).where(and(eq(dailyTargets.targetDate, date), eq(dailyTargets.storeId, storeId)));
     return target;
   }
 
-  async upsertDailyTarget(target: InsertDailyTarget, storeId: string = 'BK001GDP'): Promise<DailyTarget> {
+  async upsertDailyTarget(target: InsertDailyTarget, storeId: string = 'BK1040'): Promise<DailyTarget> {
     const sId = target.storeId || storeId;
     const existing = await this.getDailyTarget(target.targetDate, sId);
     if (existing) {
@@ -621,13 +621,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async bulkUpsertDailyTargets(targets: InsertDailyTarget[], storeId: string = 'BK001GDP'): Promise<void> {
+  async bulkUpsertDailyTargets(targets: InsertDailyTarget[], storeId: string = 'BK1040'): Promise<void> {
     for (const target of targets) {
       await this.upsertDailyTarget(target, storeId);
     }
   }
 
-  async getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay: number = 0, storeId: string = 'BK001GDP'): Promise<number> {
+  async getMtdTargetSum(year: number, month: number, upToDate: string, defaultPerDay: number = 0, storeId: string = 'BK1040'): Promise<number> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const targets = await db.select().from(dailyTargets)
       .where(and(gte(dailyTargets.targetDate, startDate), lte(dailyTargets.targetDate, upToDate), eq(dailyTargets.storeId, storeId)));
@@ -645,12 +645,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Waste Targets
-  async getWasteTarget(targetMonth: string, storeId: string = 'BK001GDP'): Promise<WasteTarget | undefined> {
+  async getWasteTarget(targetMonth: string, storeId: string = 'BK1040'): Promise<WasteTarget | undefined> {
     const [target] = await db.select().from(wasteTargets).where(and(eq(wasteTargets.targetMonth, targetMonth), eq(wasteTargets.storeId, storeId)));
     return target;
   }
 
-  async upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>, storeId: string = 'BK001GDP'): Promise<WasteTarget> {
+  async upsertWasteTarget(targetMonth: string, data: Partial<WasteTarget>, storeId: string = 'BK1040'): Promise<WasteTarget> {
     const existing = await this.getWasteTarget(targetMonth, storeId);
     if (existing) {
       const [updated] = await db.update(wasteTargets)
@@ -1051,12 +1051,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Labor Settings
-  async getLaborSettings(storeId: string = 'BK001GDP'): Promise<LaborSettings | undefined> {
+  async getLaborSettings(storeId: string = 'BK1040'): Promise<LaborSettings | undefined> {
     const [settings] = await db.select().from(laborSettings).where(eq(laborSettings.storeId, storeId)).limit(1);
     return settings;
   }
 
-  async saveLaborSettings(data: Partial<InsertLaborSettings>, storeId: string = 'BK001GDP'): Promise<LaborSettings> {
+  async saveLaborSettings(data: Partial<InsertLaborSettings>, storeId: string = 'BK1040'): Promise<LaborSettings> {
     const existing = await this.getLaborSettings(storeId);
     if (existing) {
       const [updated] = await db.update(laborSettings)
@@ -1073,12 +1073,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Daily Labor
-  async getDailyLabor(date: string, storeId: string = 'BK001GDP'): Promise<DailyLabor | undefined> {
+  async getDailyLabor(date: string, storeId: string = 'BK1040'): Promise<DailyLabor | undefined> {
     const [labor] = await db.select().from(dailyLabor).where(and(eq(dailyLabor.date, date), eq(dailyLabor.storeId, storeId)));
     return labor;
   }
 
-  async saveDailyLabor(date: string, data: Partial<InsertDailyLabor>, storeId: string = 'BK001GDP'): Promise<DailyLabor> {
+  async saveDailyLabor(date: string, data: Partial<InsertDailyLabor>, storeId: string = 'BK1040'): Promise<DailyLabor> {
     const existing = await this.getDailyLabor(date, storeId);
     if (existing) {
       const [updated] = await db.update(dailyLabor)
@@ -1095,13 +1095,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Weekly Sales Reports
-  async getWeeklySalesReport(weekStartDate: string, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport | undefined> {
+  async getWeeklySalesReport(weekStartDate: string, storeId: string = 'BK1040'): Promise<WeeklySalesReport | undefined> {
     const [report] = await db.select().from(weeklySalesReports)
       .where(and(eq(weeklySalesReports.weekStartDate, weekStartDate), eq(weeklySalesReports.storeId, storeId)));
     return report;
   }
 
-  async upsertWeeklySalesReport(report: InsertWeeklySales, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport> {
+  async upsertWeeklySalesReport(report: InsertWeeklySales, storeId: string = 'BK1040'): Promise<WeeklySalesReport> {
     const sId = report.storeId || storeId;
     const existing = await this.getWeeklySalesReport(report.weekStartDate, sId);
     if (existing) {
@@ -1117,7 +1117,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getWeeklySalesReports(limit?: number, storeId: string = 'BK001GDP'): Promise<WeeklySalesReport[]> {
+  async getWeeklySalesReports(limit?: number, storeId: string = 'BK1040'): Promise<WeeklySalesReport[]> {
     const q = db.select().from(weeklySalesReports).where(eq(weeklySalesReports.storeId, storeId)).orderBy(desc(weeklySalesReports.weekStartDate));
     if (limit) return await q.limit(limit);
     return await q;

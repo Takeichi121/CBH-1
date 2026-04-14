@@ -1029,8 +1029,8 @@ export default function AdminPage() {
                           size="sm"
                           onClick={() => handleToggleStore(store.id)}
                           data-testid={`button-toggle-store-${store.id}`}
-                          disabled={store.id === 'BK001GDP'}
-                          title={store.id === 'BK001GDP' ? 'Default store cannot be deactivated' : ''}
+                          disabled={store.id === 'BK1040'}
+                          title={store.id === 'BK1040' ? 'Default store cannot be deactivated' : ''}
                         >
                           {store.isActive === 1 ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
                         </Button>

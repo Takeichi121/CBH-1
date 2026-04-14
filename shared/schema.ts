@@ -54,7 +54,7 @@ export const users = pgTable("users", {
   mustChangePassword: integer("must_change_password").notNull().default(0),
   createdAt: text("created_at").notNull(),
   allowedFeatures: text("allowed_features"),
-  storeId: text("store_id").default("BK001GDP"),
+  storeId: text("store_id").default("BK1040"),
 });
 
 // ==========================================
@@ -107,7 +107,7 @@ export const shifts = pgTable("shifts", {
   startTime: text("start_time").notNull(), // HH:MM
   endTime: text("end_time").notNull(), // HH:MM
   note: text("note"),
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   updatedBy: text("updated_by"),
@@ -126,7 +126,7 @@ export const swapRequests = pgTable("swap_requests", {
   updatedAt: text("updated_at").notNull(),
   approvedBy: text("approved_by"),
   note: text("note"),
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
 });
 
 // ==========================================
@@ -185,7 +185,7 @@ export const managerRequests = pgTable("manager_requests", {
   approvedBy: text("approved_by"),
   approvedAt: text("approved_at"),
   rejectionReason: text("rejection_reason"),
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
 
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -293,7 +293,7 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   notePerformance: text("note_performance"),
   noteAddons: text("note_addons"),
 
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [
@@ -323,7 +323,7 @@ export const weeklySalesReports = pgTable("weekly_sales_reports", {
   wasteTop3: text("waste_top3").default(""),
   unaccountedTop3: text("unaccounted_top3").default(""),
 
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
@@ -337,7 +337,7 @@ export const dailyTargets = pgTable("daily_targets", {
   targetTc: text("target_tc").default("300"),
   wasteRawDaily: text("waste_raw_daily").default("0"),
   wasteMealDaily: text("waste_meal_daily").default("0"),
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
@@ -353,7 +353,7 @@ export const wasteTargets = pgTable("waste_targets", {
   mealPercent: text("meal_percent").default("0"),
   rawAmount: text("raw_amount").default("0"),
   rawPercent: text("raw_percent").default("0"),
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
@@ -428,14 +428,14 @@ export const laborSettings = pgTable("labor_settings", {
   fixedCostDaily: decimal("fixed_cost_daily", { precision: 10, scale: 2 }).default("0"),  
   closeShiftDailyCost: decimal("close_shift_daily_cost", { precision: 10, scale: 2 }).default("0"), 
   ptWageRate: decimal("pt_wage_rate", { precision: 10, scale: 2 }).default("45"),         
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   updatedAt: text("updated_at"),
 });
 
 export const dailyLabor = pgTable("daily_labor", {
   id: serial("id").primaryKey(),
   date: text("date").notNull(), // YYYY-MM-DD
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   actualHours: decimal("actual_hours", { precision: 10, scale: 2 }).default("0"), 
   otHours: decimal("ot_hours", { precision: 10, scale: 2 }).default("0"),         
   summaryHours: decimal("summary_hours", { precision: 10, scale: 2 }).default("0"),     
@@ -493,7 +493,7 @@ export const storeSettings = pgTable("store_settings", {
   id: serial("id").primaryKey(),
   storeName: text("store_name").notNull(),
   storeCode: text("store_code").notNull(),
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   dailyTarget: text("daily_target").notNull().default("250000"),
   mtdTarget: text("mtd_target").default("7500000"),
   createdAt: text("created_at").notNull(),
@@ -526,7 +526,7 @@ export const announcements = pgTable("announcements", {
   targetAudience: text("target_audience").notNull().default("all"), 
   isPinned: integer("is_pinned").notNull().default(0),
   expiresAt: text("expires_at"), 
-  storeId: text("store_id").notNull().default("BK001GDP"),
+  storeId: text("store_id").notNull().default("BK1040"),
   createdAt: text("created_at").notNull(),
   createdBy: text("created_by").notNull(),
   updatedAt: text("updated_at").notNull(),

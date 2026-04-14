@@ -45,7 +45,7 @@ export default function AdminPage() {
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK001GDP" });
+  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK1040" });
   const [transferUser, setTransferUser] = useState<any>(null);
   const [transferTargetStoreId, setTransferTargetStoreId] = useState<string>("");
   const [isTransferring, setIsTransferring] = useState(false);
@@ -259,7 +259,7 @@ export default function AdminPage() {
         toast({ title: `${labels.created}: @${result.username}` });
         refetch();
         setShowCreateDialog(false);
-        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK001GDP" });
+        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK1040" });
       } else {
         toast({ title: result.message || "Error", variant: "destructive" });
       }

@@ -54,9 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedStoreId, setSelectedStoreIdState] = useState<string | null>(
-    () => localStorage.getItem(SELECTED_STORE_KEY)
-  );
+  const [selectedStoreId, setSelectedStoreIdState] = useState<string | null>(() => {
+    const stored = localStorage.getItem(SELECTED_STORE_KEY);
+    if (stored === 'BK001GDP') {
+      localStorage.removeItem(SELECTED_STORE_KEY);
+      return null;
+    }
+    return stored;
+  });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();

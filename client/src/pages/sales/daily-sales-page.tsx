@@ -952,6 +952,21 @@ export default function DailySalesPage() {
     loadShiftCount();
   }, [reportDate]);
 
+  // Shared helper — fetch daily target for a date, set form value, and reset rosterCommit for new reports.
+  // Used by both the initial date-change effect and the manual "Load from Settings" button.
+  const fetchAndApplyDailyTarget = useCallback(async (date: string, hasSavedReport: boolean) => {
+    const token = localStorage.getItem("bk_token");
+    const targetRes = await apiRequest("POST", "/api/sales/getDailyTargetForDate", { token, date });
+    const targetData = await targetRes.json();
+    const target = (targetData.ok && targetData.target)
+      ? (targetData.target.targetSales || defaultDailyTarget)
+      : defaultDailyTarget;
+    form.setValue("dailyTarget", target);
+    if (!hasSavedReport) {
+      form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
+    }
+  }, [defaultDailyTarget, laborSettings.rosterHours, form]);
+
   useEffect(() => {
     const loadDailyTargetAndMtd = async () => {
       if (!reportDate) return;
@@ -1144,27 +1159,11 @@ export default function DailySalesPage() {
         } else {
           setReportSavedInDb(false);
           setIsEditMode(true);
-          form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
         }
 
-        // Load daily target for this specific date
-        const targetRes = await apiRequest(
-          "POST",
-          "/api/sales/getDailyTargetForDate",
-          {
-            token,
-            date: reportDate,
-          },
-        );
-        const targetData = await targetRes.json();
-        if (targetData.ok && targetData.target) {
-          form.setValue(
-            "dailyTarget",
-            targetData.target.targetSales || defaultDailyTarget,
-          );
-        } else {
-          form.setValue("dailyTarget", defaultDailyTarget);
-        }
+        // Load daily target + conditionally reset rosterCommit via shared helper
+        const hasSavedReport = !!(existingData.ok && existingData.report);
+        await fetchAndApplyDailyTarget(reportDate, hasSavedReport);
 
         // Get MTD Actual from daily sales reports
         const mtdRes = await apiRequest("POST", "/api/sales/getMtdSummary", {
@@ -1217,28 +1216,20 @@ export default function DailySalesPage() {
       }
     };
     loadDailyTargetAndMtd();
-  }, [reportDate, defaultDailyTarget]);
+  }, [reportDate, fetchAndApplyDailyTarget]);
 
+  // Button handler — wraps shared helper with loading state
   const reloadTargetFromSettings = useCallback(async () => {
     if (!reportDate) return;
     setIsReloadingTarget(true);
     try {
-      const token = localStorage.getItem("bk_token");
-      const targetRes = await apiRequest("POST", "/api/sales/getDailyTargetForDate", { token, date: reportDate });
-      const targetData = await targetRes.json();
-      const target = (targetData.ok && targetData.target)
-        ? (targetData.target.targetSales || defaultDailyTarget)
-        : defaultDailyTarget;
-      form.setValue("dailyTarget", target);
-      if (!reportSavedInDb) {
-        form.setValue("rosterCommit", String(laborSettings.rosterHours || 88));
-      }
+      await fetchAndApplyDailyTarget(reportDate, reportSavedInDb);
     } catch (e) {
       console.error("Failed to reload target from settings:", e);
     } finally {
       setIsReloadingTarget(false);
     }
-  }, [reportDate, defaultDailyTarget, reportSavedInDb, laborSettings.rosterHours, form]);
+  }, [reportDate, reportSavedInDb, fetchAndApplyDailyTarget]);
 
   const handleSaveReport = async () => {
     try {

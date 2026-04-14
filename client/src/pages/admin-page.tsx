@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 import { Link } from "wouter";
@@ -36,13 +36,16 @@ export default function AdminPage() {
   const [showCreateStoreDialog, setShowCreateStoreDialog] = useState(false);
   const [newStore, setNewStore] = useState({ id: "", name: "", nameTh: "", code: "", address: "" });
   const [isCreatingStore, setIsCreatingStore] = useState(false);
+  const [editingStore, setEditingStore] = useState<string | null>(null);
+  const [editStoreData, setEditStoreData] = useState({ name: "", nameTh: "", code: "", address: "" });
+  const [isUpdatingStore, setIsUpdatingStore] = useState(false);
   const [viewingUser, setViewingUser] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "" });
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
+  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK1040" });
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["/api/admin/getUsers"],
@@ -104,6 +107,35 @@ export default function AdminPage() {
       }
     } catch {
       toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleOpenEditStore = (store: { id: string; name: string; nameTh?: string | null; code: string; address?: string | null; isActive: number }) => {
+    setEditingStore(store.id);
+    setEditStoreData({ name: store.name, nameTh: store.nameTh || "", code: store.code, address: store.address || "" });
+  };
+
+  const handleUpdateStore = async () => {
+    if (!editingStore || !editStoreData.name || !editStoreData.code) {
+      toast({ title: language === "th" ? "กรุณากรอกชื่อและ Code" : "Name and Code are required", variant: "destructive" });
+      return;
+    }
+    setIsUpdatingStore(true);
+    try {
+      const t = token || localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/admin/stores/update", { token: t, id: editingStore, ...editStoreData });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "อัปเดตสาขาสำเร็จ" : "Store updated" });
+        setEditingStore(null);
+        refetchStores();
+      } else {
+        toast({ title: data.message || "เกิดข้อผิดพลาด", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    } finally {
+      setIsUpdatingStore(false);
     }
   };
 
@@ -224,7 +256,7 @@ export default function AdminPage() {
         toast({ title: `${labels.created}: @${result.username}` });
         refetch();
         setShowCreateDialog(false);
-        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "" });
+        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK1040" });
       } else {
         toast({ title: result.message || "Error", variant: "destructive" });
       }
@@ -448,6 +480,23 @@ export default function AdminPage() {
                       {staffPositions.map((pos) => (
                         <SelectItem key={pos} value={pos}>
                           {staffPositionLabels[pos][language]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {isAdmin && storesList.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{language === "th" ? "สาขา" : "Branch"}</label>
+                  <Select value={newUser.storeId} onValueChange={(v) => setNewUser({ ...newUser, storeId: v })}>
+                    <SelectTrigger data-testid="select-new-store">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {storesList.filter(s => s.isActive === 1).map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}{s.nameTh ? ` / ${s.nameTh}` : ""} ({s.code})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -969,13 +1018,24 @@ export default function AdminPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground">Code *</label>
+                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                          Code *
+                          <span className="inline-flex items-center gap-1 text-primary">
+                            <LogIn className="w-3 h-3" />
+                            {language === "th" ? "(รหัสที่ใช้ Login)" : "(Login Code)"}
+                          </span>
+                        </label>
                         <Input
                           placeholder="e.g. CWL"
                           value={newStore.code}
                           onChange={e => setNewStore(p => ({ ...p, code: e.target.value.toUpperCase() }))}
                           data-testid="input-store-code"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {language === "th"
+                            ? "พนักงานต้องใช้ Code นี้ตอน Login เข้าสาขา"
+                            : "Staff will use this Code when logging in to this branch"}
+                        </p>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ที่อยู่" : "Address"}</label>
@@ -996,49 +1056,136 @@ export default function AdminPage() {
               </div>
 
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>{language === "th" ? "ชื่อสาขา" : "Name"}</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>{language === "th" ? "สถานะ" : "Status"}</TableHead>
-                    <TableHead>{language === "th" ? "จัดการ" : "Actions"}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {storesList.map(store => (
-                    <TableRow key={store.id} data-testid={`row-store-${store.id}`}>
-                      <TableCell className="font-mono text-xs">{store.id}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{store.name}</p>
-                          {store.nameTh && <p className="text-xs text-muted-foreground">{store.nameTh}</p>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{store.code}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={store.isActive === 1 ? "default" : "secondary"}>
-                          {store.isActive === 1 ? (language === "th" ? "เปิด" : "Active") : (language === "th" ? "ปิด" : "Inactive")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleStore(store.id)}
-                          data-testid={`button-toggle-store-${store.id}`}
-                          disabled={store.id === 'BK1040'}
-                          title={store.id === 'BK1040' ? 'Default store cannot be deactivated' : ''}
-                        >
-                          {store.isActive === 1 ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
-                        </Button>
-                      </TableCell>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>{language === "th" ? "ชื่อสาขา" : "Name"}</TableHead>
+                      <TableHead>
+                        <span className="flex items-center gap-1">
+                          Code
+                          <LogIn className="w-3 h-3 text-primary" title={language === "th" ? "รหัสที่ใช้ Login" : "Login Code"} />
+                        </span>
+                      </TableHead>
+                      <TableHead>{language === "th" ? "ที่อยู่" : "Address"}</TableHead>
+                      <TableHead>{language === "th" ? "สถานะ" : "Status"}</TableHead>
+                      <TableHead>{language === "th" ? "จัดการ" : "Actions"}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {storesList.map(store => (
+                      <TableRow key={store.id} data-testid={`row-store-${store.id}`}>
+                        <TableCell className="font-mono text-xs">{store.id}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm">{store.name}</p>
+                            {store.nameTh && <p className="text-xs text-muted-foreground">{store.nameTh}</p>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className="cursor-help font-mono"
+                            title={language === "th" ? "รหัสที่ใช้ Login เข้าสาขา" : "Login code for this branch"}
+                          >
+                            {store.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">
+                          {store.address || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={store.isActive === 1 ? "default" : "secondary"}>
+                            {store.isActive === 1 ? (language === "th" ? "เปิด" : "Active") : (language === "th" ? "ปิด" : "Inactive")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEditStore(store)}
+                              data-testid={`button-edit-store-${store.id}`}
+                              title={language === "th" ? "แก้ไขข้อมูลสาขา" : "Edit store"}
+                            >
+                              <Edit className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleStore(store.id)}
+                              data-testid={`button-toggle-store-${store.id}`}
+                              disabled={store.id === 'BK1040'}
+                              title={store.id === 'BK1040' ? 'Default store cannot be deactivated' : ''}
+                            >
+                              {store.isActive === 1 ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+              {/* Edit Store Dialog */}
+              <Dialog open={!!editingStore} onOpenChange={open => { if (!open) setEditingStore(null); }}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {language === "th" ? "แก้ไขข้อมูลสาขา" : "Edit Store"} — {editingStore}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ชื่อสาขา (EN) *" : "Store Name (EN) *"}</label>
+                      <Input
+                        value={editStoreData.name}
+                        onChange={e => setEditStoreData(p => ({ ...p, name: e.target.value }))}
+                        data-testid="input-edit-store-name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ชื่อสาขา (TH)" : "Store Name (TH)"}</label>
+                      <Input
+                        value={editStoreData.nameTh}
+                        onChange={e => setEditStoreData(p => ({ ...p, nameTh: e.target.value }))}
+                        data-testid="input-edit-store-name-th"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        Code *
+                        <span className="inline-flex items-center gap-1 text-primary">
+                          <LogIn className="w-3 h-3" />
+                          {language === "th" ? "(รหัส Login)" : "(Login Code)"}
+                        </span>
+                      </label>
+                      <Input
+                        value={editStoreData.code}
+                        onChange={e => setEditStoreData(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                        data-testid="input-edit-store-code"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">{language === "th" ? "ที่อยู่" : "Address"}</label>
+                      <Input
+                        value={editStoreData.address}
+                        onChange={e => setEditStoreData(p => ({ ...p, address: e.target.value }))}
+                        placeholder={language === "th" ? "ที่อยู่สาขา" : "Store address"}
+                        data-testid="input-edit-store-address"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="outline" onClick={() => setEditingStore(null)} className="flex-1">
+                        {language === "th" ? "ยกเลิก" : "Cancel"}
+                      </Button>
+                      <Button onClick={handleUpdateStore} disabled={isUpdatingStore} className="flex-1">
+                        {isUpdatingStore ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {language === "th" ? "บันทึก" : "Save"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </Card>
           )}
         </div>

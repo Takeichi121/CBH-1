@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 import { Link } from "wouter";
@@ -46,6 +46,9 @@ export default function AdminPage() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK001GDP" });
+  const [transferUser, setTransferUser] = useState<any>(null);
+  const [transferTargetStoreId, setTransferTargetStoreId] = useState<string>("");
+  const [isTransferring, setIsTransferring] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["/api/admin/getUsers"],
@@ -65,7 +68,7 @@ export default function AdminPage() {
       const res = await apiRequest("POST", "/api/admin/stores", { token: t });
       return res.json();
     },
-    enabled: user?.role === "admin" || user?.role === "area",
+    enabled: user?.role === "admin" || user?.role === "area" || user?.role === "manager",
     staleTime: 0,
   });
   const storesList: Array<{ id: string; name: string; nameTh?: string | null; code: string; address?: string | null; isActive: number }> = storesData?.stores || [];
@@ -304,6 +307,32 @@ export default function AdminPage() {
       }
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleTransferUser = async () => {
+    if (!transferUser || !transferTargetStoreId) return;
+    setIsTransferring(true);
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      const res = await apiRequest("POST", "/api/admin/transferUser", {
+        token,
+        username: transferUser.username,
+        targetStoreId: transferTargetStoreId,
+      });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: language === "th" ? "โอนย้ายสาขาสำเร็จ" : "Transfer successful" });
+        refetch();
+        setTransferUser(null);
+        setTransferTargetStoreId("");
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -782,6 +811,18 @@ export default function AdminPage() {
                         </AlertDialogContent>
                       </AlertDialog>
                       )}
+
+                      {canEditUser(u) && (user?.role === "admin" || user?.role === "area" || user?.role === "manager") && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => { e.stopPropagation(); setTransferUser(u); setTransferTargetStoreId(""); }}
+                          data-testid={`button-transfer-${u.username}`}
+                          title={language === "th" ? "โอนย้ายสาขา" : "Transfer Branch"}
+                        >
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -948,6 +989,66 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer User Dialog */}
+      <Dialog open={!!transferUser} onOpenChange={(open) => { if (!open) { setTransferUser(null); setTransferTargetStoreId(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "th" ? "โอนย้ายสาขา" : "Transfer Branch"}
+            </DialogTitle>
+          </DialogHeader>
+          {transferUser && (
+            <div className="space-y-4 py-4">
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">@{transferUser.username}</span>
+                {" "}
+                {language === "th" ? "สาขาปัจจุบัน:" : "Current store:"}
+                {" "}
+                <span className="font-medium text-foreground">
+                  {storesList.find(s => s.id === (transferUser.storeId || "BK1040"))?.name || transferUser.storeId || "BK1040"}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {language === "th" ? "สาขาปลายทาง" : "Target Branch"}
+                </label>
+                <Select
+                  value={transferTargetStoreId}
+                  onValueChange={setTransferTargetStoreId}
+                >
+                  <SelectTrigger data-testid="select-transfer-store">
+                    <SelectValue placeholder={language === "th" ? "เลือกสาขา" : "Select branch"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {storesList
+                      .filter(s => s.isActive === 1 && s.id !== (transferUser.storeId || "BK1040"))
+                      .map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nameTh || s.name} ({s.code})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => { setTransferUser(null); setTransferTargetStoreId(""); }} className="flex-1">
+                  {labels.cancel}
+                </Button>
+                <Button
+                  onClick={handleTransferUser}
+                  className="flex-1"
+                  disabled={!transferTargetStoreId || isTransferring}
+                  data-testid="button-confirm-transfer"
+                >
+                  {isTransferring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRightLeft className="w-4 h-4 mr-2" />}
+                  {language === "th" ? "ยืนยันโอนย้าย" : "Confirm Transfer"}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

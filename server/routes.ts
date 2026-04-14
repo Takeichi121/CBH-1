@@ -216,7 +216,7 @@ import {
   storeSettings,
   stores
 } from "@shared/schema";
-import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, isNotNull, or, inArray, gte } from "drizzle-orm";
 
 const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
 const AREA_VERIFY_CODE = (process.env.AREA_VERIFY_CODE || "bkarea").toLowerCase();
@@ -4221,6 +4221,44 @@ ${pageContext}` : ''}`;
     res.json({ ok: true });
   }));
 
+  app.post("/api/admin/transferUser", safe(async (req, res) => {
+    const { token, username, targetStoreId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
+
+    if (!username || !targetStoreId) return res.json({ ok: false, message: "username and targetStoreId required" });
+
+    const targetUser = await storage.getUser(username);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+
+    // Server-side canEditUser equivalent
+    if (targetUser.role === "admin" && u.role !== "admin") return res.json({ ok: false, message: "Cannot transfer admin user" });
+    if (u.role !== "admin") {
+      const callerRank = getUserRank(u);
+      const callerCanManageAll = canManageUsers(u);
+      if (targetUser.role === "admin") return res.json({ ok: false, message: "Cannot transfer admin user" });
+      if (!callerCanManageAll && targetUser.role === "manager") {
+        const targetRank = positionHierarchy[targetUser.position as string] ?? 5;
+        if (targetRank <= callerRank) return res.json({ ok: false, message: "No permission to transfer this user" });
+      }
+    }
+
+    const targetStore = await storage.getStore(targetStoreId);
+    if (!targetStore || targetStore.isActive !== 1) return res.json({ ok: false, message: "Target store not found or inactive" });
+
+    const today = todayBangkok();
+
+    await db.update(users).set({ storeId: targetStoreId }).where(eq(users.username, username));
+    await db.update(shifts)
+      .set({ storeId: targetStoreId })
+      .where(and(eq(shifts.username, username), gte(shifts.date, today)));
+
+    await storage.log("transfer_user", u.username, `transferred ${username} to store ${targetStoreId}`);
+    res.json({ ok: true });
+  }));
+
   const positionHierarchy: Record<string, number> = {
     "admin": 0, "store_manager": 1, "assistant_store_manager": 2, "shift_manager": 3, "management_trainee": 4, "staff": 5,
   };
@@ -4361,7 +4399,7 @@ ${pageContext}` : ''}`;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
-    if (!u || !['admin', 'area'].includes(u.role)) return res.json({ ok: false, message: "No permission" });
+    if (!u || !isManagerLike(u.role)) return res.json({ ok: false, message: "No permission" });
     const storesList = await storage.getStores();
     res.json({ ok: true, stores: storesList });
   }));

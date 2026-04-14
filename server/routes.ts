@@ -213,8 +213,7 @@ import {
   dropdownOptions,
   notifications,
   featureKeys,
-  storeSettings,
-  stores
+  storeSettings
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray } from "drizzle-orm";
 
@@ -3481,24 +3480,18 @@ ${pageContext}` : ''}`;
     if (!u || !u.active) return res.status(401).json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });
     if (!(await comparePassword(password, u.passhash))) return res.status(401).json({ ok: false, message: "รหัสผ่านไม่ถูก" });
 
-    // Store code verification — required for staff and manager roles
-    const isAdminLikeRole = u.role === "admin" || u.role === "area";
-    if (!isAdminLikeRole && !developerMode && !isCreator) {
+    // Store code verification — required for staff and manager roles only
+    const requiresStoreCode = u.role === "staff" || u.role === "manager";
+    if (requiresStoreCode && !developerMode && !isCreator) {
       if (!storeCode || !storeCode.trim()) {
         return res.status(401).json({ ok: false, message: "กรุณากรอกรหัสร้าน" });
       }
-      const enteredCode = storeCode.trim().toUpperCase();
-      const userStoreId = u.storeId || "BK001GDP";
-
-      // Collect all valid codes for this store
-      const validCodes = new Set<string>([userStoreId.toUpperCase()]);
-      const [storeRow] = await db.select().from(stores).where(eq(stores.id, userStoreId)).limit(1);
-      if (storeRow?.code) validCodes.add(storeRow.code.toUpperCase());
-      const [settingsRow] = await db.select().from(storeSettings).where(eq(storeSettings.storeId, userStoreId)).limit(1);
-      if (settingsRow?.storeCode) validCodes.add(settingsRow.storeCode.toUpperCase());
-
-      if (!validCodes.has(enteredCode)) {
-        await storage.log("login_wrong_store_code", username, `entered=${storeCode} expected=${[...validCodes].join(",")}`);
+      if (!u.storeId) {
+        return res.status(401).json({ ok: false, message: "รหัสร้านไม่ถูกต้อง" });
+      }
+      const [settingsRow] = await db.select().from(storeSettings).where(eq(storeSettings.storeId, u.storeId)).limit(1);
+      if (!settingsRow || storeCode.trim().toUpperCase() !== settingsRow.storeCode.toUpperCase()) {
+        await storage.log("login_wrong_store_code", username, "mismatch");
         return res.status(401).json({ ok: false, message: "รหัสร้านไม่ถูกต้อง" });
       }
     }

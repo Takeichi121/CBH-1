@@ -2,7 +2,6 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO, getSocketIO } from "./socket";
-import ExcelJS from "exceljs";
 // ── LINE Messaging API ──────────────────────────────
 async function sendLineMessage(channelToken: string, targetId: string, messages: any[]) {
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -2514,7 +2513,7 @@ ${pageContext}` : ''}`;
 
           case "getSwapRequests": {
             const swapStatus = args.status === "all" ? undefined : args.status;
-            const swaps = await storage.getSwapRequests(swapStatus, user.storeId || 'BK1040');
+            const swaps = await storage.getSwapRequests(swapStatus, user?.storeId || 'BK1040');
             return JSON.stringify({ ok: true, swaps, count: swaps.length });
           }
 
@@ -2870,7 +2869,7 @@ ${pageContext}` : ''}`;
           }
 
           case "approveSwapRequest": {
-            const swapReq = await storage.getSwapRequestById(args.id, user.storeId || 'BK1040');
+            const swapReq = await storage.getSwapRequestById(args.id, user?.storeId || 'BK1040');
             if (!swapReq) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "approved", username, args.note || "อนุมัติโดย Chann");
             toolActions.push(`✅ อนุมัติ swap request #${args.id} (${swapReq.requesterUsername} ↔ ${swapReq.targetUsername || "?"})`);
@@ -2878,7 +2877,7 @@ ${pageContext}` : ''}`;
           }
 
           case "rejectSwapRequest": {
-            const swapReq2 = await storage.getSwapRequestById(args.id, user.storeId || 'BK1040');
+            const swapReq2 = await storage.getSwapRequestById(args.id, user?.storeId || 'BK1040');
             if (!swapReq2) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "rejected", username, args.note || "ปฏิเสธโดย Chann");
             toolActions.push(`❌ ปฏิเสธ swap request #${args.id}`);
@@ -4810,7 +4809,8 @@ ${pageContext}` : ''}`;
         }
       }
 
-      const saved = await storage.upsertDailySalesReportByDate(report, sId);
+      // This is an explicit manager save — pass isManualSave=true to bypass the autosave guard
+      const saved = await storage.upsertDailySalesReportByDate(report, sId, true);
 
       // Sync dailyTarget → daily_targets table so Overview table stays in sync with the form
       if (report?.reportDate) {

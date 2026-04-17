@@ -128,10 +128,10 @@ const getShiftDisplayName = (
       // 22:00 - 06:59 = Late Night
       if (hour >= 22 || hour < 7) return "Late Night";
       // 07:00 - 08:59 = Open
-      if (hour >= 7 && hour < 11) return "Open";
-      // 09:00 - 12:59 = Swing
-      if (hour >= 7 && hour < 11) return "Swing";
-      // 13:00 - 14:59 = Lunch
+      if (hour >= 7 && hour < 9) return "Open";
+      // 09:00 - 10:59 = Swing
+      if (hour >= 9 && hour < 11) return "Swing";
+      // 11:00 - 14:59 = Lunch
       if (hour >= 11 && hour < 15) return "Lunch";
       // 15:00 - 17:59 = Dinner
       if (hour >= 15 && hour < 18) return "Dinner";
@@ -147,12 +147,12 @@ const getShiftDisplayName = (
     case "open":
       return "Open";
     case "swing":
-      return "Swin";
+      return "Swing";
     case "lunch":
       return "Lunch";
     case "dinner":
       return "Dinner";
-    case "Close":
+    case "close":
       return "Close";
     default:
       return shiftGroup;

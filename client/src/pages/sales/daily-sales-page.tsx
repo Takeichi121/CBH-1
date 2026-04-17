@@ -4523,8 +4523,8 @@ ${v.staffRosterText || ""}
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         ตารางบันทึก — {watchedRosterDate}
                       </h4>
-                      {rosterLogQuery.data?.total > 0 && (
-                        <span className="text-xs text-muted-foreground">{rosterLogQuery.data.total} รายการ</span>
+                      {(rosterLogQuery.data?.total ?? 0) > 0 && (
+                        <span className="text-xs text-muted-foreground">{rosterLogQuery.data?.total} รายการ</span>
                       )}
                     </div>
 

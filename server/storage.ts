@@ -472,16 +472,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async upsertDailySalesReportByDate(report: InsertDailySales, storeId: string = 'BK1040'): Promise<DailySalesReport> {
+  // isManualSave=true bypasses the autosave guard so intentional zeros (e.g. store closed) are honoured.
+  async upsertDailySalesReportByDate(report: InsertDailySales, storeId: string = 'BK1040', isManualSave: boolean = false): Promise<DailySalesReport> {
     const sId = report.storeId || storeId;
     const existing = await this.getDailySalesReportByDate(report.reportDate, sId);
     if (existing) {
-      const existingActual = parseFloat(existing.actualSales || "0");
-      const incomingActual = parseFloat(report.actualSales || "0");
+      const cleanNum = (v?: string | null) => parseFloat((v || "0").replace(/,/g, "").trim());
+      const existingActual = cleanNum(existing.actualSales);
+      const incomingActual = cleanNum(report.actualSales);
 
-      // Guard: if existing record has real sales data but incoming has 0 (autosave of empty form),
-      // preserve non-zero values to prevent accidental overwrite.
-      if (existingActual > 0 && incomingActual === 0) {
+      // Guard: if existing record has real sales data but incoming has 0, this is likely an
+      // autosave of an empty form — preserve non-zero values to prevent accidental overwrite.
+      // Skip guard when isManualSave=true so intentional zero-outs (e.g. closed day) are saved.
+      if (!isManualSave && existingActual > 0 && incomingActual === 0) {
         const safeFields = [
           "actualSales", "transactionCount",
           "dineIn", "takeAway", "grabfood", "lineman", "shopee", "bkapp", "robin", "gokoo",
@@ -494,8 +497,8 @@ export class DatabaseStorage implements IStorage {
         ];
         const merged: any = { ...report };
         for (const field of safeFields) {
-          const incoming = parseFloat(merged[field] || "0");
-          const existingVal = parseFloat((existing as any)[field] || "0");
+          const incoming = cleanNum(merged[field]);
+          const existingVal = cleanNum((existing as any)[field]);
           if (incoming === 0 && existingVal > 0) {
             merged[field] = (existing as any)[field];
           }
@@ -534,12 +537,12 @@ export class DatabaseStorage implements IStorage {
 
     const [row] = await db
       .select({
-        mtdActual: sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.actualSales}, '') AS NUMERIC)), 0)`,
-        mtdTc:     sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.transactionCount}, '') AS NUMERIC)), 0)`,
-        mtdTarget: sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.dailyTarget}, '') AS NUMERIC)), 0)`,
-        wasteRaw:  sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.wasteRawDaily}, '') AS NUMERIC)), 0)`,
-        wasteMeal: sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.wasteMealDaily}, '') AS NUMERIC)), 0)`,
-        otMtd:     sql<number>`COALESCE(SUM(CAST(NULLIF(${dailySalesReports.otHours}, '') AS NUMERIC)), 0)`,
+        mtdActual: sql<number>`COALESCE(SUM(CAST(NULLIF(REGEXP_REPLACE(${dailySalesReports.actualSales}, '[^0-9.]', '', 'g'), '') AS NUMERIC)), 0)`,
+        mtdTc:     sql<number>`COALESCE(SUM(CAST(NULLIF(REGEXP_REPLACE(${dailySalesReports.transactionCount}, '[^0-9.]', '', 'g'), '') AS NUMERIC)), 0)`,
+        mtdTarget: sql<number>`COALESCE(SUM(CAST(NULLIF(REGEXP_REPLACE(${dailySalesReports.dailyTarget}, '[^0-9.]', '', 'g'), '') AS NUMERIC)), 0)`,
+        wasteRaw:  sql<number>`COALESCE(SUM(CAST(NULLIF(REGEXP_REPLACE(${dailySalesReports.wasteRawDaily}, '[^0-9.]', '', 'g'), '') AS NUMERIC)), 0)`,
+        wasteMeal: sql<number>`COALESCE(SUM(CAST(NULLIF(REGEXP_REPLACE(${dailySalesReports.wasteMealDaily}, '[^0-9.]', '', 'g'), '') AS NUMERIC)), 0)`,
+        otMtd:     sql<number>`COALESCE(SUM(CAST(NULLIF(REGEXP_REPLACE(${dailySalesReports.otHours}, '[^0-9.]', '', 'g'), '') AS NUMERIC)), 0)`,
         reportCount: sql<number>`COUNT(*)`,
       })
       .from(dailySalesReports)

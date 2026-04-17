@@ -11,7 +11,13 @@ const ALLOWED_SHELL_PREFIXES = [
   "ls", "cat", "echo", "pwd", "date", "wc", "grep", "find", "head", "tail",
 ];
 
+// Patterns that indicate command chaining, redirection, or injection attempts
+const SHELL_INJECTION_PATTERN = /[;&|`$<>\n\\]|\$\(|\$\{/;
+
 function isSafeShellCommand(cmd: string): boolean {
+  if (!cmd || typeof cmd !== "string") return false;
+  // Reject any command that contains shell injection characters
+  if (SHELL_INJECTION_PATTERN.test(cmd)) return false;
   const trimmed = cmd.trim().toLowerCase();
   return ALLOWED_SHELL_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
 }

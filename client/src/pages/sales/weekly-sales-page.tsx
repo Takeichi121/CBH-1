@@ -217,23 +217,19 @@ export default function WeeklySalesPage() {
         const saleNum = data.totalSale || 0;
         const tcNum = data.totalTc || 0;
         const ta = tcNum > 0 ? Math.round(saleNum / tcNum) : 0;
-        if (saleNum > 0 || tcNum > 0) {
-          setForm(prev => ({
-            ...prev,
-            sale: fmt(saleNum),
-            tc: fmt(tcNum),
-            ta: fmt(ta),
-            waste: data.wastePercent || prev.waste,
-            ...(data.deliveryPercent ? { delivery: data.deliveryPercent } : {}),
-            ...(data.avgSos > 0 ? { sos: String(data.avgSos) } : {}),
-          }));
-          if (silent) {
-            setIsAutoPopulated(true);
-          } else {
-            toast({ title: "ดึงข้อมูลจาก Daily สำเร็จ ✅" });
-          }
-        } else if (!silent) {
-          toast({ variant: "destructive", title: "ไม่มียอดขายในสัปดาห์นี้" });
+        setForm(prev => ({
+          ...prev,
+          sale: fmt(saleNum),
+          tc: fmt(tcNum),
+          ta: fmt(ta),
+          waste: data.wastePercent || prev.waste,
+          ...(data.deliveryPercent ? { delivery: data.deliveryPercent } : {}),
+          ...(data.avgSos > 0 ? { sos: String(data.avgSos) } : {}),
+        }));
+        if (silent) {
+          setIsAutoPopulated(true);
+        } else {
+          toast({ title: "ดึงข้อมูลจาก Daily สำเร็จ ✅" });
         }
       } else if (!silent) {
         toast({ variant: "destructive", title: data.message || "ไม่พบข้อมูล Daily" });

@@ -18,6 +18,7 @@ type DailyTarget = {
   id?: number;
   targetDate: string;
   targetSales: string;
+  targetTc?: string;
 };
 
 type DailySalesData = {
@@ -91,6 +92,7 @@ export default function SalesSettingsPage() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [dailyTargets, setDailyTargets] = useState<Record<string, string>>({});
+  const [dailyTcTargets, setDailyTcTargets] = useState<Record<string, string>>({});
   
   const [editableSalesData, setEditableSalesData] = useState<Record<string, {
     actualSales: string;
@@ -253,7 +255,7 @@ export default function SalesSettingsPage() {
       const lastYearSales = parseFloat(editable.lastYearSales) || 0;
       const forecastSales = parseFloat(editable.forecastSales) || 0;
       const lastYearTc = parseFloat(editable.lastYearTc) || 0;
-      const targetTc = parseFloat(editable.targetTc) || 0;
+      const targetTc = parseFloat(dailyTcTargets[date] || editable.targetTc) || 0;
       const targetTa = parseFloat(editable.targetTa) || 0;
       const salesDelivery = parseFloat(editable.salesDelivery) || 0;
       const vMealCount = parseFloat(editable.vMealCount) || 0;
@@ -381,7 +383,7 @@ export default function SalesSettingsPage() {
         promoOther2Pct,
       };
     });
-  }, [monthDates, dailyTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE, fixedCostDaily, closeShiftDailyCost]);
+  }, [monthDates, dailyTargets, dailyTcTargets, editableSalesData, DUTY_TEAM_HOURS, HOURLY_RATE, fixedCostDaily, closeShiftDailyCost]);
 
   const totals = useMemo(() => {
     const lastRow = tableData[tableData.length - 1];
@@ -519,26 +521,30 @@ export default function SalesSettingsPage() {
         const data = await res.json();
         if (data.ok && data.targets) {
           const targetMap: Record<string, string> = {};
+          const tcTargetMap: Record<string, string> = {};
           data.targets.forEach((t: DailyTarget) => {
             targetMap[t.targetDate] = t.targetSales;
+            if (t.targetTc !== undefined && t.targetTc !== null) tcTargetMap[t.targetDate] = t.targetTc;
           });
           const newTargets: Record<string, string> = {};
+          const newTcTargets: Record<string, string> = {};
           monthDates.forEach(({ date }) => {
-            if (targetMap[date] !== undefined) {
-              newTargets[date] = targetMap[date];
-            } else {
-              newTargets[date] = defaultTarget;
-            }
+            newTargets[date] = targetMap[date] !== undefined ? targetMap[date] : defaultTarget;
+            newTcTargets[date] = tcTargetMap[date] !== undefined ? tcTargetMap[date] : "300";
           });
           setDailyTargets(newTargets);
           setOriginalDailyTargets(JSON.parse(JSON.stringify(newTargets)));
+          setDailyTcTargets(newTcTargets);
         } else {
           const newTargets: Record<string, string> = {};
+          const newTcTargets: Record<string, string> = {};
           monthDates.forEach(({ date }) => {
             newTargets[date] = defaultTarget;
+            newTcTargets[date] = "300";
           });
           setDailyTargets(newTargets);
           setOriginalDailyTargets(JSON.parse(JSON.stringify(newTargets)));
+          setDailyTcTargets(newTcTargets);
         }
       } catch (error) {
         console.error("Failed to load daily targets:", error);

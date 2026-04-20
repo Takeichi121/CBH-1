@@ -161,6 +161,7 @@ export default function WeeklySalesPage() {
   const [historyReports, setHistoryReports] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [autoPopulating, setAutoPopulating] = useState(false);
+  const [isAutoPopulated, setIsAutoPopulated] = useState(false);
   const [borrowItemNames, setBorrowItemNames] = useState<string[]>([]);
   const [sendingLine, setSendingLine] = useState(false);
 
@@ -201,7 +202,7 @@ export default function WeeklySalesPage() {
     loadBorrowItems();
   }, []);
 
-  const autoPopulateFromDaily = async () => {
+  const autoPopulateFromDaily = async (silent = false) => {
     setAutoPopulating(true);
     try {
       const res = await apiRequest("POST", "/api/sales/getDailySummaryForWeek", {
@@ -216,21 +217,29 @@ export default function WeeklySalesPage() {
         const saleNum = data.totalSale || 0;
         const tcNum = data.totalTc || 0;
         const ta = tcNum > 0 ? Math.round(saleNum / tcNum) : 0;
-        setForm(prev => ({
-          ...prev,
-          sale: fmt(saleNum),
-          tc: fmt(tcNum),
-          ta: fmt(ta),
-          waste: data.wastePercent || prev.waste,
-          ...(data.deliveryPercent ? { delivery: data.deliveryPercent } : {}),
-          ...(data.avgSos > 0 ? { sos: String(data.avgSos) } : {}),
-        }));
-        toast({ title: "ดึงข้อมูลจาก Daily สำเร็จ ✅" });
-      } else {
+        if (saleNum > 0 || tcNum > 0) {
+          setForm(prev => ({
+            ...prev,
+            sale: fmt(saleNum),
+            tc: fmt(tcNum),
+            ta: fmt(ta),
+            waste: data.wastePercent || prev.waste,
+            ...(data.deliveryPercent ? { delivery: data.deliveryPercent } : {}),
+            ...(data.avgSos > 0 ? { sos: String(data.avgSos) } : {}),
+          }));
+          if (silent) {
+            setIsAutoPopulated(true);
+          } else {
+            toast({ title: "ดึงข้อมูลจาก Daily สำเร็จ ✅" });
+          }
+        } else if (!silent) {
+          toast({ variant: "destructive", title: "ไม่มียอดขายในสัปดาห์นี้" });
+        }
+      } else if (!silent) {
         toast({ variant: "destructive", title: data.message || "ไม่พบข้อมูล Daily" });
       }
     } catch {
-      toast({ variant: "destructive", title: "ไม่สามารถดึงข้อมูลได้" });
+      if (!silent) toast({ variant: "destructive", title: "ไม่สามารถดึงข้อมูลได้" });
     }
     setAutoPopulating(false);
   };
@@ -247,6 +256,7 @@ export default function WeeklySalesPage() {
 
   const loadWeeklyReport = async () => {
     setLoading(true);
+    setIsAutoPopulated(false);
     try {
       const res = await apiRequest("POST", "/api/sales/getWeeklyReport", {
         token,
@@ -294,6 +304,9 @@ export default function WeeklySalesPage() {
         setWasteSelections([...emptySelections.map(s => ({ ...s }))]);
         setUnacSelections([...emptySelections.map(s => ({ ...s }))]);
         setHasData(false);
+        setLoading(false);
+        await autoPopulateFromDaily(true);
+        return;
       }
     } catch {
       setForm({ ...emptyForm });
@@ -320,6 +333,7 @@ export default function WeeklySalesPage() {
       const data = await res.json();
       if (data.ok) {
         setHasData(true);
+        setIsAutoPopulated(false);
         toast({
           title: language === "th" ? "บันทึกสำเร็จ" : "Saved successfully",
         });
@@ -658,7 +672,7 @@ export default function WeeklySalesPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={autoPopulateFromDaily}
+                      onClick={() => autoPopulateFromDaily(false)}
                       disabled={autoPopulating}
                       className="gap-1.5 text-xs h-8"
                       data-testid="button-auto-populate"
@@ -752,7 +766,14 @@ export default function WeeklySalesPage() {
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">{t.preview}</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base">{t.preview}</CardTitle>
+                  {isAutoPopulated && !hasData && (
+                    <span className="text-[11px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium">
+                      ดึงจาก Daily อัตโนมัติ — ยังไม่ได้บันทึก
+                    </span>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <pre

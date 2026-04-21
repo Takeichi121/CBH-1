@@ -127,3 +127,42 @@ The CSV backup and re-import buttons in **Settings** are **admin-only** by desig
 
 `scripts/export-to-excel/import-from-csv.mjs` reads table and column names directly from the CSV files and constructs SQL from them. It is intended only for re-importing backups produced by this workbook on a trusted machine; never run it against untrusted input.
 
+
+## Windows end-to-end test checklist
+
+This workbook can only be exercised on Windows with Excel 2016 or newer (VBA does not run on Excel for Mac or LibreOffice). Use this checklist when validating a fresh build of `dist/BK_Work_Schedule.xlsm` on a Windows test machine. File one bug per failure and note the screen, language, and steps to reproduce.
+
+### Pre-flight
+- [ ] Excel 2016+ installed on Windows 10/11
+- [ ] File → Options → Trust Center → Macro Settings: "Disable all macros with notification" (then click *Enable Content* on the yellow bar)
+- [ ] Run `scripts/export-to-excel/Setup-Workbook.vbs` once on the workbook to install modules and set the project name
+- [ ] Confirm the workbook opens without VBA compile errors (Alt+F11 → Debug → Compile VBAProject)
+
+### Run each screen in **both** Thai (TH) and English (EN)
+
+For every screen below, toggle the language via the language selector and re-verify labels render correctly (no missing keys, no truncated cells, no overlapping controls).
+
+| # | Screen | What to verify |
+|---|--------|----------------|
+| 1 | Login (`frmLogin`) | Valid login, wrong password, lockout, language toggle |
+| 2 | Booking | Create / edit / cancel a booking, date picker, conflict detection |
+| 3 | Roster | Drag-drop shifts, weekly view, persistence after close/reopen |
+| 4 | Sales | Enter daily sales, totals re-calc, edit-mode lock |
+| 5 | Labor | Hours entry, overtime calc, weekly totals |
+| 6 | Borrow | Request, approve, return flow; balance updates |
+| 7 | Announcements | Post, edit, delete; visibility per role |
+| 8 | Notifications | Bell shows new items; mark-as-read clears badge |
+| 9 | Admin | User CRUD, role assignment, permission toggles |
+| 10 | Requests | Submit, approve, reject; audit trail in `modSysLog` |
+| 11 | Settings | CSV backup (admin), re-import (admin), non-admin "Access denied" |
+| 12 | System log | New events appended, no PII leakage in messages |
+
+### Persistence checks
+- [ ] After each screen's actions, save (Ctrl+S), close Excel, reopen, and confirm data survived
+- [ ] Sheets remain protected on reopen (try editing a data cell directly — should be blocked)
+- [ ] Very-hidden data sheets are still hidden in the Sheet tab right-click menu
+
+### Sign-off
+- [ ] All 12 screens pass in TH
+- [ ] All 12 screens pass in EN
+- [ ] Bugs filed for any failures, linked back to this checklist run

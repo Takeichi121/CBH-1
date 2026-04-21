@@ -24,6 +24,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 const OUT_DIR = path.join(ROOT, "exports", "csv");
+const MANIFEST_FILE = path.join(OUT_DIR, "manifest.json");
+const CACHE_WARNING_FILE = path.join(OUT_DIR, ".cache-warning.txt");
+
+// Parse CLI flags. --no-cache forces a hard fail when fresh data can't be
+// fetched (also honoured via BK_EXCEL_NO_CACHE=1 for non-interactive runs).
+const NO_CACHE =
+  process.argv.slice(2).includes("--no-cache") ||
+  process.env.BK_EXCEL_NO_CACHE === "1";
 
 const CONFIG_DIR  = path.join(os.homedir(), "AppData", "Roaming", "bk-excel");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
@@ -128,7 +136,65 @@ function isSafeBundleFilename(name) {
   return name === "manifest.json" || /^[A-Za-z0-9_]+\.csv$/.test(name);
 }
 
+function readCachedManifest() {
+  try {
+    const raw = fs.readFileSync(MANIFEST_FILE, "utf8");
+    const m = JSON.parse(raw);
+    if (m && typeof m.exportedAt === "string") return m;
+  } catch { /* no cache */ }
+  return null;
+}
+
+function fallbackToCache(reason) {
+  // Try to reuse the previous successful CSV snapshot in exports/csv/. If
+  // there is no manifest.json we can't trust whatever loose files might be
+  // sitting there, so we hard-fail.
+  try { fs.unlinkSync(CACHE_WARNING_FILE); } catch {}
+
+  if (NO_CACHE) {
+    console.error(`[ERROR] ${reason}`);
+    console.error(`        --no-cache was set, refusing to fall back to a stale snapshot.`);
+    process.exit(1);
+  }
+
+  const manifest = readCachedManifest();
+  if (!manifest) {
+    console.error(`[ERROR] ${reason}`);
+    console.error(`        No previous CSV snapshot found at ${MANIFEST_FILE}.`);
+    console.error(`        Cannot build a workbook without either fresh or cached data.`);
+    process.exit(1);
+  }
+
+  const ts = manifest.exportedAt;
+  const banner = "!".repeat(64);
+  console.warn("");
+  console.warn(banner);
+  console.warn(`!! WARNING: ${reason}`);
+  console.warn(`!! Using cached data exported on ${ts}`);
+  console.warn(`!! The workbook will be built from a PREVIOUS snapshot.`);
+  console.warn(`!! Re-run with --no-cache once the BK server is reachable to`);
+  console.warn(`!! force a fresh download.`);
+  console.warn(banner);
+  console.warn("");
+
+  // Leave a marker so Build-Workbook.bat can re-surface the warning at the
+  // very end (after a long build the user may have scrolled past it).
+  try {
+    fs.writeFileSync(
+      CACHE_WARNING_FILE,
+      `Using cached CSV data exported on ${ts}\nReason: ${reason}\n`,
+      "utf8",
+    );
+  } catch { /* best-effort */ }
+
+  process.exit(0);
+}
+
 async function main() {
+  // Always start from a clean slate — a stale warning file from a previous
+  // run must not survive into a successful fresh fetch.
+  try { fs.unlinkSync(CACHE_WARNING_FILE); } catch {}
+
   const cfg = loadConfig();
 
   let serverUrl = process.env.BK_EXCEL_API_URL || cfg.serverUrl;
@@ -166,14 +232,26 @@ async function main() {
       body: JSON.stringify({ username, password }),
     });
   } catch (e) {
-    console.error(`[ERROR] Could not reach ${endpoint}: ${e.message}`);
-    console.error(`        Check the server URL and your internet connection.`);
-    process.exit(1);
+    // Network failure (DNS, refused, timeout, TLS, etc.) — try the cached
+    // snapshot instead of failing outright.
+    console.error(`[warn] Could not reach ${endpoint}: ${e.message}`);
+    fallbackToCache(`Could not reach BK server (${e.message}).`);
+    return; // unreachable
   }
 
   if (!res.ok) {
     let msg = `${res.status} ${res.statusText}`;
     try { const j = await res.json(); if (j.message) msg = j.message; } catch {}
+    // 4xx = the request itself is bad (auth, permissions). Falling back to a
+    // stale snapshot would mask a wrong password and let an unauthorised user
+    // build a workbook from cached data, so we hard-fail those.
+    // 5xx = the server is up but broken — treat as a transient outage and
+    // fall back to the cached snapshot.
+    if (res.status >= 500) {
+      console.error(`[warn] Server error: ${msg}`);
+      fallbackToCache(`BK server returned ${res.status} (${msg}).`);
+      return; // unreachable
+    }
     console.error(`[ERROR] Server rejected request: ${msg}`);
     if (res.status === 401) console.error(`        Check your username/password.`);
     if (res.status === 403) console.error(`        This account does not have manager permission.`);

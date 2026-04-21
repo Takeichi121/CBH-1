@@ -168,13 +168,34 @@ if "%USE_REMOTE_FETCH%"=="1" (
     echo You will be asked for the BK server URL, your username, and your password.
     echo The password is NEVER saved; the URL and username are cached for next time.
     echo.
-    "%NODE_EXE%" scripts\export-to-excel\fetch-csv-bundle.mjs
+    REM Pass through any args (e.g. --no-cache) given to this .bat.
+    "%NODE_EXE%" scripts\export-to-excel\fetch-csv-bundle.mjs %*
     if errorlevel 1 (
         echo.
         echo [ERROR] Could not fetch data from the BK server. See messages above.
         popd >nul
         pause
         exit /b 1
+    )
+    REM If fetch-csv-bundle.mjs fell back to the cached snapshot it leaves
+    REM a marker file behind. Surface that as a loud warning here AND save
+    REM the message so the final summary block can repeat it after the
+    REM long build output.
+    set "CACHE_WARN_FILE=exports\csv\.cache-warning.txt"
+    set "CACHE_WARN_MSG="
+    if exist "%CACHE_WARN_FILE%" (
+        for /f "usebackq delims=" %%L in ("%CACHE_WARN_FILE%") do (
+            if not defined CACHE_WARN_MSG set "CACHE_WARN_MSG=%%L"
+        )
+        echo.
+        echo ############################################################
+        echo ## WARNING: BK server was unreachable.
+        echo ## %CACHE_WARN_MSG%
+        echo ## The workbook below is built from a PREVIOUS snapshot.
+        echo ## Re-run with --no-cache once the server is back to force
+        echo ## a fresh download.
+        echo ############################################################
+        echo.
     )
     echo.
     echo Building workbook from fetched CSVs...
@@ -268,6 +289,15 @@ echo ============================================================
 echo  Done! Your workbook is on the Desktop:
 echo    %DEST%
 echo ============================================================
+if defined CACHE_WARN_MSG (
+    echo.
+    echo ############################################################
+    echo ## REMINDER: %CACHE_WARN_MSG%
+    echo ## The workbook on your Desktop is built from a PREVIOUS
+    echo ## snapshot because the BK server was unreachable. Re-run
+    echo ## this script once the server is back to refresh it.
+    echo ############################################################
+)
 echo.
 popd >nul
 pause

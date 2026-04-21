@@ -9,6 +9,21 @@ under `vba/modules/` and `vba/forms/` into the distributable `.xlsm` workbook.
 - `export-csv.mjs` / `import-from-csv.mjs` — data round-trip helpers.
 - `Setup-Workbook.vbs` / `Build-Workbook.bat` — Windows entry points.
 
+## One-click install on a stock Windows PC
+
+`Build-Workbook.bat` no longer requires Node.js to be pre-installed. On first
+run it will:
+
+1. Use `node.exe` from `PATH` if one is already installed.
+2. Otherwise reuse a portable copy in `scripts\export-to-excel\.node-portable\`.
+3. Otherwise download the official Node.js LTS Windows zip from
+   `https://nodejs.org/dist/` (matching the PC's CPU architecture) and extract
+   it into `.node-portable\`. That folder is gitignored.
+
+This means a front-of-house PC with only Excel + internet access can
+double-click the `.bat` file and end up with `BK_Work_Schedule.xlsm` on the
+Desktop, with no separate Node.js install step.
+
 ## Pre-flight: lint the VBA before building
 
 Before doing a Windows test pass (or shipping a new build) run the VBA syntax

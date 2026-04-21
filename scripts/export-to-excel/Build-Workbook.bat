@@ -4,7 +4,10 @@ REM Build-Workbook.bat - One-click Windows installer for the BK Work
 REM Schedule macro-enabled workbook (.xlsm).
 REM
 REM What it does:
-REM   1. Verifies Node.js is installed.
+REM   1. Locates Node.js: prefers a system install, otherwise downloads
+REM      a portable copy into scripts\export-to-excel\.node-portable\
+REM      (one-time, ~30 MB) so the installer works on PCs without dev
+REM      tools.
 REM   2. Runs build-all.mjs (pulls latest data from DATABASE_URL and
 REM      builds dist\BK_Work_Schedule.xlsx).
 REM   3. Verifies the Excel Trust Center "Trust access to the VBA project
@@ -14,8 +17,9 @@ REM   4. Runs Setup-Workbook.vbs to embed the VBA modules and produce
 REM      dist\BK_Work_Schedule.xlsm.
 REM   5. Copies the finished workbook to the user's Desktop.
 REM
-REM Just double-click this file from a Windows machine that has Excel,
-REM Node.js and a populated .env (with DATABASE_URL) in the project root.
+REM Just double-click this file from a Windows machine that has Excel
+REM and a populated .env (with DATABASE_URL) in the project root.
+REM Node.js is downloaded automatically on first run if it is missing.
 REM ====================================================================
 setlocal enableextensions
 
@@ -28,18 +32,83 @@ echo  BK Work Schedule - One-Click Workbook Builder
 echo ============================================================
 echo.
 
-REM ---- 1. Node.js check ---------------------------------------------
+REM ---- 1. Locate Node.js (system, then bundled portable copy) ------
+REM    Preference order:
+REM      a) node.exe already on PATH (developer / power-user machine)
+REM      b) scripts\export-to-excel\.node-portable\node.exe (previously
+REM         downloaded portable copy)
+REM      c) Download a portable Node.js LTS zip from nodejs.org and
+REM         extract it into (b), then use it.
+REM    This keeps the installer truly one-click on stock front-of-house
+REM    PCs that only have Excel installed.
+set "PORTABLE_DIR=%~dp0.node-portable"
+set "PORTABLE_NODE=%PORTABLE_DIR%\node.exe"
+set "NODE_EXE="
+
 where node >nul 2>&1
+if not errorlevel 1 (
+    set "NODE_EXE=node"
+    goto :node_ready
+)
+
+if exist "%PORTABLE_NODE%" (
+    set "NODE_EXE=%PORTABLE_NODE%"
+    goto :node_ready
+)
+
+echo Node.js was not found on this PC.
+echo Downloading a portable copy (one-time, ~30 MB) so the installer can
+echo run without any extra setup. This may take a minute...
+echo.
+
+REM Pick a Windows build that matches the CPU architecture.
+set "NODE_VER=v20.18.0"
+set "NODE_ARCH=x64"
+if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "NODE_ARCH=arm64"
+if /I "%PROCESSOR_ARCHITECTURE%"=="x86" if "%PROCESSOR_ARCHITEW6432%"=="" set "NODE_ARCH=x86"
+set "NODE_PKG=node-%NODE_VER%-win-%NODE_ARCH%"
+set "NODE_URL=https://nodejs.org/dist/%NODE_VER%/%NODE_PKG%.zip"
+set "TMP_ZIP=%TEMP%\%NODE_PKG%.zip"
+
+if not exist "%PORTABLE_DIR%" mkdir "%PORTABLE_DIR%" >nul 2>&1
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue';" ^
+    "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ^
+    "Invoke-WebRequest -Uri '%NODE_URL%' -OutFile '%TMP_ZIP%';" ^
+    "if (Test-Path '%PORTABLE_DIR%\_extract') { Remove-Item -Recurse -Force '%PORTABLE_DIR%\_extract' };" ^
+    "Expand-Archive -Path '%TMP_ZIP%' -DestinationPath '%PORTABLE_DIR%\_extract' -Force;" ^
+    "Get-ChildItem -Path '%PORTABLE_DIR%\_extract\%NODE_PKG%' -Force | Move-Item -Destination '%PORTABLE_DIR%' -Force;" ^
+    "Remove-Item -Recurse -Force '%PORTABLE_DIR%\_extract';" ^
+    "Remove-Item -Force '%TMP_ZIP%'"
 if errorlevel 1 (
-    echo [ERROR] Node.js was not found on PATH.
     echo.
-    echo   Please install Node.js LTS from https://nodejs.org/
-    echo   then double-click this file again.
+    echo [ERROR] Failed to download portable Node.js from
+    echo         %NODE_URL%
+    echo.
+    echo   Check your internet connection, or install Node.js LTS manually
+    echo   from https://nodejs.org/ and re-run this script.
     echo.
     popd >nul
     pause
     exit /b 1
 )
+
+if not exist "%PORTABLE_NODE%" (
+    echo [ERROR] Portable Node.js download finished but node.exe was not
+    echo         found at %PORTABLE_NODE%.
+    popd >nul
+    pause
+    exit /b 1
+)
+set "NODE_EXE=%PORTABLE_NODE%"
+echo Portable Node.js installed at %PORTABLE_DIR%.
+echo.
+
+:node_ready
+REM Make sure any child process that calls "node" also picks up the
+REM portable copy (build-all.mjs spawns "node" by name).
+if /I not "%NODE_EXE%"=="node" set "PATH=%PORTABLE_DIR%;%PATH%"
 
 REM ---- 2. Build the .xlsx (uses --env-file if .env exists) ----------
 set "ENVFLAG="
@@ -61,7 +130,7 @@ if "%ENVFLAG%"=="" (
 
 echo [1/4] Exporting latest data and building workbook...
 echo --------------------------------------------------------
-node %ENVFLAG% scripts\export-to-excel\build-all.mjs
+"%NODE_EXE%" %ENVFLAG% scripts\export-to-excel\build-all.mjs
 if errorlevel 1 (
     echo.
     echo [ERROR] Build step failed. See messages above.

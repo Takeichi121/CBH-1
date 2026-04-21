@@ -98,6 +98,36 @@ function normalizeUrl(u) {
   return s.replace(/\/+$/, "");
 }
 
+function assertSecureUrl(u) {
+  // Reject http:// to avoid sending the manager's password in the clear,
+  // unless the caller explicitly opts in (BK_ALLOW_HTTP=1) or is hitting
+  // localhost for development.
+  try {
+    const parsed = new URL(u);
+    if (parsed.protocol === "https:") return;
+    const host = parsed.hostname.toLowerCase();
+    const isLocal = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (process.env.BK_ALLOW_HTTP === "1" || isLocal) return;
+    console.error(`[ERROR] Server URL must use https:// (got ${parsed.protocol}//${host}).`);
+    console.error(`        Set BK_ALLOW_HTTP=1 to override (only for local testing).`);
+    process.exit(2);
+  } catch (e) {
+    console.error(`[ERROR] Invalid server URL: ${u}`);
+    process.exit(2);
+  }
+}
+
+function isSafeBundleFilename(name) {
+  // Only accept simple basenames that match what the server is documented to
+  // produce. Reject anything containing path separators, "..", or NUL so a
+  // compromised/spoofed server cannot write outside exports/csv/.
+  if (typeof name !== "string" || name.length === 0 || name.length > 80) return false;
+  if (name.includes("/") || name.includes("\\") || name.includes("\0")) return false;
+  if (name === "." || name === "..") return false;
+  if (path.basename(name) !== name) return false;
+  return name === "manifest.json" || /^[A-Za-z0-9_]+\.csv$/.test(name);
+}
+
 async function main() {
   const cfg = loadConfig();
 
@@ -106,6 +136,7 @@ async function main() {
     serverUrl = await prompt("BK server URL (e.g. https://bk1040.example.com): ");
   }
   serverUrl = normalizeUrl(serverUrl);
+  assertSecureUrl(serverUrl);
 
   let username = process.env.BK_EXCEL_USERNAME || cfg.username;
   if (!username) {
@@ -156,10 +187,19 @@ async function main() {
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  let written = 0;
+  let written = 0, rejected = 0;
   for (const [name, content] of Object.entries(body.files)) {
-    fs.writeFileSync(path.join(OUT_DIR, name), content, "utf8");
+    if (!isSafeBundleFilename(name)) {
+      console.warn(`[warn] refusing unsafe bundle filename from server: ${JSON.stringify(name)}`);
+      rejected++;
+      continue;
+    }
+    fs.writeFileSync(path.join(OUT_DIR, path.basename(name)), content, "utf8");
     written++;
+  }
+  if (rejected > 0) {
+    console.error(`[ERROR] Server returned ${rejected} file(s) with unsafe names — aborting.`);
+    process.exit(1);
   }
 
   // Cache server URL + username (NEVER the password).

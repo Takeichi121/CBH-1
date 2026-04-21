@@ -8452,31 +8452,34 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
       return s;
     };
 
-    // Deny-list of tables that must NEVER leave the server: auth tokens,
-    // one-time codes, AI assistant private data, dev-only proposals, and
-    // legacy chat. The workbook does not consume any of these.
-    const SENSITIVE_TABLES = new Set([
-      "sessions",
-      "password_reset_otps",
-      "chann_conversations",
-      "chann_notes",
-      "code_proposals",
-      "conversations",
-      "messages",
-    ]);
+    // Explicit allow-list of tables the workbook actually consumes.
+    // New tables added to the schema do NOT leak by default — they must be
+    // added here intentionally after a security review.
+    const WORKBOOK_TABLES = [
+      "borrow_branches", "borrow_items", "borrow_transactions",
+      "config", "daily_labor", "daily_sales_reports", "daily_targets",
+      "dropdown_options", "labor_settings", "manager_requests",
+      "notifications", "shifts", "staff_chat_messages", "store_settings",
+      "stores", "swap_requests", "systemlog", "users", "waste_targets",
+      "weekly_sales_reports",
+    ];
 
     try {
+      // Confirm each allow-listed table actually exists in this DB so missing
+      // tables (e.g. on a fresh schema) just get skipped instead of crashing.
       const tablesRes: any = await db.execute(sql.raw(
         "SELECT table_name FROM information_schema.tables " +
-        "WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name"
+        "WHERE table_schema='public' AND table_type='BASE TABLE'"
       ));
-      const tableRows: any[] = tablesRes.rows || tablesRes;
+      const existing = new Set<string>(((tablesRes.rows || tablesRes) as any[]).map(r => r.table_name));
+      const tableRows: { table_name: string }[] =
+        WORKBOOK_TABLES.filter(t => existing.has(t)).map(table_name => ({ table_name }));
+
       const files: Record<string, string> = {};
       const manifestTables: any[] = [];
 
       for (const row of tableRows) {
         const table = row.table_name;
-        if (SENSITIVE_TABLES.has(table)) continue;
         const colRes: any = await db.execute(sql.raw(
           `SELECT column_name FROM information_schema.columns ` +
           `WHERE table_schema='public' AND table_name='${table.replace(/'/g, "''")}' ` +

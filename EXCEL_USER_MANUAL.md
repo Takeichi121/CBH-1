@@ -167,3 +167,42 @@ For every screen below, toggle the language via the language selector and re-ver
 - [ ] All 12 screens pass in TH
 - [ ] All 12 screens pass in EN
 - [ ] Bugs filed for any failures, linked back to this checklist run
+
+### Reference recordings ("this is what good looks like")
+
+Once a clean checklist run is achieved on Windows, capture a screencast so future testers and reviewers have a visual baseline to compare against. The recording is the artifact that makes regressions obvious without re-reading the whole checklist.
+
+**Capture guidance**
+- Tool: Windows built-in **Xbox Game Bar** (`Win+G` → record) or **OBS Studio** if you need chapter markers / higher quality.
+- Resolution: 1080p, 30 fps is plenty. Keep the Excel window maximized.
+- Audio: optional voice-over in the language being demoed; otherwise mute.
+- Format: MP4 (H.264). Aim for ≤ 200 MB per language pass — split per screen if needed.
+- Show the language selector toggle on screen 1 so it's obvious which pass is which.
+
+**What to record per screen** — perform the same actions listed in the checklist table above (rows 1–12). One continuous video per language pass with chapter timestamps is preferred over 24 separate files.
+
+**Upload location & links** — fill in once recorded:
+
+| Pass | Link | Recorded by | Date | Build (commit / `dist/BK_Work_Schedule.xlsm` SHA) |
+|------|------|-------------|------|---------------------------------------------------|
+| Thai (TH) full pass | _TBD — paste shared link here_ | | | |
+| English (EN) full pass | _TBD — paste shared link here_ | | | |
+
+**Chapter markers to include in each video** (copy into the video description / shared-drive notes):
+
+```
+00:00  1. Login (frmLogin)
+  ??   2. Booking
+  ??   3. Roster
+  ??   4. Sales
+  ??   5. Labor
+  ??   6. Borrow
+  ??   7. Announcements
+  ??   8. Notifications
+  ??   9. Admin
+  ??  10. Requests
+  ??  11. Settings
+  ??  12. System log
+```
+
+Replace `??` with the actual timestamp where each screen starts. If you split into 12 short clips instead, name them `BK_screencast_<TH|EN>_<NN>_<screen>.mp4` (e.g. `BK_screencast_TH_03_roster.mp4`) and list all 12 in the table above.

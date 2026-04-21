@@ -206,3 +206,48 @@ Once a clean checklist run is achieved on Windows, capture a screencast so futur
 ```
 
 Replace `??` with the actual timestamp where each screen starts. If you split into 12 short clips instead, name them `BK_screencast_<TH|EN>_<NN>_<screen>.mp4` (e.g. `BK_screencast_TH_03_roster.mp4`) and list all 12 in the table above.
+
+### How to compare a new run to the baseline
+
+Scrubbing a 10-minute video to find the one screen that changed is slow. Instead, extract one still per chapter from the baseline video, then compare those 12 PNGs against fresh screenshots taken during a new test pass.
+
+**One-time setup**
+1. Make sure `ffmpeg` is on PATH (Windows: download from https://ffmpeg.org/download.html and add `bin\` to PATH; or `winget install Gyan.FFmpeg`).
+2. Save the chapter timestamps you filled in above into `docs/baseline-frames/chapters.txt`, one per line, exactly in the format used in the manual:
+
+```
+00:00  1. Login (frmLogin)
+00:42  2. Booking
+01:35  3. Roster
+...
+```
+
+Lines whose timestamp is still `??` are skipped with a warning, so it's fine to commit a partial file and fill in the rest later.
+
+**Extract baseline frames** (run once per language, after each new recording)
+
+```
+node scripts/extract-baseline-frames.mjs --input path\to\BK_baseline_TH.mp4 --lang th
+node scripts/extract-baseline-frames.mjs --input path\to\BK_baseline_EN.mp4 --lang en
+```
+
+Output:
+
+```
+docs/baseline-frames/
+  th/
+    01-login.png
+    02-booking.png
+    ...
+    12-system-log.png
+  en/
+    01-login.png
+    ...
+```
+
+**Compare a new build against the baseline**
+1. Run through the checklist table above on the new build, taking one screenshot per screen as you go (Win+Shift+S → save to a temp folder named, e.g., `new-run-th\01-login.png`).
+2. Open the matching baseline PNG (`docs/baseline-frames/th/01-login.png`) and the new screenshot side by side. Anything visually different is a candidate regression — file it as a bug and reference both filenames.
+3. If a screen was intentionally redesigned in this build, replace the corresponding baseline PNG (and re-record the chapter in the next baseline video) so future runs don't keep flagging it.
+
+By default the script writes into `docs/baseline-frames/<lang>/`; pass `--out <dir>` to redirect somewhere else (useful when comparing two builds without overwriting the committed baseline).

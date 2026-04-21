@@ -353,3 +353,25 @@ This ensures the handbook and settings page always reflect the latest state auto
 1. **Register Borrow Routes** - Added routes for /borrow/history, /borrow/branches, /borrow/items in App.tsx
 2. **Update Navigation Tabs** - Added all 7 tabs to BorrowLayout
 3. **Staff Chat System** - Added real-time chat with Socket.IO, authentication, and bilingual support
+## Excel Offline Workbook (Task #11)
+A standalone Macro-Enabled Workbook (`BK_Work_Schedule.xlsm`) replicates the
+web app for offline use on Windows (Excel 2016+).
+
+**Build pipeline**
+- `node scripts/export-to-excel/build-all.mjs` exports every PostgreSQL table
+  to `exports/csv/` and packages them into `dist/BK_Work_Schedule.xlsx`
+  (data-only, hidden + protected `data_*` sheets).
+- On Windows, `cscript scripts/export-to-excel/Setup-Workbook.vbs` imports the
+  VBA modules from `vba/` into the workbook and saves it as
+  `dist/BK_Work_Schedule.xlsm`.
+
+**VBA layout** — see `docs/EXCEL_WORKBOOK_DESIGN.md`. Modules cover
+authentication (SHA-256 + salt), shift booking with capacity/maintenance
+window, roster, manager/swap requests, daily + weekly sales, labor cost,
+borrow tracker, announcements, notifications, settings, admin, i18n (Thai +
+English), and CSV backup.
+
+**End-user docs** — `EXCEL_USER_MANUAL.md` (bilingual).
+
+**Out of scope** (per task spec): real-time chat, AI, email OTP, multi-user
+concurrent edit, Mac/LibreOffice.

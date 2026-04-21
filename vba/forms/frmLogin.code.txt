@@ -1,0 +1,84 @@
+'==========================================================
+' Login dialog code (injected into a programmatically-created UserForm
+' named "frmLogin" so we don't need a binary .frx file).
+'==========================================================
+Option Explicit
+
+Private lblTitle As MSForms.Label
+Private lblUser  As MSForms.Label
+Private lblPwd   As MSForms.Label
+Private lblErr   As MSForms.Label
+Private txtUser  As MSForms.TextBox
+Private txtPwd   As MSForms.TextBox
+' WithEvents lets us hook _Click on dynamically-created controls.
+Private WithEvents btnOK    As MSForms.CommandButton
+Private WithEvents btnLang  As MSForms.CommandButton
+
+Private Sub UserForm_Initialize()
+    BuildControls
+    RefreshLabels
+End Sub
+
+Private Sub BuildControls()
+    Me.Width = 320: Me.Height = 220
+
+    Set lblTitle = Me.Controls.Add("Forms.Label.1", "lblTitle")
+    lblTitle.Top = 8: lblTitle.Left = 12: lblTitle.Width = 280: lblTitle.Height = 24
+    lblTitle.Font.Size = 14: lblTitle.Font.Bold = True
+
+    Set lblUser = Me.Controls.Add("Forms.Label.1", "lblUser")
+    lblUser.Top = 44: lblUser.Left = 12: lblUser.Width = 80
+
+    Set txtUser = Me.Controls.Add("Forms.TextBox.1", "txtUser")
+    txtUser.Top = 42: txtUser.Left = 100: txtUser.Width = 180
+
+    Set lblPwd = Me.Controls.Add("Forms.Label.1", "lblPwd")
+    lblPwd.Top = 76: lblPwd.Left = 12: lblPwd.Width = 80
+
+    Set txtPwd = Me.Controls.Add("Forms.TextBox.1", "txtPwd")
+    txtPwd.Top = 74: txtPwd.Left = 100: txtPwd.Width = 180
+    txtPwd.PasswordChar = "*"
+
+    Set lblErr = Me.Controls.Add("Forms.Label.1", "lblErr")
+    lblErr.Top = 108: lblErr.Left = 12: lblErr.Width = 280: lblErr.Height = 28
+    lblErr.ForeColor = RGB(220, 38, 38)
+
+    Set btnOK = Me.Controls.Add("Forms.CommandButton.1", "btnOK")
+    btnOK.Top = 150: btnOK.Left = 168: btnOK.Width = 112: btnOK.Height = 28
+    btnOK.Default = True
+
+    Set btnLang = Me.Controls.Add("Forms.CommandButton.1", "btnLang")
+    btnLang.Top = 150: btnLang.Left = 12: btnLang.Width = 140: btnLang.Height = 28
+End Sub
+
+Private Sub RefreshLabels()
+    Me.Caption  = modI18n.T("login.title")
+    lblTitle.Caption = modI18n.T("app.title")
+    lblUser.Caption  = modI18n.T("login.username")
+    lblPwd.Caption   = modI18n.T("login.password")
+    btnOK.Caption    = modI18n.T("login.submit")
+    btnLang.Caption  = modI18n.T("menu.lang")
+End Sub
+
+Private Sub btnLang_Click()
+    modI18n.ToggleLanguage
+    RefreshLabels
+End Sub
+
+Private Sub btnOK_Click()
+    Dim msg As String
+    If modAuth.VerifyLogin(CStr(txtUser.Value), CStr(txtPwd.Value), msg) Then
+        Unload Me
+        modUI.ShowMain
+    Else
+        lblErr.Caption = msg
+    End If
+End Sub
+
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then
+        Application.DisplayAlerts = False
+        ThisWorkbook.Close SaveChanges:=False
+        Application.DisplayAlerts = True
+    End If
+End Sub

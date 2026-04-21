@@ -61,34 +61,71 @@ echo Downloading a portable copy (one-time, ~30 MB) so the installer can
 echo run without any extra setup. This may take a minute...
 echo.
 
-REM Pick a Windows build that matches the CPU architecture.
+REM ---- Pinned Node.js version ---------------------------------------
+REM To bump Node, change NODE_VER here. The matching SHASUMS256.txt is
+REM fetched from nodejs.org alongside the zip and used to verify the
+REM download before anything is extracted, so a tampered zip (e.g. from
+REM a hostile proxy or a compromised mirror) is rejected.
 set "NODE_VER=v20.18.0"
+
 set "NODE_ARCH=x64"
 if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "NODE_ARCH=arm64"
 if /I "%PROCESSOR_ARCHITECTURE%"=="x86" if "%PROCESSOR_ARCHITEW6432%"=="" set "NODE_ARCH=x86"
 set "NODE_PKG=node-%NODE_VER%-win-%NODE_ARCH%"
-set "NODE_URL=https://nodejs.org/dist/%NODE_VER%/%NODE_PKG%.zip"
-set "TMP_ZIP=%TEMP%\%NODE_PKG%.zip"
+set "NODE_ZIP=%NODE_PKG%.zip"
+set "NODE_URL=https://nodejs.org/dist/%NODE_VER%/%NODE_ZIP%"
+set "NODE_SHA_URL=https://nodejs.org/dist/%NODE_VER%/SHASUMS256.txt"
+set "TMP_ZIP=%TEMP%\%NODE_ZIP%"
+set "TMP_SHA=%TEMP%\node-%NODE_VER%-SHASUMS256.txt"
 
 if not exist "%PORTABLE_DIR%" mkdir "%PORTABLE_DIR%" >nul 2>&1
 
+REM Download zip + checksums, verify SHA-256, then extract.
+REM On any failure (network, mismatch, extract) the temp zip + checksum
+REM file and any partial extract folder are removed so the next run
+REM starts clean and never uses an unverified binary.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue';" ^
     "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;" ^
-    "Invoke-WebRequest -Uri '%NODE_URL%' -OutFile '%TMP_ZIP%';" ^
-    "if (Test-Path '%PORTABLE_DIR%\_extract') { Remove-Item -Recurse -Force '%PORTABLE_DIR%\_extract' };" ^
-    "Expand-Archive -Path '%TMP_ZIP%' -DestinationPath '%PORTABLE_DIR%\_extract' -Force;" ^
-    "Get-ChildItem -Path '%PORTABLE_DIR%\_extract\%NODE_PKG%' -Force | Move-Item -Destination '%PORTABLE_DIR%' -Force;" ^
-    "Remove-Item -Recurse -Force '%PORTABLE_DIR%\_extract';" ^
-    "Remove-Item -Force '%TMP_ZIP%'"
+    "$zip='%TMP_ZIP%'; $sha='%TMP_SHA%'; $pkg='%NODE_ZIP%'; $extract='%PORTABLE_DIR%\_extract'; $pkgDir='%PORTABLE_DIR%\_extract\%NODE_PKG%';" ^
+    "try {" ^
+    "  Invoke-WebRequest -Uri '%NODE_URL%' -OutFile $zip;" ^
+    "  Invoke-WebRequest -Uri '%NODE_SHA_URL%' -OutFile $sha;" ^
+    "  $expectedLine = (Get-Content $sha) | Where-Object { $_ -match ('\s\*?' + [regex]::Escape($pkg) + '$') } | Select-Object -First 1;" ^
+    "  if (-not $expectedLine) { throw ('No SHA-256 entry for ' + $pkg + ' in SHASUMS256.txt') };" ^
+    "  $expected = ($expectedLine -split '\s+')[0].ToLower();" ^
+    "  $actual = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower();" ^
+    "  if ($actual -ne $expected) { throw ('SHA-256 mismatch for ' + $pkg + '. expected=' + $expected + ' actual=' + $actual) };" ^
+    "  Write-Host ('SHA-256 OK (' + $expected + ')');" ^
+    "  if (Test-Path $extract) { Remove-Item -Recurse -Force $extract };" ^
+    "  Expand-Archive -Path $zip -DestinationPath $extract -Force;" ^
+    "  Get-ChildItem -Path $pkgDir -Force | Move-Item -Destination '%PORTABLE_DIR%' -Force;" ^
+    "  Remove-Item -Recurse -Force $extract;" ^
+    "} catch {" ^
+    "  if (Test-Path $extract) { Remove-Item -Recurse -Force $extract -ErrorAction SilentlyContinue };" ^
+    "  Write-Host ('[ERROR] ' + $_.Exception.Message);" ^
+    "  exit 1;" ^
+    "} finally {" ^
+    "  if (Test-Path $zip) { Remove-Item -Force $zip -ErrorAction SilentlyContinue };" ^
+    "  if (Test-Path $sha) { Remove-Item -Force $sha -ErrorAction SilentlyContinue };" ^
+    "}"
 if errorlevel 1 (
     echo.
-    echo [ERROR] Failed to download portable Node.js from
+    echo [ERROR] Failed to download or verify portable Node.js from
     echo         %NODE_URL%
+    echo         (checksums: %NODE_SHA_URL%)
     echo.
-    echo   Check your internet connection, or install Node.js LTS manually
-    echo   from https://nodejs.org/ and re-run this script.
+    echo   This can mean:
+    echo     - No internet, or a proxy is blocking nodejs.org.
+    echo     - The downloaded zip's SHA-256 did not match the published
+    echo       SHASUMS256.txt (possible tampering or corrupted download).
     echo.
+    echo   Nothing was installed. Check your connection, or install Node.js
+    echo   LTS manually from https://nodejs.org/ and re-run this script.
+    echo.
+    REM Make sure no half-installed portable copy is left behind.
+    if exist "%PORTABLE_DIR%\_extract" rmdir /S /Q "%PORTABLE_DIR%\_extract" >nul 2>&1
+    if not exist "%PORTABLE_NODE%" if exist "%PORTABLE_DIR%" rmdir /S /Q "%PORTABLE_DIR%" >nul 2>&1
     popd >nul
     pause
     exit /b 1

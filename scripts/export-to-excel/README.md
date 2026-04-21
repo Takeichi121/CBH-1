@@ -17,12 +17,28 @@ run it will:
 1. Use `node.exe` from `PATH` if one is already installed.
 2. Otherwise reuse a portable copy in `scripts\export-to-excel\.node-portable\`.
 3. Otherwise download the official Node.js LTS Windows zip from
-   `https://nodejs.org/dist/` (matching the PC's CPU architecture) and extract
-   it into `.node-portable\`. That folder is gitignored.
+   `https://nodejs.org/dist/` (matching the PC's CPU architecture), verify it
+   against the published SHA-256 checksum (see below), and extract it into
+   `.node-portable\`. That folder is gitignored.
 
 This means a front-of-house PC with only Excel + internet access can
 double-click the `.bat` file and end up with `BK_Work_Schedule.xlsm` on the
 Desktop, with no separate Node.js install step.
+
+### Tamper check on the downloaded Node.js zip
+
+After fetching the portable Node.js zip, the installer also fetches the
+matching `SHASUMS256.txt` from the same `https://nodejs.org/dist/<NODE_VER>/`
+folder and confirms the zip's SHA-256 hash matches the entry published there
+for that exact filename. If the hashes don't match — or the checksum file
+doesn't list that filename — the install aborts with a clear error and the
+half-downloaded zip and any partial extract folder are removed, so the next
+run starts clean and never executes an unverified `node.exe`.
+
+The pinned Node.js version lives in a single `set "NODE_VER=v20.18.0"` line
+near the top of `Build-Workbook.bat`. To bump Node, change that one value;
+the matching SHASUMS file is fetched automatically, so no checksum needs to
+be hand-edited.
 
 ## Pre-flight: lint the VBA before building
 

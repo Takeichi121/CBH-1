@@ -18,3 +18,9 @@ id = "_-mBV0CnJPZuAbnOu2DVy"
 uri = "file://client/public/favicon.png"
 type = "image"
 title = "CBH Favicon"
+
+[[outputs]]
+id = "Q--TJjnKZcfiWpdnc0m0x"
+uri = "file://dist/BK_Work_Schedule.xlsx"
+type = "table"
+title = "BK_Work_Schedule.xlsx (BK1040 Grand Diamond)"

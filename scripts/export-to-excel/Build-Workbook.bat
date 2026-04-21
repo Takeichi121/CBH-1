@@ -110,33 +110,57 @@ REM Make sure any child process that calls "node" also picks up the
 REM portable copy (build-all.mjs spawns "node" by name).
 if /I not "%NODE_EXE%"=="node" set "PATH=%PORTABLE_DIR%;%PATH%"
 
-REM ---- 2. Build the .xlsx (uses --env-file if .env exists) ----------
+REM ---- 2. Build the .xlsx --------------------------------------------
+REM Two ways to get fresh data into exports\csv\:
+REM   (a) Direct DB pull when DATABASE_URL is available (.env or env var).
+REM       Fastest, used by developers and the deployment server itself.
+REM   (b) Authenticated HTTPS pull via /api/excel/exportCsvBundle, using
+REM       the manager's existing username + password. Used on staff PCs
+REM       that have no database credentials. The server URL + username
+REM       are cached in %APPDATA%\bk-excel\config.json (NOT the password)
+REM       so subsequent runs only re-prompt for the password.
 set "ENVFLAG="
 if exist ".env" set "ENVFLAG=--env-file=.env"
 
-if "%ENVFLAG%"=="" (
-    if "%DATABASE_URL%"=="" (
-        echo [ERROR] No .env file found and DATABASE_URL is not set.
+set "USE_REMOTE_FETCH=0"
+if "%ENVFLAG%"=="" if "%DATABASE_URL%"=="" set "USE_REMOTE_FETCH=1"
+
+if "%USE_REMOTE_FETCH%"=="1" (
+    echo [1/4] No database URL found — fetching latest data from BK server...
+    echo --------------------------------------------------------
+    echo You will be asked for the BK server URL, your username, and your password.
+    echo The password is NEVER saved; the URL and username are cached for next time.
+    echo.
+    "%NODE_EXE%" scripts\export-to-excel\fetch-csv-bundle.mjs
+    if errorlevel 1 (
         echo.
-        echo   Create a .env file in the project root containing:
-        echo       DATABASE_URL=postgres://...
-        echo   then double-click this file again.
-        echo.
+        echo [ERROR] Could not fetch data from the BK server. See messages above.
         popd >nul
         pause
         exit /b 1
     )
-)
-
-echo [1/4] Exporting latest data and building workbook...
-echo --------------------------------------------------------
-"%NODE_EXE%" %ENVFLAG% scripts\export-to-excel\build-all.mjs
-if errorlevel 1 (
     echo.
-    echo [ERROR] Build step failed. See messages above.
-    popd >nul
-    pause
-    exit /b 1
+    echo Building workbook from fetched CSVs...
+    echo --------------------------------------------------------
+    "%NODE_EXE%" scripts\export-to-excel\build-workbook.mjs
+    if errorlevel 1 (
+        echo.
+        echo [ERROR] Build step failed. See messages above.
+        popd >nul
+        pause
+        exit /b 1
+    )
+) else (
+    echo [1/4] Exporting latest data and building workbook...
+    echo --------------------------------------------------------
+    "%NODE_EXE%" %ENVFLAG% scripts\export-to-excel\build-all.mjs
+    if errorlevel 1 (
+        echo.
+        echo [ERROR] Build step failed. See messages above.
+        popd >nul
+        pause
+        exit /b 1
+    )
 )
 
 REM ---- 3. Trust Center prerequisite check ---------------------------

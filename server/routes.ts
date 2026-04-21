@@ -8413,5 +8413,98 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     return res.json({ ok: true });
   }));
 
+  // ==================== Excel Offline: Authenticated CSV Bundle ====================
+  // Used by scripts/export-to-excel/fetch-csv-bundle.mjs so non-technical staff can
+  // build the .xlsm without holding a database URL. They authenticate with their
+  // existing username/password (manager-like role required).
+  app.post("/api/excel/exportCsvBundle", safe(async (req, res) => {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, message: "username and password required" });
+    }
+
+    const u = await storage.getUser(String(username));
+    if (!u || !u.active) {
+      return res.status(401).json({ ok: false, message: "Invalid credentials" });
+    }
+    if (!(await comparePassword(String(password), u.passhash))) {
+      await storage.log("excel_bundle_bad_password", String(username), "");
+      return res.status(401).json({ ok: false, message: "Invalid credentials" });
+    }
+    if (!isManagerLike(u.role)) {
+      await storage.log("excel_bundle_no_permission", u.username, "role=" + u.role);
+      return res.status(403).json({ ok: false, message: "Manager role required" });
+    }
+
+    const EXCEL_DEFAULT_PASSWORD = process.env.EXCEL_DEFAULT_PASSWORD || "Change@123";
+    const EXCEL_PASSWORD_SALT    = process.env.EXCEL_PASSWORD_SALT    || "bk1040-salt-v1";
+    const sha256Hex = (s: string) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
+    const EXCEL_DEFAULT_HASH = sha256Hex(EXCEL_PASSWORD_SALT + EXCEL_DEFAULT_PASSWORD);
+
+    const csvEscape = (v: any): string => {
+      if (v === null || v === undefined) return "";
+      if (Array.isArray(v) || (typeof v === "object" && !(v instanceof Date))) {
+        return csvEscape(JSON.stringify(v));
+      }
+      if (v instanceof Date) return csvEscape(v.toISOString());
+      const s = String(v);
+      if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    };
+
+    try {
+      const tablesRes: any = await db.execute(sql.raw(
+        "SELECT table_name FROM information_schema.tables " +
+        "WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name"
+      ));
+      const tableRows: any[] = tablesRes.rows || tablesRes;
+      const files: Record<string, string> = {};
+      const manifestTables: any[] = [];
+
+      for (const row of tableRows) {
+        const table = row.table_name;
+        const colRes: any = await db.execute(sql.raw(
+          `SELECT column_name FROM information_schema.columns ` +
+          `WHERE table_schema='public' AND table_name='${table.replace(/'/g, "''")}' ` +
+          `ORDER BY ordinal_position`
+        ));
+        const cols: string[] = (colRes.rows || colRes).map((r: any) => r.column_name);
+        const dataRes: any = await db.execute(sql.raw(`SELECT * FROM "${table}"`));
+        const data: any[] = dataRes.rows || dataRes;
+
+        const lines = [cols.join(",")];
+        for (const r of data) {
+          if (table === "users") {
+            r.passhash = EXCEL_DEFAULT_HASH;
+            if ("must_change_password" in r) r.must_change_password = 1;
+          }
+          lines.push(cols.map(c => csvEscape(r[c])).join(","));
+        }
+        files[`${table}.csv`] = lines.join("\n") + "\n";
+        manifestTables.push({ table, rows: data.length });
+      }
+
+      const manifest = {
+        exportedAt: new Date().toISOString(),
+        excel_password_salt: EXCEL_PASSWORD_SALT,
+        exportedBy: u.username,
+        tables: manifestTables,
+      };
+      files["manifest.json"] = JSON.stringify(manifest, null, 2);
+
+      await storage.log("excel_bundle_ok", u.username, `tables=${manifestTables.length}`);
+      res.json({
+        ok: true,
+        defaultPassword: EXCEL_DEFAULT_PASSWORD,
+        passwordSalt: EXCEL_PASSWORD_SALT,
+        manifest,
+        files,
+      });
+    } catch (e: any) {
+      console.error("exportCsvBundle error:", e);
+      res.status(500).json({ ok: false, message: e?.message || "Export failed" });
+    }
+  }));
+
   return httpServer;
 }

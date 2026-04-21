@@ -8452,6 +8452,19 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
       return s;
     };
 
+    // Deny-list of tables that must NEVER leave the server: auth tokens,
+    // one-time codes, AI assistant private data, dev-only proposals, and
+    // legacy chat. The workbook does not consume any of these.
+    const SENSITIVE_TABLES = new Set([
+      "sessions",
+      "password_reset_otps",
+      "chann_conversations",
+      "chann_notes",
+      "code_proposals",
+      "conversations",
+      "messages",
+    ]);
+
     try {
       const tablesRes: any = await db.execute(sql.raw(
         "SELECT table_name FROM information_schema.tables " +
@@ -8463,6 +8476,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
       for (const row of tableRows) {
         const table = row.table_name;
+        if (SENSITIVE_TABLES.has(table)) continue;
         const colRes: any = await db.execute(sql.raw(
           `SELECT column_name FROM information_schema.columns ` +
           `WHERE table_schema='public' AND table_name='${table.replace(/'/g, "''")}' ` +
@@ -8492,7 +8506,11 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
       };
       files["manifest.json"] = JSON.stringify(manifest, null, 2);
 
-      await storage.log("excel_bundle_ok", u.username, `tables=${manifestTables.length}`);
+      const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+        || req.socket.remoteAddress || "unknown";
+      const ua = String(req.headers["user-agent"] || "unknown").slice(0, 120);
+      await storage.log("excel_bundle_ok", u.username,
+        `tables=${manifestTables.length} ip=${clientIp} ua=${ua}`);
       res.json({
         ok: true,
         defaultPassword: EXCEL_DEFAULT_PASSWORD,

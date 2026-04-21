@@ -348,6 +348,241 @@ function checkQualifiedReferences(allFiles, moduleSymbolsByName) {
   return errors;
 }
 
+// ---------------------------------------------------------------------------
+// Pass 3: type-aware field/property resolver.
+//
+// Pass 2 catches typos in qualified `modX.Member` references but cannot tell
+// that `mySession.Roel` is a typo of `mySession.Role` when `mySession` is a
+// variable typed as a user-defined `Type` or `Class`. This pass:
+//
+//   1. Collects every user-defined `Type` record (with its fields) found
+//      anywhere under vba/modules/, plus every .cls file (treated as a
+//      class type with its Subs/Functions/Properties/Public vars as members).
+//   2. For every file, learns each variable's declared type from
+//      `Dim/Public/Private/Static/Global var As TypeName` declarations,
+//      `Set var = New ClassName` assignments, and procedure parameter
+//      lists (`Sub Foo(p As MyType)`).
+//   3. For every `var.field` reference whose `var` resolves to a known
+//      user-defined type, verifies that `field` exists on that type.
+//
+// Conservative on purpose: variables typed as built-ins (Worksheet, Range,
+// Variant, Object, Long, etc.) or as a type the linter has never seen are
+// silently skipped — we have no way to model the full Excel/Office object
+// model, so any check there would be a false-positive minefield. This pass
+// also defers to Pass 2 whenever `var` happens to share its name with a
+// known module (avoiding double-reporting).
+// ---------------------------------------------------------------------------
+
+function collectUserDefinedTypes(allFiles) {
+  const types = {}; // name(lower) -> Set of member names (lower)
+
+  for (const f of allFiles) {
+    const isCls = f.path.toLowerCase().endsWith(".cls");
+    const text = readFileSync(f.path, "utf8");
+    const rawLines = text.split(/\r?\n/);
+    const logical = joinContinuations(rawLines);
+
+    // .cls files: the file itself is a class type. Skip ThisWorkbook —
+    // it's a document module that is never instantiated as `New ThisWorkbook`
+    // and references against it are already covered by Pass 2 patterns.
+    if (isCls) {
+      const className = moduleNameOf(f.path);
+      if (className.toLowerCase() !== "thisworkbook") {
+        const members = new Set();
+        const stack = [];
+        for (const { text: lt } of logical) {
+          for (const stmt of splitStatements(lt)) {
+            const s = stmt.trim();
+            const opener = detectOpener(s);
+            const closer = detectCloser(s);
+            if (stack.length === 0) {
+              let m = /^(?:public\s+|private\s+|friend\s+|static\s+)*(?:sub|function)\s+([A-Za-z_]\w*)/i.exec(s);
+              if (m && !/^(?:public\s+|private\s+)?declare\b/i.test(s)) members.add(m[1].toLowerCase());
+              m = /^(?:public\s+|private\s+|friend\s+|static\s+)*property\s+(?:get|let|set)\s+([A-Za-z_]\w*)/i.exec(s);
+              if (m) members.add(m[1].toLowerCase());
+              m = /^(public|private|dim)\s+(.+)$/i.exec(s);
+              if (m && !/^(?:const|sub|function|property|type|enum|declare)\b/i.test(m[2])) {
+                let rest = m[2].replace(/^withevents\s+/i, "");
+                for (const part of splitTopLevelCommas(rest)) {
+                  const nm = /^([A-Za-z_]\w*)/.exec(part.trim());
+                  if (nm) members.add(nm[1].toLowerCase());
+                }
+              }
+            }
+            if (opener) stack.push(opener);
+            if (closer && stack.length) stack.pop();
+          }
+        }
+        types[className.toLowerCase()] = members;
+      }
+    }
+
+    // Type ... End Type records (legal in any module).
+    let inType = null;
+    let typeMembers = null;
+    const stack = [];
+    for (const { text: lt } of logical) {
+      for (const stmt of splitStatements(lt)) {
+        const s = stmt.trim();
+        if (inType === null) {
+          const m = /^(?:public\s+|private\s+)?type\s+([A-Za-z_]\w*)/i.exec(s);
+          if (m && stack.length === 0) {
+            inType = m[1];
+            typeMembers = new Set();
+          }
+        } else {
+          if (/^end\s+type\b/i.test(s)) {
+            types[inType.toLowerCase()] = typeMembers;
+            inType = null;
+            typeMembers = null;
+          } else {
+            const m = /^([A-Za-z_]\w*)\s*(?:\([^)]*\))?\s+as\b/i.exec(s);
+            if (m) typeMembers.add(m[1].toLowerCase());
+          }
+        }
+        const opener = detectOpener(s);
+        const closer = detectCloser(s);
+        if (opener) stack.push(opener);
+        if (closer && stack.length) stack.pop();
+      }
+    }
+  }
+  return types;
+}
+
+function addTypedVarsFromDecl(rest, target, userTypes) {
+  // VBA quirk: `Dim a, b As X` types only `b` (a is Variant). Splitting on
+  // top-level commas and only recording the var that is itself followed by
+  // `As <UserType>` yields the right behaviour.
+  for (const part of splitTopLevelCommas(rest)) {
+    const m = /^\s*([A-Za-z_]\w*)(?:\s*\([^)]*\))?\s+as\s+(?:new\s+)?([A-Za-z_][\w.]*)/i.exec(part);
+    if (m) {
+      const tn = m[2].toLowerCase();
+      if (userTypes[tn]) target[m[1].toLowerCase()] = tn;
+    }
+  }
+}
+
+function checkTypedFieldReferences(allFiles, userTypes, moduleSymbolsByName) {
+  const errors = [];
+  if (Object.keys(userTypes).length === 0) return errors;
+  const modSet = new Set(Object.keys(moduleSymbolsByName));
+
+  for (const f of allFiles) {
+    const text = readFileSync(f.path, "utf8");
+    const rawLines = text.split(/\r?\n/);
+    const logical = joinContinuations(rawLines);
+
+    // Pass A: collect module-level variables with user-defined types.
+    const moduleVars = {};
+    {
+      const stack = [];
+      let inTypeOrEnum = false;
+      for (const { text: lt } of logical) {
+        for (const stmt of splitStatements(lt)) {
+          const s = stmt.trim();
+          if (stack.length === 0 && !inTypeOrEnum) {
+            const m = /^(public|private|dim|global|static)\s+(.+)$/i.exec(s);
+            if (m && !/^(?:const|sub|function|property|type|enum|declare)\b/i.test(m[2])) {
+              const rest = m[2].replace(/^withevents\s+/i, "");
+              addTypedVarsFromDecl(rest, moduleVars, userTypes);
+            }
+          }
+          const opener = detectOpener(s);
+          const closer = detectCloser(s);
+          if (opener) {
+            stack.push(opener);
+            if (opener === "Type" || opener === "Enum") inTypeOrEnum = true;
+          }
+          if (closer && stack.length) {
+            const top = stack.pop();
+            if (top === "Type" || top === "Enum") inTypeOrEnum = false;
+          }
+        }
+      }
+    }
+
+    // Pass B: split into procedures so locals are gathered per scope.
+    const procGroups = [];
+    let cur = null;
+    let depth = 0;
+    for (const ent of logical) {
+      for (const stmt of splitStatements(ent.text)) {
+        const opener = detectOpener(stmt);
+        const closer = detectCloser(stmt);
+        if (cur === null) {
+          if (opener === "Sub" || opener === "Function" || opener === "Property") {
+            cur = { header: stmt, lines: [{ lineNo: ent.lineNo, stmt }] };
+            depth = 1;
+          }
+        } else {
+          cur.lines.push({ lineNo: ent.lineNo, stmt });
+          if (opener) depth++;
+          if (closer) {
+            depth--;
+            if (depth === 0) { procGroups.push(cur); cur = null; }
+          }
+        }
+      }
+    }
+
+    const isCls = f.path.toLowerCase().endsWith(".cls");
+    const selfTypeName = isCls ? moduleNameOf(f.path).toLowerCase() : null;
+
+    for (const proc of procGroups) {
+      const localVars = {};
+
+      // Bind `Me` inside a class file to the class's own type, so things
+      // like `Me.Roel` (typo of `Me.Role`) get caught too.
+      if (selfTypeName && userTypes[selfTypeName]) localVars["me"] = selfTypeName;
+
+      // Parameters: Sub Foo(ByVal a As X, b As Y, ...).
+      const hm = /^(?:public\s+|private\s+|friend\s+|static\s+)*(?:sub|function|property\s+(?:get|let|set))\s+[A-Za-z_]\w*\s*\(([\s\S]*?)\)/i.exec(proc.header);
+      if (hm && hm[1].trim() !== "") {
+        for (const part of splitTopLevelCommas(hm[1])) {
+          const pm = /^\s*(?:(?:byval|byref|paramarray|optional)\s+)*([A-Za-z_]\w*)(?:\s*\([^)]*\))?\s+as\s+([A-Za-z_][\w.]*)/i.exec(part);
+          if (pm) {
+            const tn = pm[2].toLowerCase();
+            if (userTypes[tn]) localVars[pm[1].toLowerCase()] = tn;
+          }
+        }
+      }
+
+      // Local declarations and `Set v = New ClassName`.
+      for (const ent of proc.lines) {
+        const s = ent.stmt.trim();
+        const dm = /^(?:dim|static)\s+(.+)$/i.exec(s);
+        if (dm) addTypedVarsFromDecl(dm[1], localVars, userTypes);
+        const sn = /^set\s+([A-Za-z_]\w*)\s*=\s*new\s+([A-Za-z_][\w.]*)/i.exec(s);
+        if (sn && userTypes[sn[2].toLowerCase()]) localVars[sn[1].toLowerCase()] = sn[2].toLowerCase();
+      }
+
+      // Reference scan.
+      const re = /\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)/g;
+      for (const ent of proc.lines) {
+        let m;
+        re.lastIndex = 0;
+        while ((m = re.exec(ent.stmt)) !== null) {
+          const v = m[1].toLowerCase();
+          if (modSet.has(v)) continue; // Pass 2's job
+          const typeName = localVars[v] || moduleVars[v];
+          if (!typeName) continue;
+          const fields = userTypes[typeName];
+          if (!fields) continue;
+          if (!fields.has(m[2].toLowerCase())) {
+            errors.push({
+              file: f.path,
+              line: ent.lineNo,
+              msg: `Unknown field '${m[1]}.${m[2]}' — '${m[2]}' is not defined on type '${typeName}' (typo? rename? deleted?)`,
+            });
+          }
+        }
+      }
+    }
+  }
+  return errors;
+}
+
 function main() {
   const files = collectFiles();
   if (files.length === 0) {
@@ -377,6 +612,13 @@ function main() {
     moduleSymbolsByName[modName.toLowerCase()] = collectModuleSymbols(f.path);
   }
   for (const e of checkQualifiedReferences(files, moduleSymbolsByName)) {
+    pushErr(e.file, { line: e.line, msg: e.msg });
+  }
+
+  // Pass 3: build the user-defined Type/Class member tables, then verify
+  // every `var.field` reference whose `var` resolves to one of those types.
+  const userTypes = collectUserDefinedTypes(files);
+  for (const e of checkTypedFieldReferences(files, userTypes, moduleSymbolsByName)) {
     pushErr(e.file, { line: e.line, msg: e.msg });
   }
 

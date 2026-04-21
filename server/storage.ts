@@ -90,7 +90,7 @@ export interface IStorage {
   getDailySalesReportsForMonth(year: number, month: number, storeId?: string): Promise<DailySalesReport[]>;
   getDailySalesReportsByDateRange(startDate: string, endDate: string, storeId?: string): Promise<DailySalesReport[]>;
   updateDailySalesReport(id: number, report: Partial<InsertDailySales>): Promise<DailySalesReport>;
-  upsertDailySalesReportByDate(report: InsertDailySales, storeId?: string): Promise<DailySalesReport>;
+  upsertDailySalesReportByDate(report: InsertDailySales, storeId?: string, isManualSave?: boolean): Promise<DailySalesReport>;
   deleteDailySalesReport(id: number): Promise<boolean>;
   getMtdSummary(year: number, month: number, beforeDate?: string, storeId?: string): Promise<{
     mtdActual: number;

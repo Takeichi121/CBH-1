@@ -5110,31 +5110,19 @@ ${pageContext}` : ''}`;
         if (!data.reportDate) continue;
 
         const existing = await storage.getDailySalesReportByDate(data.reportDate);
-
-        const incomingActual    = Number(data.actualSales ?? 0);
-        const incomingTc        = Number(data.transactionCount ?? 0);
-        const incomingActHours  = Number(data.actualHours ?? 0);
-        const incomingOtHours   = Number(data.otHours ?? 0);
-        const incomingWaste     = Number(data.wasteDaily ?? 0);
-
-        const safeActual   = incomingActual   > 0 ? String(incomingActual)   : (existing?.actualSales   ?? "0");
-        const safeTc       = incomingTc       > 0 ? String(incomingTc)       : (existing?.transactionCount ?? "0");
-        const safeActHours = incomingActHours > 0 ? String(incomingActHours) : (existing?.actualHours   ?? "0");
-        const safeOtHours  = incomingOtHours  > 0 ? String(incomingOtHours)  : (existing?.otHours       ?? "0");
-        const safeWaste    = incomingWaste    > 0 ? String(incomingWaste)    : (existing?.wasteRawDaily  ?? "0");
         const safeMealWaste = existing?.wasteMealDaily ?? "0";
 
         await storage.upsertDailySalesReportByDate({
           reportDate: data.reportDate,
           reportBy: u.nickName || u.fullName || u.username,
           workShift: "full",
-          actualSales: safeActual,
-          transactionCount: safeTc,
+          actualSales: String(data.actualSales ?? "0"),
+          transactionCount: String(data.transactionCount ?? "0"),
           recommendHours: String(data.recommendHours ?? "0"),
           rosterCommit: String(data.rosterCommit ?? "0"),
-          actualHours: safeActHours,
-          otHours: safeOtHours,
-          wasteRawDaily: safeWaste,
+          actualHours: String(data.actualHours ?? "0"),
+          otHours: String(data.otHours ?? "0"),
+          wasteRawDaily: String(data.wasteDaily ?? "0"),
           wasteMealDaily: safeMealWaste,
           lastYearSales: String(data.lastYearSales ?? "0"),
           forecastSales: String(data.forecastSales ?? "0"),
@@ -5147,7 +5135,7 @@ ${pageContext}` : ''}`;
           addCheeseCount: String(data.addCheeseCount ?? "0"),
           promotionOther1Qty: String(data.promotionOther1Qty ?? "0"),
           promotionOther2Qty: String(data.promotionOther2Qty ?? "0"),
-        } as any);
+        } as any, undefined, true); // isManualSave=true: allow zero-out for corrections
       } // <--- [2] FOR LOOP ENDS
 
       await storage.log("save_daily_sales_data", u.username, `count=${salesData.length}`);

@@ -364,6 +364,12 @@ web app for offline use on Windows (Excel 2016+).
 - On Windows, `cscript scripts/export-to-excel/Setup-Workbook.vbs` imports the
   VBA modules from `vba/` into the workbook and saves it as
   `dist/BK_Work_Schedule.xlsm`.
+- For non-technical staff, double-click
+  `scripts/export-to-excel/Build-Workbook.bat` instead. It runs the data
+  export, builds the workbook, verifies the Excel Trust Center
+  "Trust access to the VBA project object model" setting (printing a friendly
+  fix-it message if missing), embeds the VBA, and copies the finished
+  `BK_Work_Schedule.xlsm` to the user's Desktop in one step.
 
 **VBA layout** — see `docs/EXCEL_WORKBOOK_DESIGN.md`. Modules cover
 authentication (SHA-256 + salt), shift booking with capacity/maintenance

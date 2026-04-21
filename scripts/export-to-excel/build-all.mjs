@@ -14,4 +14,6 @@ function run(cmd, args) {
 run("node", [path.join(here, "export-csv.mjs")]);
 run("node", [path.join(here, "build-workbook.mjs")]);
 console.log("\n✅ dist/BK_Work_Schedule.xlsx ready.");
-console.log("Next, on a Windows PC: cscript scripts\\export-to-excel\\Setup-Workbook.vbs");
+console.log("Next, on a Windows PC, double-click:");
+console.log("    scripts\\export-to-excel\\Build-Workbook.bat");
+console.log("(That one script re-runs this build, embeds VBA, and drops the .xlsm on the Desktop.)");

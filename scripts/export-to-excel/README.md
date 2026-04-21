@@ -1,0 +1,35 @@
+# Excel workbook build scripts
+
+This folder contains the Node and VBScript helpers that turn the source files
+under `vba/modules/` and `vba/forms/` into the distributable `.xlsm` workbook.
+
+## Files
+- `build-workbook.mjs` — main builder; assembles the workbook on a Windows host.
+- `build-all.mjs` — convenience wrapper that runs the full build pipeline.
+- `export-csv.mjs` / `import-from-csv.mjs` — data round-trip helpers.
+- `Setup-Workbook.vbs` / `Build-Workbook.bat` — Windows entry points.
+
+## Pre-flight: lint the VBA before building
+
+Before doing a Windows test pass (or shipping a new build) run the VBA syntax
+lint so that obvious typos are caught on Linux/CI instead of inside Excel:
+
+```
+node scripts/lint-vba.mjs
+```
+
+The linter scans every `*.bas` / `*.cls` under `vba/modules/` and every
+`*.code.txt` / `*.frm` under `vba/forms/` and reports:
+
+- Modules missing `Option Explicit`.
+- Unbalanced `Sub` / `Function` / `Property` / `If` / `For` / `Do` / `While` /
+  `With` / `Select Case` / `Type` / `Enum` blocks (missing `End ...`, `Next`,
+  `Loop`, or `Wend`).
+- Mismatched closers (e.g. an `End With` where an `End If` was expected).
+
+Exit status is non-zero when any issue is found, which is what the CI workflow
+at `.github/workflows/vba-lint.yml` keys off.
+
+The linter is a static check — it will not catch every runtime problem (e.g.
+typos in identifiers or wrong argument types). Those are still caught by the
+Windows test pass described in `EXCEL_USER_MANUAL.md`.

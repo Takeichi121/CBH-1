@@ -133,6 +133,7 @@ The CSV backup and re-import buttons in **Settings** are **admin-only** by desig
 This workbook can only be exercised on Windows with Excel 2016 or newer (VBA does not run on Excel for Mac or LibreOffice). Use this checklist when validating a fresh build of `dist/BK_Work_Schedule.xlsm` on a Windows test machine. File one bug per failure and note the screen, language, and steps to reproduce.
 
 ### Pre-flight
+- [ ] On the build machine (or in CI) run `node scripts/lint-vba.mjs` and confirm it exits 0 — this catches missing `Option Explicit` and unbalanced `Sub` / `Function` / `If` / `For` / `Do` / `With` / `Select Case` / `Type` / `Enum` blocks before you ever open Excel. The same check runs automatically via `.github/workflows/vba-lint.yml` on every push that touches `vba/`.
 - [ ] Excel 2016+ installed on Windows 10/11
 - [ ] File → Options → Trust Center → Macro Settings: "Disable all macros with notification" (then click *Enable Content* on the yellow bar)
 - [ ] Run `scripts/export-to-excel/Setup-Workbook.vbs` once on the workbook to install modules and set the project name

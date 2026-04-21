@@ -8481,7 +8481,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
           lines.push(cols.map(c => csvEscape(r[c])).join(","));
         }
         files[`${table}.csv`] = lines.join("\n") + "\n";
-        manifestTables.push({ table, rows: data.length });
+        manifestTables.push({ name: table, rows: data.length, columns: cols });
       }
 
       const manifest = {

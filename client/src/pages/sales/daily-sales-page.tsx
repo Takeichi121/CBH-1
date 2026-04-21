@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1621,8 +1621,7 @@ ${v.staffRosterText || ""}
       });
   };
 
-  const handleCopyNewReport = () => {
-    const v = form.getValues();
+  const buildGrandDiamondText = useCallback((v: any): string => {
     const actualSalesVal = parseFloat(v.actualSales?.replace(/,/g, "") || "0") || 0;
     const tcVal = parseInt(v.transactionCount) || 0;
     const taVal = tcVal > 0 ? Math.round(actualSalesVal / tcVal) : 0;
@@ -1757,6 +1756,17 @@ ${v.staffRosterText || ""}
       `📝 Report by ${v.reportBy}`,
     ].join("\n");
 
+    return reportText;
+  }, []);
+
+  const watchedAllValues = form.watch();
+  const dailyPreviewText = useMemo(
+    () => buildGrandDiamondText(watchedAllValues),
+    [watchedAllValues, buildGrandDiamondText],
+  );
+
+  const handleCopyNewReport = () => {
+    const reportText = buildGrandDiamondText(form.getValues());
     navigator.clipboard
       .writeText(reportText)
       .then(() => {
@@ -4514,6 +4524,32 @@ ${v.staffRosterText || ""}
                       ส่ง Daily Report ไป LINE
                     </Button>
                   )}
+                </div>
+
+                {/* Preview Text — live preview of the Grand Diamond report */}
+                <div className="mt-5 pt-4 border-t border-border/40" data-testid="section-daily-preview">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {language === "th" ? "ตัวอย่างข้อความ" : "Preview Text"}
+                    </h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs"
+                      onClick={handleCopyNewReport}
+                      data-testid="button-copy-preview-text"
+                    >
+                      <Copy className="w-3 h-3" />
+                      {language === "th" ? "คัดลอก" : "Copy"}
+                    </Button>
+                  </div>
+                  <pre
+                    className="whitespace-pre-wrap text-sm bg-muted/50 rounded-md p-4 font-mono leading-relaxed max-h-[480px] overflow-auto border border-border/40"
+                    data-testid="text-daily-preview"
+                  >
+                    {dailyPreviewText}
+                  </pre>
                 </div>
 
                 {/* ตารางบันทึก — Saved Shift Log */}

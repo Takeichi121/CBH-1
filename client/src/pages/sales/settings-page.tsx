@@ -1164,7 +1164,7 @@ export default function SalesSettingsPage() {
               </div>
               <div className="overflow-x-auto scrollbar-visible pb-3" style={{ scrollbarWidth: 'auto', scrollbarColor: '#888 #f1f1f1' }}>
                 <div>
-                  <table className="w-full text-xs border-collapse min-w-[6300px]">
+                  <table className="w-full text-xs border-collapse min-w-[4400px]">
                     <thead className="sticky top-0 z-20 shadow-sm">
                       <tr className="text-center font-bold">
                         <th className="p-2 border border-slate-300 min-w-[80px] sticky left-0 z-30 bg-slate-200 dark:bg-slate-700" rowSpan={2}>{t.date}</th>
@@ -1176,21 +1176,21 @@ export default function SalesSettingsPage() {
                       </tr>
                       <tr className="bg-slate-100 dark:bg-slate-700 text-center">
                         {/* Sales columns (15) */}
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-orange-50 dark:bg-orange-950">LY Sales Daily</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-orange-50 dark:bg-orange-950">LY Sales MTD</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-yellow-50 dark:bg-yellow-950">Target (Incentive)</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-yellow-50 dark:bg-yellow-950">Target MTD</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-orange-50 dark:bg-orange-950">Forecast NBO</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-green-50 dark:bg-green-950">Actual Daily</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-green-50 dark:bg-green-950">Actual MTD</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px]">Variance Target</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px]">Variance MTD</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-blue-50 dark:bg-blue-950">Delivery Daily</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px]">Delivery MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-orange-50 dark:bg-orange-950">LY Sales Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-orange-50 dark:bg-orange-950">LY Sales MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-yellow-50 dark:bg-yellow-950">Target (Incentive)</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-yellow-50 dark:bg-yellow-950">Target MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-orange-50 dark:bg-orange-950">Forecast NBO</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-green-50 dark:bg-green-950">Actual Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-green-50 dark:bg-green-950">Actual MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">Variance Target</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">Variance MTD</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-blue-50 dark:bg-blue-950">Delivery Daily</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">Delivery MTD</th>
                         <th className="p-1 border border-slate-300 min-w-[70px]">Achieve %</th>
                         <th className="p-1 border border-slate-300 min-w-[70px]">Var Forecast</th>
                         <th className="p-1 border border-slate-300 min-w-[70px]">Comp Sales %</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-red-50 dark:bg-red-950">Waste (฿)</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-red-50 dark:bg-red-950">Waste (฿)</th>
                         <th className="p-1 border border-slate-300 min-w-[60px]">Waste %</th>
                         {/* TC columns (9) */}
                         <th className="p-1 border border-slate-300 min-w-[60px] bg-orange-50 dark:bg-orange-950">LY TC Daily</th>
@@ -1217,13 +1217,13 @@ export default function SalesSettingsPage() {
                         <th className="p-1 border border-slate-300 min-w-[70px] font-bold">Sum Hr</th>
                         <th className="p-1 border border-slate-300 min-w-[70px]">MTD Hr</th>
                         <th className="p-1 border border-slate-300 min-w-[60px]">Var Hr</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-indigo-50 dark:bg-indigo-950">Duty Cost</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-indigo-50 dark:bg-indigo-950">PT+OT Cost</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-indigo-50 dark:bg-indigo-950">Duty Cost</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-indigo-50 dark:bg-indigo-950">PT+OT Cost</th>
                         <th className="p-1 border border-slate-300 min-w-[70px] bg-indigo-50 dark:bg-indigo-950">Fixed</th>
                         <th className="p-1 border border-slate-300 min-w-[60px] bg-indigo-50 dark:bg-indigo-950">คนปิด</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px] bg-indigo-50 dark:bg-indigo-950">ค่าปิดร้าน</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px]">COL (฿)</th>
-                        <th className="p-1 border border-slate-300 min-w-[80px]">MTD COL</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-indigo-50 dark:bg-indigo-950">ค่าปิดร้าน</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">COL (฿)</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px]">MTD COL</th>
                         <th className="p-1 border border-slate-300 min-w-[60px]">COL %</th>
                         <th className="p-1 border border-slate-300 min-w-[60px]">TCMH</th>
                         {/* Promotion columns (15) */}
@@ -1250,44 +1250,44 @@ export default function SalesSettingsPage() {
                           <td className="p-1 border border-slate-300 font-medium bg-slate-50 dark:bg-slate-800 sticky left-0 z-10">{row.displayDate}</td>
                           {/* Sales section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearSales', e.target.value)} data-testid={`input-ly-sales-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearSales', e.target.value)} data-testid={`input-ly-sales-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.lastYearSalesMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={dailyTargets[row.date] || ""} onChange={(e) => handleTargetChange(row.date, e.target.value)} data-testid={`input-target-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={dailyTargets[row.date] || ""} onChange={(e) => handleTargetChange(row.date, e.target.value)} data-testid={`input-target-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.targetSalesMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.forecastSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'forecastSales', e.target.value)} data-testid={`input-forecast-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.forecastSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'forecastSales', e.target.value)} data-testid={`input-forecast-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualSales', e.target.value)} data-testid={`input-sales-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualSales || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualSales', e.target.value)} data-testid={`input-sales-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualSalesMtd)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceFromTargetDaily >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceFromTargetDaily)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceFromTargetMtd >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceFromTargetMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.salesDelivery || ""} onChange={(e) => handleSalesDataChange(row.date, 'salesDelivery', e.target.value)} data-testid={`input-delivery-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.salesDelivery || ""} onChange={(e) => handleSalesDataChange(row.date, 'salesDelivery', e.target.value)} data-testid={`input-delivery-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.salesDeliveryMtd)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.achievePercent >= 100 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.achievePercent)}%</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceFromForecast >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceFromForecast)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.compSalesPercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.compSalesPercent)}%</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-red-700 dark:text-red-300" value={editableSalesData[row.date]?.wasteDaily || ""} onChange={(e) => handleSalesDataChange(row.date, 'wasteDaily', e.target.value)} data-testid={`input-waste-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-red-700 dark:text-red-300" value={editableSalesData[row.date]?.wasteDaily || ""} onChange={(e) => handleSalesDataChange(row.date, 'wasteDaily', e.target.value)} data-testid={`input-waste-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.wastePercent)}%</td>
                           {/* TC section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearTc', e.target.value)} data-testid={`input-ly-tc-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.lastYearTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'lastYearTc', e.target.value)} data-testid={`input-ly-tc-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.lastYearTcMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTc', e.target.value)} data-testid={`input-target-tc-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTc', e.target.value)} data-testid={`input-target-tc-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.targetTcMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualTc', e.target.value)} data-testid={`input-tc-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent" value={editableSalesData[row.date]?.actualTc || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualTc', e.target.value)} data-testid={`input-tc-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.actualTcMtd)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceTcFromTarget >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtNum(row.varianceTcFromTarget)}</td>
@@ -1296,24 +1296,24 @@ export default function SalesSettingsPage() {
                           {/* TA section */}
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.lastYearTa)}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTa || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTa', e.target.value)} data-testid={`input-target-ta-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-orange-700 dark:text-orange-300" value={editableSalesData[row.date]?.targetTa || ""} onChange={(e) => handleSalesDataChange(row.date, 'targetTa', e.target.value)} data-testid={`input-target-ta-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.actualTa)}</td>
                           <td className={`p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2 ${row.varianceTa >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtDec(row.varianceTa)}</td>
                           {/* Labor section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.recommendHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'recommendHours', e.target.value)} data-testid={`input-rec-hours-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.recommendHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'recommendHours', e.target.value)} data-testid={`input-rec-hours-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.rosterCommit || ""} onChange={(e) => handleSalesDataChange(row.date, 'rosterCommit', e.target.value)} data-testid={`input-roster-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.rosterCommit || ""} onChange={(e) => handleSalesDataChange(row.date, 'rosterCommit', e.target.value)} data-testid={`input-roster-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.mtdRoster)}</td>
                           <td className="p-1 border border-slate-300 bg-gray-100 dark:bg-gray-700 text-center text-gray-500">{row.dutyTeam}</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.actualHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualHours', e.target.value)} data-testid={`input-actual-hours-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.actualHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'actualHours', e.target.value)} data-testid={`input-actual-hours-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.otHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'otHours', e.target.value)} data-testid={`input-ot-hours-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-blue-700 dark:text-blue-300" value={editableSalesData[row.date]?.otHours || ""} onChange={(e) => handleSalesDataChange(row.date, 'otHours', e.target.value)} data-testid={`input-ot-hours-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-100 dark:bg-slate-700 font-bold text-right pr-2 text-indigo-700 dark:text-indigo-300">{fmtDec(row.summaryHours)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.mtdWorkingHours)}</td>
@@ -1329,27 +1329,27 @@ export default function SalesSettingsPage() {
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.tcmh)}</td>
                           {/* Promotion section */}
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.vMealCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'vMealCount', e.target.value)} data-testid={`input-vmeal-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.vMealCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'vMealCount', e.target.value)} data-testid={`input-vmeal-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.vMealMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.vMealPct)}%</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.upSizeCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'upSizeCount', e.target.value)} data-testid={`input-upsize-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.upSizeCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'upSizeCount', e.target.value)} data-testid={`input-upsize-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.upSizeMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.upSizePct)}%</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.addCheeseCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'addCheeseCount', e.target.value)} data-testid={`input-addcheese-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.addCheeseCount || ""} onChange={(e) => handleSalesDataChange(row.date, 'addCheeseCount', e.target.value)} data-testid={`input-addcheese-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.addCheeseMtd)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.addCheesePct)}%</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.promotionOther1Qty || ""} onChange={(e) => handleSalesDataChange(row.date, 'promotionOther1Qty', e.target.value)} data-testid={`input-promo-other1-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.promotionOther1Qty || ""} onChange={(e) => handleSalesDataChange(row.date, 'promotionOther1Qty', e.target.value)} data-testid={`input-promo-other1-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.promoOther1Mtd)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.promoOther1Pct)}%</td>
                           <td className="p-1 border border-slate-300 bg-white dark:bg-slate-900">
-                            <Input className="h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.promotionOther2Qty || ""} onChange={(e) => handleSalesDataChange(row.date, 'promotionOther2Qty', e.target.value)} data-testid={`input-promo-other2-${row.date}`} />
+                            <Input className="w-full h-6 text-right px-1 text-xs border-0 focus:ring-1 bg-transparent text-pink-700 dark:text-pink-300" value={editableSalesData[row.date]?.promotionOther2Qty || ""} onChange={(e) => handleSalesDataChange(row.date, 'promotionOther2Qty', e.target.value)} data-testid={`input-promo-other2-${row.date}`} />
                           </td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtNum(row.promoOther2Mtd)}</td>
                           <td className="p-1 border border-slate-300 bg-slate-50 dark:bg-slate-800 text-right pr-2">{fmtDec(row.promoOther2Pct)}%</td>

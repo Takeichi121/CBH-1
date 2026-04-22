@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle, Upload } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle, Upload, Pencil, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useAreaLock } from "@/hooks/use-area-lock";
@@ -128,6 +128,9 @@ export default function SalesSettingsPage() {
 
   const [originalDailyTargets, setOriginalDailyTargets] = useState<Record<string, string>>({});
   const [originalSalesData, setOriginalSalesData] = useState<Record<string, any>>({});
+
+  const [isTableEditMode, setIsTableEditMode] = useState(false);
+  const [hasDbData, setHasDbData] = useState(false);
 
   // Excel Import State
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -560,7 +563,8 @@ export default function SalesSettingsPage() {
           month: selectedMonth 
         });
         const data = await res.json();
-        if (data.ok && data.reports) {
+        if (data.ok && data.reports && data.reports.length > 0) {
+          setHasDbData(true);
           const editableMap: Record<string, any> = {};
           const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
           data.reports.forEach((report: any) => {
@@ -606,6 +610,7 @@ export default function SalesSettingsPage() {
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
         } else {
+          setIsTableEditMode(true);
           const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
           const newMap: Record<string, any> = {};
           monthDates.forEach(({ date }) => {
@@ -620,6 +625,8 @@ export default function SalesSettingsPage() {
     };
     
     if (!isLoading) {
+      setIsTableEditMode(false);
+      setHasDbData(false);
       loadDailyTargets();
       loadDailySales();
     }
@@ -686,6 +693,8 @@ export default function SalesSettingsPage() {
       const data = await res.json();
       if (data.ok) {
         toast({ title: t.saved, description: language === "th" ? "บันทึกเป้าหมายรายวันเรียบร้อย" : "Daily targets saved" });
+        setHasDbData(true);
+        setIsTableEditMode(false);
       } else {
         toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
       }
@@ -748,6 +757,8 @@ export default function SalesSettingsPage() {
       const data = await res.json();
       if (data.ok) {
         toast({ title: t.saved, description: language === "th" ? "บันทึกข้อมูลยอดขายรายวันเรียบร้อย" : "Daily sales data saved" });
+        setHasDbData(true);
+        setIsTableEditMode(false);
       } else {
         toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
       }
@@ -1119,6 +1130,7 @@ export default function SalesSettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <fieldset disabled={!isTableEditMode} className="border-0 p-0 m-0 disabled:opacity-60">
             <div className="border rounded-md overflow-hidden relative">
               <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
                 <span className="animate-pulse">←</span>
@@ -1395,8 +1407,27 @@ export default function SalesSettingsPage() {
                 </div>
               </div>
             </div>
+            </fieldset>
             
-            <div className="pt-4 flex flex-wrap justify-end gap-2">
+            <div className="pt-4 flex flex-wrap items-center justify-end gap-2">
+              {hasDbData && !isTableEditMode && (
+                <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-700">
+                  <CheckCircle className="w-3 h-3" />
+                  {language === "th" ? "บันทึกแล้ว" : "Saved"}
+                </Badge>
+              )}
+              {hasDbData && !isTableEditMode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  onClick={() => setIsTableEditMode(true)}
+                  data-testid="button-edit-table"
+                >
+                  <Pencil className="w-3 h-3" />
+                  {language === "th" ? "แก้ไข" : "Edit"}
+                </Button>
+              )}
               <Button variant="outline" onClick={handleExportExcel} className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-900/50 dark:border-green-700 dark:text-green-300" data-testid="button-export-excel">
                 <FileSpreadsheet className="mr-2 w-4 h-4"/>
                 {t.exportExcel}
@@ -1405,17 +1436,23 @@ export default function SalesSettingsPage() {
                 <Upload className="mr-2 w-4 h-4"/>
                 {language === "th" ? "นำเข้าจาก Excel" : "Import from Excel"}
               </Button>
-              <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
-                {t.applyAll}
-              </Button>
-              <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets || areaLocked} data-testid="button-save-targets">
-                {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
-                {language === "th" ? "บันทึกเป้า" : "Save Targets"}
-              </Button>
-              <Button onClick={handleSaveSalesData} disabled={isSavingSales || areaLocked} data-testid="button-save-data">
-                {isSavingSales ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
-                {language === "th" ? "บันทึกข้อมูล" : "Save Data"}
-              </Button>
+              {isTableEditMode && (
+                <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
+                  {t.applyAll}
+                </Button>
+              )}
+              {isTableEditMode && (
+                <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets || areaLocked} data-testid="button-save-targets">
+                  {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
+                  {language === "th" ? "บันทึกเป้า" : "Save Targets"}
+                </Button>
+              )}
+              {isTableEditMode && (
+                <Button onClick={handleSaveSalesData} disabled={isSavingSales || areaLocked} data-testid="button-save-data">
+                  {isSavingSales ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
+                  {language === "th" ? "บันทึกข้อมูล" : "Save Data"}
+                </Button>
+              )}
               <Button variant="outline" onClick={handleUndo} data-testid="button-undo">
                 <Undo2 className="mr-2 w-4 h-4"/>
                 {language === "th" ? "Undo" : "Undo"}

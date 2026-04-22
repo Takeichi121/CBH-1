@@ -522,7 +522,7 @@ export default function SalesSettingsPage() {
           month: selectedMonth 
         });
         const data = await res.json();
-        if (data.ok && data.targets) {
+        if (data.ok && data.targets && data.targets.length > 0) {
           const targetMap: Record<string, string> = {};
           const tcTargetMap: Record<string, string> = {};
           data.targets.forEach((t: DailyTarget) => {
@@ -538,6 +538,7 @@ export default function SalesSettingsPage() {
           setDailyTargets(newTargets);
           setOriginalDailyTargets(JSON.parse(JSON.stringify(newTargets)));
           setDailyTcTargets(newTcTargets);
+          return true;
         } else {
           const newTargets: Record<string, string> = {};
           const newTcTargets: Record<string, string> = {};
@@ -548,13 +549,15 @@ export default function SalesSettingsPage() {
           setDailyTargets(newTargets);
           setOriginalDailyTargets(JSON.parse(JSON.stringify(newTargets)));
           setDailyTcTargets(newTcTargets);
+          return false;
         }
       } catch (error) {
         console.error("Failed to load daily targets:", error);
+        return false;
       }
     };
     
-    const loadDailySales = async () => {
+    const loadDailySales = async (): Promise<boolean> => {
       try {
         const token = localStorage.getItem("bk_token");
         const res = await apiRequest("POST", "/api/sales/getMonthlyReports", { 
@@ -563,10 +566,9 @@ export default function SalesSettingsPage() {
           month: selectedMonth 
         });
         const data = await res.json();
+        const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
         if (data.ok && data.reports && data.reports.length > 0) {
-          setHasDbData(true);
           const editableMap: Record<string, any> = {};
-          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
           data.reports.forEach((report: any) => {
             editableMap[report.reportDate] = {
               actualSales: (parseFloat(report.actualSales) || 0).toString(),
@@ -601,34 +603,37 @@ export default function SalesSettingsPage() {
           });
           const newMap: Record<string, any> = {};
           monthDates.forEach(({ date }) => {
-            if (editableMap[date]) {
-              newMap[date] = editableMap[date];
-            } else {
-              newMap[date] = { ...emptyRow };
-            }
+            newMap[date] = editableMap[date] ? editableMap[date] : { ...emptyRow };
           });
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
+          return true;
         } else {
-          setIsTableEditMode(true);
-          const emptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
           const newMap: Record<string, any> = {};
           monthDates.forEach(({ date }) => {
             newMap[date] = { ...emptyRow };
           });
           setEditableSalesData(newMap);
           setOriginalSalesData(JSON.parse(JSON.stringify(newMap)));
+          return false;
         }
       } catch (error) {
         console.error("Failed to load daily sales:", error);
+        return false;
       }
     };
     
     if (!isLoading) {
       setIsTableEditMode(false);
       setHasDbData(false);
-      loadDailyTargets();
-      loadDailySales();
+      // Run both loads in parallel; decide lock state once both have resolved.
+      // A month is considered "has DB data" if either targets OR sales reports exist.
+      // Only open edit mode when NEITHER source has saved data.
+      Promise.all([loadDailyTargets(), loadDailySales()]).then(([hasTargets, hasSales]) => {
+        const anyData = hasTargets || hasSales;
+        setHasDbData(anyData);
+        if (!anyData) setIsTableEditMode(true);
+      });
     }
   }, [selectedYear, selectedMonth, isLoading, monthDates, defaultTarget]);
 
@@ -1436,11 +1441,9 @@ export default function SalesSettingsPage() {
                 <Upload className="mr-2 w-4 h-4"/>
                 {language === "th" ? "นำเข้าจาก Excel" : "Import from Excel"}
               </Button>
-              {isTableEditMode && (
-                <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
-                  {t.applyAll}
-                </Button>
-              )}
+              <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
+                {t.applyAll}
+              </Button>
               {isTableEditMode && (
                 <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets || areaLocked} data-testid="button-save-targets">
                   {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}

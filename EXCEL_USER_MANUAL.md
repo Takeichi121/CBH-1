@@ -270,3 +270,38 @@ docs/baseline-frames/
 3. If a screen was intentionally redesigned in this build, replace the corresponding baseline PNG (and re-record the chapter in the next baseline video) so future runs don't keep flagging it.
 
 By default the script writes into `docs/baseline-frames/<lang>/`; pass `--out <dir>` to redirect somewhere else (useful when comparing two builds without overwriting the committed baseline).
+
+#### Auto-flag screens that actually changed
+
+Step 2 above (open both PNGs side by side and look) is still manual eyeballing. Once you have a folder of fresh screenshots that uses the same filenames as the baselines, let the diff helper tell you which screens to bother opening:
+
+```
+node scripts/diff-baseline-frames.mjs --baseline docs/baseline-frames/th --new path\to\new-run-th
+```
+
+For every PNG in `--new` that has a matching filename in `--baseline`, this writes a black-and-white **diff mask** PNG to `<new>/diffs/<name>.diff.png` (white = pixels that differ from the baseline) and prints one summary line per screen:
+
+```
+  [ ok ] 01-login.png:    changed pixels: 0 / 2073600 (0.00%)
+  [FLAG] 03-roster.png:   changed pixels: 18420 / 2073600 (0.89%)
+  [ ok ] 04-sales.png:    changed pixels: 412 / 2073600 (0.02%)
+  ...
+  [skip] 12-system-log.png: no baseline
+```
+
+How to read the output:
+
+- `[ ok ]` — the screen matched the baseline within tolerance, no need to open it.
+- `[FLAG]` — the diff exceeded the flag threshold; open `<new>/diffs/<name>.diff.png` to see exactly which region changed, then compare the original baseline + new PNGs only for that one screen.
+- `[skip]` — filename mismatch; either rename the screenshot or update the baseline.
+- `[fail]` — `ffmpeg` could not process the pair; usually means one of the PNGs is corrupt or unreadable.
+
+The script exits with status `1` if any screen is flagged or any pair failed, so it slots into a CI step (a green run = every screen matched).
+
+Useful flags:
+
+- `--threshold 30` (default): luma delta below which a pixel is considered unchanged. Bump to `40`–`60` if anti-aliasing on text or sub-pixel jitter is causing trivial false flags; drop to `15`–`20` for a stricter check.
+- `--flag-pct 0.5` (default): percent of changed pixels above which a screen gets `[FLAG]`. Raise it if you only care about large layout shifts; lower it to surface tiny icon/badge changes.
+- `--out <dir>`: where to write the diff masks. Defaults to `<new>/diffs/`.
+
+If a screen was intentionally redesigned, replace the corresponding baseline PNG (as in step 3 above) so future runs stop flagging it.

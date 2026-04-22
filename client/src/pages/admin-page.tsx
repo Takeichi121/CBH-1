@@ -1164,7 +1164,9 @@ export default function AdminPage() {
                       <TableHead>
                         <span className="flex items-center gap-1">
                           Code
-                          <LogIn className="w-3 h-3 text-primary" title={language === "th" ? "รหัสที่ใช้ Login" : "Login Code"} />
+                          <span title={language === "th" ? "รหัสที่ใช้ Login" : "Login Code"}>
+                            <LogIn className="w-3 h-3 text-primary" />
+                          </span>
                         </span>
                       </TableHead>
                       <TableHead>{language === "th" ? "ที่อยู่" : "Address"}</TableHead>

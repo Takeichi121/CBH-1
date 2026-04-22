@@ -673,7 +673,8 @@ export default function SalesSettingsPage() {
       if (data.ok) {
         toast({ title: t.saved, description: t.savedDesc });
       } else {
-        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
+        const msg = typeof data?.message === "string" ? data.message : JSON.stringify(data?.message ?? data ?? "Unknown error");
+        toast({ variant: "destructive", title: t.errorSave, description: msg });
       }
     } catch (error: any) {
       toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
@@ -697,7 +698,8 @@ export default function SalesSettingsPage() {
       if (data.ok) {
         toast({ title: t.saved, description: language === "th" ? "บันทึกพารามิเตอร์ Labor เรียบร้อย" : "Labor parameters saved" });
       } else {
-        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
+        const msg = typeof data?.message === "string" ? data.message : JSON.stringify(data?.message ?? data ?? "Unknown error");
+        toast({ variant: "destructive", title: t.errorSave, description: msg });
       }
     } catch (error: any) {
       toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
@@ -721,7 +723,8 @@ export default function SalesSettingsPage() {
         setHasDbData(true);
         setIsTableEditMode(false);
       } else {
-        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
+        const msg = typeof data?.message === "string" ? data.message : JSON.stringify(data?.message ?? data ?? "Unknown error");
+        toast({ variant: "destructive", title: t.errorSave, description: msg });
       }
     } catch (error: any) {
       toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });
@@ -785,7 +788,8 @@ export default function SalesSettingsPage() {
         setHasDbData(true);
         setIsTableEditMode(false);
       } else {
-        toast({ variant: "destructive", title: t.errorSave, description: data.message || "Unknown error" });
+        const msg = typeof data?.message === "string" ? data.message : JSON.stringify(data?.message ?? data ?? "Unknown error");
+        toast({ variant: "destructive", title: t.errorSave, description: msg });
       }
     } catch (error: any) {
       toast({ variant: "destructive", title: t.errorSave, description: error.message || "Unknown error" });

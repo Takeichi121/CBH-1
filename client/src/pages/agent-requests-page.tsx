@@ -108,7 +108,7 @@ function ChannChatPanel() {
           if (raw === "[DONE]") continue;
           try {
             const parsed = JSON.parse(raw);
-            const token2 = parsed?.choices?.[0]?.delta?.content ?? parsed?.delta ?? parsed?.text ?? "";
+            const token2 = parsed?.content ?? parsed?.choices?.[0]?.delta?.content ?? parsed?.delta ?? parsed?.text ?? "";
             if (token2) {
               assistantText += token2;
               setMessages(prev => {

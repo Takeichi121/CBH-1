@@ -131,6 +131,7 @@ export default function SalesSettingsPage() {
 
   const [isTableEditMode, setIsTableEditMode] = useState(false);
   const [hasDbData, setHasDbData] = useState(false);
+  const [isLoadingTable, setIsLoadingTable] = useState(false);
 
   // Excel Import State
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -553,6 +554,16 @@ export default function SalesSettingsPage() {
         }
       } catch (error) {
         console.error("Failed to load daily targets:", error);
+        // Clear stale target data so prior-month values don't persist on failure.
+        const emptyTargets: Record<string, string> = {};
+        const emptyTcTargets: Record<string, string> = {};
+        monthDates.forEach(({ date }) => {
+          emptyTargets[date] = defaultTarget;
+          emptyTcTargets[date] = "300";
+        });
+        setDailyTargets(emptyTargets);
+        setOriginalDailyTargets(JSON.parse(JSON.stringify(emptyTargets)));
+        setDailyTcTargets(emptyTcTargets);
         return false;
       }
     };
@@ -619,6 +630,12 @@ export default function SalesSettingsPage() {
         }
       } catch (error) {
         console.error("Failed to load daily sales:", error);
+        // Clear stale sales data so prior-month values don't persist on failure.
+        const safeEmptyRow = { actualSales: "", actualTc: "", recommendHours: "", rosterCommit: "", actualHours: "", otHours: "", wasteDaily: "", lastYearSales: "", forecastSales: "", lastYearTc: "", targetTc: "", targetTa: "", closeShiftCount: "0", salesDelivery: "", vMealCount: "", upSizeCount: "", addCheeseCount: "", promotionOther1Qty: "", promotionOther2Qty: "" };
+        const fallbackMap: Record<string, any> = {};
+        monthDates.forEach(({ date }) => { fallbackMap[date] = { ...safeEmptyRow }; });
+        setEditableSalesData(fallbackMap);
+        setOriginalSalesData(JSON.parse(JSON.stringify(fallbackMap)));
         return false;
       }
     };
@@ -626,6 +643,7 @@ export default function SalesSettingsPage() {
     if (!isLoading) {
       setIsTableEditMode(false);
       setHasDbData(false);
+      setIsLoadingTable(true);
       // Run both loads in parallel; decide lock state once both have resolved.
       // A month is considered "has DB data" if either targets OR sales reports exist.
       // Only open edit mode when NEITHER source has saved data.
@@ -633,6 +651,8 @@ export default function SalesSettingsPage() {
         const anyData = hasTargets || hasSales;
         setHasDbData(anyData);
         if (!anyData) setIsTableEditMode(true);
+      }).finally(() => {
+        setIsLoadingTable(false);
       });
     }
   }, [selectedYear, selectedMonth, isLoading, monthDates, defaultTarget]);
@@ -1135,7 +1155,7 @@ export default function SalesSettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <fieldset disabled={!isTableEditMode} className="border-0 p-0 m-0 disabled:opacity-60">
+            <fieldset disabled={!isTableEditMode || isLoadingTable} className="border-0 p-0 m-0 disabled:opacity-60">
             <div className="border rounded-md overflow-hidden relative">
               <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
                 <span className="animate-pulse">←</span>
@@ -1415,13 +1435,13 @@ export default function SalesSettingsPage() {
             </fieldset>
             
             <div className="pt-4 flex flex-wrap items-center justify-end gap-2">
-              {hasDbData && !isTableEditMode && (
+              {!isLoadingTable && hasDbData && !isTableEditMode && (
                 <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-700">
                   <CheckCircle className="w-3 h-3" />
                   {language === "th" ? "บันทึกแล้ว" : "Saved"}
                 </Badge>
               )}
-              {hasDbData && !isTableEditMode && (
+              {!isLoadingTable && hasDbData && !isTableEditMode && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1444,13 +1464,13 @@ export default function SalesSettingsPage() {
               <Button variant="outline" onClick={handleApplyDefaultToAll} data-testid="button-apply-all">
                 {t.applyAll}
               </Button>
-              {isTableEditMode && (
+              {!isLoadingTable && isTableEditMode && (
                 <Button variant="outline" onClick={handleSaveTargets} disabled={isSavingTargets || areaLocked} data-testid="button-save-targets">
                   {isSavingTargets ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
                   {language === "th" ? "บันทึกเป้า" : "Save Targets"}
                 </Button>
               )}
-              {isTableEditMode && (
+              {!isLoadingTable && isTableEditMode && (
                 <Button onClick={handleSaveSalesData} disabled={isSavingSales || areaLocked} data-testid="button-save-data">
                   {isSavingSales ? <Loader2 className="animate-spin mr-2 w-4 h-4"/> : <Save className="mr-2 w-4 h-4"/>}
                   {language === "th" ? "บันทึกข้อมูล" : "Save Data"}

@@ -133,10 +133,26 @@ The CSV backup and re-import buttons in **Settings** are **admin-only** by desig
 This workbook can only be exercised on Windows with Excel 2016 or newer (VBA does not run on Excel for Mac or LibreOffice). Use this checklist when validating a fresh build of `dist/BK_Work_Schedule.xlsm` on a Windows test machine. File one bug per failure and note the screen, language, and steps to reproduce.
 
 ### Pre-flight
-- [ ] On the build machine (or in CI) run `node scripts/lint-vba.mjs` and confirm it exits 0. The same check runs automatically via `.github/workflows/vba-lint.yml` on every push that touches `vba/`. It runs three passes:
+- [ ] On the build machine (or in CI) run `node scripts/lint-vba.mjs` and confirm it exits 0. The same check runs automatically via `.github/workflows/vba-lint.yml` on every push that touches `vba/`. It runs three passes plus a non-fatal dead-code report:
   - **Structural pass** — flags missing `Option Explicit` and unbalanced `Sub` / `Function` / `If` / `For` / `Do` / `With` / `Select Case` / `Type` / `Enum` / `Property` blocks.
   - **Cross-module symbol resolver** — for every qualified reference of the form `modX.Member`, confirms that `Member` is actually defined in `modX` (as a `Sub`, `Function`, `Property`, `Const`, module-level variable, `Type`, `Enum`, or enum member). This catches typos like `modAuth.StatGet` (instead of `StateGet`) and stale call sites left behind after a rename.
   - **Type-aware field/property resolver** — learns each variable's declared type from `Dim/Public/Private/Static/Global var As TypeName`, `Set var = New ClassName`, and procedure parameter lists. For every `var.field` reference whose `var` resolves to a user-defined `Type` record (in any `.bas`) or a `.cls` class, confirms `field` is actually a member of that type. This catches typos like `mySession.Roel` instead of `mySession.Role`. Variables typed as built-ins (`Worksheet`, `Range`, `Variant`, `Object`, `Long`, etc.) or as anything the linter has never seen are skipped to avoid false positives. **What it does *not* catch:** typos in *unqualified* references (e.g. a bare `StatGet` with no `modAuth.` prefix), since distinguishing user code from VBA built-ins like `MsgBox`/`Format`/`xlUp` would require modelling the entire built-in namespace; mis-typed parameter names; mis-typed members on built-in / Office-host types (anything not declared under `vba/modules/`); and arity / type mismatches. Those are still covered by *Debug → Compile VBAProject* in the Windows pre-flight step below.
+
+#### Dead code report
+
+After the three passes above, the linter prints a non-fatal **Dead code report** listing every `Public Sub` / `Public Function` defined under `vba/modules/` that is not referenced from any other module *and* is not named in any string literal anywhere in the codebase (so macro-name strings like `OnAction = "modUI.DoLogout"` or `Application.Run "ShowMain"` correctly count as live references). The report does not affect the linter's exit code — it is an advisory pointing at code that can probably be deleted (e.g. an old `StateGet` left behind after a rename) or downgraded to `Private`.
+
+Self-references inside the same module do **not** save a procedure from the list: if a `Public` Sub is only called by its own module, it should be `Private`.
+
+To exempt entry-point macros that Excel invokes by name (button `OnAction` handlers wired in code that the linter already sees as a string are picked up automatically; this exemption is for the rare cases that aren't, such as a macro listed only in the Excel ribbon customisation XML or `Workbook_Open` dispatcher), add the magic comment `'lint-vba: keep` either on the same line as the `Public Sub`/`Function` header or on the line immediately preceding it. Example:
+
+```vba
+'lint-vba: keep
+Public Sub ShowMainFromRibbon()
+    modUI.ShowMain
+End Sub
+```
+
 - [ ] Excel 2016+ installed on Windows 10/11
 - [ ] File → Options → Trust Center → Macro Settings: "Disable all macros with notification" (then click *Enable Content* on the yellow bar)
 - [ ] Run `scripts/export-to-excel/Setup-Workbook.vbs` once on the workbook to install modules and set the project name

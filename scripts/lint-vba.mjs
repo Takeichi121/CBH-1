@@ -583,6 +583,169 @@ function checkTypedFieldReferences(allFiles, userTypes, moduleSymbolsByName) {
   return errors;
 }
 
+// ---------------------------------------------------------------------------
+// Pass 4: dead-code report.
+//
+// Lists every `Public Sub` / `Public Function` (or default-public top-level
+// Sub/Function in a .bas module) that is not referenced anywhere else in the
+// codebase — neither as a code identifier in another file, nor as a macro
+// name string literal anywhere (e.g. `OnAction = "modUI.DoLogout"` or a bare
+// `"ShowMain"` passed to Application.Run).
+//
+// This is reported as a non-fatal warning section: the linter's exit code
+// is still driven solely by the structural / symbol / type-resolver passes
+// above. Maintainers exempt entry points that Excel calls by name (button
+// OnAction handlers, Workbook_Open dispatchers, etc.) by adding a magic
+// comment `'lint-vba: keep` either on the same line as the procedure
+// header or on the line immediately preceding it.
+//
+// Limitations:
+//   - Self-references inside the same module do NOT save a procedure from
+//     the list — if only a private helper in the same file calls it, the
+//     procedure should itself be `Private`.
+//   - We treat any matching identifier in another file's code as a use,
+//     even if that identifier is actually a local variable or a parameter
+//     that happens to share a name with the public proc. This skews the
+//     report toward false negatives (under-reporting), which is the safer
+//     direction for a non-fatal advisory pass.
+// ---------------------------------------------------------------------------
+
+const KEEP_RE = /'\s*lint-vba:\s*keep\b/i;
+
+function extractStringLiterals(text) {
+  const out = [];
+  let inStr = false;
+  let inComment = false;
+  let cur = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\n" || ch === "\r") {
+      if (inStr) { out.push(cur); cur = ""; inStr = false; }
+      inComment = false;
+      continue;
+    }
+    if (inComment) continue;
+    if (inStr) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; continue; }
+        inStr = false;
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    } else {
+      if (ch === "'") inComment = true;
+      else if (ch === '"') inStr = true;
+    }
+  }
+  if (inStr) out.push(cur);
+  return out;
+}
+
+function collectIdentifiers(textNoStringsNoComments) {
+  const ids = new Set();
+  const re = /[A-Za-z_]\w*/g;
+  let m;
+  while ((m = re.exec(textNoStringsNoComments)) !== null) {
+    ids.add(m[0].toLowerCase());
+  }
+  return ids;
+}
+
+function collectPublicProcedures(filePath) {
+  const text = readFileSync(filePath, "utf8");
+  const rawLines = text.split(/\r?\n/);
+  const logical = joinContinuations(rawLines);
+  const procs = [];
+  const stack = [];
+  for (const ent of logical) {
+    for (const stmt of splitStatements(ent.text)) {
+      const s = stmt.trim();
+      const opener = detectOpener(s);
+      const closer = detectCloser(s);
+      if (stack.length === 0) {
+        // Match any access modifier(s) followed by Sub/Function.
+        const m = /^((?:(?:public|private|friend|static)\s+)*)(sub|function)\s+([A-Za-z_]\w*)/i.exec(s);
+        if (m && !/\bdeclare\b/i.test(s)) {
+          const access = m[1].toLowerCase();
+          // In a standard .bas module the default access is Public, so we
+          // include both explicit Public and default. Skip Private / Friend.
+          if (!/\bprivate\b/.test(access) && !/\bfriend\b/.test(access)) {
+            const sameLine = rawLines[ent.lineNo - 1] || "";
+            const prevLine = rawLines[ent.lineNo - 2] || "";
+            const hasKeep = KEEP_RE.test(sameLine) || KEEP_RE.test(prevLine);
+            procs.push({ name: m[3], line: ent.lineNo, kind: m[2], hasKeep });
+          }
+        }
+      }
+      if (opener) stack.push(opener);
+      if (closer && stack.length) stack.pop();
+    }
+  }
+  return procs;
+}
+
+function reportDeadCode(allFiles) {
+  // Per-file: identifiers in code (logical, no strings/comments) and the
+  // raw file text (for string-literal extraction).
+  const codeIdsByFile = new Map();
+  const stringLiteralsByFile = new Map();
+  for (const f of allFiles) {
+    const text = readFileSync(f.path, "utf8");
+    const rawLines = text.split(/\r?\n/);
+    const logical = joinContinuations(rawLines);
+    const joined = logical.map(l => l.text).join("\n");
+    codeIdsByFile.set(f.path, collectIdentifiers(joined));
+    stringLiteralsByFile.set(f.path, extractStringLiterals(text));
+  }
+
+  // All string-literal identifiers from ALL files, pooled. A macro string
+  // like "modUI.DoLogout" sitting inside modUI itself still counts as a
+  // reference, because Excel — not the module — is what actually invokes it.
+  const stringIdPool = new Set();
+  for (const lits of stringLiteralsByFile.values()) {
+    for (const lit of lits) {
+      const re = /[A-Za-z_]\w*/g;
+      let m;
+      while ((m = re.exec(lit)) !== null) stringIdPool.add(m[0].toLowerCase());
+    }
+  }
+
+  const dead = []; // { file, line, module, name, kind }
+  for (const f of allFiles) {
+    if (!f.isModule) continue;
+    const modName = moduleNameOf(f.path);
+    for (const proc of collectPublicProcedures(f.path)) {
+      if (proc.hasKeep) continue;
+      const lname = proc.name.toLowerCase();
+
+      // Used by another file's code?
+      let usedByCode = false;
+      for (const [otherPath, ids] of codeIdsByFile) {
+        if (otherPath === f.path) continue;
+        if (ids.has(lname)) { usedByCode = true; break; }
+      }
+      if (usedByCode) continue;
+
+      // Used by any string literal anywhere (incl. same file)?
+      if (stringIdPool.has(lname)) continue;
+
+      dead.push({
+        file: f.path,
+        line: proc.line,
+        module: modName,
+        name: proc.name,
+        kind: proc.kind.toLowerCase() === "sub" ? "Sub" : "Function",
+      });
+    }
+  }
+  dead.sort((a, b) =>
+    a.file.localeCompare(b.file) || a.line - b.line || a.name.localeCompare(b.name)
+  );
+  return dead;
+}
+
 function main() {
   const files = collectFiles();
   if (files.length === 0) {
@@ -641,6 +804,21 @@ function main() {
   }
   console.log("");
   console.log(`Checked ${files.length} file(s); ${filesWithErrors} with errors, ${totalErrors} issue(s) total.`);
+
+  // Pass 4 (non-fatal): dead-code report.
+  const dead = reportDeadCode(files);
+  console.log("");
+  if (dead.length === 0) {
+    console.log("Dead code report: no unreferenced Public Subs/Functions found.");
+  } else {
+    console.log(`Dead code report — ${dead.length} Public Sub/Function(s) defined but never referenced from other modules or macro strings:`);
+    for (const d of dead) {
+      console.log(`     ${relative(ROOT, d.file)}:${d.line}  Public ${d.kind} ${d.module}.${d.name}`);
+    }
+    console.log("");
+    console.log("Add a `'lint-vba: keep` comment on (or directly above) the procedure header to silence this warning for entry-point macros that Excel calls by name.");
+  }
+
   process.exit(totalErrors === 0 ? 0 : 1);
 }
 

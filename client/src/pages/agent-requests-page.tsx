@@ -200,9 +200,9 @@ function ChannChatPanel() {
                   <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               ) : msg.role === "assistant" ? (
-                <ReactMarkdown className="prose prose-sm dark:prose-invert max-w-none">
-                  {msg.content}
-                </ReactMarkdown>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
               ) : (
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               )}

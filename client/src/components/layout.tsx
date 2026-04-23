@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoDataHouse } from "@/components/logo";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp, Megaphone } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "next-themes";
@@ -68,6 +68,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const desktopNavItems = isViewer ? [
     ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
+    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
   ] : [
     ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
     ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
@@ -77,6 +78,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(isManagerOrAdmin && hasFeature("borrow") ? [
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
     ] : []),
+    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
     ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
@@ -85,6 +87,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const mobileNavItems = isViewer ? [
     ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
+    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
   ] : [
     ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
     ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
@@ -104,6 +107,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
+    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
     ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
   ];

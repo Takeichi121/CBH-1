@@ -36,6 +36,7 @@ import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
 import AgentRequestsPage from "@/pages/agent-requests-page";
 import AdminPermissionsPage from "@/pages/admin-permissions-page";
+import AnnouncementsPage from "@/pages/announcements-page";
 
 // Settings Pages
 import DropdownSettingsPage from "@/pages/settings/dropdown-settings-page";
@@ -74,6 +75,7 @@ const VIEWER_ALLOWED_PATHS = [
   "/sales/reports",
   "/sales/manual",
   "/handbook",
+  "/announcements",
 ];
 
 const PATH_TO_FEATURE: Record<string, string> = {
@@ -266,6 +268,10 @@ function Router() {
           
           <Route path="/admin/permissions">
             <ProtectedRoute component={AdminPermissionsPage} path="/admin/permissions" />
+          </Route>
+
+          <Route path="/announcements">
+            <ProtectedRoute component={AnnouncementsPage} path="/announcements" />
           </Route>
           
           <Route component={NotFound} />

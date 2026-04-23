@@ -8413,6 +8413,151 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     return res.json({ ok: true });
   }));
 
+  // ==========================================
+  // 📢 Announcements API
+  // ==========================================
+
+  app.get("/api/announcements", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.status(401).json({ ok: false, message: "User not found" });
+
+    const userIsManager = isManagerLike(u.role);
+    const isAdminLike = u.role === "admin" || u.role === "area";
+    // Admin/area can pass an explicit storeId query param to filter by a specific store
+    const requestedStore = req.query.storeId as string | undefined;
+    const userStoreId = u.storeId || "BK1040";
+    // allStores = admin with no storeId override sees every store
+    const allStores = isAdminLike && !requestedStore;
+    const storeId = (isAdminLike && requestedStore) ? requestedStore : userStoreId;
+
+    const includeExpired = req.query.includeExpired === "true";
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+    // Filtering is applied in the DB query so LIMIT is applied after filtering
+    const filteredAnnouncements = await storage.getAnnouncementsFiltered({
+      storeId,
+      allStores,
+      isManager: userIsManager,
+      includeExpired,
+      limit,
+    });
+
+    return res.json({ ok: true, announcements: filteredAnnouncements });
+  }));
+
+  app.post("/api/announcements", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) return res.status(403).json({ ok: false, message: "Manager role required" });
+
+    const { title, titleTh, content, contentTh, priority, targetAudience, isPinned, expiresAt, storeId: bodyStoreId } = req.body || {};
+    if (!title || !content) return res.status(400).json({ ok: false, message: "title and content are required" });
+
+    const VALID_PRIORITIES = ["high", "normal", "low"];
+    const VALID_AUDIENCES = ["all", "managers", "staff"];
+    if (priority && !VALID_PRIORITIES.includes(priority)) {
+      return res.status(400).json({ ok: false, message: `priority must be one of: ${VALID_PRIORITIES.join(", ")}` });
+    }
+    if (targetAudience && !VALID_AUDIENCES.includes(targetAudience)) {
+      return res.status(400).json({ ok: false, message: `targetAudience must be one of: ${VALID_AUDIENCES.join(", ")}` });
+    }
+
+    // Derive storeId from session; only admin/area may override via body
+    const isAdminLike = u.role === "admin" || u.role === "area";
+    const storeId = (isAdminLike && bodyStoreId) ? String(bodyStoreId) : (u.storeId || "BK1040");
+
+    const now = new Date().toISOString();
+    const announcement = await storage.createAnnouncement({
+      title: String(title),
+      titleTh: titleTh ? String(titleTh) : null,
+      content: String(content),
+      contentTh: contentTh ? String(contentTh) : null,
+      priority: priority || "normal",
+      targetAudience: targetAudience || "all",
+      isPinned: isPinned ? 1 : 0,
+      expiresAt: expiresAt || null,
+      storeId,
+      createdAt: now,
+      createdBy: u.username,
+      updatedAt: now,
+    });
+    return res.json({ ok: true, announcement });
+  }));
+
+  app.patch("/api/announcements/:id", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) return res.status(403).json({ ok: false, message: "Manager role required" });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+
+    const existing = await storage.getAnnouncement(id);
+    if (!existing) return res.status(404).json({ ok: false, message: "Announcement not found" });
+
+    // Non-admin managers may only edit announcements from their own store
+    const isAdminLike = u.role === "admin" || u.role === "area";
+    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+      return res.status(403).json({ ok: false, message: "No permission to edit this announcement" });
+    }
+
+    const { title, titleTh, content, contentTh, priority, targetAudience, isPinned, expiresAt } = req.body || {};
+
+    const VALID_PRIORITIES = ["high", "normal", "low"];
+    const VALID_AUDIENCES = ["all", "managers", "staff"];
+    if (priority !== undefined && !VALID_PRIORITIES.includes(priority)) {
+      return res.status(400).json({ ok: false, message: `priority must be one of: ${VALID_PRIORITIES.join(", ")}` });
+    }
+    if (targetAudience !== undefined && !VALID_AUDIENCES.includes(targetAudience)) {
+      return res.status(400).json({ ok: false, message: `targetAudience must be one of: ${VALID_AUDIENCES.join(", ")}` });
+    }
+    const updated = await storage.updateAnnouncement(id, {
+      ...(title !== undefined && { title: String(title) }),
+      ...(titleTh !== undefined && { titleTh: titleTh ? String(titleTh) : null }),
+      ...(content !== undefined && { content: String(content) }),
+      ...(contentTh !== undefined && { contentTh: contentTh ? String(contentTh) : null }),
+      ...(priority !== undefined && { priority: String(priority) }),
+      ...(targetAudience !== undefined && { targetAudience: String(targetAudience) }),
+      ...(isPinned !== undefined && { isPinned: isPinned ? 1 : 0 }),
+      ...(expiresAt !== undefined && { expiresAt: expiresAt || null }),
+    });
+    return res.json({ ok: true, announcement: updated });
+  }));
+
+  app.delete("/api/announcements/:id", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) return res.status(403).json({ ok: false, message: "Manager role required" });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+
+    const existing = await storage.getAnnouncement(id);
+    if (!existing) return res.status(404).json({ ok: false, message: "Announcement not found" });
+
+    // Non-admin managers may only delete announcements from their own store
+    const isAdminLike = u.role === "admin" || u.role === "area";
+    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+      return res.status(403).json({ ok: false, message: "No permission to delete this announcement" });
+    }
+
+    await storage.deleteAnnouncement(id);
+    return res.json({ ok: true });
+  }));
+
   // ==================== Excel Offline: Authenticated CSV Bundle ====================
   // Used by scripts/export-to-excel/fetch-csv-bundle.mjs so non-technical staff can
   // build the .xlsm without holding a database URL. They authenticate with their

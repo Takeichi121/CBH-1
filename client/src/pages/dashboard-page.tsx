@@ -5,9 +5,11 @@ import { SalesChart } from "@/components/dashboard/sales-chart";
 import { DailyTip } from "@/components/dashboard/daily-tip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Users, Calendar, DollarSign, Clock, Package } from "lucide-react";
+import { Loader2, Users, Calendar, DollarSign, Clock, Package, Megaphone, AlertTriangle, Pin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Link } from "wouter";
+import type { Announcement } from "@shared/schema";
 
 interface UnifiedDashboardData {
   ok: boolean;
@@ -69,6 +71,21 @@ export default function DashboardPage() {
     },
     enabled: !!user && !isManager,
   });
+
+  const { data: announcementsData } = useQuery<{ ok: boolean; announcements: Announcement[] }>({
+    queryKey: ["/api/announcements", false],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch("/api/announcements?includeExpired=false&limit=3", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
+  const recentAnnouncements = announcementsData?.announcements?.slice(0, 3) ?? [];
 
   if (isLoading) {
     return (
@@ -142,8 +159,35 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
-          <div className="col-span-full lg:col-span-2">
+          <div className="col-span-full lg:col-span-2 space-y-4">
             <DailyTip />
+            {recentAnnouncements.length > 0 && (
+              <Card data-testid="card-announcements-widget">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Megaphone className="h-4 w-4 text-primary" />
+                    {language === "th" ? "ประกาศล่าสุด" : "Latest Announcements"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {recentAnnouncements.map(a => {
+                    const displayTitle = (language === "th" && a.titleTh) ? a.titleTh : a.title;
+                    return (
+                      <div key={a.id} className="flex items-start gap-2 text-sm" data-testid={`row-dashboard-announcement-${a.id}`}>
+                        {a.isPinned === 1 && <Pin className="w-3 h-3 text-primary mt-0.5 shrink-0" />}
+                        {a.priority === "high" && <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />}
+                        <span className="truncate text-foreground/80">{displayTitle}</span>
+                      </div>
+                    );
+                  })}
+                  <Link href="/announcements">
+                    <a className="text-xs text-primary hover:underline mt-1 block" data-testid="link-view-all-announcements">
+                      {language === "th" ? "ดูทั้งหมด →" : "View all →"}
+                    </a>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -339,6 +383,34 @@ export default function DashboardPage() {
               </Card>
 
               <DailyTip />
+
+              {recentAnnouncements.length > 0 && (
+                <Card data-testid="card-announcements-widget-manager">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-primary" />
+                      {language === "th" ? "ประกาศล่าสุด" : "Latest Announcements"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {recentAnnouncements.map(a => {
+                      const displayTitle = (language === "th" && a.titleTh) ? a.titleTh : a.title;
+                      return (
+                        <div key={a.id} className="flex items-start gap-2 text-sm" data-testid={`row-dashboard-ann-${a.id}`}>
+                          {a.isPinned === 1 && <Pin className="w-3 h-3 text-primary mt-0.5 shrink-0" />}
+                          {a.priority === "high" && <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />}
+                          <span className="truncate text-foreground/80">{displayTitle}</span>
+                        </div>
+                      );
+                    })}
+                    <Link href="/announcements">
+                      <a className="text-xs text-primary hover:underline mt-1 block" data-testid="link-manager-view-announcements">
+                        {language === "th" ? "ดูทั้งหมด →" : "View all →"}
+                      </a>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </>

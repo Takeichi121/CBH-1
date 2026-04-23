@@ -143,6 +143,7 @@ export interface IStorage {
   // Announcements
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(limit?: number, includeExpired?: boolean): Promise<Announcement[]>;
+  getAnnouncementsFiltered(opts: { storeId?: string | null; allStores?: boolean; isManager: boolean; includeExpired: boolean; limit: number; }): Promise<Announcement[]>;
   getAnnouncement(id: number): Promise<Announcement | undefined>;
   updateAnnouncement(id: number, data: Partial<InsertAnnouncement>): Promise<Announcement>;
   deleteAnnouncement(id: number): Promise<void>;
@@ -926,6 +927,35 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
       .limit(limit);
     return results.filter(a => !a.expiresAt || a.expiresAt > now);
+  }
+
+  async getAnnouncementsFiltered(opts: { storeId?: string | null; allStores?: boolean; isManager: boolean; includeExpired: boolean; limit: number; }): Promise<Announcement[]> {
+    const { storeId, allStores, isManager, includeExpired, limit } = opts;
+    const now = new Date().toISOString();
+
+    // Build WHERE conditions in SQL
+    const conditions = [];
+    if (!allStores && storeId) {
+      conditions.push(eq(announcements.storeId, storeId));
+    }
+    if (!isManager) {
+      // Staff only see "all" or "staff" targeted announcements
+      conditions.push(sql`${announcements.targetAudience} IN ('all', 'staff')`);
+    }
+    if (!includeExpired) {
+      // Exclude expired: expiresAt IS NULL or expiresAt > now
+      conditions.push(sql`(${announcements.expiresAt} IS NULL OR ${announcements.expiresAt} > ${now})`);
+    }
+
+    if (conditions.length === 0) {
+      return await db.select().from(announcements)
+        .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
+        .limit(limit);
+    }
+    return await db.select().from(announcements)
+      .where(and(...conditions))
+      .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
+      .limit(limit);
   }
 
   async getAnnouncement(id: number): Promise<Announcement | undefined> {

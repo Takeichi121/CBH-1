@@ -42,6 +42,9 @@ export default function AdminPage() {
   const [viewingUser, setViewingUser] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "" });
+  const [isChangingUsername, setIsChangingUsername] = useState(false);
+  const [newUsernameInput, setNewUsernameInput] = useState("");
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -204,6 +207,11 @@ export default function AdminPage() {
     close: language === "th" ? "ปิด" : "Close",
     edit: language === "th" ? "แก้ไข" : "Edit",
     editProfile: language === "th" ? "แก้ไขโปรไฟล์" : "Edit Profile",
+    changeUsername: language === "th" ? "เปลี่ยน Username" : "Change Username",
+    newUsername: language === "th" ? "Username ใหม่" : "New Username",
+    usernameChanged: language === "th" ? "เปลี่ยน Username แล้ว" : "Username changed",
+    usernameTaken: language === "th" ? "Username นี้ถูกใช้แล้ว" : "Username already taken",
+    usernameHint: language === "th" ? "ตัวพิมพ์เล็ก ตัวเลข และ _ เท่านั้น (อย่างน้อย 3 ตัว)" : "Lowercase letters, numbers and _ only (min 3 chars)",
   };
 
   const roleColors: Record<string, string> = {
@@ -366,6 +374,33 @@ export default function AdminPage() {
       }
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (!viewingUser || !newUsernameInput.trim()) return;
+    setIsSavingUsername(true);
+    const token = localStorage.getItem("bk_token") || "";
+    try {
+      const res = await apiRequest("POST", "/api/admin/updateUsername", {
+        token,
+        targetUsername: viewingUser.username,
+        newUsername: newUsernameInput.trim(),
+      });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: labels.usernameChanged });
+        refetch();
+        setIsChangingUsername(false);
+        setNewUsernameInput("");
+        setViewingUser(null);
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
+    } finally {
+      setIsSavingUsername(false);
     }
   };
 
@@ -832,7 +867,7 @@ export default function AdminPage() {
         </div>
       </Card>
 
-      <Dialog open={!!viewingUser} onOpenChange={(open) => { if (!open) { setViewingUser(null); setIsEditingProfile(false); } }}>
+      <Dialog open={!!viewingUser} onOpenChange={(open) => { if (!open) { setViewingUser(null); setIsEditingProfile(false); setIsChangingUsername(false); setNewUsernameInput(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{isEditingProfile ? labels.editProfile : labels.userDetails}</DialogTitle>
@@ -976,11 +1011,39 @@ export default function AdminPage() {
                     </div>
                   </div>
                   
+                  {isAdmin && isChangingUsername && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <label className="text-sm font-medium">{labels.newUsername}</label>
+                      <p className="text-xs text-muted-foreground">{labels.usernameHint}</p>
+                      <Input
+                        value={newUsernameInput}
+                        onChange={(e) => setNewUsernameInput(e.target.value.toLowerCase())}
+                        placeholder={viewingUser.username}
+                        data-testid="input-new-username"
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveUsername(); if (e.key === "Escape") { setIsChangingUsername(false); setNewUsernameInput(""); } }}
+                      />
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => { setIsChangingUsername(false); setNewUsernameInput(""); }} className="flex-1">
+                          {labels.cancel}
+                        </Button>
+                        <Button size="sm" onClick={handleSaveUsername} disabled={isSavingUsername || !newUsernameInput.trim()} className="flex-1" data-testid="button-save-username">
+                          {isSavingUsername ? <Loader2 className="w-4 h-4 animate-spin" /> : labels.save}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 pt-4">
                     {isAdmin && (
                       <Button variant="default" onClick={() => handleStartEditProfile(viewingUser)} className="flex-1" data-testid="button-edit-profile">
                         <Edit className="w-4 h-4 mr-2" />
                         {labels.edit}
+                      </Button>
+                    )}
+                    {isAdmin && !isChangingUsername && (
+                      <Button variant="outline" onClick={() => { setIsChangingUsername(true); setNewUsernameInput(""); }} className="flex-1" data-testid="button-change-username">
+                        <LogIn className="w-4 h-4 mr-2" />
+                        {labels.changeUsername}
                       </Button>
                     )}
                     <Button variant="outline" onClick={() => setViewingUser(null)} className="flex-1">

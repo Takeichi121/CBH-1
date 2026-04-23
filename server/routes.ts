@@ -208,6 +208,9 @@ import {
   passwordResetOtps,
   staffChatMessages,
   channConversations,
+  channNotes,
+  agentRequests,
+  swapRequests,
   codeProposals,
   dropdownOptions,
   notifications,
@@ -4387,6 +4390,43 @@ ${pageContext}` : ''}`;
     await storage.updateUser(username, updates);
     await storage.log("admin_update_profile", u.username, `updated ${username}: ${JSON.stringify(updates)}`);
     res.json({ ok: true });
+  }));
+
+  app.post("/api/admin/updateUsername", safe(async (req, res) => {
+    const { token, targetUsername, newUsername } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Only Admin can change usernames" });
+
+    if (!targetUsername || !newUsername) return res.json({ ok: false, message: "Missing fields" });
+    const cleanNew = newUsername.trim().toLowerCase();
+    if (!/^[a-z0-9_]+$/.test(cleanNew)) return res.json({ ok: false, message: "Username may only contain lowercase letters, numbers and underscores" });
+    if (cleanNew.length < 3) return res.json({ ok: false, message: "Username must be at least 3 characters" });
+    if (cleanNew === targetUsername) return res.json({ ok: false, message: "New username is the same as current" });
+
+    const targetUser = await storage.getUser(targetUsername);
+    if (!targetUser) return res.json({ ok: false, message: "User not found" });
+    const existing = await storage.getUser(cleanNew);
+    if (existing) return res.json({ ok: false, message: "Username already taken" });
+
+    await db.transaction(async (tx) => {
+      await tx.update(sessions).set({ username: cleanNew }).where(eq(sessions.username, targetUsername));
+      await tx.update(shifts).set({ username: cleanNew }).where(eq(shifts.username, targetUsername));
+      await tx.update(channConversations).set({ username: cleanNew }).where(eq(channConversations.username, targetUsername));
+      await tx.update(channNotes).set({ username: cleanNew }).where(eq(channNotes.username, targetUsername));
+      await tx.update(agentRequests).set({ username: cleanNew }).where(eq(agentRequests.username, targetUsername));
+      await tx.update(notifications).set({ recipientUsername: cleanNew }).where(eq(notifications.recipientUsername, targetUsername));
+      await tx.update(passwordResetOtps).set({ username: cleanNew }).where(eq(passwordResetOtps.username, targetUsername));
+      await tx.update(staffChatMessages).set({ senderUsername: cleanNew }).where(eq(staffChatMessages.senderUsername, targetUsername));
+      await tx.update(staffChatMessages).set({ recipientUsername: cleanNew }).where(eq(staffChatMessages.recipientUsername, targetUsername));
+      await tx.update(swapRequests).set({ requesterUsername: cleanNew }).where(eq(swapRequests.requesterUsername, targetUsername));
+      await tx.update(swapRequests).set({ targetUsername: cleanNew }).where(eq(swapRequests.targetUsername, targetUsername));
+      await tx.execute(sql`UPDATE users SET username = ${cleanNew} WHERE username = ${targetUsername}`);
+    });
+
+    await storage.log("admin_update_username", u.username, `changed ${targetUsername} → ${cleanNew}`);
+    res.json({ ok: true, newUsername: cleanNew });
   }));
 
   // ==========================================

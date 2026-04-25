@@ -455,6 +455,20 @@ export default function DailySalesPage() {
     },
   });
 
+  // Report card customization (admin-editable section titles + visibility)
+  const { data: reportCustomData } = useQuery({
+    queryKey: ["/api/settings/get-report-customization"],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/settings/get-report-customization", { token });
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+  const sectionCustom: Record<string, { title?: string; hidden?: boolean }> = reportCustomData?.sections || {};
+  const sectionTitle = (key: string, defaultTitle: string) => sectionCustom[key]?.title || defaultTitle;
+  const sectionHiddenClass = (key: string) => (sectionCustom[key]?.hidden && !isAdmin ? "hidden" : "");
+
   const handleDescChange = useCallback((fieldKey: string, value: string) => {
     setFieldDescs(prev => {
       const next = { ...prev, [fieldKey]: value };
@@ -2471,10 +2485,10 @@ ${v.staffRosterText || ""}
           <CardContent>
             <Form {...form}>
               <form className="space-y-6">
-                <div className="bg-muted/50 p-3 md:p-4 rounded-lg">
+                <div className={`bg-muted/50 p-3 md:p-4 rounded-lg ${sectionHiddenClass("basicInfo")}`}>
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-sm md:text-base font-medium">
-                      {t.basicInfo}
+                      {sectionTitle("basicInfo", t.basicInfo)}
                     </h3>
                     <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
                       <DialogTrigger asChild>
@@ -2644,11 +2658,11 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <fieldset disabled={reportSavedInDb && !isEditMode} className="border-0 p-0 m-0 space-y-6">
-                <div className="bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("daily")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
-                        {t.daily}
+                        {sectionTitle("daily", t.daily)}
                       </h3>
                       <SectionNote
                         value={form.watch("noteDaily") || ""}
@@ -2809,11 +2823,11 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("mtd")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
-                        {t.mtd}
+                        {sectionTitle("mtd", t.mtd)}
                       </h3>
                       <SectionNote
                         value={form.watch("noteMtd") || ""}
@@ -2897,11 +2911,11 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-orange-50 dark:bg-orange-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-orange-50 dark:bg-orange-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("inStore")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
-                        {t.inStore}
+                        {sectionTitle("inStore", t.inStore)}
                       </h3>
                       <SectionNote
                         value={form.watch("noteInStore") || ""}
@@ -3033,11 +3047,11 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-purple-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-purple-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("delivery")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
-                        {t.delivery}
+                        {sectionTitle("delivery", t.delivery)}
                       </h3>
                       <SectionNote
                         value={form.watch("noteDelivery") || ""}
@@ -3281,11 +3295,11 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-yellow-50 dark:bg-yellow-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-yellow-50 dark:bg-yellow-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("performance")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
-                        {t.performance}
+                        {sectionTitle("performance", t.performance)}
                       </h3>
                       <SectionNote
                         value={form.watch("notePerformance") || ""}
@@ -3418,11 +3432,11 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-pink-50 dark:bg-pink-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-pink-50 dark:bg-pink-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("addons")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
-                        {t.addons}
+                        {sectionTitle("addons", t.addons)}
                       </h3>
                       <SectionNote
                         value={form.watch("noteAddons") || ""}
@@ -3674,10 +3688,10 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-red-50 dark:bg-red-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-red-50 dark:bg-red-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("waste")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
-                      {t.waste}
+                      {sectionTitle("waste", t.waste)}
                     </h3>
                     <Dialog
                       open={wasteDialogOpen}
@@ -3979,10 +3993,10 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("labor")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
-                      {t.labor}
+                      {sectionTitle("labor", t.labor)}
                     </h3>
                     <button
                       type="button"
@@ -4156,10 +4170,10 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className="bg-teal-50 dark:bg-teal-950/30 p-3 md:p-4 rounded-lg">
+                <div className={`bg-teal-50 dark:bg-teal-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("roster")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
-                      {t.roster}
+                      {sectionTitle("roster", t.roster)}
                     </h3>
                     <button
                       type="button"

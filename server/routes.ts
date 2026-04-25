@@ -6665,6 +6665,56 @@ ${pageContext}` : ''}`;
     res.json({ ok: true });
   }));
 
+  // ==========================================
+  // 🎨 Report Card Customization (Admin-editable)
+  // ==========================================
+
+  const VALID_SECTION_KEYS = [
+    "basicInfo", "daily", "mtd", "inStore", "delivery",
+    "performance", "addons", "waste", "labor", "roster",
+  ] as const;
+
+  app.post("/api/settings/get-report-customization", safe(async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+
+    const cfg = await storage.getConfig();
+    const sections: Record<string, { title?: string; hidden?: boolean }> = {};
+    for (const key of VALID_SECTION_KEYS) {
+      const titleKey = `report_section:${key}:title`;
+      const hiddenKey = `report_section:${key}:hidden`;
+      const entry: { title?: string; hidden?: boolean } = {};
+      if (cfg[titleKey]) entry.title = cfg[titleKey];
+      if (cfg[hiddenKey] === "1") entry.hidden = true;
+      if (entry.title || entry.hidden) sections[key] = entry;
+    }
+    res.json({ ok: true, sections });
+  }));
+
+  app.post("/api/settings/save-report-customization", safe(async (req, res) => {
+    const { token, sections } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+
+    if (typeof sections !== "object" || sections === null) {
+      return res.json({ ok: false, message: "Invalid sections" });
+    }
+
+    for (const key of VALID_SECTION_KEYS) {
+      const entry = sections[key] || {};
+      const titleKey = `report_section:${key}:title`;
+      const hiddenKey = `report_section:${key}:hidden`;
+      if (typeof entry.title === "string") {
+        await storage.setConfig(titleKey, entry.title.trim());
+      }
+      await storage.setConfig(hiddenKey, entry.hidden ? "1" : "");
+    }
+    res.json({ ok: true });
+  }));
+
   // Calculate Labor Logic Helper
   async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }, storeId: string = 'BK1040') {
     // 1. Get Settings

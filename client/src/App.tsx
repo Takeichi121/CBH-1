@@ -49,6 +49,7 @@ import SalesSettingsPage from "@/pages/sales/settings-page";
 import SalesManualPage from "@/pages/sales/manual-page";
 import ImportDBFPage from "@/pages/sales/import-dbf-page";
 import WeeklySalesPage from "@/pages/sales/weekly-sales-page";
+import CustomizeReportPage from "@/pages/sales/customize-report-page";
 
 import { useEffect } from "react";
 
@@ -211,6 +212,10 @@ function Router() {
           
           <Route path="/sales/weekly">
             <ProtectedRoute component={WeeklySalesPage} path="/sales/weekly" />
+          </Route>
+
+          <Route path="/sales/customize">
+            <AdminProtectedRoute component={CustomizeReportPage} />
           </Route>
           
           {/* Borrow Routes */}

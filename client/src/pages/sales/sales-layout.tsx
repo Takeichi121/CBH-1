@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database, CalendarRange } from "lucide-react";
+import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database, CalendarRange, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SalesLayoutProps {
@@ -14,6 +14,7 @@ export function SalesLayout({ children }: SalesLayoutProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const isViewer = user?.role === "viewer";
+  const isAdmin = user?.role === "admin";
 
   const allTabs = [
     {
@@ -46,6 +47,16 @@ export function SalesLayout({ children }: SalesLayoutProps) {
       icon: Settings,
       viewerAllowed: false,
     },
+    ...(isAdmin
+      ? [
+          {
+            href: "/sales/customize",
+            label: language === "th" ? "ปรับแต่งการ์ด" : "Customize",
+            icon: SlidersHorizontal,
+            viewerAllowed: false,
+          },
+        ]
+      : []),
     {
       href: "/sales/manual",
       label: language === "th" ? "คู่มือ" : "Manual",

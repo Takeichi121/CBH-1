@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoDataHouse } from "@/components/logo";
 import { Link, useLocation } from "wouter";
@@ -28,6 +28,13 @@ import { NotificationBell } from "@/components/notification-bell";
 
 import { useI18n } from "@/hooks/use-i18n";
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: number;
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const { user, logoutMutation, selectedStoreId, setSelectedStoreId, token } = useAuth();
   const { t, language, setLanguage } = useI18n();
@@ -51,6 +58,43 @@ export function Layout({ children }: { children: ReactNode }) {
   const effectiveStoreId = selectedStoreId || (stores[0]?.id) || 'BK1040';
   const currentStore = stores.find(s => s.id === effectiveStoreId) || stores[0];
 
+  const { data: announcementsData } = useQuery<{ ok: boolean; announcements: Array<{ id: number; createdAt: string }> }>({
+    queryKey: ["/api/announcements-nav", token],
+    enabled: !!token,
+    queryFn: async () => {
+      const res = await fetch("/api/announcements?limit=50", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.json();
+    },
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  const announcementsLastSeenKey = user ? `announcements_last_seen:${user.username}` : null;
+
+  const [announcementsLastSeen, setAnnouncementsLastSeen] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!announcementsLastSeenKey) return;
+    setAnnouncementsLastSeen(localStorage.getItem(announcementsLastSeenKey));
+  }, [announcementsLastSeenKey]);
+
+  useEffect(() => {
+    if (!announcementsLastSeenKey) return;
+    if (location === "/announcements") {
+      const now = new Date().toISOString();
+      localStorage.setItem(announcementsLastSeenKey, now);
+      setAnnouncementsLastSeen(now);
+    }
+  }, [location, announcementsLastSeenKey]);
+
+  const unreadAnnouncementCount = useMemo(() => {
+    const announcements = announcementsData?.announcements ?? [];
+    if (!announcementsLastSeen) return announcements.length;
+    return announcements.filter((a) => new Date(a.createdAt) > new Date(announcementsLastSeen)).length;
+  }, [announcementsData, announcementsLastSeen]);
+
   if (!user) {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
@@ -65,10 +109,12 @@ export function Layout({ children }: { children: ReactNode }) {
     return user.allowedFeatures.includes(key);
   };
 
-  const desktopNavItems = isViewer ? [
+  const announcementNavItem: NavItem = { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone, badge: unreadAnnouncementCount };
+
+  const desktopNavItems: NavItem[] = isViewer ? [
     ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
-    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
+    announcementNavItem,
   ] : [
     ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
     ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
@@ -78,16 +124,16 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(isManagerOrAdmin && hasFeature("borrow") ? [
       { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
     ] : []),
-    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
+    announcementNavItem,
     ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
   ];
 
-  const mobileNavItems = isViewer ? [
+  const mobileNavItems: NavItem[] = isViewer ? [
     ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
-    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
+    announcementNavItem,
   ] : [
     ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
     ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
@@ -107,7 +153,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
-    { href: "/announcements", label: language === "th" ? "ประกาศ" : "Announcements", icon: Megaphone },
+    announcementNavItem,
     ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
   ];
@@ -227,7 +273,12 @@ export function Layout({ children }: { children: ReactNode }) {
                           data-testid={`nav-mobile-${item.href.replace("/", "")}`}
                         >
                           <item.icon className={`w-5 h-5 shrink-0 ${isActive ? "stroke-[2.5px]" : ""}`} />
-                          <span className="text-base">{item.label}</span>
+                          <span className="text-base flex-1">{item.label}</span>
+                          {item.badge != null && item.badge > 0 && (
+                            <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none" data-testid="badge-announcements-mobile">
+                              {item.badge > 99 ? "99+" : item.badge}
+                            </span>
+                          )}
                         </a>
                       </Link>
                     );
@@ -300,14 +351,20 @@ export function Layout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
                   isActive
                     ? "bg-primary/10 text-primary font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
+                data-testid={`nav-desktop-${item.href.replace("/", "")}`}
               >
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none" data-testid="badge-announcements-desktop">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

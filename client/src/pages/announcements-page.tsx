@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +84,12 @@ export default function AnnouncementsPage() {
 
   const token = localStorage.getItem("bk_token") || "";
   const isManager = user?.role === "admin" || user?.role === "manager";
+
+  useEffect(() => {
+    if (!user?.username) return;
+    const key = `announcements_last_seen:${user.username}`;
+    localStorage.setItem(key, new Date().toISOString());
+  }, [user?.username]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

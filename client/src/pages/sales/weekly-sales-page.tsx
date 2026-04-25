@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History, Send } from "lucide-react";
+import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History, Send, FileSpreadsheet } from "lucide-react";
+import ExcelJS from "exceljs";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { enUS } from "date-fns/locale";
 import {
@@ -445,6 +446,88 @@ export default function WeeklySalesPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    if (historyReports.length === 0) {
+      toast({ variant: "destructive", title: language === "th" ? "ไม่มีข้อมูลให้ Export" : "No history data to export" });
+      return;
+    }
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "Chann Back House";
+    const ws = workbook.addWorksheet("Weekly Reports");
+
+    ws.columns = [
+      { header: "Week", key: "week", width: 22 },
+      { header: "Sale", key: "sale", width: 12 },
+      { header: "TC", key: "tc", width: 10 },
+      { header: "TA", key: "ta", width: 10 },
+      { header: "COG", key: "cog", width: 10 },
+      { header: "Waste", key: "waste", width: 10 },
+      { header: "Unac", key: "unac", width: 10 },
+      { header: "SOS", key: "sos", width: 10 },
+      { header: "GSI", key: "gsi", width: 10 },
+      { header: "OSAT", key: "osat", width: 10 },
+      { header: "Delivery", key: "delivery", width: 12 },
+      { header: "Google Review", key: "googleReview", width: 14 },
+      { header: "COL MTD", key: "colMtd", width: 12 },
+      { header: "Reported By", key: "reportedBy", width: 18 },
+    ];
+
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD35400" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 20;
+
+    historyReports.forEach((r: any) => {
+      const startD = new Date(r.weekStartDate + "T00:00:00");
+      const endD = new Date(r.weekEndDate + "T00:00:00");
+      const fmtD = (d: Date) =>
+        `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      ws.addRow({
+        week: `${fmtD(startD)} - ${fmtD(endD)}`,
+        sale: r.sale || "",
+        tc: r.tc || "",
+        ta: r.ta || "",
+        cog: r.cog || "",
+        waste: r.waste || "",
+        unac: r.unac || "",
+        sos: r.sos || "",
+        gsi: r.gsi || "",
+        osat: r.osat || "",
+        delivery: r.delivery || "",
+        googleReview: r.googleReview || "",
+        colMtd: r.colMtd || "",
+        reportedBy: r.reportBy || "",
+      });
+    });
+
+    ws.eachRow((row, rowNum) => {
+      if (rowNum > 1) {
+        row.fill = rowNum % 2 === 0
+          ? { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF8F0" } }
+          : { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
+      }
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE0E0E0" } },
+          bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
+          left: { style: "thin", color: { argb: "FFE0E0E0" } },
+          right: { style: "thin", color: { argb: "FFE0E0E0" } },
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `weekly-reports-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: language === "th" ? "Export สำเร็จ ✅" : "Exported successfully ✅" });
+  };
+
   useEffect(() => {
     const saleNum = parseFloat(form.sale.replace(/,/g, "")) || 0;
     const tcNum = parseFloat(form.tc.replace(/,/g, "")) || 0;
@@ -835,10 +918,24 @@ export default function WeeklySalesPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <History className="w-4 h-4" />
-              {language === "th" ? "ประวัติรายงานสัปดาห์" : "Weekly Report History"}
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="w-4 h-4" />
+                {language === "th" ? "ประวัติรายงานสัปดาห์" : "Weekly Report History"}
+              </CardTitle>
+              {historyReports.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportExcel}
+                  className="gap-1.5 text-xs h-7 px-2"
+                  data-testid="button-export-excel-history"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  {language === "th" ? "Export Excel" : "Export Excel"}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {historyLoading ? (

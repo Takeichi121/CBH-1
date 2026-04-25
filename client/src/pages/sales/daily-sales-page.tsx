@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -468,6 +468,10 @@ export default function DailySalesPage() {
   const sectionCustom: Record<string, { title?: string; hidden?: boolean }> = reportCustomData?.sections || {};
   const sectionTitle = (key: string, defaultTitle: string) => sectionCustom[key]?.title || defaultTitle;
   const sectionHiddenClass = (key: string) => (sectionCustom[key]?.hidden && !isAdmin ? "hidden" : "");
+  const fieldCustom: Record<string, { label?: string; hidden?: boolean }> = reportCustomData?.fields || {};
+  const fLabel = (key: string, defaultLabel: ReactNode): ReactNode =>
+    fieldCustom[key]?.label ? fieldCustom[key]!.label : defaultLabel;
+  const fItemCls = (key: string) => (fieldCustom[key]?.hidden && !isAdmin ? "hidden" : "");
 
   const handleDescChange = useCallback((fieldKey: string, value: string) => {
     setFieldDescs(prev => {
@@ -2730,8 +2734,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="dailyTarget"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.target}</FormLabel>
+                        <FormItem className={fItemCls("dailyTarget")}>
+                          <FormLabel className="text-xs">{fLabel("dailyTarget", <>{t.target}</>)}</FormLabel>
                           <FieldDesc fieldKey="target" value={fieldDescs.target || ""} onChange={(v) => handleDescChange("target", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <div className="relative">
@@ -2753,8 +2757,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="actualSales"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.actual}</FormLabel>
+                        <FormItem className={fItemCls("actualSales")}>
+                          <FormLabel className="text-xs">{fLabel("actualSales", <>{t.actual}</>)}</FormLabel>
                           <FieldDesc fieldKey="actual" value={fieldDescs.actual || ""} onChange={(v) => handleDescChange("actual", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <div className="relative">
@@ -2775,8 +2779,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="transactionCount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.tc}</FormLabel>
+                        <FormItem className={fItemCls("transactionCount")}>
+                          <FormLabel className="text-xs">{fLabel("transactionCount", <>{t.tc}</>)}</FormLabel>
                           <FieldDesc fieldKey="tc" value={fieldDescs.tc || ""} onChange={(v) => handleDescChange("tc", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -2804,8 +2808,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="cashDeposit"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Cash Deposit (฿)</FormLabel>
+                        <FormItem className={fItemCls("cashDeposit")}>
+                          <FormLabel className="text-xs">{fLabel("cashDeposit", <>Cash Deposit (฿)</>)}</FormLabel>
                           <FieldDesc fieldKey="cashDeposit" value={fieldDescs.cashDeposit || ""} onChange={(v) => handleDescChange("cashDeposit", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <div className="relative">
@@ -2846,8 +2850,8 @@ ${v.staffRosterText || ""}
                     </button>
                   </div>
                   <div className={`grid grid-cols-2 md:grid-cols-5 gap-3 ${collapsedSections["mtd"] ? "hidden" : ""}`}>
-                    <div>
-                      <FormLabel className="text-xs">{t.mtdTarget}</FormLabel>
+                    <div className={fItemCls("mtdTarget")}>
+                      <FormLabel className="text-xs">{fLabel("mtdTarget", t.mtdTarget)}</FormLabel>
                       <FieldDesc fieldKey="mtdTarget" value={fieldDescs.mtdTarget || ""} onChange={(v) => handleDescChange("mtdTarget", v)} isAdmin={isAdmin} />
                       <div className="relative">
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -2862,8 +2866,8 @@ ${v.staffRosterText || ""}
                         />
                       </div>
                     </div>
-                    <div>
-                      <FormLabel className="text-xs">{t.mtdActual}</FormLabel>
+                    <div className={fItemCls("mtdActual")}>
+                      <FormLabel className="text-xs">{fLabel("mtdActual", t.mtdActual)}</FormLabel>
                       <FieldDesc fieldKey="mtdActual" value={fieldDescs.mtdActual || ""} onChange={(v) => handleDescChange("mtdActual", v)} isAdmin={isAdmin} />
                       <div className="relative">
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -2887,8 +2891,8 @@ ${v.staffRosterText || ""}
                         className={`text-sm pointer-events-none focus-visible:ring-0 ${mtdVariance >= 0 ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"}`}
                       />
                     </div>
-                    <div>
-                      <FormLabel className="text-xs">{t.mtdTc}</FormLabel>
+                    <div className={fItemCls("mtdTc")}>
+                      <FormLabel className="text-xs">{fLabel("mtdTc", t.mtdTc)}</FormLabel>
                       <FieldDesc fieldKey="mtdTc" value={fieldDescs.mtdTc || ""} onChange={(v) => handleDescChange("mtdTc", v)} isAdmin={isAdmin} />
                       <Input
                         value={mtdTc.toLocaleString()}
@@ -2938,10 +2942,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="dineIn"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("dineIn")}>
+                          <FormLabel className="text-xs">{fLabel("dineIn", <>
                             {t.dineIn} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="dineIn" value={fieldDescs.dineIn || ""} onChange={(v) => handleDescChange("dineIn", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -2957,10 +2961,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="dineInTc"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("dineInTc")}>
+                          <FormLabel className="text-xs">{fLabel("dineInTc", <>
                             {t.dineInTc}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="dineInTc" value={fieldDescs.dineInTc || ""} onChange={(v) => handleDescChange("dineInTc", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -2993,10 +2997,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="takeAway"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("takeAway")}>
+                          <FormLabel className="text-xs">{fLabel("takeAway", <>
                             {t.takeAway} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="takeAway" value={fieldDescs.takeAway || ""} onChange={(v) => handleDescChange("takeAway", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3012,10 +3016,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="takeAwayTc"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("takeAwayTc")}>
+                          <FormLabel className="text-xs">{fLabel("takeAwayTc", <>
                             {t.takeAwayTc}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="takeAwayTc" value={fieldDescs.takeAwayTc || ""} onChange={(v) => handleDescChange("takeAwayTc", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3084,10 +3088,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="grabfood"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("grabfood")}>
+                          <FormLabel className="text-xs">{fLabel("grabfood", <>
                             {t.grabfood} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="grabfood" value={fieldDescs.grabfood || ""} onChange={(v) => handleDescChange("grabfood", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3120,10 +3124,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="lineman"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("lineman")}>
+                          <FormLabel className="text-xs">{fLabel("lineman", <>
                             {t.lineman} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="lineman" value={fieldDescs.lineman || ""} onChange={(v) => handleDescChange("lineman", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3156,10 +3160,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="shopee"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("shopee")}>
+                          <FormLabel className="text-xs">{fLabel("shopee", <>
                             {t.shopee} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="shopee" value={fieldDescs.shopee || ""} onChange={(v) => handleDescChange("shopee", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3192,10 +3196,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="bkapp"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("bkapp")}>
+                          <FormLabel className="text-xs">{fLabel("bkapp", <>
                             {t.bkapp} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="bkapp" value={fieldDescs.bkapp || ""} onChange={(v) => handleDescChange("bkapp", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3228,8 +3232,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="robin"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Robin (฿)</FormLabel>
+                        <FormItem className={fItemCls("robin")}>
+                          <FormLabel className="text-xs">{fLabel("robin", <>Robin (฿)</>)}</FormLabel>
                           <FieldDesc fieldKey="robin" value={fieldDescs.robin || ""} onChange={(v) => handleDescChange("robin", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3262,8 +3266,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="gokoo"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">GoKOO (฿)</FormLabel>
+                        <FormItem className={fItemCls("gokoo")}>
+                          <FormLabel className="text-xs">{fLabel("gokoo", <>GoKOO (฿)</>)}</FormLabel>
                           <FieldDesc fieldKey="gokoo" value={fieldDescs.gokoo || ""} onChange={(v) => handleDescChange("gokoo", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3322,8 +3326,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="osat"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.osat}</FormLabel>
+                        <FormItem className={fItemCls("osat")}>
+                          <FormLabel className="text-xs">{fLabel("osat", <>{t.osat}</>)}</FormLabel>
                           <FieldDesc fieldKey="osat" value={fieldDescs.osat || ""} onChange={(v) => handleDescChange("osat", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3339,10 +3343,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="surveyCount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("surveyCount")}>
+                          <FormLabel className="text-xs">{fLabel("surveyCount", <>
                             {t.surveyCount}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="surveyCount" value={fieldDescs.surveyCount || ""} onChange={(v) => handleDescChange("surveyCount", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3358,10 +3362,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="voidAmount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("voidAmount")}>
+                          <FormLabel className="text-xs">{fLabel("voidAmount", <>
                             {t.void} (฿)
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FormControl>
                             <FormattedInput
                               className="text-sm"
@@ -3376,10 +3380,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="voidCount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("voidCount")}>
+                          <FormLabel className="text-xs">{fLabel("voidCount", <>
                             {t.voidCount}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="voidCount" value={fieldDescs.voidCount || ""} onChange={(v) => handleDescChange("voidCount", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3395,10 +3399,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="sosDaily"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("sosDaily")}>
+                          <FormLabel className="text-xs">{fLabel("sosDaily", <>
                             {t.sosDaily}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="sosDaily" value={fieldDescs.sosDaily || ""} onChange={(v) => handleDescChange("sosDaily", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3414,10 +3418,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="sosMtd"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("sosMtd")}>
+                          <FormLabel className="text-xs">{fLabel("sosMtd", <>
                             {t.sosMtd}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="sosMtd" value={fieldDescs.sosMtd || ""} onChange={(v) => handleDescChange("sosMtd", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3582,10 +3586,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="addCheeseCount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("addCheeseCount")}>
+                          <FormLabel className="text-xs">{fLabel("addCheeseCount", <>
                             {t.addCheese} #
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="addCheese" value={fieldDescs.addCheese || ""} onChange={(v) => handleDescChange("addCheese", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3619,8 +3623,8 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="vMealCount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t.vMeal} #</FormLabel>
+                        <FormItem className={fItemCls("vMealCount")}>
+                          <FormLabel className="text-xs">{fLabel("vMealCount", <>{t.vMeal} #</>)}</FormLabel>
                           <FieldDesc fieldKey="vMeal" value={fieldDescs.vMeal || ""} onChange={(v) => handleDescChange("vMeal", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3652,10 +3656,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="upSizeCount"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("upSizeCount")}>
+                          <FormLabel className="text-xs">{fLabel("upSizeCount", <>
                             {t.upSize} #
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="upSize" value={fieldDescs.upSize || ""} onChange={(v) => handleDescChange("upSize", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <FormattedInput
@@ -3852,10 +3856,10 @@ ${v.staffRosterText || ""}
                           control={form.control}
                           name="wasteMealDaily"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
+                            <FormItem className={fItemCls("wasteMealDaily")}>
+                              <FormLabel className="text-xs">{fLabel("wasteMealDaily", <>
                                 {t.meal} (฿)
-                              </FormLabel>
+                              </>)}</FormLabel>
                               <FieldDesc fieldKey="wasteMealDaily" value={fieldDescs.wasteMealDaily || ""} onChange={(v) => handleDescChange("wasteMealDaily", v)} isAdmin={isAdmin} />
                               <FormControl>
                                 <FormattedInput
@@ -3942,10 +3946,10 @@ ${v.staffRosterText || ""}
                           control={form.control}
                           name="wasteMealMtd"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
+                            <FormItem className={fItemCls("wasteMealMtd")}>
+                              <FormLabel className="text-xs">{fLabel("wasteMealMtd", <>
                                 {t.meal} (฿)
-                              </FormLabel>
+                              </>)}</FormLabel>
                               <FieldDesc fieldKey="wasteMealMtd" value={fieldDescs.wasteMealMtd || ""} onChange={(v) => handleDescChange("wasteMealMtd", v)} isAdmin={isAdmin} />
                               <FormControl>
                                 <FormattedInput
@@ -4012,10 +4016,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="recommendHours"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("recommendHours")}>
+                          <FormLabel className="text-xs">{fLabel("recommendHours", <>
                             {language === "th" ? "ชม.แนะนำ" : "Recommend Hrs"}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="recommendHours" value={fieldDescs.recommendHours || ""} onChange={(v) => handleDescChange("recommendHours", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <Input
@@ -4032,10 +4036,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="rosterCommit"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("rosterCommit")}>
+                          <FormLabel className="text-xs">{fLabel("rosterCommit", <>
                             {language === "th" ? "Roster Commit" : "Roster Commit"}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="rosterCommit" value={fieldDescs.rosterCommit || ""} onChange={(v) => handleDescChange("rosterCommit", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <Input
@@ -4052,10 +4056,10 @@ ${v.staffRosterText || ""}
                       control={form.control}
                       name="actualHours"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
+                        <FormItem className={fItemCls("actualHours")}>
+                          <FormLabel className="text-xs">{fLabel("actualHours", <>
                             {language === "th" ? "ชม.จริง" : "Actual Hrs"}
-                          </FormLabel>
+                          </>)}</FormLabel>
                           <FieldDesc fieldKey="actualHours" value={fieldDescs.actualHours || ""} onChange={(v) => handleDescChange("actualHours", v)} isAdmin={isAdmin} />
                           <FormControl>
                             <Input

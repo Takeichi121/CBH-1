@@ -6674,6 +6674,18 @@ ${pageContext}` : ''}`;
     "performance", "addons", "waste", "labor", "roster",
   ] as const;
 
+  // Field-level customization (label override + visibility) — uses form field names as keys
+  const VALID_REPORT_FIELD_KEYS = [
+    "dailyTarget", "actualSales", "transactionCount", "cashDeposit",
+    "mtdTarget", "mtdActual", "mtdTc",
+    "dineIn", "dineInTc", "takeAway", "takeAwayTc",
+    "grabfood", "lineman", "shopee", "bkapp", "robin", "gokoo",
+    "osat", "surveyCount", "voidAmount", "voidCount", "sosDaily", "sosMtd",
+    "addCheeseCount", "vMealCount", "upSizeCount",
+    "wasteMealDaily", "wasteMealMtd",
+    "recommendHours", "rosterCommit", "actualHours",
+  ] as const;
+
   app.post("/api/settings/get-report-customization", safe(async (req, res) => {
     const { token } = req.body;
     const session = await storage.getSession(token);
@@ -6689,29 +6701,49 @@ ${pageContext}` : ''}`;
       if (cfg[hiddenKey] === "1") entry.hidden = true;
       if (entry.title || entry.hidden) sections[key] = entry;
     }
-    res.json({ ok: true, sections });
+    const fields: Record<string, { label?: string; hidden?: boolean }> = {};
+    for (const key of VALID_REPORT_FIELD_KEYS) {
+      const labelKey = `report_field:${key}:label`;
+      const hiddenKey = `report_field:${key}:hidden`;
+      const entry: { label?: string; hidden?: boolean } = {};
+      if (cfg[labelKey]) entry.label = cfg[labelKey];
+      if (cfg[hiddenKey] === "1") entry.hidden = true;
+      if (entry.label || entry.hidden) fields[key] = entry;
+    }
+    res.json({ ok: true, sections, fields });
   }));
 
   app.post("/api/settings/save-report-customization", safe(async (req, res) => {
-    const { token, sections } = req.body;
+    const { token, sections, fields } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
     if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
 
-    if (typeof sections !== "object" || sections === null) {
-      return res.json({ ok: false, message: "Invalid sections" });
+    if (sections && typeof sections === "object") {
+      for (const key of VALID_SECTION_KEYS) {
+        const entry = sections[key] || {};
+        const titleKey = `report_section:${key}:title`;
+        const hiddenKey = `report_section:${key}:hidden`;
+        if (typeof entry.title === "string") {
+          await storage.setConfig(titleKey, entry.title.trim());
+        }
+        await storage.setConfig(hiddenKey, entry.hidden ? "1" : "");
+      }
     }
 
-    for (const key of VALID_SECTION_KEYS) {
-      const entry = sections[key] || {};
-      const titleKey = `report_section:${key}:title`;
-      const hiddenKey = `report_section:${key}:hidden`;
-      if (typeof entry.title === "string") {
-        await storage.setConfig(titleKey, entry.title.trim());
+    if (fields && typeof fields === "object") {
+      for (const key of VALID_REPORT_FIELD_KEYS) {
+        const entry = fields[key] || {};
+        const labelKey = `report_field:${key}:label`;
+        const hiddenKey = `report_field:${key}:hidden`;
+        if (typeof entry.label === "string") {
+          await storage.setConfig(labelKey, entry.label.trim());
+        }
+        await storage.setConfig(hiddenKey, entry.hidden ? "1" : "");
       }
-      await storage.setConfig(hiddenKey, entry.hidden ? "1" : "");
     }
+
     res.json({ ok: true });
   }));
 

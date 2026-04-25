@@ -142,6 +142,37 @@ function selectionsToText(selections: ItemSelection[]): string {
     .join("\n");
 }
 
+function DeltaBadge({ current, prev, lowerIsBetter = false }: {
+  current: string; prev: string; lowerIsBetter?: boolean;
+}) {
+  const parseVal = (v: string) => {
+    const n = parseFloat(v.replace(/[,%]/g, "").trim());
+    return isNaN(n) ? null : n;
+  };
+  const curr = parseVal(current);
+  const prevVal = parseVal(prev);
+  if (curr === null || prevVal === null || prevVal === 0) return null;
+  const pct = ((curr - prevVal) / prevVal) * 100;
+  if (Math.abs(pct) < 0.05) return null;
+  const isPositive = pct > 0;
+  const isGood = lowerIsBetter ? !isPositive : isPositive;
+  const absPct = Math.abs(pct);
+  const displayPct = absPct < 10 ? absPct.toFixed(1) : Math.round(absPct).toString();
+  return (
+    <span
+      className={cn(
+        "text-[10px] font-medium px-1 rounded-sm whitespace-nowrap",
+        isGood
+          ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30"
+          : "text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30"
+      )}
+      data-testid="badge-delta"
+    >
+      {isPositive ? "▲" : "▼"} {isPositive ? "+" : ""}{displayPct}%
+    </span>
+  );
+}
+
 export default function WeeklySalesPage() {
   const { user } = useAuth();
   const { language } = useI18n();
@@ -164,11 +195,13 @@ export default function WeeklySalesPage() {
   const [isAutoPopulated, setIsAutoPopulated] = useState(false);
   const [borrowItemNames, setBorrowItemNames] = useState<string[]>([]);
   const [sendingLine, setSendingLine] = useState(false);
+  const [prevForm, setPrevForm] = useState<WeeklyFormData | null>(null);
 
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekEndStr = format(weekEnd, "yyyy-MM-dd");
   const weekLabel = `${format(weekStart, "dd/MM/yyyy")} - ${format(weekEnd, "dd/MM/yyyy")}`;
+  const prevWeekStartStr = format(subWeeks(weekStart, 1), "yyyy-MM-dd");
 
   useEffect(() => {
     loadWeeklyReport();
@@ -253,45 +286,53 @@ export default function WeeklySalesPage() {
   const loadWeeklyReport = async () => {
     setLoading(true);
     setIsAutoPopulated(false);
+    setPrevForm(null);
     try {
-      const res = await apiRequest("POST", "/api/sales/getWeeklyReport", {
-        token,
-        weekStartDate: weekStartStr,
+      const [res, prevRes] = await Promise.all([
+        apiRequest("POST", "/api/sales/getWeeklyReport", { token, weekStartDate: weekStartStr }),
+        apiRequest("POST", "/api/sales/getWeeklyReport", { token, weekStartDate: prevWeekStartStr }),
+      ]);
+      const [data, prevData] = await Promise.all([res.json(), prevRes.json()]);
+
+      const fmt = (v: string) => {
+        if (!v) return "";
+        const stripped = v.replace(/,/g, "");
+        const num = stripped.replace(/[^0-9.]/g, "");
+        if (!num || isNaN(Number(num))) return v;
+        const parts = num.split(".");
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
+      };
+      const normPct = (v: string) => {
+        if (!v) return "";
+        const hasPct = v.endsWith("%");
+        const stripped = v.replace(/%$/, "").replace(/,/g, "");
+        if (!stripped || isNaN(Number(stripped))) return v;
+        return stripped + (hasPct ? "%" : "");
+      };
+      const mapReport = (r: any): WeeklyFormData => ({
+        sale: fmt(r.sale || ""),
+        tc: fmt(r.tc || ""),
+        ta: fmt(r.ta || ""),
+        cog: normPct(r.cog || ""),
+        waste: normPct(r.waste || ""),
+        unac: normPct(r.unac || ""),
+        sos: fmt(r.sos || ""),
+        gsi: normPct(r.gsi || ""),
+        osat: normPct(r.osat || ""),
+        delivery: normPct(r.delivery || ""),
+        googleReview: r.googleReview || "",
+        colMtd: normPct(r.colMtd || ""),
+        wasteTop3: r.wasteTop3 || "",
+        unaccountedTop3: r.unaccountedTop3 || "",
       });
-      const data = await res.json();
+
+      if (prevData.ok && prevData.report) {
+        setPrevForm(mapReport(prevData.report));
+      }
+
       if (data.ok && data.report) {
-        const fmt = (v: string) => {
-          if (!v) return "";
-          const stripped = v.replace(/,/g, "");
-          const num = stripped.replace(/[^0-9.]/g, "");
-          if (!num || isNaN(Number(num))) return v;
-          const parts = num.split(".");
-          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-          return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
-        };
-        const normPct = (v: string) => {
-          if (!v) return "";
-          const hasPct = v.endsWith("%");
-          const stripped = v.replace(/%$/, "").replace(/,/g, "");
-          if (!stripped || isNaN(Number(stripped))) return v;
-          return stripped + (hasPct ? "%" : "");
-        };
-        setForm({
-          sale: fmt(data.report.sale || ""),
-          tc: fmt(data.report.tc || ""),
-          ta: fmt(data.report.ta || ""),
-          cog: normPct(data.report.cog || ""),
-          waste: normPct(data.report.waste || ""),
-          unac: normPct(data.report.unac || ""),
-          sos: fmt(data.report.sos || ""),
-          gsi: normPct(data.report.gsi || ""),
-          osat: normPct(data.report.osat || ""),
-          delivery: normPct(data.report.delivery || ""),
-          googleReview: data.report.googleReview || "",
-          colMtd: normPct(data.report.colMtd || ""),
-          wasteTop3: data.report.wasteTop3 || "",
-          unaccountedTop3: data.report.unaccountedTop3 || "",
-        });
+        setForm(mapReport(data.report));
         setWasteSelections(parseSelectionsFromText(data.report.wasteTop3 || ""));
         setUnacSelections(parseSelectionsFromText(data.report.unaccountedTop3 || ""));
         setHasData(true);
@@ -502,19 +543,19 @@ export default function WeeklySalesPage() {
     detailPlaceholder: language === "th" ? "รายละเอียด (เช่น 500 บาท)" : "Detail (e.g. 500 Baht)",
   };
 
-  const fields: Array<{ key: keyof WeeklyFormData; label: string; placeholder?: string; readOnly?: boolean; autoLabel?: string }> = [
+  const fields: Array<{ key: keyof WeeklyFormData; label: string; placeholder?: string; readOnly?: boolean; autoLabel?: string; lowerIsBetter?: boolean }> = [
     { key: "sale", label: "Sale", placeholder: "e.g. 750,000", autoLabel: "Daily" },
     { key: "tc", label: "TC", placeholder: "e.g. 2,500", autoLabel: "Daily" },
     { key: "ta", label: "TA", placeholder: "คำนวณอัตโนมัติ", readOnly: true },
-    { key: "cog", label: "COG", placeholder: "e.g. 35%" },
-    { key: "waste", label: "Waste", placeholder: "e.g. 1.2%", autoLabel: "Daily" },
-    { key: "unac", label: "Unac", placeholder: "e.g. 0.5%" },
-    { key: "sos", label: "SOS", placeholder: "e.g. 180" },
+    { key: "cog", label: "COG", placeholder: "e.g. 35%", lowerIsBetter: true },
+    { key: "waste", label: "Waste", placeholder: "e.g. 1.2%", autoLabel: "Daily", lowerIsBetter: true },
+    { key: "unac", label: "Unac", placeholder: "e.g. 0.5%", lowerIsBetter: true },
+    { key: "sos", label: "SOS", placeholder: "e.g. 180", lowerIsBetter: true },
     { key: "gsi", label: "GSI", placeholder: "e.g. 95%" },
     { key: "osat", label: "OSAT", placeholder: "e.g. 4.5%" },
     { key: "delivery", label: "Delivery", placeholder: "e.g. 25%" },
     { key: "googleReview", label: "Google Review", placeholder: "e.g. 4.3" },
-    { key: "colMtd", label: "COL MTD", placeholder: "e.g. 18%" },
+    { key: "colMtd", label: "COL MTD", placeholder: "e.g. 18%", lowerIsBetter: true },
   ];
 
   const renderTop3Selectors = (
@@ -683,7 +724,7 @@ export default function WeeklySalesPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {fields.map((f) => (
                     <div key={f.key}>
-                      <div className="flex items-center gap-1 mb-1">
+                      <div className="flex items-center gap-1 mb-1 flex-wrap">
                         <Label className="text-xs font-medium text-muted-foreground">
                           {f.label}
                         </Label>
@@ -696,6 +737,13 @@ export default function WeeklySalesPage() {
                           <span className="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1 rounded">
                             Auto
                           </span>
+                        )}
+                        {prevForm && (
+                          <DeltaBadge
+                            current={form[f.key] as string}
+                            prev={prevForm[f.key] as string}
+                            lowerIsBetter={f.lowerIsBetter}
+                          />
                         )}
                       </div>
                       <Input

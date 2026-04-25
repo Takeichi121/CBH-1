@@ -532,6 +532,15 @@ export const announcements = pgTable("announcements", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const announcementAcknowledgments = pgTable("announcement_acknowledgments", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  username: text("username").notNull().references(() => users.username, { onDelete: "cascade" }),
+  acknowledgedAt: text("acknowledged_at").notNull(),
+}, (t) => ({
+  uniqueUserAnnouncement: unique().on(t.announcementId, t.username),
+}));
+
 // ==========================================
 // 💬 Staff Chat Messages (Persistent)
 // ==========================================
@@ -647,6 +656,7 @@ export const insertWasteTargetSchema = createInsertSchema(wasteTargets).omit({ i
 export const insertManagerRequestSchema = createInsertSchema(managerRequests).omit({ id: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true });
+export const insertAnnouncementAcknowledgmentSchema = createInsertSchema(announcementAcknowledgments).omit({ id: true });
 export const insertBorrowBranchSchema = createInsertSchema(borrowBranches).omit({ id: true });
 export const insertBorrowItemSchema = createInsertSchema(borrowItems).omit({ id: true });
 export const insertBorrowTransactionSchema = createInsertSchema(borrowTransactions).omit({ id: true });
@@ -681,6 +691,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type AnnouncementAcknowledgment = typeof announcementAcknowledgments.$inferSelect;
+export type InsertAnnouncementAcknowledgment = z.infer<typeof insertAnnouncementAcknowledgmentSchema>;
 export type BorrowBranch = typeof borrowBranches.$inferSelect;
 export type InsertBorrowBranch = z.infer<typeof insertBorrowBranchSchema>;
 export type BorrowItem = typeof borrowItems.$inferSelect;

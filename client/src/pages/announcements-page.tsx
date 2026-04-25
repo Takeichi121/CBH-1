@@ -15,8 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Megaphone, Plus, Pencil, Trash2, Pin, AlertTriangle, Clock } from "lucide-react";
-import type { Announcement } from "@shared/schema";
+import { Megaphone, Plus, Pencil, Trash2, Pin, AlertTriangle, Clock, CheckCircle2, Users } from "lucide-react";
+import type { Announcement, AnnouncementAcknowledgment } from "@shared/schema";
 
 const PRIORITY_COLORS: Record<string, string> = {
   high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
@@ -83,7 +83,7 @@ export default function AnnouncementsPage() {
   const queryClient = useQueryClient();
 
   const token = localStorage.getItem("bk_token") || "";
-  const isManager = user?.role === "admin" || user?.role === "manager";
+  const isManager = user?.role === "admin" || user?.role === "manager" || user?.role === "area";
 
   useEffect(() => {
     if (!user?.username) return;
@@ -96,6 +96,7 @@ export default function AnnouncementsPage() {
   const [form, setForm] = useState<AnnouncementFormState>(emptyForm);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showExpired, setShowExpired] = useState(false);
+  const [acksDialogId, setAcksDialogId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<{ ok: boolean; announcements: Announcement[] }>({
     queryKey: ["/api/announcements", showExpired],
@@ -108,7 +109,53 @@ export default function AnnouncementsPage() {
     staleTime: 30000,
   });
 
+  const { data: myAcksData } = useQuery<{ ok: boolean; acknowledgedIds: number[] }>({
+    queryKey: ["/api/announcements/my-acknowledgments"],
+    queryFn: async () => {
+      const res = await fetch("/api/announcements/my-acknowledgments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  const acknowledgedIds = new Set(myAcksData?.acknowledgedIds ?? []);
+
+  const { data: acksDetailData, isLoading: acksDetailLoading } = useQuery<{
+    ok: boolean;
+    acknowledged: AnnouncementAcknowledgment[];
+    unacknowledged: { username: string; displayName: string }[];
+  }>({
+    queryKey: ["/api/announcements", acksDialogId, "acknowledgments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/announcements/${acksDialogId}/acknowledgments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.json();
+    },
+    enabled: acksDialogId !== null && isManager,
+  });
+
   const announcements = data?.announcements ?? [];
+
+  const acknowledgeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/announcements/${id}/acknowledge`, { token });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || "Failed to acknowledge");
+      return { ...json, announcementId: id };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements/my-acknowledgments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements", data.announcementId, "acknowledgments"] });
+      toast({
+        title: language === "th" ? "รับทราบแล้ว" : "Acknowledged",
+        description: language === "th" ? "ขอบคุณสำหรับการยืนยัน" : "Thank you for confirming you've read this.",
+      });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
 
   const createMutation = useMutation({
     mutationFn: async (body: object) => {
@@ -203,6 +250,9 @@ export default function AnnouncementsPage() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const acksForDialog = acksDetailData?.acknowledged ?? [];
+  const unacksForDialog = acksDetailData?.unacknowledged ?? [];
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -274,6 +324,7 @@ export default function AnnouncementsPage() {
             const audienceLabel = (AUDIENCE_LABELS[a.targetAudience] || AUDIENCE_LABELS.all)[language === "th" ? "th" : "en"];
             const displayTitle = (language === "th" && a.titleTh) ? a.titleTh : a.title;
             const displayContent = (language === "th" && a.contentTh) ? a.contentTh : a.content;
+            const isAcknowledged = acknowledgedIds.has(a.id);
 
             return (
               <Card
@@ -345,12 +396,164 @@ export default function AnnouncementsPage() {
                   <p className="text-xs text-muted-foreground mt-3">
                     {language === "th" ? "โดย" : "By"} {a.createdBy} · {formatDate(a.createdAt, language)}
                   </p>
+
+                  {/* Acknowledgment row */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    {/* Staff: Got it button / acknowledged indicator */}
+                    {!isManager && !expired && (
+                      isAcknowledged ? (
+                        <span
+                          className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium"
+                          data-testid={`status-acknowledged-${a.id}`}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {language === "th" ? "รับทราบแล้ว" : "Acknowledged"}
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                          onClick={() => acknowledgeMutation.mutate(a.id)}
+                          disabled={acknowledgeMutation.isPending}
+                          data-testid={`button-acknowledge-${a.id}`}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {language === "th" ? "รับทราบ" : "Got it"}
+                        </Button>
+                      )
+                    )}
+
+                    {/* Manager: Got it (as a regular user too) and acknowledgment count */}
+                    {isManager && !expired && (
+                      <div className="flex items-center gap-2">
+                        {isAcknowledged ? (
+                          <span
+                            className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium"
+                            data-testid={`status-acknowledged-${a.id}`}
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            {language === "th" ? "รับทราบแล้ว" : "Acknowledged"}
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                            onClick={() => acknowledgeMutation.mutate(a.id)}
+                            disabled={acknowledgeMutation.isPending}
+                            data-testid={`button-acknowledge-${a.id}`}
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            {language === "th" ? "รับทราบ" : "Got it"}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1.5 text-muted-foreground hover:text-foreground text-xs"
+                          onClick={() => setAcksDialogId(a.id)}
+                          data-testid={`button-view-acknowledgments-${a.id}`}
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          {language === "th" ? "ดูการรับทราบ" : "View responses"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* Acknowledgments Detail Dialog (manager only) */}
+      <Dialog open={acksDialogId !== null} onOpenChange={open => { if (!open) setAcksDialogId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              {language === "th" ? "สถานะการรับทราบ" : "Acknowledgment Status"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            {acksDetailLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-8 w-full" />)}
+              </div>
+            ) : (
+              <>
+                {/* Summary counts */}
+                <div className="flex gap-3">
+                  <div className="flex-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 text-center">
+                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400" data-testid="count-acknowledged">{acksForDialog.length}</p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-500">{language === "th" ? "รับทราบแล้ว" : "Acknowledged"}</p>
+                  </div>
+                  <div className="flex-1 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-center">
+                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-400" data-testid="count-unacknowledged">{unacksForDialog.length}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500">{language === "th" ? "ยังไม่รับทราบ" : "Pending"}</p>
+                  </div>
+                </div>
+
+                {/* Acknowledged list */}
+                {acksForDialog.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {language === "th" ? "รับทราบแล้ว" : "Acknowledged"}
+                    </p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {acksForDialog.map(ack => (
+                        <div
+                          key={ack.id}
+                          className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-muted/50"
+                          data-testid={`row-acknowledged-${ack.id}`}
+                        >
+                          <span className="text-sm font-medium">{ack.username}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(ack.acknowledgedAt, language)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Unacknowledged list */}
+                {unacksForDialog.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {language === "th" ? "ยังไม่รับทราบ" : "Pending"}
+                    </p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {unacksForDialog.map(u => (
+                        <div
+                          key={u.username}
+                          className="flex items-center px-3 py-1.5 rounded-lg bg-muted/30"
+                          data-testid={`row-unacknowledged-${u.username}`}
+                        >
+                          <span className="text-sm text-muted-foreground">{u.displayName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {acksForDialog.length === 0 && unacksForDialog.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {language === "th" ? "ยังไม่มีผู้รับทราบ" : "No one has acknowledged yet"}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAcksDialogId(null)}>
+              {language === "th" ? "ปิด" : "Close"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={open => { if (!open) { setDialogOpen(false); setEditingId(null); setForm(emptyForm); } else { setDialogOpen(true); } }}>

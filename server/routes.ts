@@ -8598,6 +8598,80 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     return res.json({ ok: true });
   }));
 
+  app.get("/api/announcements/my-acknowledgments", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.status(401).json({ ok: false, message: "User not found" });
+
+    const ids = await storage.getUserAcknowledgedIds(u.username);
+    return res.json({ ok: true, acknowledgedIds: ids });
+  }));
+
+  app.post("/api/announcements/:id/acknowledge", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.status(401).json({ ok: false, message: "User not found" });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+
+    const existing = await storage.getAnnouncement(id);
+    if (!existing) return res.status(404).json({ ok: false, message: "Announcement not found" });
+
+    // Enforce store visibility: non-admin/area users can only acknowledge their own store's announcements
+    const isAdminLike = u.role === "admin" || u.role === "area";
+    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+      return res.status(403).json({ ok: false, message: "No permission to acknowledge this announcement" });
+    }
+
+    // Enforce audience visibility: non-managers cannot acknowledge manager-only announcements
+    const { targetAudience } = existing;
+    if (!isManagerLike(u.role) && targetAudience === "managers") {
+      return res.status(403).json({ ok: false, message: "This announcement is not targeted at you" });
+    }
+
+    await storage.acknowledgeAnnouncement(id, u.username);
+    return res.json({ ok: true });
+  }));
+
+  app.get("/api/announcements/:id/acknowledgments", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string);
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const u = await storage.getUser(session.username);
+    if (!u || !isManagerLike(u.role)) return res.status(403).json({ ok: false, message: "Manager role required" });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ ok: false, message: "Invalid id" });
+
+    const existing = await storage.getAnnouncement(id);
+    if (!existing) return res.status(404).json({ ok: false, message: "Announcement not found" });
+
+    // Enforce store scope: non-admin/area managers can only view their own store's acknowledgments
+    const isAdminLike = u.role === "admin" || u.role === "area";
+    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+      return res.status(403).json({ ok: false, message: "No permission to view acknowledgments for this announcement" });
+    }
+
+    const acks = await storage.getAcknowledgments(id);
+    const acknowledgedSet = new Set(acks.map(a => a.username));
+
+    // Fetch the expected audience for the announcement to compute unacknowledged users
+    const audienceUsers = await storage.getUsersByStoreAndAudience(existing.storeId, existing.targetAudience);
+    const unacknowledged = audienceUsers
+      .filter(usr => !acknowledgedSet.has(usr.username))
+      .map(usr => ({ username: usr.username, displayName: usr.fullName || usr.nickName || usr.username }));
+
+    return res.json({ ok: true, acknowledged: acks, unacknowledged });
+  }));
+
   // ==================== Excel Offline: Authenticated CSV Bundle ====================
   // Used by scripts/export-to-excel/fetch-csv-bundle.mjs so non-technical staff can
   // build the .xlsm without holding a database URL. They authenticate with their

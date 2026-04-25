@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, announcementAcknowledgments, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type AnnouncementAcknowledgment, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 export class StorageError extends Error {
@@ -973,6 +973,37 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
+  }
+
+  async acknowledgeAnnouncement(announcementId: number, username: string): Promise<void> {
+    const now = new Date().toISOString();
+    await db.insert(announcementAcknowledgments)
+      .values({ announcementId, username, acknowledgedAt: now })
+      .onConflictDoNothing();
+  }
+
+  async getAcknowledgments(announcementId: number): Promise<AnnouncementAcknowledgment[]> {
+    return await db.select().from(announcementAcknowledgments)
+      .where(eq(announcementAcknowledgments.announcementId, announcementId))
+      .orderBy(announcementAcknowledgments.acknowledgedAt);
+  }
+
+  async getUserAcknowledgedIds(username: string): Promise<number[]> {
+    const rows = await db.select({ announcementId: announcementAcknowledgments.announcementId })
+      .from(announcementAcknowledgments)
+      .where(eq(announcementAcknowledgments.username, username));
+    return rows.map(r => r.announcementId);
+  }
+
+  async getUsersByStoreAndAudience(storeId: string, targetAudience: string): Promise<User[]> {
+    const allUsers = await db.select().from(users).where(eq(users.active, 1));
+    return allUsers.filter(u => {
+      if (u.storeId !== storeId) return false;
+      if (targetAudience === "all") return true;
+      if (targetAudience === "staff") return u.role === "staff";
+      if (targetAudience === "managers") return u.role === "manager" || u.role === "admin" || u.role === "area";
+      return true;
+    });
   }
 
   // Borrow Tracker - Branches

@@ -3,6 +3,17 @@ import { getAlohaSalesRaw } from "./aloha-service";
 import { getNBOSalesAuto } from "./nbo-service";
 import { pushToBoss } from "../socket";
 import { streamLLM } from "../replit_integrations/chat/services/llm-router";
+import { storage } from "../storage";
+import { getWeekStartTuesday, toYMD } from "../utils";
+import { sendLineMessage } from "./line-service";
+
+function getPreviousWeekTuesdayStr(bangkokNow: Date): string {
+  const bangkokDateStr = `${bangkokNow.getUTCFullYear()}-${String(bangkokNow.getUTCMonth() + 1).padStart(2, "0")}-${String(bangkokNow.getUTCDate()).padStart(2, "0")}`;
+  const thisWeekTuesday = getWeekStartTuesday(bangkokDateStr);
+  const prevWeekTuesday = new Date(thisWeekTuesday);
+  prevWeekTuesday.setDate(prevWeekTuesday.getDate() - 7);
+  return toYMD(prevWeekTuesday);
+}
 
 export function initProactiveChann() {
   cron.schedule(
@@ -52,9 +63,49 @@ export function initProactiveChann() {
     { timezone: "Asia/Bangkok" }
   );
 
+  cron.schedule(
+    "0 19 * * 2",
+    async () => {
+      console.log("[WeeklyReminder] ⏰ ตรวจสอบ Weekly Report วันอังคาร 19:00...");
+      try {
+        const cfg = await storage.getConfig();
+        const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+        const targetId = cfg["LINE_TARGET_ID"];
+        if (!channelToken || !targetId) {
+          console.warn("[WeeklyReminder] ยังไม่ได้ตั้งค่า LINE — ข้ามการแจ้งเตือน");
+          return;
+        }
+
+        const bangkokOffsetMs = 7 * 60 * 60 * 1000;
+        const bangkokNow = new Date(Date.now() + bangkokOffsetMs);
+        const prevWeekStartStr = getPreviousWeekTuesdayStr(bangkokNow);
+
+        const existingReport = await storage.getWeeklySalesReport(prevWeekStartStr);
+        if (existingReport) {
+          console.log(`[WeeklyReminder] ✅ พบ Weekly Report สำหรับสัปดาห์ ${prevWeekStartStr} แล้ว — ไม่ต้องแจ้งเตือน`);
+          return;
+        }
+
+        const storeCfg = await storage.getStoreSettings();
+        const storeName = storeCfg?.storeName || "Grand Diamond";
+
+        const text =
+          `⚠️ ${storeName} — แจ้งเตือนอัตโนมัติ\n` +
+          `ยังไม่พบ Weekly Report สำหรับสัปดาห์ที่เริ่ม ${prevWeekStartStr}\n\n` +
+          `กรุณากรอกและส่ง Weekly Report ก่อน 20:00 คืนนี้ครับ 🙏`;
+
+        await sendLineMessage(channelToken, targetId, [{ type: "text", text }]);
+        console.log(`[WeeklyReminder] ✅ ส่งแจ้งเตือน LINE สำหรับสัปดาห์ ${prevWeekStartStr} เรียบร้อย`);
+      } catch (err) {
+        console.error("[WeeklyReminder] ❌ เกิดข้อผิดพลาด:", err);
+      }
+    },
+    { timezone: "Asia/Bangkok" }
+  );
+
   scheduleOneTimeAlert22h45();
 
-  console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน");
+  console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน, แจ้งเตือน Weekly 19:00 ทุกวันอังคาร");
 }
 
 function scheduleOneTimeAlert22h45() {

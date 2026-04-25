@@ -109,6 +109,28 @@ interface ItemSelection {
   detail: string;
 }
 
+interface WeeklyHistoryReport {
+  id: number;
+  weekStartDate: string;
+  weekEndDate: string;
+  sale?: string;
+  tc?: string;
+  ta?: string;
+  cog?: string;
+  waste?: string;
+  unac?: string;
+  sos?: string;
+  gsi?: string;
+  osat?: string;
+  delivery?: string;
+  googleReview?: string;
+  colMtd?: string;
+  wasteTop3?: string;
+  unaccountedTop3?: string;
+  reportBy?: string;
+  storeId?: string;
+}
+
 const emptySelections: ItemSelection[] = [
   { itemName: "", detail: "" },
   { itemName: "", detail: "" },
@@ -190,7 +212,7 @@ export default function WeeklySalesPage() {
   const [wasteSelections, setWasteSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
   const [unacSelections, setUnacSelections] = useState<ItemSelection[]>([...emptySelections.map(s => ({ ...s }))]);
   const [openCombobox, setOpenCombobox] = useState<{ type: 'waste' | 'unac'; index: number } | null>(null);
-  const [historyReports, setHistoryReports] = useState<any[]>([]);
+  const [historyReports, setHistoryReports] = useState<WeeklyHistoryReport[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [autoPopulating, setAutoPopulating] = useState(false);
   const [isAutoPopulated, setIsAutoPopulated] = useState(false);
@@ -478,7 +500,7 @@ export default function WeeklySalesPage() {
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
     headerRow.height = 20;
 
-    historyReports.forEach((r: any) => {
+    historyReports.forEach((r: WeeklyHistoryReport) => {
       const startD = new Date(r.weekStartDate + "T00:00:00");
       const endD = new Date(r.weekEndDate + "T00:00:00");
       const fmtD = (d: Date) =>

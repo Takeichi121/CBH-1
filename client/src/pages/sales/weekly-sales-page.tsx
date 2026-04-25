@@ -288,11 +288,13 @@ export default function WeeklySalesPage() {
     setIsAutoPopulated(false);
     setPrevForm(null);
     try {
-      const [res, prevRes] = await Promise.all([
+      const [res, prevRes] = await Promise.allSettled([
         apiRequest("POST", "/api/sales/getWeeklyReport", { token, weekStartDate: weekStartStr }),
         apiRequest("POST", "/api/sales/getWeeklyReport", { token, weekStartDate: prevWeekStartStr }),
       ]);
-      const [data, prevData] = await Promise.all([res.json(), prevRes.json()]);
+      if (res.status === "rejected") throw new Error("Failed to fetch current week report");
+      const data = await res.value.json();
+      const prevData = prevRes.status === "fulfilled" ? await prevRes.value.json() : null;
 
       const fmt = (v: string) => {
         if (!v) return "";

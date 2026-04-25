@@ -34,6 +34,7 @@ type ChannMsg = {
   role: "user" | "assistant";
   content: string;
   thinking?: boolean;
+  thinkingText?: string;
 };
 
 function ChannChatPanel() {
@@ -108,12 +109,21 @@ function ChannChatPanel() {
           if (raw === "[DONE]") continue;
           try {
             const parsed = JSON.parse(raw);
+            const thinkingStep = parsed?.thinking ?? "";
             const token2 = parsed?.content ?? parsed?.choices?.[0]?.delta?.content ?? parsed?.delta ?? parsed?.text ?? "";
+            if (thinkingStep) {
+              setMessages(prev => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                next[next.length - 1] = { ...last, thinking: true, thinkingText: thinkingStep };
+                return next;
+              });
+            }
             if (token2) {
               assistantText += token2;
               setMessages(prev => {
                 const next = [...prev];
-                next[next.length - 1] = { role: "assistant", content: assistantText, thinking: false };
+                next[next.length - 1] = { role: "assistant", content: assistantText, thinking: false, thinkingText: undefined };
                 return next;
               });
             }
@@ -194,10 +204,17 @@ function ChannChatPanel() {
               )}
             >
               {msg.thinking ? (
-                <div className="flex gap-1 items-center py-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                <div className="flex flex-col gap-1.5">
+                  {msg.thinkingText && (
+                    <p className="text-xs italic text-muted-foreground/70 leading-relaxed" data-testid="text-thinking-step">
+                      {msg.thinkingText}
+                    </p>
+                  )}
+                  <div className="flex gap-1 items-center py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
                 </div>
               ) : msg.role === "assistant" ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">

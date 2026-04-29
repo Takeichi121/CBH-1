@@ -4,6 +4,7 @@ import { useI18n } from "@/hooks/use-i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database, CalendarRange, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AnomalyBanner } from "@/components/anomaly-banner";
 
 interface SalesLayoutProps {
   children: ReactNode;
@@ -101,7 +102,10 @@ export function SalesLayout({ children }: SalesLayoutProps) {
           );
         })}
       </div>
-      <div className="pb-36">{children}</div>
+      <div className="pb-36">
+        <AnomalyBanner />
+        {children}
+      </div>
     </div>
   );
 }

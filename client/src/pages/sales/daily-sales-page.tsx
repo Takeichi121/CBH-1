@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { useAreaLock } from "@/hooks/use-area-lock";
 import { AreaLockBanner } from "@/components/area-lock-banner";
+import { ChannDraftButton } from "@/components/chann-draft-button";
 import { todayBangkok, yesterdayBangkok, cn } from "@/lib/utils";
 import {
   Card,
@@ -2502,6 +2503,22 @@ ${v.staffRosterText || ""}
           <CardContent>
             <Form {...form}>
               <form className="space-y-6">
+                {(!reportSavedInDb || isEditMode) && (
+                  <div className="flex items-center justify-end -mb-2">
+                    <ChannDraftButton
+                      reportDate={form.watch("reportDate")}
+                      onApply={(fields, notes) => {
+                        for (const [k, v] of Object.entries(fields)) {
+                          form.setValue(k as any, v, { shouldDirty: true });
+                        }
+                        if (notes) {
+                          const existing = (form.getValues("noteAddons") as string) || "";
+                          form.setValue("noteAddons", existing ? `${existing}\n[Chann] ${notes}` : `[Chann] ${notes}`, { shouldDirty: true });
+                        }
+                      }}
+                    />
+                  </div>
+                )}
                 <div className={`bg-muted/50 p-3 md:p-4 rounded-lg ${sectionHiddenClass("basicInfo")}`}>
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-sm md:text-base font-medium">

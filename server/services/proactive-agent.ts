@@ -6,6 +6,8 @@ import { streamLLM } from "../replit_integrations/chat/services/llm-router";
 import { storage } from "../storage";
 import { getWeekStartTuesday, toYMD } from "../utils";
 import { sendLineMessage } from "./line-service";
+import { detectAnomalies, persistAnomalies, type DetectedAnomaly } from "./chann-anomaly-service";
+import { addMemory } from "./chann-memory-service";
 
 function getPreviousWeekTuesdayStr(bangkokNow: Date): string {
   const bangkokDateStr = `${bangkokNow.getUTCFullYear()}-${String(bangkokNow.getUTCMonth() + 1).padStart(2, "0")}-${String(bangkokNow.getUTCDate()).padStart(2, "0")}`;
@@ -31,13 +33,34 @@ export function initProactiveChann() {
         return;
       }
 
+      const yesterday = new Date(Date.now() + 7 * 60 * 60 * 1000);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const yDate = yesterday.toISOString().slice(0, 10);
+      const storeId = "BK1040";
+
+      let anomalies: DetectedAnomaly[] = [];
+      try {
+        anomalies = await detectAnomalies(yDate, storeId);
+        if (anomalies.length > 0) {
+          await persistAnomalies(yDate, storeId, anomalies);
+          console.log(`[Chann] 🚨 พบ anomaly ${anomalies.length} รายการสำหรับ ${yDate}`);
+        }
+      } catch (e) {
+        console.error("[Chann] anomaly detection error:", e);
+      }
+
+      const anomalyText = anomalies.length > 0
+        ? `\n\n🚨 พบความผิดปกติในรายงานวันที่ ${yDate}:\n` +
+          anomalies.map((a) => `- [${a.severity.toUpperCase()}] ${a.reason} (คาด ${a.expected} จริง ${a.actual})`).join("\n")
+        : `\n\n✅ รายงานวันที่ ${yDate} อยู่ในเกณฑ์ปกติ ไม่พบความผิดปกติ`;
+
       const prompt = `
 คุณผู้จัดการครับ นี่คือสรุปยอดล่าสุด:
 - ยอดจาก Aloha (DBF): ${alohaData ? alohaData.totalFromDbf.toLocaleString("th-TH") : "ดึงข้อมูลไม่ได้"} บาท
 - ยอดจาก NBO (SQL): ${nboData ? nboData.TotalSales.toLocaleString("th-TH") : "ดึงข้อมูลไม่ได้"} บาท
-- จำนวนลูกค้า (NBO): ${nboData ? nboData.GuestCount.toLocaleString("th-TH") : "-"} คน
+- จำนวนลูกค้า (NBO): ${nboData ? nboData.GuestCount.toLocaleString("th-TH") : "-"} คน${anomalyText}
 
-ช่วยวิเคราะห์ความสอดคล้องของตัวเลขทั้งสองระบบ และเสนอแผนเชิงรุก 3 ข้อให้คุณผู้จัดการด้วยครับ`.trim();
+ช่วยวิเคราะห์ความสอดคล้องของตัวเลขทั้งสองระบบ ให้ความเห็นเรื่องความผิดปกติ (ถ้ามี) และเสนอแผนเชิงรุก 3 ข้อให้คุณผู้จัดการด้วยครับ`.trim();
 
       let report = "";
       try {
@@ -59,6 +82,18 @@ export function initProactiveChann() {
         title: "รายงานเช้านี้จาก Chann 📊",
         message: report,
       });
+
+      try {
+        await addMemory({
+          kind: "report_summary",
+          storeId,
+          sourceDate: yDate,
+          content: `รายงานเช้า ${yDate}: Aloha=${alohaData?.totalFromDbf ?? "-"} NBO=${nboData?.TotalSales ?? "-"} TC=${nboData?.GuestCount ?? "-"}\nสรุปจาก Chann: ${report.slice(0, 1500)}`,
+          metadata: { anomalyCount: anomalies.length, severity: anomalies.find((a) => a.severity === "critical") ? "critical" : (anomalies.length > 0 ? "warn" : "ok") },
+        });
+      } catch (e) {
+        console.error("[Chann] memory save error:", e);
+      }
     },
     { timezone: "Asia/Bangkok" }
   );

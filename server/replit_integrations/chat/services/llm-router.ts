@@ -10,6 +10,7 @@ export interface StreamLLMParams {
   history: { role: "user" | "assistant"; content: string }[];
   onToken: (delta: string) => void;
   signal?: AbortSignal;
+  extraContext?: string;
 }
 
 function getSystemPrompt(mode: Mode): string {
@@ -58,10 +59,14 @@ async function streamReplit(params: StreamLLMParams): Promise<string> {
   ];
   const messages = sanitizeMessages(rawMessages);
 
+  const systemContent = params.extraContext
+    ? `${getSystemPrompt(params.mode)}\n\n--- ความจำที่เกี่ยวข้อง ---\n${params.extraContext}\n--- จบความจำ ---`
+    : getSystemPrompt(params.mode);
+
   const stream = await openai.chat.completions.create({
     model: "gpt-5.2",
     messages: [
-      { role: "system", content: getSystemPrompt(params.mode) },
+      { role: "system", content: systemContent },
       ...messages,
     ],
     max_tokens: 4096,

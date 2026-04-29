@@ -8855,5 +8855,152 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     }
   }));
 
+  // ==========================================
+  // 🤖 Chann AI: Draft / Anomaly / Memory
+  // ==========================================
+  const requireSession = async (token: string) => {
+    if (!token) return null;
+    const sess = await storage.getSession(token);
+    if (!sess) return null;
+    const user = await storage.getUser(sess.username);
+    if (!user) return null;
+    return { username: sess.username, user };
+  };
+
+  app.post("/api/chann/draft-daily-sales", safe(async (req, res) => {
+    const { token, date, storeId } = req.body || {};
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (!date) return res.status(400).json({ ok: false, message: "date required" });
+    const sId = storeId || ctx.user.storeId || "BK1040";
+    try {
+      const { generateDailySalesDraft } = await import("./services/chann-draft-service");
+      const draft = await generateDailySalesDraft(date, sId);
+      res.json({ ok: true, draft });
+    } catch (e: any) {
+      console.error("draft-daily-sales error:", e);
+      res.status(500).json({ ok: false, message: e?.message || "Draft generation failed" });
+    }
+  }));
+
+  app.get("/api/chann/anomalies", safe(async (req, res) => {
+    const token = (req.query.token as string) || "";
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const sId = (req.query.storeId as string) || ctx.user.storeId || "BK1040";
+    try {
+      const { listActiveAnomalies } = await import("./services/chann-anomaly-service");
+      const items = await listActiveAnomalies(sId);
+      res.json({ ok: true, anomalies: items });
+    } catch (e: any) {
+      console.error("list anomalies error:", e);
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
+  app.post("/api/chann/anomalies/:id/acknowledge", safe(async (req, res) => {
+    const { token } = req.body || {};
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const id = parseInt(req.params.id, 10);
+    if (!isFinite(id)) return res.status(400).json({ ok: false, message: "bad id" });
+    try {
+      const { acknowledgeAnomaly } = await import("./services/chann-anomaly-service");
+      await acknowledgeAnomaly(id, ctx.username);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
+  app.post("/api/chann/anomalies/detect", safe(async (req, res) => {
+    const { token, date, storeId } = req.body || {};
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (ctx.user.role !== "admin" && ctx.user.role !== "area") {
+      return res.status(403).json({ ok: false, message: "Admin only" });
+    }
+    if (!date) return res.status(400).json({ ok: false, message: "date required" });
+    const sId = storeId || ctx.user.storeId || "BK1040";
+    try {
+      const { detectAnomalies, persistAnomalies } = await import("./services/chann-anomaly-service");
+      const detected = await detectAnomalies(date, sId);
+      const saved = await persistAnomalies(date, sId, detected);
+      res.json({ ok: true, detected, saved });
+    } catch (e: any) {
+      console.error("detect anomalies error:", e);
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
+  app.get("/api/chann/memories", safe(async (req, res) => {
+    const token = (req.query.token as string) || "";
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (ctx.user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+    try {
+      const q = (req.query.q as string) || "";
+      const kind = (req.query.kind as string) || undefined;
+      const sId = (req.query.storeId as string) || undefined;
+      if (q) {
+        const { searchMemory } = await import("./services/chann-memory-service");
+        const items = await searchMemory(q, { k: 20, storeId: sId, kinds: kind ? [kind] : undefined });
+        res.json({ ok: true, memories: items });
+      } else {
+        const { listMemories } = await import("./services/chann-memory-service");
+        const items = await listMemories({ kind, storeId: sId, limit: 100 });
+        res.json({ ok: true, memories: items });
+      }
+    } catch (e: any) {
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
+  app.post("/api/chann/memories", safe(async (req, res) => {
+    const { token, kind, content, storeId, sourceDate, metadata } = req.body || {};
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (ctx.user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+    if (!kind || !content) return res.status(400).json({ ok: false, message: "kind and content required" });
+    try {
+      const { addMemory } = await import("./services/chann-memory-service");
+      const m = await addMemory({ kind, content, storeId, sourceDate, metadata });
+      res.json({ ok: true, memory: m });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
+  app.delete("/api/chann/memories/:id", safe(async (req, res) => {
+    const token = (req.query.token as string) || (req.body && req.body.token) || "";
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (ctx.user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+    const id = parseInt(req.params.id, 10);
+    if (!isFinite(id)) return res.status(400).json({ ok: false, message: "bad id" });
+    try {
+      const { deleteMemory } = await import("./services/chann-memory-service");
+      await deleteMemory(id);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
+  app.post("/api/chann/memories/backfill", safe(async (req, res) => {
+    const { token, daysBack, storeId } = req.body || {};
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (ctx.user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
+    try {
+      const { backfillReportSummaries } = await import("./services/chann-memory-service");
+      const added = await backfillReportSummaries(daysBack ?? 90, storeId || "BK1040");
+      res.json({ ok: true, added });
+    } catch (e: any) {
+      console.error("backfill error:", e);
+      res.status(500).json({ ok: false, message: e?.message || "Failed" });
+    }
+  }));
+
   return httpServer;
 }

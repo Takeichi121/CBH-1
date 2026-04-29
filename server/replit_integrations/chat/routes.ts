@@ -176,6 +176,20 @@ export function registerChatRoutes(app: Express): void {
         res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
       };
 
+      // 🧠 ดึง memory ที่เกี่ยวข้องกับข้อความล่าสุด
+      let extraContext = "";
+      try {
+        const { searchMemory } = await import("../../services/chann-memory-service");
+        const memHits = await searchMemory(content, { k: 3, maxDistance: 0.55 });
+        if (memHits.length > 0) {
+          extraContext = memHits
+            .map((m: any, i: number) => `${i + 1}. [${m.kind}${m.sourceDate ? " " + m.sourceDate : ""}] ${m.content.slice(0, 400)}`)
+            .join("\n");
+        }
+      } catch (e) {
+        console.warn("memory lookup failed:", e);
+      }
+
       // 👇 เรียกใช้ LLM Router 
       const fullResponse = await streamLLM({
         provider,
@@ -183,7 +197,8 @@ export function registerChatRoutes(app: Express): void {
         message: content,
         history,
         onToken,
-        signal: abortController.signal
+        signal: abortController.signal,
+        extraContext: extraContext || undefined,
       });
 
       clearInterval(heartbeat);

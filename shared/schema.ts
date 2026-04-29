@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb, real, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, unique, timestamp, decimal, jsonb, real, index, vector } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -755,6 +755,56 @@ export const channNotes = pgTable("chann_notes", {
 
 export type ChannNote = typeof channNotes.$inferSelect;
 export type InsertChannNote = typeof channNotes.$inferInsert;
+
+// ==========================================
+// 🧠 Chann Long-term Memory (RAG via pgvector)
+// ==========================================
+
+export const channMemories = pgTable("chann_memories", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").notNull(),
+  storeId: text("store_id"),
+  content: text("content").notNull(),
+  embedding: vector("embedding", { dimensions: 1536 }),
+  sourceDate: text("source_date"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  embeddingIndex: index("chann_memories_embedding_idx").using("hnsw", table.embedding.op("vector_cosine_ops")),
+  kindIdx: index("chann_memories_kind_idx").on(table.kind),
+  storeIdx: index("chann_memories_store_idx").on(table.storeId),
+}));
+
+export type ChannMemory = typeof channMemories.$inferSelect;
+export type InsertChannMemory = typeof channMemories.$inferInsert;
+export const insertChannMemorySchema = createInsertSchema(channMemories).omit({ id: true, createdAt: true, embedding: true });
+
+// ==========================================
+// 🚨 Chann Anomaly Detection
+// ==========================================
+
+export const channAnomalies = pgTable("chann_anomalies", {
+  id: serial("id").primaryKey(),
+  storeId: text("store_id").notNull(),
+  reportDate: text("report_date").notNull(),
+  field: text("field").notNull(),
+  expected: text("expected").notNull(),
+  actual: text("actual").notNull(),
+  deviation: text("deviation").notNull(),
+  severity: text("severity").notNull(),
+  reason: text("reason").notNull(),
+  acknowledged: boolean("acknowledged").default(false).notNull(),
+  acknowledgedBy: text("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  storeDateIdx: index("chann_anomalies_store_date_idx").on(table.storeId, table.reportDate),
+  ackIdx: index("chann_anomalies_ack_idx").on(table.acknowledged),
+}));
+
+export type ChannAnomaly = typeof channAnomalies.$inferSelect;
+export type InsertChannAnomaly = typeof channAnomalies.$inferInsert;
+export const insertChannAnomalySchema = createInsertSchema(channAnomalies).omit({ id: true, createdAt: true, acknowledgedAt: true, acknowledgedBy: true });
 
 // ==========================================
 // 📝 Code Proposals (Chann → Agent)

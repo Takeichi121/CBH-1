@@ -197,9 +197,16 @@ export default function SalesReportsPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">{t.title}</CardTitle>
-              <Badge variant="secondary">
-                {filteredReports.length} {t.items}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Link href="/sales/customize-report">
+                  <Button size="sm" variant="outline" data-testid="button-add-report-card">
+                    + {language === "th" ? "เพิ่มการ์ดรีพอร์ต" : "Add report card"}
+                  </Button>
+                </Link>
+                <Badge variant="secondary">
+                  {filteredReports.length} {t.items}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

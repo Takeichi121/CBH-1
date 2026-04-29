@@ -30,6 +30,7 @@ const SECTION_DEFS = [
   { key: "waste", th: "Waste", en: "Waste", color: "bg-red-500" },
   { key: "labor", th: "Labor", en: "Labor", color: "bg-indigo-500" },
   { key: "roster", th: "Roster", en: "Roster", color: "bg-teal-500" },
+  { key: "quality", th: "คุณภาพสินค้า", en: "Product Quality", color: "bg-emerald-500" },
 ] as const;
 
 type FieldDef = { key: string; section: string; th: string; en: string };
@@ -74,6 +75,9 @@ const FIELD_DEFS: FieldDef[] = [
   { key: "recommendHours", section: "labor", th: "Recommend Hours", en: "Recommend Hours" },
   { key: "rosterCommit", section: "labor", th: "Roster Commit", en: "Roster Commit" },
   { key: "actualHours", section: "labor", th: "Actual Hours", en: "Actual Hours" },
+  // quality
+  { key: "complaintCount", section: "quality", th: "จำนวนเคส Complaint", en: "Complaint Cases" },
+  { key: "refundAmount", section: "quality", th: "ยอด Refund (฿)", en: "Refund Amount (฿)" },
 ];
 
 export default function CustomizeReportPage() {

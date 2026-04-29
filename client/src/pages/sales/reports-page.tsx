@@ -198,7 +198,7 @@ export default function SalesReportsPage() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">{t.title}</CardTitle>
               <div className="flex items-center gap-2">
-                <Link href="/sales/customize-report">
+                <Link href="/sales/customize">
                   <Button size="sm" variant="outline" data-testid="button-add-report-card">
                     + {language === "th" ? "เพิ่มการ์ดรีพอร์ต" : "Add report card"}
                   </Button>

@@ -6671,7 +6671,7 @@ ${pageContext}` : ''}`;
 
   const VALID_SECTION_KEYS = [
     "basicInfo", "daily", "mtd", "inStore", "delivery",
-    "performance", "addons", "waste", "labor", "roster",
+    "performance", "addons", "waste", "labor", "quality", "roster",
   ] as const;
 
   // Field-level customization (label override + visibility) — uses form field names as keys
@@ -6684,6 +6684,7 @@ ${pageContext}` : ''}`;
     "addCheeseCount", "vMealCount", "upSizeCount",
     "wasteMealDaily", "wasteMealMtd",
     "recommendHours", "rosterCommit", "actualHours",
+    "complaintCount", "refundAmount",
   ] as const;
 
   app.post("/api/settings/get-report-customization", safe(async (req, res) => {

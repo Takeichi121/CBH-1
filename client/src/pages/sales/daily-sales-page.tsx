@@ -214,6 +214,10 @@ const formSchema = z.object({
   tcmh: z.string().default("0"),
   closeShiftCount: z.string().default("0"),
 
+  // --- Product Quality section ---
+  complaintCount: z.string().default("0"),
+  refundAmount: z.string().default("0"),
+
   managerRosterDate: z.string().default(""),
   managerRosterText: z.string().default(""),
   staffRosterText: z.string().default(""),
@@ -541,6 +545,9 @@ export default function DailySalesPage() {
       tcmh: "0",
       closeShiftCount: "0",
 
+      complaintCount: "0",
+      refundAmount: "0",
+
       managerRosterDate: "",
       managerRosterText: "",
       staffRosterText: "",
@@ -650,6 +657,8 @@ export default function DailySalesPage() {
       colPercent: values.colPercent?.replace(/,/g, "") || "0",
       tcmh: values.tcmh?.replace(/,/g, "") || "0",
       closeShiftCount: values.closeShiftCount || "0",
+      complaintCount: values.complaintCount?.replace(/,/g, "") || "0",
+      refundAmount: values.refundAmount?.replace(/,/g, "") || "0",
     };
 
     try {
@@ -1327,6 +1336,8 @@ export default function DailySalesPage() {
         colPercent: values.colPercent?.replace(/,/g, "") || "0",
         tcmh: values.tcmh?.replace(/,/g, "") || "0",
         closeShiftCount: values.closeShiftCount || "0",
+        complaintCount: values.complaintCount?.replace(/,/g, "") || "0",
+        refundAmount: values.refundAmount?.replace(/,/g, "") || "0",
         cashDeposit: values.cashDeposit?.replace(/,/g, "") || "0",
       };
 
@@ -1444,6 +1455,8 @@ export default function DailySalesPage() {
         colPercent: values.colPercent?.replace(/,/g, "") || "0",
         tcmh: values.tcmh?.replace(/,/g, "") || "0",
         closeShiftCount: values.closeShiftCount || "0",
+        complaintCount: values.complaintCount?.replace(/,/g, "") || "0",
+        refundAmount: values.refundAmount?.replace(/,/g, "") || "0",
         cashDeposit: values.cashDeposit?.replace(/,/g, "") || "0",
       };
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", { token, report: reportToSave });
@@ -4171,6 +4184,60 @@ ${v.staffRosterText || ""}
                         data-testid="display-tcmh"
                       />
                     </div>
+                  </div>
+                </div>
+
+                <div className={`bg-emerald-50 dark:bg-emerald-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("quality")}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm md:text-base font-medium">
+                      {sectionTitle("quality", language === "th" ? "คุณภาพสินค้า" : "Product Quality")}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("quality")}
+                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      data-testid="button-toggle-quality"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["quality"] ? "-rotate-90" : ""}`} />
+                    </button>
+                  </div>
+                  <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${collapsedSections["quality"] ? "hidden" : ""}`}>
+                    <FormField
+                      control={form.control}
+                      name="complaintCount"
+                      render={({ field }) => (
+                        <FormItem className={fItemCls("complaintCount")}>
+                          <FormLabel className="text-xs">{fLabel("complaintCount", <>{language === "th" ? "จำนวนเคส Complaint" : "Complaint Cases"}</>)}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="numeric"
+                              className="text-sm"
+                              data-testid="input-complaint-count"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="refundAmount"
+                      render={({ field }) => (
+                        <FormItem className={fItemCls("refundAmount")}>
+                          <FormLabel className="text-xs">{fLabel("refundAmount", <>{language === "th" ? "ยอด Refund (฿)" : "Refund Amount (฿)"}</>)}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">฿</span>
+                              <FormattedInput
+                                className="pl-6 text-sm"
+                                {...field}
+                                data-testid="input-refund-amount"
+                              />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 

@@ -266,6 +266,10 @@ export const dailySalesReports = pgTable("daily_sales_reports", {
   tcmh: text("tcmh").default("0"),
   closeShiftCount: text("close_shift_count").default("0"),
 
+  // Product Quality
+  complaintCount: text("complaint_count").default("0"),
+  refundAmount: text("refund_amount").default("0"),
+
   // Roster
   managerRosterDate: text("manager_roster_date"),
   managerRosterText: text("manager_roster_text"),

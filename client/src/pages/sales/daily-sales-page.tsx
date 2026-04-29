@@ -2675,7 +2675,7 @@ ${v.staffRosterText || ""}
                 </div>
 
                 <fieldset disabled={reportSavedInDb && !isEditMode} className="border-0 p-0 m-0 space-y-6">
-                <div className={`bg-blue-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("daily")}`}>
+                <div className={`bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("daily")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
@@ -2840,7 +2840,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-green-50 dark:bg-green-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("mtd")}`}>
+                <div className={`bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("mtd")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
@@ -2928,7 +2928,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-orange-50 dark:bg-orange-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("inStore")}`}>
+                <div className={`bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("inStore")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
@@ -3064,7 +3064,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-purple-50 dark:bg-blue-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("delivery")}`}>
+                <div className={`bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("delivery")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
@@ -3312,7 +3312,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-yellow-50 dark:bg-yellow-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("performance")}`}>
+                <div className={`bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-300 dark:border-yellow-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("performance")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
@@ -3449,7 +3449,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-pink-50 dark:bg-pink-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("addons")}`}>
+                <div className={`bg-pink-100 dark:bg-pink-900/40 border border-pink-300 dark:border-pink-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("addons")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center flex-1 min-w-0 mr-2">
                       <h3 className="text-sm md:text-base font-medium shrink-0">
@@ -3705,7 +3705,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-red-50 dark:bg-red-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("waste")}`}>
+                <div className={`bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("waste")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
                       {sectionTitle("waste", t.waste)}
@@ -4010,7 +4010,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-indigo-50 dark:bg-indigo-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("labor")}`}>
+                <div className={`bg-indigo-100 dark:bg-indigo-900/40 border border-indigo-300 dark:border-indigo-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("labor")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
                       {sectionTitle("labor", t.labor)}
@@ -4187,7 +4187,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-emerald-50 dark:bg-emerald-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("quality")}`}>
+                <div className={`bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("quality")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
                       {sectionTitle("quality", language === "th" ? "คุณภาพสินค้า" : "Product Quality")}
@@ -4241,7 +4241,7 @@ ${v.staffRosterText || ""}
                   </div>
                 </div>
 
-                <div className={`bg-teal-50 dark:bg-teal-950/30 p-3 md:p-4 rounded-lg ${sectionHiddenClass("roster")}`}>
+                <div className={`bg-teal-100 dark:bg-teal-900/40 border border-teal-300 dark:border-teal-700 p-3 md:p-4 rounded-lg ${sectionHiddenClass("roster")}`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm md:text-base font-medium">
                       {sectionTitle("roster", t.roster)}

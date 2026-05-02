@@ -7072,6 +7072,150 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  // ─────────────────────────────────────────────────────────
+  // Aloha Sales CSV Import
+  // ─────────────────────────────────────────────────────────
+
+  // Helper: parse raw CSV text → headers + rows
+  function parseCSVText(text: string): { headers: string[]; rows: Record<string, string>[] } {
+    const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith("#"));
+    if (lines.length < 2) throw new Error("CSV ต้องมีอย่างน้อย 1 header + 1 data row");
+    const parseRow = (line: string): string[] => {
+      const cells: string[] = [];
+      let cur = ""; let inQ = false;
+      for (const ch of line) {
+        if (ch === '"') inQ = !inQ;
+        else if (ch === ',' && !inQ) { cells.push(cur.trim().replace(/^"|"$/g, "")); cur = ""; }
+        else cur += ch;
+      }
+      cells.push(cur.trim().replace(/^"|"$/g, ""));
+      return cells;
+    };
+    const headers = parseRow(lines[0]);
+    const rows = lines.slice(1).map(line => {
+      const cells = parseRow(line);
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => { obj[h] = (cells[i] || "").trim(); });
+      return obj;
+    }).filter(row => Object.values(row).some(v => v.trim()));
+    return { headers, rows };
+  }
+
+  // Helper: fuzzy-detect a column by checking against known patterns
+  function detectCol(headers: string[], patterns: string[]): string {
+    return headers.find(h => {
+      const norm = h.toLowerCase().replace(/[^a-z0-9%]/g, "");
+      return patterns.some(p => norm.includes(p.toLowerCase().replace(/[^a-z0-9%]/g, "")));
+    }) || "";
+  }
+
+  // Helper: parse Aloha date string → YYYY-MM-DD
+  function parseAlohaDate(d: string): string {
+    const mdy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,"0")}-${mdy[2].padStart(2,"0")}`;
+    const dmy = d.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,"0")}-${dmy[1].padStart(2,"0")}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    return d;
+  }
+
+  // POST /api/sales/parse-aloha-csv — parse & auto-detect columns, return preview
+  app.post("/api/sales/parse-aloha-csv", upload.single("file"), safe(async (req, res) => {
+    const token = String(req.body?.token || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!req.file) return res.json({ ok: false, message: "ไม่พบไฟล์" });
+
+    try {
+      const text = req.file.buffer.toString("utf-8");
+      const { headers, rows } = parseCSVText(text);
+
+      // Auto-detect column mapping
+      const detected = {
+        dateCol:    detectCol(headers, ["date","dob","businessdate","businessday","day","วันที่"]),
+        salesCol:   detectCol(headers, ["netsales","netsls","actualsales","netsale","totalnetsales","netsal","sales","ยอดขาย","netsale"]),
+        txCountCol: detectCol(headers, ["checks","chkcnt","checkcount","transactions","transcount","covers","guests","จำนวน","txcount"]),
+        colPctCol:  detectCol(headers, ["labor%","col%","col","laborpct","laborpercent","costoflabor","laborcost%","laborcostratio"]),
+        refundCol:  detectCol(headers, ["comps","voids","refund","comp","void","refundamount","compamount"]),
+        grossCol:   detectCol(headers, ["grosssales","gross","grosstotal"]),
+      };
+
+      // Build preview rows (first 20)
+      const preview = rows.slice(0, 20).map(row => ({
+        raw: row,
+        mapped: {
+          reportDate:       detected.dateCol    ? parseAlohaDate(row[detected.dateCol] || "")    : "",
+          actualSales:      detected.salesCol   ? (row[detected.salesCol] || "").replace(/[,$]/g, "")  : "",
+          transactionCount: detected.txCountCol ? (row[detected.txCountCol] || "").replace(/,/g, "") : "",
+          colPercent:       detected.colPctCol  ? (row[detected.colPctCol] || "").replace(/%/g, "")  : "",
+          refundAmount:     detected.refundCol  ? (row[detected.refundCol] || "").replace(/[,$]/g, "") : "",
+        }
+      }));
+
+      return res.json({ ok: true, headers, rowCount: rows.length, detected, preview });
+    } catch (e: any) {
+      return res.json({ ok: false, message: e.message || "Parse failed" });
+    }
+  }));
+
+  // POST /api/sales/import-aloha-csv — upsert dailySalesReports from mapped rows
+  app.post("/api/sales/import-aloha-csv", safe(async (req, res) => {
+    const { token, mappedRows, storeIdOverride } = req.body;
+    const access = await verifyManagerAccess(token, storeIdOverride);
+    if (!access.ok) return res.json(access);
+
+    const storeId = (access.user.role === "admin" || access.user.role === "area") && storeIdOverride
+      ? String(storeIdOverride)
+      : (access.user.storeId || "BK1040");
+
+    if (!Array.isArray(mappedRows) || mappedRows.length === 0)
+      return res.json({ ok: false, message: "ไม่มีข้อมูลที่จะ import" });
+
+    let imported = 0; let updated = 0; let skipped = 0;
+    const errors: string[] = [];
+
+    for (const row of mappedRows) {
+      try {
+        const { reportDate, actualSales, transactionCount, colPercent, refundAmount } = row;
+        if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+          skipped++;
+          errors.push(`ข้ามแถว: วันที่ไม่ถูกต้อง "${reportDate}"`);
+          continue;
+        }
+        if (!actualSales && !transactionCount) { skipped++; continue; }
+
+        const existing = await storage.getDailySalesReportByDate(reportDate, storeId);
+        const payload: any = {
+          reportDate, storeId,
+          actualSales:      String(parseFloat(actualSales || "0") || 0),
+          transactionCount: String(parseInt(transactionCount || "0") || 0),
+          colPercent:       colPercent ? String(parseFloat(colPercent) || 0) : undefined,
+          refundAmount:     refundAmount ? String(parseFloat(refundAmount.replace(/[,$]/g, "")) || 0) : undefined,
+          dailyTarget:      existing?.dailyTarget || "0",
+          complaintCount:   existing?.complaintCount || "0",
+          updatedAt:        new Date().toISOString(),
+          updatedBy:        access.user.username,
+          importSource:     "aloha_csv",
+        };
+        await storage.upsertDailySalesReportByDate(payload, storeId, false);
+        if (existing) updated++; else imported++;
+      } catch (e: any) {
+        errors.push(e.message);
+        skipped++;
+      }
+    }
+
+    await storage.log("import_aloha_csv", access.user.username,
+      `imported:${imported} updated:${updated} skipped:${skipped} store:${storeId}`);
+
+    return res.json({
+      ok: true,
+      imported, updated, skipped,
+      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
+      message: `นำเข้าสำเร็จ ${imported} รายการใหม่, อัพเดต ${updated} รายการ, ข้าม ${skipped} รายการ`
+    });
+  }));
+
   // ==========================================
   // 💬 Socket.IO Chat System (Persistent)
   // ==========================================

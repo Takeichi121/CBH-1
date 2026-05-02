@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.4.2";
+export const APP_VERSION = "2.5.0";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.0",
+    date: "2026-05-02",
+    label: "feature",
+    changes: [
+      "Chann AI — Auto-draft Daily Sales: ปุ่ม 'ดึง Draft จาก Chann' บนหน้ากรอกรายงาน ดึงค่าจาก Aloha+NBO+ประวัติ พร้อม confidence (high/medium/low) ต่อฟิลด์",
+      "Chann AI — Anomaly Detection: ตรวจจับความผิดปกติด้วย z-score บน 6 ฟิลด์หลัก (ยอดขาย, TC, ชั่วโมง, Waste, เคสร้องเรียน, Refund) เทียบ same-DOW + 7 วันย้อนหลัง",
+      "Chann AI — Long-term Memory (RAG): pgvector + HNSW cosine index, embed ด้วย text-embedding-3-small, ค้นหา top-3 memories ก่อนทุก chat",
+      "Anomaly Banner: แบนเนอร์สีแดง/เหลืองบน Sales Layout แจ้งเตือนทันทีเมื่อพบความผิดปกติ พร้อมปุ่มรับทราบ",
+      "8AM Proactive Report: รัน detectAnomalies อัตโนมัติ บันทึก DB และแทรก anomaly section ในรายงานเช้า",
+      "Chat Memory Hook: Chann จำ context จากรายงานและ anomaly ในอดีต ตอบได้แม่นยำขึ้น",
+      "เพิ่ม endpoint: POST /api/chann/draft-daily-sales, GET/POST /api/chann/anomalies, POST /api/chann/anomalies/:id/acknowledge, POST /api/chann/anomalies/detect, GET/POST/DELETE /api/chann/memories, POST /api/chann/memories/backfill",
+      "ตาราง DB ใหม่: chann_memories (vector 1536 dim + HNSW), chann_anomalies",
+    ],
+  },
   {
     version: "2.4.3",
     date: "2026-04-05",

@@ -205,6 +205,17 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.5.0 (May 2, 2026) — Chann AI: Auto-draft + Anomaly Detection + Long-term Memory
+
+**3 features ใหม่พร้อมกัน:**
+
+- **Auto-draft Daily Sales** — ปุ่ม "ดึง Draft จาก Chann" (สีม่วง) บนหน้า `/sales/daily` ดึงค่าจาก Aloha+NBO+ประวัติ 7 วัน แสดง modal พร้อม confidence ต่อฟิลด์ (high/medium/low) + source อ้างอิง เลือก subset ก่อนเติมได้ → `form.setValue` ทุกฟิลด์ที่เลือก + auto-fill noteAddons
+- **Anomaly Detection (z-score)** — `chann-anomaly-service.ts` เทียบ 6 ฟิลด์ (actualSales, transactionCount, actualHours, wasteRawDaily, complaintCount, refundAmount) กับ same-DOW + 7 วันย้อนหลัง threshold warn z>2 / critical z>3 บันทึก `chann_anomalies` table รัน auto ตอน 8AM cron
+- **Anomaly Banner** — `AnomalyBanner` component บน `SalesLayout` poll ทุก 60s สีแดง=critical / เหลือง=warn ขยายดูรายละเอียด + ปุ่มรับทราบ (acknowledge) แต่ละรายการ
+- **Long-term Memory (RAG)** — `chann_memories` table ใช้ pgvector(1536) + HNSW cosine index embed ด้วย `text-embedding-3-small` บันทึก summary หลัง 8AM report อัตโนมัติ ค้นหา top-3 memories ก่อนทุก chat (inject via `extraContext` ใน llm-router)
+- **Endpoints ใหม่ 7 ตัว**: `/api/chann/draft-daily-sales`, `/api/chann/anomalies` (GET/POST/detect), `/api/chann/anomalies/:id/acknowledge`, `/api/chann/memories` (GET/POST/DELETE), `/api/chann/memories/backfill`
+- **DB ใหม่**: `chann_memories`, `chann_anomalies` (raw SQL via pgvector, ไม่ผ่าน db:push เพราะ vector type)
+
 ### Version 2.4.2 (April 2, 2026) — LINE Report Format Overhaul
 
 - **Format ใหม่**: header 💎, Daily/MTD sections, Restaurant (Dine In+TC, Take Away+TC, In Store Total), DELIVERY, OSAT/Survey/Void/AddCheese/V-meal/UpSize, COL/Hour/OT/TCMH/SOS, WASTE

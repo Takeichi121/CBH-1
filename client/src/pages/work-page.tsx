@@ -41,7 +41,10 @@ import {
   ArrowLeft,
   Pencil,
   X,
+  ArrowLeftRight,
+  CheckCircle2,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -213,6 +216,42 @@ export default function WorkPage() {
   const { mutate: cancelShift } = useCancelShift();
   const queryClient = useQueryClient();
   const isManager = user?.role === "manager" || user?.role === "admin";
+
+  // H1: Incoming swap requests targeting this user
+  const swapToken = localStorage.getItem("bk_token") || "";
+  const { data: incomingSwapData, refetch: refetchIncoming } = useQuery({
+    queryKey: ["/api/swap/incoming", user?.username],
+    queryFn: async () => {
+      const res = await fetch(`/api/swap/incoming?token=${encodeURIComponent(swapToken)}`);
+      return res.json();
+    },
+    enabled: !isManager && !!user?.username,
+    staleTime: 30_000,
+  });
+  const incomingSwaps: any[] = incomingSwapData?.incoming || [];
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+
+  const handlePeerConfirmSwap = async (requestId: number) => {
+    setConfirmingId(requestId);
+    try {
+      const res = await fetch("/api/swap/peer-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: swapToken, requestId }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        await refetchIncoming();
+        queryClient.invalidateQueries({ queryKey: ["/api/shifts/my-week"] });
+      } else {
+        alert(json.message || "เกิดข้อผิดพลาด");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   // Filter shift groups for employees - only show work shifts
   const employeeGroups = settings?.groups?.filter((g: any) =>
@@ -1005,6 +1044,56 @@ export default function WorkPage() {
           </Table>
         </div>
       </Card>
+
+      {/* H1: Incoming Swap Requests — peer-confirm section */}
+      {incomingSwaps.length > 0 && (
+        <div className="space-y-3" data-testid="section-incoming-swaps">
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="w-4 h-4 text-amber-500" />
+            <h3 className="font-semibold text-sm">
+              คำขอสลับกะที่รอการยืนยันของคุณ ({incomingSwaps.length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {incomingSwaps.map((req: any) => (
+              <div
+                key={req.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30"
+                data-testid={`card-incoming-swap-${req.id}`}
+              >
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    <span className="text-amber-700 dark:text-amber-400">{req.requesterUsername}</span>
+                    {" "}ขอสลับกับคุณ
+                  </p>
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    <span>
+                      กะคุณ: <span className="font-semibold text-foreground">{req.targetDate}</span>
+                    </span>
+                    <span>↔</span>
+                    <span>
+                      กะเขา: <span className="font-semibold text-foreground">{req.requesterDate}</span>
+                    </span>
+                  </div>
+                  {req.reason && (
+                    <p className="text-xs text-muted-foreground">เหตุผล: {req.reason}</p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  disabled={confirmingId === req.id}
+                  onClick={() => handlePeerConfirmSwap(req.id)}
+                  data-testid={`button-confirm-swap-${req.id}`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {confirmingId === req.id ? "กำลังยืนยัน..." : "ยืนยันสลับกะ"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

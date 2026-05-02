@@ -202,9 +202,57 @@ export function initProactiveChann() {
     { timezone: "Asia/Bangkok" }
   );
 
+  // H3: Manager Daily Digest — ทุกวัน 08:05 สรุป pending items
+  cron.schedule(
+    "5 8 * * *",
+    async () => {
+      console.log("[Digest] 📋 เตรียม manager digest...");
+      try {
+        const cfg = await storage.getConfig();
+        const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+        const targetId = cfg["LINE_TARGET_ID"];
+        if (!channelToken || !targetId) return;
+
+        const [pendingSwaps, pendingRequests, overdueItems] = await Promise.all([
+          storage.getSwapRequests("pending"),
+          storage.getAllManagerRequests("pending"),
+          storage.getOverdueBorrowTransactions().catch(() => [] as any[]),
+        ]);
+
+        const swapCount = pendingSwaps?.length ?? 0;
+        const reqCount = pendingRequests?.length ?? 0;
+        const overdueCount = overdueItems?.length ?? 0;
+
+        if (swapCount === 0 && reqCount === 0 && overdueCount === 0) {
+          console.log("[Digest] ✅ ไม่มี pending items — ข้ามการส่ง digest");
+          return;
+        }
+
+        const bangkokNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
+        const dateStr = bangkokNow.toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long" });
+
+        const lines = [
+          `📋 สรุปรายการรอดำเนินการ — ${dateStr}`,
+          "",
+          swapCount > 0 ? `🔄 ขอสลับกะรอดำเนินการ: ${swapCount} รายการ` : null,
+          reqCount > 0 ? `📝 คำขอพนักงานรอดำเนินการ: ${reqCount} รายการ` : null,
+          overdueCount > 0 ? `📦 Borrow เกินกำหนดคืน: ${overdueCount} รายการ` : null,
+          "",
+          "กรุณาเข้าระบบเพื่อดำเนินการครับ 🙏",
+        ].filter(Boolean).join("\n");
+
+        await sendLineMessage(channelToken, targetId, [{ type: "text", text: lines }]);
+        console.log(`[Digest] ✅ ส่ง manager digest สำเร็จ (swap:${swapCount} req:${reqCount} overdue:${overdueCount})`);
+      } catch (err) {
+        console.error("[Digest] ❌ error:", err);
+      }
+    },
+    { timezone: "Asia/Bangkok" }
+  );
+
   scheduleOneTimeAlert22h45();
 
-  console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน, แจ้งเตือน Weekly 19:00 ทุกวันอังคาร, Borrow Overdue 09:00");
+  console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน, Digest 08:05, แจ้งเตือน Weekly 19:00 ทุกวันอังคาร, Borrow Overdue 09:00");
 }
 
 function scheduleOneTimeAlert22h45() {

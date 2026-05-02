@@ -8757,6 +8757,27 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
       createdBy: u.username,
       updatedAt: now,
     });
+
+    // H2: LINE broadcast — fire-and-forget ไม่รอ response
+    (async () => {
+      try {
+        const cfg = await storage.getConfig();
+        const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+        const targetId = cfg["LINE_TARGET_ID"];
+        if (channelToken && targetId) {
+          const displayTitle = titleTh || title;
+          const displayContent = contentTh || content;
+          const lineText =
+            `📢 ประกาศใหม่จาก ${u.username}\n\n` +
+            `${displayTitle}\n\n` +
+            `${String(displayContent).slice(0, 300)}${String(displayContent).length > 300 ? "..." : ""}`;
+          await sendLineMessage(channelToken, targetId, [{ type: "text", text: lineText }]);
+        }
+      } catch (lineErr) {
+        console.error("[H2] LINE broadcast error:", lineErr);
+      }
+    })();
+
     return res.json({ ok: true, announcement });
   }));
 
@@ -9155,6 +9176,183 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     } catch (e: any) {
       res.status(500).json({ ok: false, message: e?.message || "Failed" });
     }
+  }));
+
+  // ─────────────────────────────────────────────────────────
+  // Sprint G+H Analytics & Automation Routes
+  // ─────────────────────────────────────────────────────────
+
+  // G1: Sales Forecast — 4-week moving average per weekday
+  app.get("/api/analytics/forecast", safe(async (req, res) => {
+    const token = String(req.query.token || "");
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const storeId = ctx.user.storeId || "BK1040";
+    const bangkokNow = new Date(Date.now() + 7 * 3600 * 1000);
+    const today = bangkokNow.toISOString().slice(0, 10);
+    const startDate = new Date(bangkokNow);
+    startDate.setDate(startDate.getDate() - 28);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const reports = await storage.getDailySalesReportsByDateRange(startStr, today, storeId);
+    const byDow: Record<number, number[]> = {};
+    for (const r of reports) {
+      const dow = new Date(r.reportDate).getDay();
+      const sales = parseFloat(r.actualSales || "0");
+      if (!byDow[dow]) byDow[dow] = [];
+      byDow[dow].push(sales);
+    }
+    const dowAvg: Record<number, number> = {};
+    for (const dow in byDow) {
+      const arr = byDow[Number(dow)];
+      dowAvg[Number(dow)] = Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+    }
+    const forecast: Array<{ date: string; forecast: number; dow: number }> = [];
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(bangkokNow);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const dow = d.getDay();
+      forecast.push({ date: dateStr, forecast: dowAvg[dow] ?? 0, dow });
+    }
+    return res.json({ ok: true, forecast, dowAvg, basedOnReports: reports.length });
+  }));
+
+  // G2: Borrow Analytics
+  app.get("/api/borrow/analytics", safe(async (req, res) => {
+    const token = String(req.query.token || "");
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const transactions = await storage.getBorrowTransactions(500);
+    const nowStr = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    const itemMap: Record<string, { count: number; returned: number; overdue: number; pending: number }> = {};
+    for (const tx of transactions) {
+      const key = tx.item || "Unknown";
+      if (!itemMap[key]) itemMap[key] = { count: 0, returned: 0, overdue: 0, pending: 0 };
+      itemMap[key].count++;
+      if (tx.status === "returned") itemMap[key].returned++;
+      else if (tx.dueDate && tx.dueDate < nowStr) itemMap[key].overdue++;
+      else itemMap[key].pending++;
+    }
+    const topItems = Object.entries(itemMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 10)
+      .map(([name, stats]) => ({ name, ...stats }));
+    const statusBreakdown = [
+      { name: "คืนแล้ว", value: transactions.filter(t => t.status === "returned").length, color: "#22c55e" },
+      { name: "กำลังยืม", value: transactions.filter(t => t.status === "pending" && (!t.dueDate || t.dueDate >= nowStr)).length, color: "#3b82f6" },
+      { name: "เกินกำหนด", value: transactions.filter(t => t.status === "pending" && !!t.dueDate && t.dueDate < nowStr).length, color: "#ef4444" },
+    ];
+    const overdueList = transactions
+      .filter(t => t.status === "pending" && !!t.dueDate && t.dueDate < nowStr)
+      .slice(0, 10);
+    return res.json({ ok: true, topItems, statusBreakdown, overdueList, total: transactions.length });
+  }));
+
+  // G4: Multi-store KPI Comparison (admin/area only)
+  app.get("/api/analytics/store-comparison", safe(async (req, res) => {
+    const token = String(req.query.token || "");
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    if (!["admin", "area"].includes(ctx.user.role)) return res.status(403).json({ ok: false, message: "Admin/Area only" });
+    const storesList = await storage.getStores();
+    const bangkokNow = new Date(Date.now() + 7 * 3600 * 1000);
+    const year = bangkokNow.getUTCFullYear();
+    const month = bangkokNow.getUTCMonth() + 1;
+    const results = await Promise.all(
+      storesList.filter(s => s.isActive).map(async (store) => {
+        const reports = await storage.getDailySalesReportsForMonth(year, month, store.id);
+        const mtdSales = reports.reduce((s, r) => s + parseFloat(r.actualSales || "0"), 0);
+        const mtdTarget = reports.reduce((s, r) => s + parseFloat(r.dailyTarget || "0"), 0);
+        const colArr = reports.filter(r => parseFloat(r.colPercent || "0") > 0).map(r => parseFloat(r.colPercent || "0"));
+        const avgCol = colArr.length ? colArr.reduce((a, b) => a + b, 0) / colArr.length : 0;
+        return {
+          storeId: store.id,
+          storeName: store.name,
+          mtdSales: Math.round(mtdSales),
+          mtdTarget: Math.round(mtdTarget),
+          targetPct: mtdTarget > 0 ? Math.round((mtdSales / mtdTarget) * 100) : 0,
+          avgCol: Math.round(avgCol * 10) / 10,
+          reportCount: reports.length,
+        };
+      })
+    );
+    return res.json({ ok: true, comparison: results, month, year });
+  }));
+
+  // H1: Incoming swap requests targeting the current user
+  app.get("/api/swap/incoming", safe(async (req, res) => {
+    const token = String(req.query.token || "");
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const storeId = ctx.user.storeId || "BK1040";
+    const all = await storage.getSwapRequests("pending", storeId);
+    const incoming = all.filter(r => r.targetUsername === ctx.user.username);
+    return res.json({ ok: true, incoming });
+  }));
+
+  // H1: Swap Peer-Confirm — target user confirms, shift swap executes immediately
+  app.post("/api/swap/peer-confirm", safe(async (req, res) => {
+    const { token, requestId } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u) return res.json({ ok: false, message: "User not found" });
+    const storeId = u.storeId || "BK1040";
+    const request = await storage.getSwapRequestById(Number(requestId), storeId);
+    if (!request || request.status !== "pending") return res.json({ ok: false, message: "คำขอไม่พบหรือดำเนินการแล้ว" });
+    if (request.targetUsername !== u.username) return res.json({ ok: false, message: "คุณไม่ใช่ผู้รับ swap นี้" });
+    try {
+      await transaction(async (tx) => {
+        const [requesterShift] = await tx.select().from(shifts).where(and(eq(shifts.username, request.requesterUsername), eq(shifts.date, request.requesterDate))).limit(1);
+        if (!requesterShift) throw new Error("ไม่พบกะของผู้ขอ");
+        const [targetShift] = await tx.select().from(shifts).where(and(eq(shifts.username, request.targetUsername), eq(shifts.date, request.targetDate))).limit(1);
+        if (!targetShift) throw new Error("ไม่พบกะของคุณ");
+        const now = nowIso();
+        await updateShiftById(tx, requesterShift.id, { date: request.targetDate, updatedAt: now, updatedBy: u.username });
+        await updateShiftById(tx, targetShift.id, { date: request.requesterDate, updatedAt: now, updatedBy: u.username });
+      });
+      await storage.updateSwapRequestStatus(Number(requestId), "approved", u.username, "ยืนยันโดยผู้รับ swap");
+      await storage.log("peer_confirm_swap", u.username, `peer-confirmed swap #${requestId}`);
+      return res.json({ ok: true, message: "ยืนยัน swap เรียบร้อย — กะสลับแล้วครับ" });
+    } catch (e: any) {
+      return res.json({ ok: false, message: e?.message || "Swap failed" });
+    }
+  }));
+
+  // H4: Store Health Score — composite KPI grade
+  app.get("/api/analytics/health-score", safe(async (req, res) => {
+    const token = String(req.query.token || "");
+    const ctx = await requireSession(token);
+    if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const storeId = ctx.user.storeId || "BK1040";
+    const bangkokNow = new Date(Date.now() + 7 * 3600 * 1000);
+    const year = bangkokNow.getUTCFullYear();
+    const month = bangkokNow.getUTCMonth() + 1;
+    const reports = await storage.getDailySalesReportsForMonth(year, month, storeId);
+    if (reports.length === 0) return res.json({ ok: true, score: null, grade: null, components: {}, details: { reportCount: 0 } });
+    const totalSales = reports.reduce((s, r) => s + parseFloat(r.actualSales || "0"), 0);
+    const totalTarget = reports.reduce((s, r) => s + parseFloat(r.dailyTarget || "0"), 0);
+    const targetScore = totalTarget > 0 ? Math.min(100, (totalSales / totalTarget) * 100) : 50;
+    const colArr = reports.filter(r => parseFloat(r.colPercent || "0") > 0).map(r => parseFloat(r.colPercent || "0"));
+    const avgCol = colArr.length ? colArr.reduce((a, b) => a + b, 0) / colArr.length : 28;
+    const colScore = Math.max(0, Math.min(100, (28 / Math.max(1, avgCol)) * 100));
+    const totalRefund = reports.reduce((s, r) => s + parseFloat(r.refundAmount || "0"), 0);
+    const totalComplaints = reports.reduce((s, r) => s + parseInt(r.complaintCount || "0"), 0);
+    const refundPct = totalSales > 0 ? (totalRefund / totalSales) * 100 : 0;
+    const refundScore = Math.max(0, 100 - refundPct * 20);
+    const complaintScore = Math.max(0, 100 - totalComplaints * 5);
+    const qxScore = (refundScore + complaintScore) / 2;
+    const score = Math.round(targetScore * 0.4 + colScore * 0.3 + qxScore * 0.3);
+    const grade = score >= 90 ? "A" : score >= 75 ? "B" : score >= 60 ? "C" : "D";
+    return res.json({
+      ok: true, score, grade,
+      components: { targetScore: Math.round(targetScore), colScore: Math.round(colScore), qxScore: Math.round(qxScore) },
+      details: {
+        totalSales: Math.round(totalSales), totalTarget: Math.round(totalTarget),
+        targetPct: totalTarget > 0 ? Math.round((totalSales / totalTarget) * 100) : 0,
+        avgCol: Math.round(avgCol * 10) / 10, totalRefund: Math.round(totalRefund), totalComplaints, reportCount: reports.length,
+      },
+    });
   }));
 
   app.post("/api/chann/memories/backfill", safe(async (req, res) => {

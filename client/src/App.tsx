@@ -26,6 +26,7 @@ import BorrowBranchesPage from "@/pages/borrow/Branches";
 import BorrowItemsPage from "@/pages/borrow/Items";
 import BorrowSettingsPage from "@/pages/borrow/settings-page";
 import BorrowHelpPage from "@/pages/borrow/help-page";
+import BorrowAnalyticsPage from "@/pages/borrow/analytics-page";
 import ManagerRequestsPage from "@/pages/manager-requests-page";
 import HandbookPage from "@/pages/handbook-page";
 import ManagerManualPage from "@/pages/manager-manual-page";
@@ -245,6 +246,10 @@ function Router() {
           
           <Route path="/borrow/help">
             <ProtectedRoute component={BorrowHelpPage} path="/borrow/help" />
+          </Route>
+
+          <Route path="/borrow/analytics">
+            <ProtectedRoute component={BorrowAnalyticsPage} path="/borrow/analytics" />
           </Route>
           
           <Route path="/requests">

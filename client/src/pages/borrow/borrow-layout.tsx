@@ -7,8 +7,9 @@ import {
   Plus,
   Settings, 
   HelpCircle, 
-  ShoppingBag, // เพิ่มไอคอนสำหรับ Items
-  Store        // เพิ่มไอคอนสำหรับ Branches
+  ShoppingBag,
+  Store,
+  BarChart2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,11 @@ export function BorrowLayout({ children }: BorrowLayoutProps) {
       href: "/borrow/settings",
       label: language === "th" ? "ตั้งค่า" : "Settings",
       icon: Settings,
+    },
+    {
+      href: "/borrow/analytics",
+      label: language === "th" ? "วิเคราะห์" : "Analytics",
+      icon: BarChart2,
     },
     {
       href: "/borrow/help",

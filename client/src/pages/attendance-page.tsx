@@ -1,0 +1,641 @@
+import { useState, useRef, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { queryClient as qc } from "@/lib/queryClient";
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Clock, Upload, FileSpreadsheet, CheckCircle2, Loader2,
+  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download
+} from "lucide-react";
+
+// ─────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────
+interface ClockRecord {
+  id: number;
+  date: string;
+  storeId: string;
+  employeeFullName: string;
+  employeeNickName: string | null;
+  position: string | null;
+  rosterTime: string | null;
+  clockInTime: string | null;
+  clockOutTime: string | null;
+  notes: string | null;
+  importSource: string | null;
+}
+
+const MONTH_TH = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const MONTH_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function formatTime(t: string | null | undefined): string {
+  if (!t) return "";
+  // Handle full datetime: "HH:MM" or "1899-12-30..."
+  if (t.includes("T")) {
+    const d = new Date(t);
+    return `${d.getUTCHours().toString().padStart(2,"0")}:${d.getUTCMinutes().toString().padStart(2,"0")}`;
+  }
+  return t;
+}
+
+function getLateStatus(rosterTime: string | null, clockInTime: string | null): "on-time" | "late" | "early" | "absent" | "unknown" {
+  if (!clockInTime) return rosterTime ? "absent" : "unknown";
+  if (!rosterTime) return "unknown";
+  const rosterStart = rosterTime.split(" - ")[0]?.trim();
+  if (!rosterStart) return "unknown";
+  const [rh, rm] = rosterStart.split(":").map(Number);
+  const [ch, cm] = clockInTime.split(":").map(Number);
+  if (isNaN(rh) || isNaN(ch)) return "unknown";
+  const rosterMins = rh * 60 + rm;
+  const clockMins  = ch * 60 + cm;
+  if (clockMins <= rosterMins) return "early";
+  if (clockMins <= rosterMins + 5) return "on-time";
+  return "late";
+}
+
+// ─────────────────────────────────────────────────────────
+// Import Excel Tab
+// ─────────────────────────────────────────────────────────
+function ImportExcelTab({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+  const { toast } = useToast();
+  const { language } = useI18n();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<"upload" | "preview" | "done">("upload");
+  const [isLoading, setIsLoading] = useState(false);
+  const [preview, setPreview] = useState<ClockRecord[]>([]);
+  const [previewCount, setPreviewCount] = useState(0);
+  const [fileName, setFileName] = useState("");
+  const [importResult, setImportResult] = useState<{ imported: number; updated: number; message: string } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleFile = useCallback(async (file: File) => {
+    if (!file.name.match(/\.xlsx?$/i)) {
+      toast({ variant: "destructive", title: "Error", description: t("Please select an Excel file (.xlsx)", "กรุณาเลือกไฟล์ Excel (.xlsx)") });
+      return;
+    }
+    setFileName(file.name); setIsLoading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("token", localStorage.getItem("bk_token") || "");
+    fd.append("confirm", "false");
+    try {
+      const res = await fetch("/api/attendance/import-excel", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        setPreview(data.sample || []);
+        setPreviewCount(data.count || 0);
+        setStep("preview");
+        toast({ title: t("File parsed", "อ่านไฟล์สำเร็จ"), description: `${data.count} ${t("records found", "รายการ")}` });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally { setIsLoading(false); }
+  }, [toast, language]);
+
+  const handleConfirmImport = async () => {
+    if (!fileRef.current?.files?.[0]) return;
+    setIsLoading(true);
+    const fd = new FormData();
+    fd.append("file", fileRef.current.files[0]);
+    fd.append("token", localStorage.getItem("bk_token") || "");
+    fd.append("confirm", "true");
+    try {
+      const res = await fetch("/api/attendance/import-excel", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        setImportResult({ imported: data.imported, updated: data.updated, message: data.message });
+        setStep("done");
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+        toast({ title: t("Import complete!", "Import สำเร็จ!"), description: data.message });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally { setIsLoading(false); }
+  };
+
+  const reset = () => { setStep("upload"); setPreview([]); setFileName(""); setImportResult(null); if (fileRef.current) fileRef.current.value = ""; };
+
+  if (step === "done" && importResult) {
+    return (
+      <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <CheckCircle2 className="h-10 w-10 text-green-600 shrink-0" />
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">{t("Import Completed!", "Import เสร็จสิ้น!")}</h3>
+              <div className="flex gap-3">
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-sm px-3 py-1">{t("New","ใหม่")}: {importResult.imported}</Badge>
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-sm px-3 py-1">{t("Updated","อัพเดต")}: {importResult.updated}</Badge>
+              </div>
+              <Button onClick={reset} className="gap-2"><RefreshCw className="w-4 h-4" />{t("Import Another File","Import ไฟล์อื่น")}</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (step === "preview") {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-green-500" />{fileName}</CardTitle>
+                <CardDescription>{previewCount} {t("records detected (showing first 30)","รายการ (แสดง 30 แรก)")}</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={reset}>{t("← Change File","← เปลี่ยนไฟล์")}</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-lg border overflow-auto max-h-72">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background">
+                  <TableRow>
+                    <TableHead className="text-xs">{t("Date","วันที่")}</TableHead>
+                    <TableHead className="text-xs">{t("Employee","พนักงาน")}</TableHead>
+                    <TableHead className="text-xs">{t("Position","ตำแหน่ง")}</TableHead>
+                    <TableHead className="text-xs">{t("Roster","Roster")}</TableHead>
+                    <TableHead className="text-xs">{t("Clock In","สแกนเข้า")}</TableHead>
+                    <TableHead className="text-xs">{t("Clock Out","สแกนออก")}</TableHead>
+                    <TableHead className="text-xs">{t("Notes","หมายเหตุ")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((r, i) => {
+                    const status = getLateStatus(r.rosterTime, r.clockInTime);
+                    return (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs font-mono">{r.date}</TableCell>
+                        <TableCell className="text-xs">
+                          <span className="font-medium">{r.employeeNickName || r.employeeFullName}</span>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.position || "—"}</TableCell>
+                        <TableCell className="text-xs">{r.rosterTime || "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.clockInTime ? (
+                            <span className={status === "late" ? "text-red-500 font-medium" : status === "early" ? "text-blue-500" : "text-green-600"}>
+                              {formatTime(r.clockInTime)}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs">{r.clockOutTime ? formatTime(r.clockOutTime) : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-24 truncate">{r.notes || "—"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <p className="text-xs text-muted-foreground">{t("Green = on time, Red = late, Blue = early","เขียว = ตรงเวลา, แดง = สาย, น้ำเงิน = เร็ว")}</p>
+              <Button onClick={handleConfirmImport} disabled={isLoading} className="gap-2" data-testid="button-confirm-import">
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isLoading ? t("Importing...","กำลัง Import...") : `${t("Import","Import")} ${previewCount} ${t("records","รายการ")}`}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription className="text-sm space-y-1">
+          <p className="font-medium">{t("Supported Excel format:","รูปแบบ Excel ที่รองรับ:")}</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+            <li>{t("Each employee = 7 columns (Day | Date | Roster | Clock-in | Clock-out | Notes)","พนักงานแต่ละคน = 7 คอลัมน์ (วัน | วันที่ | Roster | สแกนเข้า | สแกนออก | หมายเหตุ)")}</li>
+            <li>{t("Row 1: Employee names, Row 3: Positions, Row 5+: Daily data","แถวที่ 1: ชื่อพนักงาน, แถว 3: ตำแหน่ง, แถว 5+: ข้อมูลรายวัน")}</li>
+            <li>{t("Multiple sheets (Jan, Feb...) are all imported automatically","หลาย sheet (Jan, Feb...) จะ import อัตโนมัติทั้งหมด")}</li>
+          </ul>
+        </AlertDescription>
+      </Alert>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-primary" />{t("Upload Clock In/Out Excel","อัพโหลด Clock In/Out Excel")}</CardTitle>
+          <CardDescription>{t("Same format as your current Excel tracking sheet","รูปแบบเดียวกับ Excel ที่ใช้อยู่ปัจจุบัน")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25"}`}
+            onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={e => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+            data-testid="dropzone-excel"
+          >
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} className="hidden" data-testid="input-file-excel" />
+            {isLoading ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-muted-foreground">{t("Parsing Excel...","กำลังอ่าน Excel...")}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileSpreadsheet className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-lg">{t("Drop Excel file here","ลาก Excel มาวางที่นี่")}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{t("or click to browse (.xlsx)","หรือคลิกเลือกไฟล์ (.xlsx)")}</p>
+                </div>
+                <Button size="lg" onClick={() => fileRef.current?.click()} data-testid="button-select-excel">
+                  <Upload className="h-4 w-4 mr-2" />{t("Select Excel File","เลือกไฟล์ Excel")}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Edit Record Dialog
+// ─────────────────────────────────────────────────────────
+function EditRecordDialog({
+  record, onClose, storeId
+}: { record: Partial<ClockRecord> | null; onClose: () => void; storeId: string }) {
+  const { toast } = useToast();
+  const { language } = useI18n();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+  const [form, setForm] = useState({
+    date: record?.date || "",
+    employeeFullName: record?.employeeFullName || "",
+    employeeNickName: record?.employeeNickName || "",
+    position: record?.position || "",
+    rosterTime: record?.rosterTime || "",
+    clockInTime: record?.clockInTime || "",
+    clockOutTime: record?.clockOutTime || "",
+    notes: record?.notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!form.date || !form.employeeFullName) {
+      toast({ variant: "destructive", title: "Error", description: t("Date and Employee name are required","กรุณาใส่วันที่และชื่อพนักงาน") });
+      return;
+    }
+    setSaving(true);
+    try {
+      const url = record?.id ? `/api/attendance/record/${record.id}` : "/api/attendance/record";
+      const method = record?.id ? "PUT" : "POST";
+      const res = await apiRequest(method, url, { token: localStorage.getItem("bk_token"), ...form, storeId });
+      const data = await res.json();
+      if (data.ok) {
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+        toast({ title: t("Saved!","บันทึกแล้ว!") });
+        onClose();
+      } else { toast({ variant: "destructive", title: "Error", description: data.message }); }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            {record?.id ? t("Edit Record","แก้ไขบันทึก") : t("Add Record","เพิ่มบันทึก")}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3 py-2">
+          <div className="col-span-2">
+            <Label className="text-xs">{t("Date","วันที่")} *</Label>
+            <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-8 text-sm" data-testid="input-record-date" />
+          </div>
+          <div>
+            <Label className="text-xs">{t("Full Name","ชื่อเต็ม")} *</Label>
+            <Input value={form.employeeFullName} onChange={e => setForm({...form, employeeFullName: e.target.value})} placeholder="Firstname Lastname" className="h-8 text-sm" data-testid="input-record-fullname" />
+          </div>
+          <div>
+            <Label className="text-xs">{t("Nickname","ชื่อเล่น")}</Label>
+            <Input value={form.employeeNickName} onChange={e => setForm({...form, employeeNickName: e.target.value})} className="h-8 text-sm" data-testid="input-record-nickname" />
+          </div>
+          <div>
+            <Label className="text-xs">{t("Position","ตำแหน่ง")}</Label>
+            <Input value={form.position} onChange={e => setForm({...form, position: e.target.value})} className="h-8 text-sm" data-testid="input-record-position" />
+          </div>
+          <div>
+            <Label className="text-xs">{t("Roster Time","เวลา Roster")}</Label>
+            <Input value={form.rosterTime} onChange={e => setForm({...form, rosterTime: e.target.value})} placeholder="05:00 - 14:00" className="h-8 text-sm" data-testid="input-record-roster" />
+          </div>
+          <div>
+            <Label className="text-xs">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
+            <Input type="time" value={form.clockInTime} onChange={e => setForm({...form, clockInTime: e.target.value})} className="h-8 text-sm" data-testid="input-record-clockin" />
+          </div>
+          <div>
+            <Label className="text-xs">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
+            <Input type="time" value={form.clockOutTime} onChange={e => setForm({...form, clockOutTime: e.target.value})} className="h-8 text-sm" data-testid="input-record-clockout" />
+          </div>
+          <div className="col-span-2">
+            <Label className="text-xs">{t("Notes","หมายเหตุ")}</Label>
+            <Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="h-8 text-sm" data-testid="input-record-notes" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>{t("Cancel","ยกเลิก")}</Button>
+          <Button onClick={handleSave} disabled={saving} data-testid="button-save-record">
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+            {t("Save","บันทึก")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Monthly Records View
+// ─────────────────────────────────────────────────────────
+function MonthlyView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+  const { language } = useI18n();
+  const { toast } = useToast();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+  const [editRecord, setEditRecord] = useState<Partial<ClockRecord> | null>(null);
+  const [filterEmp, setFilterEmp] = useState("all");
+
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+    queryKey: ["/api/attendance/records", year, month, storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/records?token=${token}&year=${year}&month=${month}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/record/${id}?token=${token}`, { method: "DELETE" });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+      toast({ title: t("Deleted","ลบแล้ว") });
+    }
+  });
+
+  const records = data?.records || [];
+
+  // Get unique employees
+  const employees = Array.from(new Map(records.map(r => [r.employeeFullName, r])).values());
+  const filteredRecords = filterEmp === "all" ? records : records.filter(r => r.employeeFullName === filterEmp);
+
+  // Group by date
+  const byDate = filteredRecords.reduce((acc, r) => {
+    if (!acc[r.date]) acc[r.date] = [];
+    acc[r.date].push(r);
+    return acc;
+  }, {} as Record<string, ClockRecord[]>);
+
+  const dates = Object.keys(byDate).sort();
+
+  // Stats
+  const totalShifts = filteredRecords.filter(r => r.clockInTime || r.rosterTime).length;
+  const lateCount   = filteredRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "late").length;
+  const absentCount = filteredRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "absent").length;
+  const onTimeCount = filteredRecords.filter(r => ["on-time","early"].includes(getLateStatus(r.rosterTime, r.clockInTime))).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: t("Total Shifts","กะทั้งหมด"), value: totalShifts, color: "text-foreground" },
+          { label: t("On Time / Early","ตรงเวลา / เร็ว"), value: onTimeCount, color: "text-green-600" },
+          { label: t("Late","สาย"), value: lateCount, color: "text-red-500" },
+          { label: t("Absent / No Scan","ขาด / ไม่มีข้อมูล"), value: absentCount, color: "text-amber-500" },
+        ].map(s => (
+          <Card key={s.label} className="py-3">
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filter + Add */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterEmp} onValueChange={setFilterEmp}>
+            <SelectTrigger className="h-8 w-52 text-sm" data-testid="select-filter-employee">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("All Employees","พนักงานทุกคน")}</SelectItem>
+              {employees.map(e => (
+                <SelectItem key={e.employeeFullName} value={e.employeeFullName}>
+                  {e.employeeNickName ? `${e.employeeNickName} (${e.employeeFullName})` : e.employeeFullName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button size="sm" onClick={() => setEditRecord({})} data-testid="button-add-record" className="gap-1">
+          <Plus className="h-4 w-4" />{t("Add","เพิ่ม")}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : records.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12">
+            <Clock className="h-12 w-12 text-muted-foreground/40" />
+            <p className="text-muted-foreground text-center">
+              {t("No attendance records for this month yet.","ยังไม่มีข้อมูล Clock In/Out สำหรับเดือนนี้")}
+            </p>
+            <p className="text-sm text-muted-foreground">{t("Import Excel or add records manually.","Import Excel หรือเพิ่มรายการด้วยตนเอง")}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="rounded-lg overflow-auto max-h-[60vh]">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead className="text-xs w-28">{t("Date","วันที่")}</TableHead>
+                    <TableHead className="text-xs">{t("Employee","พนักงาน")}</TableHead>
+                    <TableHead className="text-xs hidden md:table-cell">{t("Position","ตำแหน่ง")}</TableHead>
+                    <TableHead className="text-xs">{t("Roster","Roster")}</TableHead>
+                    <TableHead className="text-xs">{t("In","เข้า")}</TableHead>
+                    <TableHead className="text-xs">{t("Out","ออก")}</TableHead>
+                    <TableHead className="text-xs">{t("Status","สถานะ")}</TableHead>
+                    <TableHead className="text-xs hidden lg:table-cell">{t("Notes","หมายเหตุ")}</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dates.map(date =>
+                    byDate[date].map((r, ri) => {
+                      const status = getLateStatus(r.rosterTime, r.clockInTime);
+                      const day = new Date(date + "T00:00:00").toLocaleDateString(language === "th" ? "th-TH" : "en-US", { weekday: "short", day: "numeric" });
+                      return (
+                        <TableRow key={r.id} data-testid={`row-record-${r.id}`} className={ri === 0 ? "border-t-2 border-border/50" : ""}>
+                          <TableCell className="text-xs font-mono">{ri === 0 ? day : ""}</TableCell>
+                          <TableCell className="text-xs">
+                            <div className="font-medium">{r.employeeNickName || r.employeeFullName}</div>
+                            {r.employeeNickName && <div className="text-muted-foreground text-xs">{r.employeeFullName}</div>}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{r.position || "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{r.rosterTime || "—"}</TableCell>
+                          <TableCell className="text-xs">
+                            {r.clockInTime ? (
+                              <span className={status === "late" ? "text-red-500 font-semibold" : status === "early" ? "text-blue-500" : "text-green-600"}>
+                                {formatTime(r.clockInTime)}
+                              </span>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{r.clockOutTime ? formatTime(r.clockOutTime) : "—"}</TableCell>
+                          <TableCell>
+                            {status === "on-time" && <Badge className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">{t("On Time","ตรงเวลา")}</Badge>}
+                            {status === "early"   && <Badge className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{t("Early","เร็ว")}</Badge>}
+                            {status === "late"    && <Badge className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">{t("Late","สาย")}</Badge>}
+                            {status === "absent"  && <Badge className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">{t("Absent","ขาด")}</Badge>}
+                            {status === "unknown" && <Badge variant="outline" className="text-xs">{t("—","—")}</Badge>}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground hidden lg:table-cell max-w-32 truncate">{r.notes || ""}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditRecord(r)} data-testid={`button-edit-${r.id}`}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-600" onClick={() => { if (confirm(t("Delete this record?","ลบรายการนี้?"))) deleteMutation.mutate(r.id); }} data-testid={`button-delete-${r.id}`}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {editRecord !== null && (
+        <EditRecordDialog record={editRecord} onClose={() => setEditRecord(null)} storeId={storeId} />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Main Page
+// ─────────────────────────────────────────────────────────
+export default function AttendancePage() {
+  const { user } = useAuth();
+  const { language } = useI18n();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+
+  const now = new Date();
+  const [year, setYear]   = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const storeId = (user as any)?.storeId || "BK1040";
+
+  const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
+
+  const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1); } else setMonth(m => m - 1); };
+  const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1); } else setMonth(m => m + 1); };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto max-w-6xl px-4 py-6 space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-attendance-title">
+              <Clock className="h-6 w-6 text-primary" />
+              {t("Attendance / Clock In-Out","บันทึกเวลาทำงาน")}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("Track and manage employee clock-in/out records from Aloha POS","บันทึกและจัดการเวลาเข้า-ออกงานจาก Aloha POS")}
+            </p>
+          </div>
+        </div>
+
+        {/* Month selector */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={prevMonth} data-testid="button-prev-month" className="h-9 w-9">‹</Button>
+          <div className="flex items-center gap-2">
+            <Select value={String(month)} onValueChange={v => setMonth(parseInt(v))}>
+              <SelectTrigger className="h-9 w-40" data-testid="select-month">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTH_TH.map((m, i) => (
+                  <SelectItem key={i+1} value={String(i+1)}>
+                    {language === "th" ? m : MONTH_EN[i]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(year)} onValueChange={v => setYear(parseInt(v))}>
+              <SelectTrigger className="h-9 w-24" data-testid="select-year">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="icon" onClick={nextMonth} data-testid="button-next-month" className="h-9 w-9">›</Button>
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="records" className="space-y-4">
+          <TabsList className="grid grid-cols-2 w-full max-w-xs">
+            <TabsTrigger value="records" data-testid="tab-records" className="gap-1">
+              <Clock className="h-4 w-4" />{t("Records","บันทึก")}
+            </TabsTrigger>
+            <TabsTrigger value="import" data-testid="tab-import" className="gap-1">
+              <Upload className="h-4 w-4" />{t("Import Excel","Import Excel")}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="records">
+            <MonthlyView year={year} month={month} storeId={storeId} />
+          </TabsContent>
+
+          <TabsContent value="import">
+            <ImportExcelTab year={year} month={month} storeId={storeId} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

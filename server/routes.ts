@@ -7072,6 +7072,212 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  // ==========================================
+  // 🕐 Attendance / Clock In Out
+  // ==========================================
+
+  // GET /api/attendance/records?year=&month=&storeId=
+  app.get("/api/attendance/records", safe(async (req, res) => {
+    const token = String(req.query.token || req.headers["x-token"] || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    const year  = parseInt(String(req.query.year  || new Date().getFullYear()));
+    const month = parseInt(String(req.query.month || new Date().getMonth() + 1));
+    const storeId = access.user.role === "admin" || access.user.role === "area"
+      ? String(req.query.storeId || access.user.storeId || "BK1040")
+      : (access.user.storeId || "BK1040");
+    const records = await storage.getClockRecords(year, month, storeId);
+    return res.json({ ok: true, records });
+  }));
+
+  // GET /api/attendance/employees?storeId=
+  app.get("/api/attendance/employees", safe(async (req, res) => {
+    const token = String(req.query.token || req.headers["x-token"] || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    const storeId = access.user.storeId || "BK1040";
+    const employees = await storage.getClockEmployees(storeId);
+    return res.json({ ok: true, employees });
+  }));
+
+  // POST /api/attendance/record — manual upsert single record
+  app.post("/api/attendance/record", safe(async (req, res) => {
+    const { token, ...data } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    const storeId = data.storeId || access.user.storeId || "BK1040";
+    const record = await storage.upsertClockRecord({ ...data, storeId, importSource: "manual" });
+    return res.json({ ok: true, record });
+  }));
+
+  // PUT /api/attendance/record/:id
+  app.put("/api/attendance/record/:id", safe(async (req, res) => {
+    const { token, ...data } = req.body;
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    const id = parseInt(req.params.id);
+    const record = await storage.updateClockRecord(id, data);
+    return res.json({ ok: true, record });
+  }));
+
+  // DELETE /api/attendance/record/:id
+  app.delete("/api/attendance/record/:id", safe(async (req, res) => {
+    const token = String(req.query.token || req.headers["x-token"] || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    await storage.deleteClockRecord(parseInt(req.params.id));
+    return res.json({ ok: true });
+  }));
+
+  // POST /api/attendance/import-excel — parse Clock In/Out Excel (multi-employee format)
+  app.post("/api/attendance/import-excel", upload.single("file"), safe(async (req, res) => {
+    const token = String(req.body?.token || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!req.file) return res.json({ ok: false, message: "ไม่พบไฟล์" });
+
+    const storeId = access.user.storeId || "BK1040";
+    const confirmImport = req.body.confirm === "true" || req.body.confirm === true;
+
+    try {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(req.file.buffer);
+
+      // Helper to extract cell value (handles formulas)
+      const cellVal = (cell: ExcelJS.Cell): string => {
+        const v = cell.value;
+        if (v === null || v === undefined) return "";
+        if (typeof v === "object" && "result" in v) return String((v as any).result ?? "");
+        if (v instanceof Date) return v.toISOString().slice(0, 10);
+        return String(v).trim();
+      };
+
+      const timeVal = (cell: ExcelJS.Cell): string => {
+        const v = cell.value;
+        if (!v) return "";
+        if (v instanceof Date) {
+          const h = v.getUTCHours().toString().padStart(2, "0");
+          const m = v.getUTCMinutes().toString().padStart(2, "0");
+          return `${h}:${m}`;
+        }
+        if (typeof v === "object" && "result" in v) {
+          const r = (v as any).result;
+          if (r instanceof Date) {
+            const h = r.getUTCHours().toString().padStart(2, "0");
+            const m = r.getUTCMinutes().toString().padStart(2, "0");
+            return `${h}:${m}`;
+          }
+          return String(r ?? "").trim();
+        }
+        return String(v).trim();
+      };
+
+      const dateVal = (cell: ExcelJS.Cell): string => {
+        const v = cell.value;
+        if (!v) return "";
+        if (v instanceof Date) return v.toISOString().slice(0, 10);
+        if (typeof v === "object" && "result" in v) {
+          const r = (v as any).result;
+          if (r instanceof Date) return r.toISOString().slice(0, 10);
+          return String(r ?? "").slice(0, 10);
+        }
+        return String(v).trim().slice(0, 10);
+      };
+
+      const allParsed: any[] = [];
+
+      for (const ws of wb.worksheets) {
+        // Each worksheet is one month
+        // Row 1: Employee info block (every 7 cols): col1=ชื่อ, col2=fullname, col4=ชื่อเล่น, col5=nickname
+        // Row 3: Position
+        // Row 4: Headers
+        // Row 5+: Data (date, roster, clockIn, clockOut, notes)
+
+        const row1 = ws.getRow(1);
+        const row3 = ws.getRow(3);
+        const totalCols = ws.columnCount || 35;
+        const BLOCK = 7; // each employee occupies 7 columns
+
+        // Detect employee blocks (start columns 1, 8, 15, 22, 29, ...)
+        const employees: Array<{ startCol: number; fullName: string; nickName: string; position: string }> = [];
+        for (let sc = 1; sc <= totalCols; sc += BLOCK) {
+          const nameCell = cellVal(row1.getCell(sc + 1)); // col2 = full name
+          const nickCell = cellVal(row1.getCell(sc + 4)); // col5 = nickname
+          const posCell  = cellVal(row3.getCell(sc + 1)); // col2 of row3 = position
+          if (nameCell && nameCell !== "ชื่อ" && nameCell.length > 1) {
+            employees.push({ startCol: sc, fullName: nameCell, nickName: nickCell, position: posCell });
+          }
+        }
+
+        if (employees.length === 0) continue;
+
+        // Parse data rows (row 5 to row 35, which is day 1 to 31)
+        for (let r = 5; r <= Math.min(ws.rowCount, 36); r++) {
+          const dataRow = ws.getRow(r);
+
+          // Use first employee block's date column to get the date
+          const dateStr = dateVal(dataRow.getCell(employees[0].startCol + 1));
+          if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue;
+
+          for (const emp of employees) {
+            const sc = emp.startCol;
+            const rosterCell  = dataRow.getCell(sc + 2); // col3 = roster time
+            const clockInCell  = dataRow.getCell(sc + 3); // col4 = Aloha clock-in
+            const clockOutCell = dataRow.getCell(sc + 4); // col5 = Aloha clock-out
+            const notesCell    = dataRow.getCell(sc + 5); // col6 = notes
+
+            const rosterTime  = timeVal(rosterCell) || cellVal(rosterCell);
+            const clockInTime  = timeVal(clockInCell) || cellVal(clockInCell);
+            const clockOutTime = timeVal(clockOutCell) || cellVal(clockOutCell);
+            const notes        = cellVal(notesCell);
+
+            // Only add if at least roster or one clock time exists
+            if (!rosterTime && !clockInTime && !clockOutTime) continue;
+
+            allParsed.push({
+              date: dateStr,
+              storeId,
+              employeeFullName: emp.fullName,
+              employeeNickName: emp.nickName || null,
+              position: emp.position || null,
+              rosterTime: rosterTime || null,
+              clockInTime: clockInTime || null,
+              clockOutTime: clockOutTime || null,
+              notes: notes || null,
+              importSource: "excel",
+            });
+          }
+        }
+      }
+
+      if (allParsed.length === 0) {
+        return res.json({ ok: false, message: "ไม่พบข้อมูลในไฟล์ กรุณาตรวจสอบรูปแบบ Excel" });
+      }
+
+      if (!confirmImport) {
+        // Preview mode — return first 30 rows
+        return res.json({ ok: true, preview: true, count: allParsed.length, sample: allParsed.slice(0, 30) });
+      }
+
+      // Actual import
+      let imported = 0; let updated = 0; const errors: string[] = [];
+      for (const rec of allParsed) {
+        try {
+          const existing = (await storage.getClockRecordsByDate(rec.date, storeId))
+            .find(r => r.employeeFullName === rec.employeeFullName);
+          await storage.upsertClockRecord(rec);
+          if (existing) updated++; else imported++;
+        } catch (e: any) { errors.push(e.message); }
+      }
+
+      await storage.log("import_attendance_excel", access.user.username, `imported:${imported} updated:${updated} store:${storeId}`);
+      return res.json({ ok: true, imported, updated, errors: errors.slice(0, 5), message: `นำเข้า ${imported} รายการใหม่, อัพเดต ${updated} รายการ` });
+    } catch (e: any) {
+      console.error("Attendance Excel import error:", e);
+      return res.json({ ok: false, message: e.message || "Parse failed" });
+    }
+  }));
+
   // ─────────────────────────────────────────────────────────
   // Aloha Sales CSV Import
   // ─────────────────────────────────────────────────────────

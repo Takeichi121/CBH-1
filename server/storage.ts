@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, announcementAcknowledgments, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type AnnouncementAcknowledgment, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, announcementAcknowledgments, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, clockRecords, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type AnnouncementAcknowledgment, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore, type ClockRecord, type InsertClockRecord } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 export class StorageError extends Error {
@@ -200,6 +200,14 @@ export interface IStorage {
   createStore(data: InsertStore): Promise<Store>;
   updateStore(id: string, data: Partial<InsertStore>): Promise<Store>;
   toggleStoreActive(id: string): Promise<Store>;
+
+  // Clock Records (Attendance)
+  getClockRecords(year: number, month: number, storeId?: string): Promise<ClockRecord[]>;
+  getClockRecordsByDate(date: string, storeId?: string): Promise<ClockRecord[]>;
+  upsertClockRecord(record: InsertClockRecord): Promise<ClockRecord>;
+  updateClockRecord(id: number, data: Partial<InsertClockRecord>): Promise<ClockRecord>;
+  deleteClockRecord(id: number): Promise<void>;
+  getClockEmployees(storeId?: string): Promise<Array<{ fullName: string; nickName: string | null; position: string | null }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1404,6 +1412,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(stores.id, id))
       .returning();
     return store;
+  }
+
+  // ─────────────────────────────────────────────
+  // Clock Records (Attendance)
+  // ─────────────────────────────────────────────
+
+  async getClockRecords(year: number, month: number, storeId?: string): Promise<ClockRecord[]> {
+    const monthStr = String(month).padStart(2, "0");
+    const prefix = `${year}-${monthStr}`;
+    const conds = [like(clockRecords.date, `${prefix}%`)];
+    if (storeId) conds.push(eq(clockRecords.storeId, storeId));
+    return db.select().from(clockRecords).where(and(...conds)).orderBy(clockRecords.date, clockRecords.employeeFullName);
+  }
+
+  async getClockRecordsByDate(date: string, storeId?: string): Promise<ClockRecord[]> {
+    const conds = [eq(clockRecords.date, date)];
+    if (storeId) conds.push(eq(clockRecords.storeId, storeId));
+    return db.select().from(clockRecords).where(and(...conds));
+  }
+
+  async upsertClockRecord(record: InsertClockRecord): Promise<ClockRecord> {
+    const now = new Date().toISOString();
+    const [row] = await db
+      .insert(clockRecords)
+      .values({ ...record, createdAt: now, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [clockRecords.date, clockRecords.storeId, clockRecords.employeeFullName],
+        set: {
+          employeeNickName: record.employeeNickName,
+          position: record.position,
+          rosterTime: record.rosterTime,
+          clockInTime: record.clockInTime,
+          clockOutTime: record.clockOutTime,
+          notes: record.notes,
+          importSource: record.importSource,
+          updatedAt: now,
+        }
+      })
+      .returning();
+    return row;
+  }
+
+  async updateClockRecord(id: number, data: Partial<InsertClockRecord>): Promise<ClockRecord> {
+    const [row] = await db
+      .update(clockRecords)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(clockRecords.id, id))
+      .returning();
+    if (!row) throw new Error(`Clock record ${id} not found`);
+    return row;
+  }
+
+  async deleteClockRecord(id: number): Promise<void> {
+    await db.delete(clockRecords).where(eq(clockRecords.id, id));
+  }
+
+  async getClockEmployees(storeId?: string): Promise<Array<{ fullName: string; nickName: string | null; position: string | null }>> {
+    const conds = storeId ? [eq(clockRecords.storeId, storeId)] : [];
+    const rows = await db
+      .selectDistinct({
+        fullName: clockRecords.employeeFullName,
+        nickName: clockRecords.employeeNickName,
+        position: clockRecords.position,
+      })
+      .from(clockRecords)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(clockRecords.employeeFullName);
+    return rows;
   }
 }
 

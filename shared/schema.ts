@@ -864,3 +864,28 @@ export const dropdownOptions = pgTable("dropdown_options", {
 export const insertDropdownOptionSchema = createInsertSchema(dropdownOptions).omit({ id: true });
 export type InsertDropdownOption = z.infer<typeof insertDropdownOptionSchema>;
 export type DropdownOption = typeof dropdownOptions.$inferSelect;
+
+// ==========================================
+// 🕐 Clock In / Out Attendance Records
+// ==========================================
+export const clockRecords = pgTable("clock_records", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull(),           // YYYY-MM-DD
+  storeId: text("store_id").notNull().default("BK1040"),
+  employeeFullName: text("employee_full_name").notNull(),
+  employeeNickName: text("employee_nick_name"),
+  position: text("position"),
+  rosterTime: text("roster_time"),        // e.g. "05:00 - 14:00"
+  clockInTime: text("clock_in_time"),     // e.g. "05:02" (from Aloha)
+  clockOutTime: text("clock_out_time"),   // e.g. "14:15" (from Aloha)
+  notes: text("notes"),
+  importSource: text("import_source").default("manual"),
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+}, (t) => ({
+  uniqueDateEmp: unique().on(t.date, t.storeId, t.employeeFullName),
+}));
+
+export const insertClockRecordSchema = createInsertSchema(clockRecords).omit({ id: true });
+export type InsertClockRecord = z.infer<typeof insertClockRecordSchema>;
+export type ClockRecord = typeof clockRecords.$inferSelect;

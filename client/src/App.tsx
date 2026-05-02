@@ -36,6 +36,7 @@ import DashboardPage from "@/pages/dashboard-page";
 import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
 import AgentRequestsPage from "@/pages/agent-requests-page";
+import AttendancePage from "@/pages/attendance-page";
 import AdminPermissionsPage from "@/pages/admin-permissions-page";
 import AnnouncementsPage from "@/pages/announcements-page";
 
@@ -282,6 +283,10 @@ function Router() {
 
           <Route path="/announcements">
             <ProtectedRoute component={AnnouncementsPage} path="/announcements" />
+          </Route>
+
+          <Route path="/attendance">
+            <ProtectedRoute component={AttendancePage} path="/attendance" />
           </Route>
           
           <Route component={NotFound} />

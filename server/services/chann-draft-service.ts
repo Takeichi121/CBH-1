@@ -94,6 +94,8 @@ export async function generateDailySalesDraft(
   fillFromAvg("lineman", "lineman", baselineLabel);
   fillFromAvg("shopee", "shopee", baselineLabel);
   fillFromAvg("bkapp", "bkapp", baselineLabel);
+  fillFromAvg("wasteRawDaily", "wasteRawDaily", baselineLabel);
+  fillFromAvg("otHours", "otHours", baselineLabel);
 
   const lastReport = past.sort((a, b) => b.reportDate.localeCompare(a.reportDate))[0];
   if (lastReport) {

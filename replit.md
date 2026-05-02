@@ -205,6 +205,26 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ## Recent Changes
 
+### Version 2.5.1 (May 2, 2026) — Comprehensive System Upgrade
+
+**Performance:**
+- เพิ่ม 7 DB indexes: `shifts(store_id, date)`, `shifts(username)`, `shifts(date)`, `daily_sales_reports(store_id)`, `daily_sales_reports(report_by)`, `users(store_id)`, `manager_requests(status)` — ลด query time โดยเฉพาะหน้า Roster และ Sales
+
+**Chann AI — 3 เครื่องมือใหม่:**
+- `getActiveAnomalies` — ดู anomaly ที่ยังไม่ได้รับทราบ Chann ใช้ได้โดยตรง
+- `searchChannMemories` — RAG semantic search ใน long-term memory ของ Chann
+- `detectAnomaliesNow` — สั่ง detect anomaly สำหรับวันที่ระบุได้ทันที
+
+**Chann Quick Actions ใหม่:**
+- "ความผิดปกติล่าสุด", "Memory ของ Chann", "ตรวจ Anomaly วันนี้"
+
+**System Prompt อัพเกรด:**
+- llm-router: เพิ่ม Bangkok time, BK ops terminology (COL%, TCMH, MTD, Delivery), analysis mode ฉลาดขึ้น
+- Main agent: เพิ่ม anomaly/memory/detectAnomalies ในคำอธิบาย tools
+
+**Draft Service:**
+- เพิ่ม wasteRawDaily + otHours ใน auto-fill fields จาก same-DOW baseline
+
 ### Version 2.5.0 (May 2, 2026) — Chann AI: Auto-draft + Anomaly Detection + Long-term Memory
 
 **3 features ใหม่พร้อมกัน:**

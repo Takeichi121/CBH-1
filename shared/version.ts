@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.0";
+export const APP_VERSION = "2.5.1";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.1",
+    date: "2026-05-02",
+    label: "improvement",
+    changes: [
+      "Performance: เพิ่ม 7 DB indexes (shifts store_date, username, date; daily_sales store_id, report_by; users store_id; manager_requests status) — query เร็วขึ้นเห็นได้ชัด",
+      "Chann AI: เพิ่ม 3 tools ใหม่ — getActiveAnomalies, searchChannMemories (RAG), detectAnomaliesNow — ถามเรื่อง anomaly/memory ได้โดยตรง",
+      "Chann Chat: เพิ่ม quick actions — 'ความผิดปกติล่าสุด', 'Memory ของ Chann', 'ตรวจ Anomaly วันนี้'",
+      "Chann System Prompt: อัพเกรดทั้ง llm-router และ main agent — เพิ่มบริบท BK ops (COL%, TCMH, MTD, Delivery channels), Bangkok timezone, operational expertise",
+      "Draft Service: เพิ่ม wasteRawDaily และ otHours ใน auto-fill fields จาก baseline",
+    ],
+  },
   {
     version: "2.5.0",
     date: "2026-05-02",

@@ -929,6 +929,7 @@ export function FloatingChannChat() {
         { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3, show: isManagerOrAdmin },
         { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap, show: isManagerOrAdmin },
         { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "ความผิดปกติล่าสุด", prompt: "ตรวจสอบ anomaly ที่ยังไม่ได้รับทราบทั้งหมดใน 7 วันที่ผ่านมา", icon: Zap, show: isManagerOrAdmin },
         { label: "ส่งออก Excel", prompt: "ส่งออกรายงานยอดขายเดือนนี้เป็นไฟล์ Excel", icon: Download, show: isManagerOrAdmin },
         { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
       ],
@@ -943,6 +944,8 @@ export function FloatingChannChat() {
         { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar, show: isManagerOrAdmin },
         { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
         { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText, show: isManagerOrAdmin },
+        { label: "Memory ของ Chann", prompt: "ค้นหา memory ระยะยาวของ Chann ที่บันทึกไว้จากรายงานและ anomaly ในอดีต", icon: Sparkles, show: isManagerOrAdmin },
+        { label: "ตรวจ Anomaly วันนี้", prompt: `รัน anomaly detection สำหรับเมื่อวาน แล้วแสดงผลลัพธ์`, icon: Zap, show: isManagerOrAdmin },
       ],
     },
     {

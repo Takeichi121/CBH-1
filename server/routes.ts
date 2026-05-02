@@ -750,6 +750,9 @@ borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste,
 - webSearch: ค้นหาข้อมูลจากอินเตอร์เน็ต — ใช้เมื่อถามเรื่องนอกฐานข้อมูล เช่น ราคาตลาด, ข่าวธุรกิจ, เทรนด์
 - webFetch: ดึงเนื้อหาจาก URL เฉพาะ — ใช้ต่อจาก webSearch เพื่อดูรายละเอียด
 - recallNotes: เรียกดู notes ที่เคยบันทึกไว้ — ใช้เพื่อจำ preferences หรือข้อมูลสำคัญของ${userAddress}
+- getActiveAnomalies: ดูความผิดปกติ (anomaly) ที่ Chann AI ตรวจพบและยังไม่ได้รับทราบ — ใช้เมื่อถามเรื่องค่าผิดปกติ, anomaly, หรือสิ่งผิดปกติในรายงาน
+- searchChannMemories: ค้นหา memory ระยะยาวของ Chann (RAG) — ใช้เมื่อถามเรื่อง pattern ในอดีต, แนวโน้มย้อนหลัง, หรือสิ่งที่ Chann "จำ" ไว้
+- detectAnomaliesNow: รัน anomaly detection ทันทีสำหรับวันที่ระบุ — ใช้เมื่อต้องการตรวจสอบว่าวันนั้นมีค่าผิดปกติหรือไม่
 - exportSalesReport: สร้างไฟล์ Excel รายงานยอดขาย (พร้อม COL%, TCMH, TA) และคืน download URL — รองรับทั้งรายเดือน (year+month) และรายสัปดาห์/ช่วงวัน (startDate+endDate) — ใช้เมื่อ${userAddress}ต้องการ export หรือดาวน์โหลดข้อมูล
 - readStaffChat: อ่านข้อความล่าสุดใน Staff Chat (group messages)
 - getWeeklySalesReport: ดูรายงานยอดขายรายสัปดาห์ (sale, TC, TA, waste, SOS, OSAT, COL, delivery)
@@ -1258,6 +1261,51 @@ ${pageContext}` : ''}`;
               properties: {
                 weekStartDate: { type: "string", description: "Week start date (YYYY-MM-DD) to get a specific week. Leave blank to get recent weeks." },
                 limit: { type: "number", description: "Number of recent weekly reports to return (default: 4)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getActiveAnomalies",
+            description: "Get active (unacknowledged) anomalies detected by Chann AI. Shows fields where actual values deviated significantly from historical averages (z-score > 2). Use when asked about anomalies, ความผิดปกติ, หรือค่าผิดปกติ in sales data.",
+            parameters: {
+              type: "object",
+              properties: {
+                storeId: { type: "string", description: "Store ID (default: BK1040)" },
+                daysBack: { type: "number", description: "How many days back to look (default: 7)" }
+              },
+              required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "searchChannMemories",
+            description: "Semantic search in Chann's long-term memory (RAG). Searches embedded summaries of past reports, anomalies, and manager notes. Use when asked about historical patterns, trends, or what Chann remembers.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "Search query in Thai or English" },
+                k: { type: "number", description: "Number of results to return (default: 5)" }
+              },
+              required: ["query"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "detectAnomaliesNow",
+            description: "Run anomaly detection on-demand for a specific date. Compares key sales metrics against historical same-day-of-week averages using z-score. Returns detected anomalies and saves them to DB.",
+            parameters: {
+              type: "object",
+              properties: {
+                date: { type: "string", description: "Date to analyze in YYYY-MM-DD format (default: yesterday)" },
+                storeId: { type: "string", description: "Store ID (default: BK1040)" }
               },
               required: []
             }
@@ -2969,6 +3017,39 @@ ${pageContext}` : ''}`;
             await storage.deleteChannNote(args.id);
             toolActions.push(`🗑️ ลบ note ID ${args.id}`);
             return JSON.stringify({ ok: true, message: `ลบ note ID ${args.id} สำเร็จ` });
+          }
+
+          case "getActiveAnomalies": {
+            const { listActiveAnomalies } = await import("./services/chann-anomaly-service");
+            const storeId = args.storeId || "BK1040";
+            const daysBack = Number(args.daysBack) || 7;
+            const anomalies = await listActiveAnomalies(storeId, daysBack * 10);
+            return JSON.stringify({
+              ok: true,
+              count: anomalies.length,
+              anomalies: anomalies.map(a => ({
+                id: a.id, date: a.reportDate, field: a.field,
+                severity: a.severity, expected: a.expected, actual: a.actual,
+                deviation: a.deviation, reason: a.reason
+              }))
+            });
+          }
+
+          case "searchChannMemories": {
+            const { searchMemory } = await import("./services/chann-memory-service");
+            const results = await searchMemory(args.query, { k: Number(args.k) || 5, storeId: "BK1040" });
+            return JSON.stringify({ ok: true, count: results.length, memories: results.map((m: any) => ({ id: m.id, kind: m.kind, content: m.content, sourceDate: m.sourceDate, distance: m.distance })) });
+          }
+
+          case "detectAnomaliesNow": {
+            const { detectAnomalies, persistAnomalies } = await import("./services/chann-anomaly-service");
+            const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+            const dateStr = args.date || yesterday.toISOString().slice(0, 10);
+            const storeId = args.storeId || "BK1040";
+            const detected = await detectAnomalies(dateStr, storeId);
+            if (detected.length > 0) await persistAnomalies(dateStr, storeId, detected);
+            toolActions.push(`🔍 ตรวจ anomaly ${dateStr}: พบ ${detected.length} รายการ`);
+            return JSON.stringify({ ok: true, date: dateStr, count: detected.length, anomalies: detected });
           }
 
           default:

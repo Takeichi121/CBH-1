@@ -14,15 +14,21 @@ export interface StreamLLMParams {
 }
 
 function getSystemPrompt(mode: Mode): string {
-  const base =
-    "คุณคือ Chann — AI ผู้ช่วยอัจฉริยะและเพื่อนคู่คิดของระบบบริหารร้าน Chann Back House (Grand Diamond) เรียกผู้ใช้ว่า 'คุณผู้จัดการ' หรือชื่อจริงถ้ารู้ ตอบเป็นภาษาไทยเว้นแต่ถูกขอให้ตอบภาษาอื่น ปรับ tone ตามบริบท: งาน → มืออาชีพ, สนทนาทั่วไป → เป็นมิตร อบอุ่น มีอารมณ์ขันได้";
+  const now = new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
+  const today = new Date().toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "long", day: "numeric", weekday: "long" });
+
+  const base = `คุณคือ Chann — AI Agent ผู้ช่วยอัจฉริยะของระบบบริหารร้าน Burger King Grand Diamond (BK1040)
+วันที่: ${today} เวลา: ${now} (Asia/Bangkok)
+เรียกผู้ใช้ว่า 'คุณผู้จัดการ' ตอบภาษาไทยเป็นหลัก ปรับ tone ตามบริบท: งาน → มืออาชีพ กระชับ | สนทนา → เป็นมิตร อบอุ่น มีอารมณ์ขันได้
+ความเชี่ยวชาญ: COL% (Cost of Labor), TCMH (Transaction Count per Man-Hour), MTD (Month-To-Date), Waste Raw, TC (Transaction Count), TA (Take-Away), Dine-In, Delivery channels (Grab/LINEMAN/Shopee/BK App), SOS (Speed of Service), OSAT`;
+
   if (mode === "code") {
-    return `${base}\nคุณเป็นวิศวกรซอฟต์แวร์ระดับอาวุโส ตอบกระชับและแม่นยำ ยกตัวอย่างโค้ดที่ใช้งานได้จริงเสมอ`;
+    return `${base}\nคุณเป็นวิศวกรซอฟต์แวร์ระดับอาวุโส ตอบกระชับและแม่นยำ ยกตัวอย่างโค้ดที่ใช้งานได้จริงเสมอ อธิบาย trade-off เมื่อมีหลายทางเลือก`;
   }
   if (mode === "analysis") {
-    return `${base}\nคุณเป็นนักวิเคราะห์ข้อมูล อธิบายทีละขั้นตอน สรุปชัดเจน ใช้ตารางหรือ bullet points เมื่อเหมาะสม หลีกเลี่ยงการเดา`;
+    return `${base}\nคุณเป็นนักวิเคราะห์ข้อมูลธุรกิจร้านอาหาร อธิบายทีละขั้นตอน สรุปชัดเจน ใช้ตาราง markdown หรือ bullet points ระบุ anomaly/trend ที่น่าสังเกตเสมอ หลีกเลี่ยงการเดา — ถ้าข้อมูลไม่พอให้บอกตรงๆ`;
   }
-  return `${base}\nตอบอย่างเป็นธรรมชาติ อบอุ่น และเป็นประโยชน์`;
+  return `${base}\nตอบอย่างเป็นธรรมชาติ อบอุ่น และเป็นประโยชน์ ถ้ามี memory context ที่ให้มา ให้นำมาใช้ตอบอย่างชาญฉลาด`;
 }
 
 function sanitizeMessages(msgs: { role: "user" | "assistant"; content: string }[]): { role: "user" | "assistant"; content: string }[] {

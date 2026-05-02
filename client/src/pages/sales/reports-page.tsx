@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useI18n } from "@/hooks/use-i18n";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Calendar, TrendingUp, TrendingDown, Loader2, Trash2, Pencil } from "lucide-react";
+import { FileText, Calendar, TrendingUp, TrendingDown, Loader2, Trash2, Pencil, AlertTriangle } from "lucide-react";
 import { SalesLayout } from "./sales-layout";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -34,6 +35,22 @@ export default function SalesReportsPage() {
   const { language } = useI18n();
   const { toast } = useToast();
   const [searchDate, setSearchDate] = useState("");
+
+  const token = localStorage.getItem("bk_token") || "";
+  const { data: anomalyData } = useQuery({
+    queryKey: ["/api/chann/anomalies"],
+    queryFn: async () => {
+      const res = await fetch(`/api/chann/anomalies?token=${encodeURIComponent(token)}&daysBack=60`);
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const anomalyDateSet = useMemo<Set<string>>(() => {
+    const s = new Set<string>();
+    (anomalyData?.anomalies || []).forEach((a: any) => { if (a.reportDate) s.add(a.reportDate); });
+    return s;
+  }, [anomalyData]);
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
@@ -235,13 +252,20 @@ export default function SalesReportsPage() {
                   const variance = actual - target;
 
                   return (
-                    <Card key={report.id} className="border hover:border-primary/30 transition-colors">
+                    <Card key={report.id} className={`border hover:border-primary/30 transition-colors ${anomalyDateSet.has(report.reportDate) ? "border-l-4 border-l-red-500" : ""}`}>
                       <CardContent className="p-4 md:p-6">
                         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                           <div className="flex items-center gap-3">
                             <Calendar className="w-5 h-5 text-muted-foreground" />
                             <div>
-                              <h3 className="font-semibold">{report.reportDate}</h3>
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="font-semibold">{report.reportDate}</h3>
+                                {anomalyDateSet.has(report.reportDate) && (
+                                  <span title="พบความผิดปกติ" data-testid={`badge-anomaly-${report.id}`}>
+                                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-muted-foreground">
                                 {t.shift}: {report.workShift} | {report.reportBy}
                               </p>

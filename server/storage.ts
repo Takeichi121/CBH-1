@@ -75,6 +75,7 @@ export interface IStorage {
 
   // Logs
   log(action: string, byUser: string, detail: string): Promise<void>;
+  batchLog(entries: Array<{ action: string; byUser: string; detail: string }>): Promise<void>;
 
   // Swap Requests
   createSwapRequest(request: InsertSwapRequest): Promise<SwapRequest>;
@@ -361,6 +362,13 @@ export class DatabaseStorage implements IStorage {
       byUser,
       detail
     });
+  }
+
+  // D4: Batch insert multiple log entries in one DB round-trip
+  async batchLog(entries: Array<{ action: string; byUser: string; detail: string }>): Promise<void> {
+    if (!entries || entries.length === 0) return;
+    const ts = new Date().toISOString();
+    await db.insert(systemlog).values(entries.map(e => ({ ts, action: e.action, byUser: e.byUser, detail: e.detail })));
   }
 
   async createSwapRequest(request: InsertSwapRequest): Promise<SwapRequest> {

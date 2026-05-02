@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Database, Users, FileText, Trash2, Settings, Terminal, 
   RefreshCw, Loader2, Lock, Key, UserCog, Table, Play,
-  ChevronLeft, Palette, Upload, UserPen
+  ChevronLeft, Palette, Upload, UserPen, Bot, MemoryStick
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -381,7 +381,7 @@ export default function DevToolboxPage() {
 
       <main className="max-w-6xl mx-auto p-4">
         <Tabs defaultValue="logs" className="space-y-4">
-          <TabsList className="grid grid-cols-4 lg:grid-cols-8 gap-1">
+          <TabsList className="grid grid-cols-4 lg:grid-cols-9 gap-1">
             <TabsTrigger value="logs" className="text-xs" data-testid="tab-logs">
               <FileText className="h-4 w-4 mr-1" /> Logs
             </TabsTrigger>
@@ -405,6 +405,9 @@ export default function DevToolboxPage() {
             </TabsTrigger>
             <TabsTrigger value="profile" className="text-xs" data-testid="tab-profile">
               <UserPen className="h-4 w-4 mr-1" /> Profile
+            </TabsTrigger>
+            <TabsTrigger value="chann" className="text-xs" data-testid="tab-chann">
+              <Bot className="h-4 w-4 mr-1" /> Chann
             </TabsTrigger>
           </TabsList>
 
@@ -881,8 +884,144 @@ user002,pass456,Jane Smith,Jane,staff,0823456789,jane@example.com"
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Chann AI Tab */}
+          <TabsContent value="chann" className="space-y-4">
+            <ChannMemoryPanel apiCall={apiCall} toast={toast} loading={loading} setLoading={setLoading} />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
   );
+}
+
+function ChannMemoryPanel({ apiCall, toast, loading, setLoading }: {
+  apiCall: (endpoint: string, body: Record<string, any>) => Promise<any>;
+  toast: any;
+  loading: Record<string, boolean>;
+  setLoading: (v: Record<string, boolean>) => void;
+}) {
+  const [backfillDays, setBackfillDays] = useState(90);
+  const [backfillResult, setBackfillResult] = useState<{ added: number } | null>(null);
+  const [memories, setMemories] = useState<any[]>([]);
+  const [memSearch, setMemSearch] = useState("");
+
+  const handleBackfill = async () => {
+    setLoading({ backfill: true });
+    setBackfillResult(null);
+    const result = await apiCall("/api/chann/memories/backfill", { daysBack: backfillDays });
+    if (result.ok) {
+      setBackfillResult({ added: result.added });
+      toast({ title: `Backfill สำเร็จ — เพิ่ม ${result.added} memory` });
+    } else {
+      toast({ title: result.message || "Backfill ไม่สำเร็จ", variant: "destructive" });
+    }
+    setLoading({ backfill: false });
+  };
+
+  const handleLoadMemories = async () => {
+    setLoading({ memories: true });
+    try {
+      const token = localStorage.getItem("bk_token") || "";
+      const qs = memSearch ? `&q=${encodeURIComponent(memSearch)}` : "";
+      const res = await fetch(`/api/chann/memories?token=${encodeURIComponent(token)}${qs}`);
+      const result = await res.json();
+      if (result.ok) {
+        setMemories(result.memories || []);
+      } else {
+        toast({ title: result.message || "โหลด memory ไม่ได้", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: e.message || "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+    setLoading({ memories: false });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MemoryStick className="h-5 w-5" /> Chann Memory Backfill
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Backfill สร้าง memory embedding จากรายงานยอดขายย้อนหลัง เพื่อให้ Chann จำข้อมูลเก่าได้ดีขึ้น (Admin only)
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm whitespace-nowrap">ย้อนหลัง (วัน)</Label>
+              <input
+                type="number"
+                value={backfillDays}
+                min={7}
+                max={365}
+                onChange={(e) => setBackfillDays(Number(e.target.value))}
+                className="w-20 h-9 rounded-md border border-input bg-background px-3 text-sm"
+                data-testid="input-backfill-days"
+              />
+            </div>
+            <Button
+              onClick={handleBackfill}
+              disabled={!!loading.backfill}
+              data-testid="button-backfill-memories"
+            >
+              {loading.backfill ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <MemoryStick className="h-4 w-4 mr-1" />}
+              Backfill Memories
+            </Button>
+          </div>
+          {backfillResult && (
+            <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+              <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                + {backfillResult.added} memories added
+              </Badge>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bot className="h-5 w-5" /> Chann Memory Browser
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              value={memSearch}
+              onChange={(e) => setMemSearch(e.target.value)}
+              placeholder="ค้นหา memory... (เว้นว่างเพื่อดูทั้งหมด)"
+              className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+              data-testid="input-memory-search"
+              onKeyDown={(e) => e.key === "Enter" && handleLoadMemories()}
+            />
+            <Button onClick={handleLoadMemories} disabled={!!loading.memories} size="sm" data-testid="button-load-memories">
+              {loading.memories ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
+          </div>
+          {memories.length > 0 && (
+            <ScrollArea className="h-[300px] border rounded-md">
+              <div className="p-2 space-y-2">
+                {memories.map((m: any) => (
+                  <div key={m.id} className="p-2 rounded-md bg-muted/50 text-xs border" data-testid={`card-memory-${m.id}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="text-[10px] h-4">{m.kind}</Badge>
+                      <span className="text-muted-foreground">{m.sourceDate || m.createdAt}</span>
+                    </div>
+                    <p className="font-mono text-foreground/80 line-clamp-2">{m.content}</p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  function Label({ children, className }: { children: React.ReactNode; className?: string }) {
+    return <label className={className}>{children}</label>;
+  }
 }

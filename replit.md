@@ -380,6 +380,34 @@ This ensures the handbook and settings page always reflect the latest state auto
 - เพิ่มระบบ Staff Chat แบบ Real-time ด้วย Socket.IO
 - เพิ่ม Floating Chat Widget
 
+### Sprint A–E Upgrade (May 2026)
+
+**Sprint A — Frontend Quality**
+- `dashboard-page.tsx`: TanStack Query, AreaChart (recharts), Skeleton, useMemo
+- `work-page.tsx`: useMemo/useCallback for myShiftsByDate/rosterByUser; useToast error handling on all handleDropShift/handleSwapShift
+
+**Sprint B — Chann AI Expansion**
+- `weekly-sales-page.tsx`: "Chann วิเคราะห์" button (B1) — POST to `/api/chann`
+- `dev-toolbox-page.tsx`: 9th Chann tab with Memory Backfill + Memory Browser panel (B2)
+- `proactive-agent.ts`: LINE push immediately on CRITICAL anomaly detected (B3)
+- `reports-page.tsx`: Anomaly markers — red left border + AlertTriangle on anomalous dates (B4)
+- `routes.ts`: `summarizeDateRange` tool handler — raw SQL summary of date range sales (B5)
+
+**Sprint C — Borrow Module**
+- `borrow/History.tsx`: ExcelJS export button — downloads filtered transactions as .xlsx (C1)
+- `proactive-agent.ts`: Daily 09:00 cron checks overdue borrow transactions, sends LINE + pushToBoss (C2)
+
+**Sprint D — Backend Hardening**
+- `line-service.ts`: 3-attempt retry with exponential backoff, skip 400/401/403 (D1)
+- `routes.ts`: 60s in-memory cache for `/api/chann/anomalies` endpoint (D2)
+- `routes.ts`: Rate limiting 20 req/min per user for `/api/chann` (D3)
+- `storage.ts`: `batchLog()` — batch insert multiple system log entries in one DB round-trip (D4)
+
+**Sprint E — UI/UX Polish**
+- `admin-page.tsx`: Users/Stores split into shadcn Tabs (E2)
+- `daily-sales-page.tsx`: Ctrl+S / Cmd+S keyboard shortcut triggers save (E3); aria-label on Save button (E1)
+- `admin-page.tsx`: aria-label on admin tab list and triggers (E1)
+
 ### Earlier Changes
 1. **Register Borrow Routes** - Added routes for /borrow/history, /borrow/branches, /borrow/items in App.tsx
 2. **Update Navigation Tabs** - Added all 7 tabs to BorrowLayout

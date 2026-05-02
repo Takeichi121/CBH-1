@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { todayBangkok, nowBangkok } from "@/lib/utils";
 import {
@@ -76,6 +76,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 
 // Schema for booking form
 const bookSchema = z.object({
@@ -274,22 +275,27 @@ export default function WorkPage() {
     ? `${format(new Date(weekStartStr), "MMM d")} - ${format(new Date(weekEndStr), "MMM d, yyyy")}`
     : "";
 
-  // My shifts for the week mapped by date
-  const myShiftsByDate: Record<string, any> = {};
-  data?.items?.forEach((s: any) => {
-    myShiftsByDate[s.date] = s;
-  });
+  // My shifts for the week mapped by date — memoized
+  const myShiftsByDate = useMemo<Record<string, any>>(() => {
+    const map: Record<string, any> = {};
+    data?.items?.forEach((s: any) => { map[s.date] = s; });
+    return map;
+  }, [data?.items]);
+
+  // Roster shifts by user — precomputed map for O(1) lookup
+  const rosterByUser = useMemo<Record<string, Record<string, any>>>(() => {
+    const map: Record<string, Record<string, any>> = {};
+    rosterData?.roster?.forEach((s: any) => {
+      if (!map[s.username]) map[s.username] = {};
+      map[s.username][s.date] = s;
+    });
+    return map;
+  }, [rosterData?.roster]);
 
   // Get roster shifts by username and date
-  const getRosterShiftsByUser = (username: string): Record<string, any> => {
-    const shifts: Record<string, any> = {};
-    rosterData?.roster
-      ?.filter((s: any) => s.username === username)
-      .forEach((s: any) => {
-        shifts[s.date] = s;
-      });
-    return shifts;
-  };
+  const getRosterShiftsByUser = useCallback((username: string): Record<string, any> => {
+    return rosterByUser[username] || {};
+  }, [rosterByUser]);
 
   // Filter staff for mobile view based on shift groups
   // For today: show before-shift members, same-shift members, next-shift members
@@ -2567,6 +2573,7 @@ function ManagerDroppableEmptyCell({
 // Manager Team Roster View - shows only managers
 function ManagerTeamRosterView() {
   const { language, t } = useI18n();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedShift, setDraggedShift] = useState<any>(null);
   const [isCopyMode, setIsCopyMode] = useState(false);
@@ -2597,7 +2604,7 @@ function ManagerTeamRosterView() {
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-  const handleDropShift = async (
+  const handleDropShift = useCallback(async (
     targetUsername: string,
     targetDate: string,
     sourceShift: any,
@@ -2614,18 +2621,16 @@ function ManagerTeamRosterView() {
         note: sourceShift.note || "",
       });
       if (!isCopy && sourceShift.id) {
-        await apiRequest("POST", "/api/deleteShift", {
-          token,
-          shiftId: sourceShift.id,
-        });
+        await apiRequest("POST", "/api/deleteShift", { token, shiftId: sourceShift.id });
       }
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
     } catch (err) {
       console.error(err);
+      toast({ variant: "destructive", title: "ย้ายกะไม่สำเร็จ", description: "กรุณาลองใหม่อีกครั้ง" });
     }
-  };
+  }, [queryClient, toast]);
 
-  const handleSwapShift = async (sourceShift: any, targetShift: any) => {
+  const handleSwapShift = useCallback(async (sourceShift: any, targetShift: any) => {
     if (!targetShift?.id) return;
     const token = localStorage.getItem("bk_token") || "";
     try {
@@ -2648,8 +2653,9 @@ function ManagerTeamRosterView() {
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
     } catch (err) {
       console.error(err);
+      toast({ variant: "destructive", title: "สลับกะไม่สำเร็จ", description: "กรุณาลองใหม่อีกครั้ง" });
     }
-  };
+  }, [queryClient, toast]);
 
   if (isLoading) return <WorkPageSkeleton />;
 
@@ -2818,6 +2824,7 @@ function ManagerTeamRosterView() {
 
 function ManagerEmployeeRosterView() {
   const { language, t } = useI18n();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"roster" | "booked">("roster");
   const [draggedShift, setDraggedShift] = useState<any>(null);
@@ -2827,16 +2834,14 @@ function ManagerEmployeeRosterView() {
   const { data: settings } = useSettings();
   const queryClient = useQueryClient();
 
-  const handleDropShift = async (
+  const handleDropShift = useCallback(async (
     targetUsername: string,
     targetDate: string,
     sourceShift: any,
   ) => {
     const token = localStorage.getItem("bk_token") || "";
     const isCopy = sourceShift._isCopy;
-
     try {
-      // Create new shift at target location
       await apiRequest("POST", api.shifts.setForUser.path, {
         token,
         username: targetUsername,
@@ -2845,22 +2850,17 @@ function ManagerEmployeeRosterView() {
         startTime: sourceShift.startTime,
         note: sourceShift.note || "",
       });
-
-      // If moving (not copying), delete the original shift
       if (!isCopy && sourceShift.id) {
-        await apiRequest("POST", "/api/deleteShift", {
-          token,
-          shiftId: sourceShift.id,
-        });
+        await apiRequest("POST", "/api/deleteShift", { token, shiftId: sourceShift.id });
       }
-
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
     } catch (err) {
       console.error(err);
+      toast({ variant: "destructive", title: "ย้ายกะไม่สำเร็จ", description: "กรุณาลองใหม่อีกครั้ง" });
     }
-  };
+  }, [queryClient, toast]);
 
-  const handleSwapShift = async (sourceShift: any, targetShift: any) => {
+  const handleSwapShift = useCallback(async (sourceShift: any, targetShift: any) => {
     if (!targetShift?.id) return;
     const token = localStorage.getItem("bk_token") || "";
     try {
@@ -2883,8 +2883,9 @@ function ManagerEmployeeRosterView() {
       queryClient.invalidateQueries({ queryKey: [api.shifts.getRoster.path] });
     } catch (err) {
       console.error(err);
+      toast({ variant: "destructive", title: "สลับกะไม่สำเร็จ", description: "กรุณาลองใหม่อีกครั้ง" });
     }
-  };
+  }, [queryClient, toast]);
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));

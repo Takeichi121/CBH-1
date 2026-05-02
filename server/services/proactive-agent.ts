@@ -44,6 +44,28 @@ export function initProactiveChann() {
         if (anomalies.length > 0) {
           await persistAnomalies(yDate, storeId, anomalies);
           console.log(`[Chann] 🚨 พบ anomaly ${anomalies.length} รายการสำหรับ ${yDate}`);
+
+          // B3: ส่ง LINE ทันทีเมื่อพบ critical anomaly
+          const criticalAnomalies = anomalies.filter((a) => a.severity === "critical");
+          if (criticalAnomalies.length > 0) {
+            try {
+              const cfg = await storage.getConfig();
+              const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+              const targetId = cfg["LINE_TARGET_ID"];
+              if (channelToken && targetId) {
+                const critText =
+                  `🚨 [Chann] พบความผิดปกติระดับ CRITICAL สำหรับ ${yDate}\n\n` +
+                  criticalAnomalies
+                    .map((a) => `• ${a.field}: คาด ${a.expected} → จริง ${a.actual}\n  ${a.reason}`)
+                    .join("\n") +
+                  "\n\nกรุณาตรวจสอบด่วนครับ";
+                await sendLineMessage(channelToken, targetId, [{ type: "text", text: critText }]);
+                console.log(`[Chann] ✅ ส่ง LINE critical alert สำเร็จ (${criticalAnomalies.length} รายการ)`);
+              }
+            } catch (lineErr) {
+              console.error("[Chann] ส่ง LINE critical alert ไม่สำเร็จ:", lineErr);
+            }
+          }
         }
       } catch (e) {
         console.error("[Chann] anomaly detection error:", e);
@@ -138,9 +160,51 @@ export function initProactiveChann() {
     { timezone: "Asia/Bangkok" }
   );
 
+  // C2: Borrow Overdue Notification — ทุกวัน 09:00 ตรวจ borrow ที่เลยกำหนดคืน
+  cron.schedule(
+    "0 9 * * *",
+    async () => {
+      console.log("[Chann] 📦 ตรวจ borrow transactions ที่เลยกำหนดคืน...");
+      try {
+        const overdueRows: any[] = await storage.getOverdueBorrowTransactions().catch(() => []);
+        if (!overdueRows || overdueRows.length === 0) {
+          console.log("[Chann] ✅ ไม่มี borrow ที่เลยกำหนดคืน");
+          return;
+        }
+        const cfg = await storage.getConfig();
+        const channelToken = cfg["LINE_CHANNEL_TOKEN"];
+        const targetId = cfg["LINE_TARGET_ID"];
+        if (!channelToken || !targetId) {
+          console.warn("[Chann] ⚠️ LINE ไม่ได้ตั้งค่า — ข้ามการแจ้งเตือน borrow overdue");
+          return;
+        }
+        const lines = overdueRows
+          .slice(0, 10)
+          .map((r: any) => `• ${r.txDate} | ${r.branch} | ${r.item} x${r.qty} (Due: ${r.dueDate})`)
+          .join("\n");
+        const more = overdueRows.length > 10 ? `\n...และอีก ${overdueRows.length - 10} รายการ` : "";
+        const text =
+          `📦 [แจ้งเตือน] บันทึกยืม-คืนเลยกำหนด ${overdueRows.length} รายการ\n\n` +
+          lines + more +
+          "\n\nกรุณาตรวจสอบและอัปเดตสถานะการคืนด้วยครับ 🙏";
+        await sendLineMessage(channelToken, targetId, [{ type: "text", text }]);
+        console.log(`[Chann] ✅ ส่งแจ้งเตือน borrow overdue ${overdueRows.length} รายการ`);
+
+        // Push to boss dashboard
+        pushToBoss("chann-alert", {
+          title: `📦 Borrow Overdue: ${overdueRows.length} รายการ`,
+          message: `มี borrow ที่เลยกำหนดคืน ${overdueRows.length} รายการ กรุณาตรวจสอบครับ`,
+        });
+      } catch (e) {
+        console.error("[Chann] borrow overdue check error:", e);
+      }
+    },
+    { timezone: "Asia/Bangkok" }
+  );
+
   scheduleOneTimeAlert22h45();
 
-  console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน, แจ้งเตือน Weekly 19:00 ทุกวันอังคาร");
+  console.log("✅ [Chann] Proactive mode เริ่มทำงาน — ตื่น 08:00 ทุกวัน, แจ้งเตือน Weekly 19:00 ทุกวันอังคาร, Borrow Overdue 09:00");
 }
 
 function scheduleOneTimeAlert22h45() {

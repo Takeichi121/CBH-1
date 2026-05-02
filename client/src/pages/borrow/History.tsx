@@ -22,7 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { History as HistoryIcon, ArrowDownLeft, ArrowUpRight, Check } from "lucide-react";
+import { History as HistoryIcon, ArrowDownLeft, ArrowUpRight, Check, Download } from "lucide-react";
+import ExcelJS from "exceljs";
 import { BorrowLayout } from "./borrow-layout";
 import type { BorrowTransaction, BorrowBranch } from "@shared/schema";
 
@@ -80,6 +81,35 @@ export default function History() {
     return true;
   });
 
+  const handleExportExcel = async () => {
+    if (!filteredTransactions || filteredTransactions.length === 0) return;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Borrow History");
+    ws.columns = [
+      { header: "Date", key: "txDate", width: 14 },
+      { header: "Type", key: "txType", width: 14 },
+      { header: "Branch", key: "branch", width: 20 },
+      { header: "Item", key: "item", width: 28 },
+      { header: "Qty", key: "qty", width: 8 },
+      { header: "Unit", key: "unit", width: 8 },
+      { header: "Due Date", key: "dueDate", width: 14 },
+      { header: "Status", key: "status", width: 10 },
+      { header: "Note", key: "note", width: 32 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1A1A2E" } };
+    ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    filteredTransactions.forEach((tx) => ws.addRow(tx));
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `borrow_history_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const branchOptions = branches?.map(b => b.name) || [...new Set(transactions?.map((tx) => tx.branch) || [])];
 
   const isLoading = isLoadingTx || isLoadingBranches;
@@ -90,10 +120,23 @@ export default function History() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <HistoryIcon className="h-5 w-5" />
-              {t.history.borrowTracker}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <HistoryIcon className="h-5 w-5" />
+                {t.history.borrowTracker}
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                disabled={!filteredTransactions || filteredTransactions.length === 0}
+                className="gap-1.5"
+                data-testid="button-export-borrow-excel"
+              >
+                <Download className="h-4 w-4" />
+                Export Excel
+              </Button>
+            </div>
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Filter Branch */}
               <Select value={filterBranch} onValueChange={setFilterBranch}>

@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 import { Link } from "wouter";
@@ -643,6 +644,21 @@ export default function AdminPage() {
         </Link>
       )}
 
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="mb-4" data-testid="tabs-admin-main" aria-label={language === "th" ? "ส่วนการจัดการ" : "Management sections"}>
+          <TabsTrigger value="users" data-testid="tab-admin-users" aria-label={language === "th" ? `ทีมงาน ${users.length} คน` : `Team ${users.length} members`}>
+            <Users className="w-4 h-4 mr-2" />
+            {language === "th" ? `ทีมงาน (${users.length})` : `Team (${users.length})`}
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="stores" data-testid="tab-admin-stores" aria-label={language === "th" ? `สาขา ${storesList.length} แห่ง` : `${storesList.length} stores`}>
+              <Store className="w-4 h-4 mr-2" />
+              {language === "th" ? `สาขา (${storesList.length})` : `Stores (${storesList.length})`}
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="users">
       <Card className="glass-card border-none shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -1117,27 +1133,11 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Stores Management Section (Admin only) */}
-      {isAdmin && (
-        <div className="mt-6">
-          <div
-            className="flex items-center justify-between cursor-pointer py-3 px-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
-            onClick={() => setShowStoresSection(!showStoresSection)}
-          >
-            <div className="flex items-center gap-2">
-              <Store className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold">
-                {language === "th" ? "จัดการสาขา (Stores)" : "Stores Management"}
-              </h2>
-              <Badge variant="secondary">{storesList.length}</Badge>
-            </div>
-            <Button variant="ghost" size="sm">
-              {showStoresSection ? <Shield className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            </Button>
-          </div>
+        </TabsContent>
 
-          {showStoresSection && (
-            <Card className="mt-3 p-4">
+        {isAdmin && (
+        <TabsContent value="stores">
+            <Card className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
                   {language === "th" ? "ระบบรองรับหลายสาขา กำหนดข้อมูลขายแยกตาม Store" : "Multi-store support. Sales data is isolated per store."}
@@ -1353,9 +1353,9 @@ export default function AdminPage() {
                 </DialogContent>
               </Dialog>
             </Card>
-          )}
-        </div>
-      )}
+        </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

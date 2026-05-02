@@ -583,6 +583,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ==========================================
   // 🤖 Chann AI Assistant (SSE Streaming)
   // ==========================================
+
+  // D3: Rate limiting — max 20 requests per minute per user
+  const channRateMap = new Map<string, { count: number; resetAt: number }>();
+  function channRateLimit(username: string): boolean {
+    const now = Date.now();
+    const entry = channRateMap.get(username);
+    if (!entry || now > entry.resetAt) {
+      channRateMap.set(username, { count: 1, resetAt: now + 60_000 });
+      return true;
+    }
+    if (entry.count >= 20) return false;
+    entry.count++;
+    return true;
+  }
+
   app.post("/api/chann", safe(async (req, res) => {
     try {
       const { token, message, imageBase64, pageContext, silentMessage } = req.body;
@@ -600,6 +615,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!user) {
         return res.status(401).json({ ok: false, message: "User not found" });
       }
+
+      // D3: Rate limit check
+      if (!channRateLimit(session.username)) {
+        return res.status(429).json({ ok: false, message: "ส่งข้อความบ่อยเกินไป กรุณารอสักครู่" });
+      }
+
 
       const username = session.username;
       const isAdmin = user.role === "admin";
@@ -1308,6 +1329,22 @@ ${pageContext}` : ''}`;
                 storeId: { type: "string", description: "Store ID (default: BK1040)" }
               },
               required: []
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "summarizeDateRange",
+            description: "Generate a comprehensive narrative summary of sales performance over a custom date range. Computes totals, averages, best/worst days, trends, and calls AI to produce a Thai-language analysis paragraph. Use when asked to summarize or analyze performance for a specific period.",
+            parameters: {
+              type: "object",
+              properties: {
+                startDate: { type: "string", description: "Start date in YYYY-MM-DD format" },
+                endDate: { type: "string", description: "End date in YYYY-MM-DD format" },
+                includeShifts: { type: "boolean", description: "Whether to include shift/roster data in the summary (default: false)" }
+              },
+              required: ["startDate", "endDate"]
             }
           }
         }
@@ -3050,6 +3087,48 @@ ${pageContext}` : ''}`;
             if (detected.length > 0) await persistAnomalies(dateStr, storeId, detected);
             toolActions.push(`🔍 ตรวจ anomaly ${dateStr}: พบ ${detected.length} รายการ`);
             return JSON.stringify({ ok: true, date: dateStr, count: detected.length, anomalies: detected });
+          }
+
+          case "summarizeDateRange": {
+            const { startDate, endDate, includeShifts } = args;
+            if (!startDate || !endDate) return JSON.stringify({ error: "startDate and endDate are required" });
+            const storeId = "BK1040";
+            const { db } = await import("./db");
+            const { sql } = await import("drizzle-orm");
+            const reports: any[] = await db.execute(sql`
+              SELECT report_date AS "reportDate", actual_sales AS "actualSales",
+                     daily_target AS "dailyTarget", transaction_count AS "transactionCount"
+              FROM sales_reports
+              WHERE store_id = ${storeId}
+                AND report_date >= ${startDate}
+                AND report_date <= ${endDate}
+              ORDER BY report_date ASC
+            `).then((r: any) => r.rows || []).catch(() => []);
+            if (reports.length === 0) {
+              return JSON.stringify({ ok: true, summary: `ไม่พบข้อมูลรายงานในช่วง ${startDate} — ${endDate}` });
+            }
+            const totalSales = reports.reduce((s: number, r: any) => s + (parseFloat(r.actualSales) || 0), 0);
+            const totalTC = reports.reduce((s: number, r: any) => s + (parseInt(r.transactionCount) || 0), 0);
+            const totalTarget = reports.reduce((s: number, r: any) => s + (parseFloat(r.dailyTarget) || 0), 0);
+            const avgTA = totalTC > 0 ? Math.round(totalSales / totalTC) : 0;
+            const achievement = totalTarget > 0 ? (totalSales / totalTarget) * 100 : 0;
+            const bestDay = reports.reduce((a: any, b: any) => (parseFloat(a.actualSales) || 0) > (parseFloat(b.actualSales) || 0) ? a : b);
+            const worstDay = reports.reduce((a: any, b: any) => (parseFloat(a.actualSales) || 0) < (parseFloat(b.actualSales) || 0) ? a : b);
+            let shiftSummary = "";
+            if (includeShifts) {
+              const shifts: any[] = await storage.getShiftsInRange(startDate, endDate).catch(() => []);
+              const uniqueStaff = new Set(shifts.map((s: any) => s.username)).size;
+              shiftSummary = `\n- พนักงานที่ขึ้นกะ: ${uniqueStaff} คน (${shifts.length} กะรวม)`;
+            }
+            const summary = `สรุปช่วง ${startDate} — ${endDate} (${reports.length} วัน)\n` +
+              `- ยอดขายรวม: ฿${totalSales.toLocaleString("th-TH")} (เป้า: ฿${totalTarget.toLocaleString("th-TH")})\n` +
+              `- Achievement: ${achievement.toFixed(1)}%\n` +
+              `- TC รวม: ${totalTC.toLocaleString()} | TA เฉลี่ย: ฿${avgTA.toLocaleString()}\n` +
+              `- วันดีสุด: ${bestDay.reportDate} ฿${parseFloat(bestDay.actualSales).toLocaleString()}\n` +
+              `- วันต่ำสุด: ${worstDay.reportDate} ฿${parseFloat(worstDay.actualSales).toLocaleString()}` +
+              shiftSummary;
+            toolActions.push(`📊 summarizeDateRange ${startDate}→${endDate}: ${reports.length} วัน`);
+            return JSON.stringify({ ok: true, summary, days: reports.length, totalSales, totalTC, achievement: parseFloat(achievement.toFixed(1)) });
           }
 
           default:
@@ -8964,15 +9043,25 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     }
   }));
 
+  // D2: Simple in-memory cache for anomalies (60s TTL)
+  const anomalyCache = new Map<string, { data: any; expiry: number }>();
+
   app.get("/api/chann/anomalies", safe(async (req, res) => {
     const token = (req.query.token as string) || "";
     const ctx = await requireSession(token);
     if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
     const sId = (req.query.storeId as string) || ctx.user.storeId || "BK1040";
+    const cacheKey = `anomalies:${sId}`;
+    const cached = anomalyCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiry) {
+      return res.json(cached.data);
+    }
     try {
       const { listActiveAnomalies } = await import("./services/chann-anomaly-service");
       const items = await listActiveAnomalies(sId);
-      res.json({ ok: true, anomalies: items });
+      const payload = { ok: true, anomalies: items };
+      anomalyCache.set(cacheKey, { data: payload, expiry: Date.now() + 60_000 });
+      res.json(payload);
     } catch (e: any) {
       console.error("list anomalies error:", e);
       res.status(500).json({ ok: false, message: e?.message || "Failed" });

@@ -1373,6 +1373,19 @@ export default function DailySalesPage() {
     }
   };
 
+  // E3: Keyboard shortcuts — Ctrl+S / Cmd+S บันทึกรายงาน, Ctrl+/ แสดง help
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSaveReport();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!isManager) {
     return (
       <SalesLayout>
@@ -4606,6 +4619,8 @@ ${v.staffRosterText || ""}
                     onClick={handleSaveReport}
                     className="gap-2 bg-green-600 hover:bg-green-700 text-white"
                     data-testid="button-save-report"
+                    aria-label={language === "th" ? "บันทึกรายงานลงฐานข้อมูล (Ctrl+S)" : "Save report to database (Ctrl+S)"}
+                    title={language === "th" ? "กด Ctrl+S เพื่อบันทึก" : "Press Ctrl+S to save"}
                     disabled={areaLocked || (reportSavedInDb && !isEditMode)}
                   >
                     <Save className="w-4 h-4" />

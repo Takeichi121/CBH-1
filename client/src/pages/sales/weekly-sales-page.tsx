@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History, Send, FileSpreadsheet } from "lucide-react";
+import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History, Send, FileSpreadsheet, Bot } from "lucide-react";
 import ExcelJS from "exceljs";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { enUS } from "date-fns/locale";
@@ -218,6 +218,7 @@ export default function WeeklySalesPage() {
   const [isAutoPopulated, setIsAutoPopulated] = useState(false);
   const [borrowItemNames, setBorrowItemNames] = useState<string[]>([]);
   const [sendingLine, setSendingLine] = useState(false);
+  const [sendingChann, setSendingChann] = useState(false);
   const [prevForm, setPrevForm] = useState<WeeklyFormData | null>(null);
 
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
@@ -454,6 +455,33 @@ export default function WeeklySalesPage() {
       toast({ variant: "destructive", title: "ไม่สามารถส่ง LINE ได้" });
     }
     setSendingLine(false);
+  };
+
+  const handleChannAnalyze = async () => {
+    if (!hasData) return;
+    setSendingChann(true);
+    try {
+      const saleNum = Number((form.sale || "0").replace(/,/g, ""));
+      const tcNum = Number((form.tc || "0").replace(/,/g, ""));
+      const prompt =
+        `วิเคราะห์ผลประกอบการสัปดาห์ ${weekLabel} ของร้าน BK Grand Diamond:\n` +
+        `ยอดขาย: ${form.sale || "-"} บาท | TC: ${form.tc || "-"} | TA: ${form.ta || "-"} บาท\n` +
+        `COG: ${form.cog || "-"} | Waste: ${form.waste || "-"} | Unac: ${form.unac || "-"}\n` +
+        `SOS: ${form.sos || "-"} วิ | GSI: ${form.gsi || "-"} | OSAT: ${form.osat || "-"}\n` +
+        `Delivery: ${form.delivery || "-"} | COL MTD: ${form.colMtd || "-"}\n` +
+        `Waste Top 3: ${form.wasteTop3 || "-"}\nUnac Top 3: ${form.unaccountedTop3 || "-"}\n\n` +
+        "ช่วยวิเคราะห์จุดเด่น จุดที่ต้องปรับปรุง และเสนอแผนการดำเนินงาน 3 ข้อสำหรับสัปดาห์หน้าด้วยครับ";
+      const res = await apiRequest("POST", "/api/chann", { token, message: prompt });
+      const data = await res.json();
+      if (data.ok || data.response) {
+        toast({ title: "Chann วิเคราะห์แล้ว ✅", description: "ดูผลในหน้า Chann AI" });
+      } else {
+        toast({ variant: "destructive", title: data.message || "Chann วิเคราะห์ไม่สำเร็จ" });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "ไม่สามารถเชื่อมต่อ Chann ได้" });
+    }
+    setSendingChann(false);
   };
 
   const handleCopy = async () => {
@@ -905,6 +933,16 @@ export default function WeeklySalesPage() {
                     >
                       {sendingLine ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                       ส่ง LINE
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleChannAnalyze}
+                      disabled={sendingChann || !hasData}
+                      className="gap-2 border-violet-500 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                      data-testid="button-chann-analyze-weekly"
+                    >
+                      {sendingChann ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+                      Chann วิเคราะห์
                     </Button>
                   </div>
                 )}

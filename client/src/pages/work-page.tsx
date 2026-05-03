@@ -43,7 +43,11 @@ import {
   X,
   ArrowLeftRight,
   CheckCircle2,
+  BarChart3,
+  CalendarCheck,
+  Package,
 } from "lucide-react";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1735,6 +1739,44 @@ function ManagerDashboard() {
             </p>
           </div>
         </Card>
+      </div>
+
+      <div className="max-w-5xl mx-auto w-full">
+        <p className="text-xs text-muted-foreground text-center mb-3">
+          {language === "th" ? "เมนูลัด" : "Quick Links"}
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <Link href="/sales" data-testid="quicklink-sales">
+            <div className="glass-card border-none rounded-2xl p-4 flex flex-col items-center gap-2 cursor-pointer hover-elevate transition-all">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-foreground text-center leading-tight">
+                {language === "th" ? "รายงานยอดขาย" : "Sales Report"}
+              </span>
+            </div>
+          </Link>
+          <Link href="/attendance" data-testid="quicklink-attendance">
+            <div className="glass-card border-none rounded-2xl p-4 flex flex-col items-center gap-2 cursor-pointer hover-elevate transition-all">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CalendarCheck className="w-5 h-5 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-foreground text-center leading-tight">
+                {language === "th" ? "การเข้างาน" : "Attendance"}
+              </span>
+            </div>
+          </Link>
+          <Link href="/borrow" data-testid="quicklink-borrow">
+            <div className="glass-card border-none rounded-2xl p-4 flex flex-col items-center gap-2 cursor-pointer hover-elevate transition-all">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Package className="w-5 h-5 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-foreground text-center leading-tight">
+                {language === "th" ? "การยืม" : "Borrow"}
+              </span>
+            </div>
+          </Link>
+        </div>
       </div>
     </div>
   );

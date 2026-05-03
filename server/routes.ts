@@ -600,11 +600,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/chann", safe(async (req, res) => {
     try {
-      const { token, message, imageBase64, pageContext, silentMessage } = req.body;
+      const { token, message, imageBase64, pageContext, silentMessage, model: reqModel } = req.body;
       if (!token || (!message && !imageBase64)) {
         return res.status(400).json({ ok: false, message: "Token and message required" });
       }
-      const selectedProvider = "openai";
+      const selectedModel: "replit" | "claude" = reqModel === "claude" ? "claude" : "replit";
+      const selectedProvider = selectedModel === "claude" ? "claude" : "openai";
 
       const session = await storage.getSession(token);
       if (!session) {
@@ -1345,6 +1346,22 @@ ${pageContext}` : ''}`;
                 includeShifts: { type: "boolean", description: "Whether to include shift/roster data in the summary (default: false)" }
               },
               required: ["startDate", "endDate"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
+            name: "getClockRecords",
+            description: "Get attendance clock-in/clock-out records for a specific month. Returns employee attendance data including roster time, clock-in time, clock-out time, position, and notes. Use when asked about เวลาทำงาน, clock-in, clock-out, การเข้างาน, เวลาเข้างาน, เวลาออกงาน, attendance.",
+            parameters: {
+              type: "object",
+              properties: {
+                year: { type: "number", description: "Year (e.g. 2026)" },
+                month: { type: "number", description: "Month (1-12)" },
+                storeId: { type: "string", description: "Store ID (default: BK1040)" }
+              },
+              required: ["year", "month"]
             }
           }
         }
@@ -3089,6 +3106,18 @@ ${pageContext}` : ''}`;
             return JSON.stringify({ ok: true, date: dateStr, count: detected.length, anomalies: detected });
           }
 
+          case "getClockRecords": {
+            const crYear = Number(args.year) || new Date().getFullYear();
+            const crMonth = Number(args.month) || (new Date().getMonth() + 1);
+            const crStoreId = args.storeId || user?.storeId || "BK1040";
+            try {
+              const records = await storage.getClockRecords(crYear, crMonth, crStoreId);
+              return JSON.stringify({ ok: true, year: crYear, month: crMonth, storeId: crStoreId, count: records.length, records });
+            } catch (crErr: any) {
+              return JSON.stringify({ error: `getClockRecords error: ${crErr.message}` });
+            }
+          }
+
           case "summarizeDateRange": {
             const { startDate, endDate, includeShifts } = args;
             if (!startDate || !endDate) return JSON.stringify({ error: "startDate and endDate are required" });
@@ -3322,6 +3351,26 @@ ${pageContext}` : ''}`;
           };
 
           const streamWithProvider = async (_prov: string) => {
+            if (selectedModel === "claude") {
+              const AnthropicClass = (await import("@anthropic-ai/sdk")).default;
+              const anthropicClient = new AnthropicClass({
+                apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+                baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+              });
+              const claudeMsgsClean = sanitizeClaudeMessages(directMsgs as any);
+              const claudeStream = anthropicClient.messages.stream({
+                model: "claude-sonnet-4-6",
+                system: systemPrompt,
+                messages: claudeMsgsClean,
+                max_tokens: 4096,
+              });
+              for await (const event of claudeStream) {
+                if (event.type === "content_block_delta" && (event.delta as any).type === "text_delta") {
+                  handleDelta((event.delta as any).text as string);
+                }
+              }
+              return;
+            }
             const s = await openai.chat.completions.create({
               model: "gpt-5.2",
               messages: [{ role: "system", content: systemPrompt }, ...directMsgs],
@@ -3334,11 +3383,11 @@ ${pageContext}` : ''}`;
             }
           };
 
-          const providerFallback = ["openai"];
+          const providerFallback = [selectedModel === "claude" ? "claude" : "openai"];
 
           let streamed = false;
           for (const prov of providerFallback) {
-            const provLabel = "Replit AI";
+            const provLabel = selectedModel === "claude" ? "Claude" : "Replit AI";
             res.write(`data: ${JSON.stringify({ thinking: `${provLabel} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
             try {
               await streamWithProvider(prov);
@@ -3404,6 +3453,26 @@ ${pageContext}` : ''}`;
       };
 
       const fbStreamProv = async (_prov: string) => {
+        if (selectedModel === "claude") {
+          const AnthropicClass = (await import("@anthropic-ai/sdk")).default;
+          const anthropicClientFb = new AnthropicClass({
+            apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+            baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+          });
+          const claudeFbMsgs = sanitizeClaudeMessages(fallbackMsgs as any);
+          const claudeFbStream = anthropicClientFb.messages.stream({
+            model: "claude-sonnet-4-6",
+            system: systemPrompt,
+            messages: claudeFbMsgs,
+            max_tokens: 4096,
+          });
+          for await (const event of claudeFbStream) {
+            if (event.type === "content_block_delta" && (event.delta as any).type === "text_delta") {
+              handleFbDelta((event.delta as any).text as string);
+            }
+          }
+          return;
+        }
         const s = await openai.chat.completions.create({
           model: "gpt-5.2",
           messages: [{ role: "system", content: systemPrompt }, ...fallbackMsgs],
@@ -3416,11 +3485,11 @@ ${pageContext}` : ''}`;
         }
       };
 
-      const fbOrder = ["openai"];
+      const fbOrder = [selectedModel === "claude" ? "claude" : "openai"];
 
       let fbStreamed = false;
       for (const prov of fbOrder) {
-        const pl = "Replit AI";
+        const pl = selectedModel === "claude" ? "Claude" : "Replit AI";
         res.write(`data: ${JSON.stringify({ thinking: `${pl} กำลังสร้างคำตอบ...`, activeProvider: prov })}\n\n`);
         try {
           await fbStreamProv(prov);

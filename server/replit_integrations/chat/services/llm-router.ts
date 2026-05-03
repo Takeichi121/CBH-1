@@ -89,7 +89,51 @@ async function streamReplit(params: StreamLLMParams): Promise<string> {
   return full;
 }
 
+async function streamClaude(params: StreamLLMParams): Promise<string> {
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const client = new Anthropic({
+    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+  });
+
+  const rawMessages: { role: "user" | "assistant"; content: string }[] = [
+    ...params.history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user", content: params.message },
+  ];
+  const messages = sanitizeMessages(rawMessages);
+
+  const systemContent = params.extraContext
+    ? `${getSystemPrompt(params.mode)}\n\n--- ความจำที่เกี่ยวข้อง ---\n${params.extraContext}\n--- จบความจำ ---`
+    : getSystemPrompt(params.mode);
+
+  const stream = client.messages.stream({
+    model: "claude-sonnet-4-6",
+    system: systemContent,
+    messages,
+    max_tokens: 4096,
+  });
+
+  let full = "";
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && (event.delta as any).type === "text_delta") {
+      const delta = (event.delta as any).text as string;
+      full += delta;
+      params.onToken(delta);
+    }
+  }
+  return full;
+}
+
 export async function streamLLM(params: StreamLLMParams): Promise<string> {
+  if (params.provider === "claude") {
+    if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) {
+      throw new Error("Anthropic API Key ไม่ได้ตั้งค่า");
+    }
+    return await streamClaude(params);
+  }
   if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
     throw new Error("Replit AI API Key ไม่ได้ตั้งค่า");
   }

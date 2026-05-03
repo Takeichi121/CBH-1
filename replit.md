@@ -397,6 +397,12 @@ This ensures the handbook and settings page always reflect the latest state auto
 - `borrow/History.tsx`: ExcelJS export button — downloads filtered transactions as .xlsx (C1)
 - `proactive-agent.ts`: Daily 09:00 cron checks overdue borrow transactions, sends LINE + pushToBoss (C2)
 
+**Sprint F — Chann AI Upgrade (Multi-Model + getClockRecords)**
+- `llm-types.ts`: Added `"claude"` to Provider type
+- `llm-router.ts`: Added `streamClaude()` using `@anthropic-ai/sdk` (claude-sonnet-4-6, Replit Anthropic integration)
+- `server/routes.ts`: Accept `model` param (`"replit"` | `"claude"`); added `getClockRecords` tool + handler; both streaming paths (`streamWithProvider`, `fbStreamProv`) route to Claude when model=claude
+- `floating-chann-chat.tsx`: Model state + model picker toggle (⚡ Replit / ⬡ Claude) in header; avatar color changes per model; all API calls pass `model` param; `getClockRecords` quick-action available via tool
+
 **Sprint D — Backend Hardening**
 - `line-service.ts`: 3-attempt retry with exponential backoff, skip 400/401/403 (D1)
 - `routes.ts`: 60s in-memory cache for `/api/chann/anomalies` endpoint (D2)

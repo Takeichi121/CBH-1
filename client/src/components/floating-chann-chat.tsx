@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, Download } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, Download, ChevronDown } from "lucide-react";
 import ExcelJS from "exceljs";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -296,6 +296,8 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
   );
 });
 
+type ChannModel = "replit" | "claude";
+
 export function FloatingChannChat() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -307,6 +309,8 @@ export function FloatingChannChat() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [channModel, setChannModel] = useState<ChannModel>("replit");
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const greetingInitiated = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -455,7 +459,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: "replit" }),
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: "replit", model: "replit" }),
         });
         await handleSSEStream(res);
       } catch (err) {
@@ -870,7 +874,7 @@ export function FloatingChannChat() {
     setIsLoading(true);
 
     try {
-      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: "replit" };
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: channModel, model: channModel };
       if (currentImage) {
         body.imageBase64 = currentImage;
       }
@@ -986,7 +990,7 @@ export function FloatingChannChat() {
         const res = await fetch("/api/chann", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: "replit" }),
+          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: channModel, model: channModel }),
         });
         await handleSSEStream(res);
       } catch (err) {
@@ -1032,7 +1036,8 @@ export function FloatingChannChat() {
         body: JSON.stringify({
           token,
           message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
-          provider: "replit",
+          provider: channModel,
+          model: channModel,
         }),
       });
 
@@ -1140,23 +1145,89 @@ export function FloatingChannChat() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300",
+                    channModel === "claude"
+                      ? "bg-gradient-to-br from-orange-500 to-amber-600 shadow-orange-500/30"
+                      : "bg-gradient-to-br from-violet-500 to-indigo-600 shadow-violet-500/30"
+                  )}>
                     <Bot className="w-5 h-5 text-white" />
                   </div>
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-sm" data-testid="text-chann-title">Chann AI</h3>
-                  <p className="text-[11px] text-violet-300/80" data-testid="text-chann-subtitle">
+                  <p className={cn("text-[11px] transition-colors duration-300", channModel === "claude" ? "text-orange-300/90" : "text-violet-300/80")} data-testid="text-chann-subtitle">
                     {isStreaming
                       ? "กำลังพิมพ์..."
                       : isLoading
                         ? "กำลังวิเคราะห์..."
-                        : "ผู้ช่วยอัจฉริยะ"}
+                        : channModel === "claude"
+                          ? "Claude Sonnet · Anthropic"
+                          : "Replit AI · GPT-5.2"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
+                <div className="relative mr-0.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowModelPicker(v => !v); }}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border transition-all duration-200 select-none",
+                      channModel === "claude"
+                        ? "border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
+                        : "border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20"
+                    )}
+                    data-testid="button-chann-model-picker"
+                    title="เปลี่ยน AI Model"
+                  >
+                    <span>{channModel === "claude" ? "⬡ Claude" : "⚡ Replit"}</span>
+                    <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                  </button>
+                  {showModelPicker && (
+                    <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowModelPicker(false)} />
+                    <div
+                      className="absolute top-full right-0 mt-1.5 z-50 bg-slate-800 border border-white/10 rounded-xl shadow-2xl shadow-black/40 overflow-hidden min-w-[170px]"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="px-3 py-2 border-b border-white/5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">เลือก AI Model</span>
+                      </div>
+                      <button
+                        onClick={() => { setChannModel("replit"); setShowModelPicker(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all hover:bg-white/5",
+                          channModel === "replit" && "bg-violet-500/10"
+                        )}
+                        data-testid="button-model-replit"
+                      >
+                        <span className="text-violet-400 text-base leading-none">⚡</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-semibold text-white">Replit AI</div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">GPT-5.2 · เครื่องมือครบ 30+</div>
+                        </div>
+                        {channModel === "replit" && <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />}
+                      </button>
+                      <button
+                        onClick={() => { setChannModel("claude"); setShowModelPicker(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all hover:bg-white/5 border-t border-white/5",
+                          channModel === "claude" && "bg-orange-500/10"
+                        )}
+                        data-testid="button-model-claude"
+                      >
+                        <span className="text-orange-400 text-base leading-none">⬡</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-semibold text-white">Claude Sonnet</div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">Anthropic · วิเคราะห์ลึก ตอบยาว</div>
+                        </div>
+                        {channModel === "claude" && <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />}
+                      </button>
+                    </div>
+                    </>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"

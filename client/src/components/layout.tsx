@@ -130,9 +130,6 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
     { href: "/chann", label: "Chann AI", icon: Sparkles },
     announcementNavItem,
-    ...(user.role === "admin" && hasFeature("admin") ? [
-      { href: "/agent-requests", label: "Agent", icon: Bot },
-    ] : []),
   ];
 
   const mobileNavItems: NavItem[] = isViewer ? [
@@ -157,9 +154,6 @@ export function Layout({ children }: { children: ReactNode }) {
     ] : []),
     ...(isManagerOrAdmin && hasFeature("admin") ? [
       { href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield },
-    ] : []),
-    ...(user.role === "admin" && hasFeature("admin") ? [
-      { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
     { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
     { href: "/chann", label: "Chann AI", icon: Sparkles },

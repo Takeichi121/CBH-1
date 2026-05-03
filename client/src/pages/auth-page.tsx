@@ -72,7 +72,7 @@ export default function AuthPage() {
   const creatorDisplay = `${creatorShort} (${creatorName})`;
 
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row items-center justify-center p-4 md:p-8 relative bg-background overflow-x-hidden">
+    <div className="min-h-screen w-full flex flex-col md:flex-row items-center justify-start md:justify-center pt-14 pb-6 px-4 md:p-8 relative bg-background">
       <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
         <Button
           variant="outline"
@@ -99,7 +99,7 @@ export default function AuthPage() {
         </Button>
       </div>
       
-      <div className="w-full max-w-md space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="w-full max-w-md space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {isDeveloperMode ? (
           <>
             <div className="flex items-center justify-between">
@@ -195,17 +195,17 @@ export default function AuthPage() {
           </>
         ) : (
           <>
-            <div className="text-center space-y-2 md:space-y-4 select-none">
-              <div className="w-fit mx-auto mb-4 md:mb-6 transition-all duration-300 hover:scale-105">
-                <div className="w-20 h-20 flex items-center justify-center">
-                  <LogoDataHouse size={80} />
+            <div className="text-center space-y-1 md:space-y-4 select-none">
+              <div className="w-fit mx-auto mb-2 md:mb-6 transition-all duration-300 hover:scale-105">
+                <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center">
+                  <LogoDataHouse size={56} />
                 </div>
               </div>
-              <div className="space-y-1">
-                <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">
+              <div className="space-y-0.5">
+                <h1 className="text-xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">
                   {t("appName")}
                 </h1>
-                <p className="text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
+                <p className="hidden sm:block text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
               </div>
               <div className="hidden md:block space-y-1 pt-2">
                 <p className="text-xs text-muted-foreground">
@@ -282,13 +282,13 @@ function LoginForm() {
 
   return (
     <Card className="glass-card border-none shadow-2xl">
-      <CardHeader>
+      <CardHeader className="hidden md:flex">
         <CardTitle className="select-none">{t("welcomeBack")}</CardTitle>
         <CardDescription className="select-none">{t("enterCredentials")}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4 md:pt-0">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 md:space-y-4">
             <FormField
               control={form.control}
               name="username"

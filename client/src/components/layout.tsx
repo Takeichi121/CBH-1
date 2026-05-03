@@ -167,39 +167,41 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col bg-background">
       <OfflineIndicator />
 
-      {/* Mobile Header */}
-      <header className="md:hidden flex flex-col border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
-        <div className="h-14 flex items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <LogoDataHouse size={32} />
-            <h1 className="text-lg font-bold font-display text-foreground">Chann Back House</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLanguage(language === "en" ? "th" : "en")}
-              className="gap-1 h-8 px-2.5 rounded-full border-primary/20 text-muted-foreground text-xs"
-              data-testid="button-language-toggle-mobile"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              {language === "en" ? "TH" : "EN"}
-            </Button>
-            <Avatar className="h-9 w-9 border-2 border-primary/10" data-testid="avatar-mobile-header">
-              <AvatarImage src={user.profilePicture || ""} alt={user.fullName || ""} />
-              <AvatarFallback className="bg-primary/5 text-primary font-bold text-sm">
-                {user.username.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
+      {/* Mobile Header — single row */}
+      <header className="md:hidden flex items-center h-14 px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+        {/* Back button — leftmost */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => window.history.back()}
+          className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground shrink-0"
+          data-testid="button-back-mobile"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
 
-        <div className="px-4 pb-2 flex items-center justify-between">
+        {/* Logo + Brand */}
+        <Link href="/work" className="flex items-center gap-2 flex-1 min-w-0">
+          <LogoDataHouse size={28} />
+          <span className="text-base font-bold font-display text-foreground truncate hidden xs:block">Chann Back House</span>
+        </Link>
+
+        {/* Right controls */}
+        <div className="flex items-center gap-1 shrink-0">
+          <NotificationBell />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLanguage(language === "en" ? "th" : "en")}
+            className="h-8 w-8 rounded-full text-muted-foreground text-xs"
+            data-testid="button-language-toggle-mobile"
+          >
+            <Globe className="w-3.5 h-3.5" />
+          </Button>
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
-                <Menu className="h-6 w-6" />
+              <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
+                <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px] p-0 border-r-0 bg-background">
@@ -291,42 +293,31 @@ export function Layout({ children }: { children: ReactNode }) {
               </div>
             </SheetContent>
           </Sheet>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.history.back()}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-full text-muted-foreground hover:text-foreground"
-            data-testid="button-back-mobile"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">{language === "th" ? "กลับ" : "Back"}</span>
-          </Button>
         </div>
       </header>
 
       {/* Desktop Header */}
       <header className="hidden md:flex h-16 items-center justify-between px-6 bg-background/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Link href="/work" className="flex items-center gap-3 group">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.history.back()}
+            className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 shrink-0"
+            data-testid="button-back-desktop"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="h-5 w-px bg-border mx-1" />
+          <Link href="/work" className="flex items-center gap-2.5 group">
             <div className="flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-              <LogoDataHouse size={40} />
+              <LogoDataHouse size={36} />
             </div>
-            <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Chann Back House</h1>
+            <h1 className="text-lg font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Chann Back House</h1>
           </Link>
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => window.history.back()}
-          className="flex items-center gap-1.5 h-9 px-3 rounded-full text-muted-foreground hover:text-foreground"
-          data-testid="button-back-desktop"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm">{language === "th" ? "กลับ" : "Back"}</span>
-        </Button>
-
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5">
           {desktopNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href) && item.href !== "/work");
             const isWorkActive = item.href === "/work" && (location === "/work" || location.startsWith("/requests"));

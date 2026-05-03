@@ -45,7 +45,18 @@ export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Auto-collapse on tablet (< 1024px), expand on large screens
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 1024 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarCollapsed(window.innerWidth < 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const isAdminLike = user?.role === "admin" || user?.role === "area";
 
@@ -170,18 +181,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
   /* ── Right-side controls shared between desktop topbar ── */
   const RightControls = () => (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       {isAdminLike && stores.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 h-8 px-3 rounded-full border-primary/20 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all max-w-[160px]"
+              className="gap-1.5 h-8 px-2.5 rounded-full border-primary/20 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all"
               data-testid="button-store-switcher"
             >
               <Store className="w-3.5 h-3.5 shrink-0" />
-              <span className="text-xs font-medium truncate">{currentStore?.name || effectiveStoreId}</span>
+              <span className="hidden lg:inline text-xs font-medium truncate max-w-[120px]">{currentStore?.name || effectiveStoreId}</span>
               <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
@@ -209,7 +220,7 @@ export function Layout({ children }: { children: ReactNode }) {
         data-testid="button-language-toggle"
       >
         <Globe className="w-3.5 h-3.5" />
-        <span className="text-xs font-medium">{language === "en" ? "ไทย" : "EN"}</span>
+        <span className="hidden lg:inline text-xs font-medium">{language === "en" ? "ไทย" : "EN"}</span>
       </Button>
 
       <Button
@@ -602,7 +613,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto">
-            <div className="container mx-auto px-6 py-6">
+            <div className="px-4 md:px-5 lg:px-8 py-5 lg:py-6 max-w-screen-2xl w-full mx-auto">
               {children}
             </div>
           </main>

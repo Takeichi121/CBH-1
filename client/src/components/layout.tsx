@@ -2,7 +2,7 @@ import { ReactNode, useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoDataHouse } from "@/components/logo";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp, Megaphone, CalendarCheck, Sparkles } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp, Megaphone, CalendarCheck, Sparkles, Smartphone } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "next-themes";
@@ -127,6 +127,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(isManagerOrAdmin ? [
       { href: "/attendance", label: language === "th" ? "เวลาทำงาน" : "Attendance", icon: CalendarCheck },
     ] : []),
+    { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
     { href: "/chann", label: "Chann AI", icon: Sparkles },
     announcementNavItem,
     ...(user.role === "admin" && hasFeature("admin") ? [
@@ -160,6 +161,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(user.role === "admin" && hasFeature("admin") ? [
       { href: "/agent-requests", label: "Agent", icon: Bot },
     ] : []),
+    { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
     { href: "/chann", label: "Chann AI", icon: Sparkles },
     announcementNavItem,
     ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),

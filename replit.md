@@ -109,6 +109,9 @@ Auto-calculated fields based on input Actual Hours and OT Hours:
 - `MANAGER_VERIFY_CODE`: Code required for manager registration
 - `BRANCH_NAME`: Display name for the branch
 - `SESSION_TTL_SECONDS`: Token expiration time
+- `VAPID_PUBLIC_KEY`: Web Push VAPID public key (auto-generated, stored in shared env)
+- `VAPID_PRIVATE_KEY`: Web Push VAPID private key (auto-generated, stored in shared env)
+- `VAPID_EMAIL`: Contact email for VAPID (`admin@cbh.local`)
 
 ### Build Tools
 - Vite for frontend development and bundling

@@ -888,4 +888,23 @@ export const clockRecords = pgTable("clock_records", {
 
 export const insertClockRecordSchema = createInsertSchema(clockRecords).omit({ id: true });
 export type InsertClockRecord = z.infer<typeof insertClockRecordSchema>;
+
+// ==========================================
+// 🔔 Push Notification Subscriptions
+// ==========================================
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().references(() => users.username, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: text("created_at").notNull(),
+}, (t) => ({
+  uniqueEndpoint: unique().on(t.endpoint),
+}));
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true });
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type ClockRecord = typeof clockRecords.$inferSelect;

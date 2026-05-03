@@ -40,6 +40,7 @@ import AttendancePage from "@/pages/attendance-page";
 import AdminPermissionsPage from "@/pages/admin-permissions-page";
 import AnnouncementsPage from "@/pages/announcements-page";
 import ChannPlatformPage from "@/pages/chann-platform-page";
+import MobileDashboardPage from "@/pages/mobile-dashboard-page";
 
 // Settings Pages
 import DropdownSettingsPage from "@/pages/settings/dropdown-settings-page";
@@ -293,6 +294,10 @@ function Router() {
 
           <Route path="/chann">
             <ProtectedRoute component={ChannPlatformPage} path="/chann" />
+          </Route>
+
+          <Route path="/mobile">
+            <ProtectedRoute component={MobileDashboardPage} path="/mobile" />
           </Route>
           
           <Route component={NotFound} />

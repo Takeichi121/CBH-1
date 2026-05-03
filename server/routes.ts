@@ -9789,5 +9789,63 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     }
   }));
 
+  // ── Push Notification Routes ───────────────────────────────────────────────
+  app.get("/api/push/vapid-public-key", (_req, res) => {
+    const { getVapidPublicKey } = require("./services/push");
+    res.json({ publicKey: getVapidPublicKey() });
+  });
+
+  app.post("/api/push/subscribe", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Unauthorized" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const { endpoint, p256dh, auth, userAgent } = req.body;
+    if (!endpoint || !p256dh || !auth) {
+      return res.status(400).json({ ok: false, message: "Missing subscription fields" });
+    }
+    await storage.savePushSubscription({
+      username: session.username,
+      endpoint,
+      p256dh,
+      auth,
+      userAgent: userAgent || null,
+      createdAt: nowIso(),
+    });
+    res.json({ ok: true });
+  }));
+
+  app.post("/api/push/unsubscribe", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Unauthorized" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const { endpoint } = req.body;
+    if (!endpoint) return res.status(400).json({ ok: false, message: "Missing endpoint" });
+    await storage.deletePushSubscription(endpoint);
+    res.json({ ok: true });
+  }));
+
+  app.post("/api/push/send-test", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Unauthorized" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+    const subs = await storage.getPushSubscriptionsByUser(session.username);
+    if (!subs.length) return res.status(404).json({ ok: false, message: "No subscriptions" });
+    const { sendPush } = await import("./services/push");
+    let sent = 0;
+    for (const sub of subs) {
+      const result = await sendPush(sub.endpoint, sub.p256dh, sub.auth, {
+        title: "BK Schedule",
+        body: "ทดสอบการแจ้งเตือน Push Notification สำเร็จ!",
+        url: "/mobile",
+      });
+      if (result.ok) sent++;
+      if (result.gone) await storage.deletePushSubscription(sub.endpoint);
+    }
+    res.json({ ok: true, sent });
+  }));
+
   return httpServer;
 }

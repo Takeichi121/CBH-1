@@ -49,3 +49,10 @@ externalPort = 3000
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BB-sLtqgsVnkqnetPp_3e3PbMUKxOJKg5zRjGSiWzJ9BOaz1ZEZlhVrbqUimsKkZI6Nma8zQb7Q5auGpQx-CS9Q"
+VAPID_PRIVATE_KEY = "IPpw7zhnGIv_J4_e2uEy0D6K3Q-C0OlUEawQvLfUxhM"
+VAPID_EMAIL = "admin@cbh.local"

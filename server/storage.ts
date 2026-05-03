@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, announcementAcknowledgments, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, clockRecords, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type AnnouncementAcknowledgment, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore, type ClockRecord, type InsertClockRecord } from "@shared/schema";
+import { users, shifts, config, systemlog, sessions, swapRequests, dailySalesReports, storeSettings, dailyTargets, wasteTargets, managerRequests, notifications, announcements, announcementAcknowledgments, borrowBranches, borrowItems, borrowTransactions, laborSettings, dailyLabor, weeklySalesReports, channNotes, agentRequests, dropdownOptions, stores, clockRecords, pushSubscriptions, type User, type Shift, type Config, type SystemLog, type Session, type InsertUser, type InsertShift, type SwapRequest, type InsertSwapRequest, type DailySalesReport, type InsertDailySales, type StoreSettings, type InsertStoreSettings, type DailyTarget, type InsertDailyTarget, type WasteTarget, type ManagerRequest, type InsertManagerRequest, type Notification, type InsertNotification, type Announcement, type InsertAnnouncement, type AnnouncementAcknowledgment, type BorrowBranch, type InsertBorrowBranch, type BorrowItem, type InsertBorrowItem, type BorrowTransaction, type InsertBorrowTransaction, type LaborSettings, type InsertLaborSettings, type DailyLabor, type InsertDailyLabor, type WeeklySalesReport, type InsertWeeklySales, type ChannNote, type AgentRequest, type InsertAgentRequest, type DropdownOption, type InsertDropdownOption, type Store, type InsertStore, type ClockRecord, type InsertClockRecord, type PushSubscription, type InsertPushSubscription } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, like } from "drizzle-orm";
 
 export class StorageError extends Error {
@@ -208,6 +208,13 @@ export interface IStorage {
   updateClockRecord(id: number, data: Partial<InsertClockRecord>): Promise<ClockRecord>;
   deleteClockRecord(id: number): Promise<void>;
   getClockEmployees(storeId?: string): Promise<Array<{ fullName: string; nickName: string | null; position: string | null }>>;
+
+  // Push Subscriptions
+  savePushSubscription(data: InsertPushSubscription): Promise<PushSubscription>;
+  getPushSubscriptionsByUser(username: string): Promise<PushSubscription[]>;
+  getPushSubscriptionByEndpoint(endpoint: string): Promise<PushSubscription | undefined>;
+  deletePushSubscription(endpoint: string): Promise<void>;
+  getAllPushSubscriptionsForUsers(usernames: string[]): Promise<PushSubscription[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1480,6 +1487,40 @@ export class DatabaseStorage implements IStorage {
       .where(conds.length ? and(...conds) : undefined)
       .orderBy(clockRecords.employeeFullName);
     return rows;
+  }
+
+  // ── Push Subscriptions ───────────────────────────────────────
+  async savePushSubscription(data: InsertPushSubscription): Promise<PushSubscription> {
+    const [row] = await db
+      .insert(pushSubscriptions)
+      .values(data)
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: { p256dh: data.p256dh, auth: data.auth, username: data.username, userAgent: data.userAgent },
+      })
+      .returning();
+    return row;
+  }
+
+  async getPushSubscriptionsByUser(username: string): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.username, username));
+  }
+
+  async getPushSubscriptionByEndpoint(endpoint: string): Promise<PushSubscription | undefined> {
+    const [row] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+    return row;
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  async getAllPushSubscriptionsForUsers(usernames: string[]): Promise<PushSubscription[]> {
+    if (!usernames.length) return [];
+    const { inArray } = await import("drizzle-orm");
+    return db.select().from(pushSubscriptions).where(
+      inArray(pushSubscriptions.username, usernames)
+    );
   }
 }
 

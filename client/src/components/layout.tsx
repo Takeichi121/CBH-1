@@ -2,7 +2,7 @@ import { ReactNode, useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { LogoDataHouse } from "@/components/logo";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp, Megaphone, CalendarCheck, Sparkles, Smartphone } from "lucide-react";
+import { Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield, BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock, ChevronDown, Bot, Globe, History, Store, ChevronUp, Megaphone, CalendarCheck, Sparkles, Smartphone, ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "next-themes";
@@ -195,7 +195,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div className="px-4 pb-2">
+        <div className="px-4 pb-2 flex items-center justify-between">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
@@ -291,6 +291,16 @@ export function Layout({ children }: { children: ReactNode }) {
               </div>
             </SheetContent>
           </Sheet>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-full text-muted-foreground hover:text-foreground"
+            data-testid="button-back-mobile"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">{language === "th" ? "กลับ" : "Back"}</span>
+          </Button>
         </div>
       </header>
 
@@ -304,6 +314,17 @@ export function Layout({ children }: { children: ReactNode }) {
             <h1 className="text-xl font-bold font-display text-foreground hidden lg:block group-hover:text-primary transition-colors">Chann Back House</h1>
           </Link>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          className="flex items-center gap-1.5 h-9 px-3 rounded-full text-muted-foreground hover:text-foreground"
+          data-testid="button-back-desktop"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">{language === "th" ? "กลับ" : "Back"}</span>
+        </Button>
 
         <nav className="flex items-center gap-1">
           {desktopNavItems.map((item) => {

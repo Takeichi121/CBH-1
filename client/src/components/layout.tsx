@@ -121,13 +121,12 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(isManagerOrAdmin && hasFeature("sales") ? [
       { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
     ] : []),
-    ...(isManagerOrAdmin && hasFeature("borrow") ? [
-      { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
-    ] : []),
     ...(isManagerOrAdmin ? [
       { href: "/attendance", label: language === "th" ? "เวลาทำงาน" : "Attendance", icon: CalendarCheck },
     ] : []),
-    { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
+    ...(isManagerOrAdmin && hasFeature("borrow") ? [
+      { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
+    ] : []),
     { href: "/chann", label: "Chann AI", icon: Sparkles },
     announcementNavItem,
   ];
@@ -140,14 +139,16 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
     ...(hasFeature("work") ? [{ href: "/work", label: t("myWork") || "My Work", icon: Briefcase }] : []),
     ...(hasFeature("roster") ? [{ href: "/roster", label: t("roster") || "Roster", icon: Calendar }] : []),
+    { href: "/chann", label: "Chann AI", icon: Sparkles },
+    { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
     ...(isManagerOrAdmin && hasFeature("sales") ? [
       { href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 },
     ] : []),
-    ...(isManagerOrAdmin && hasFeature("borrow") ? [
-      { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
-    ] : []),
     ...(isManagerOrAdmin ? [
       { href: "/attendance", label: language === "th" ? "เวลาทำงาน" : "Attendance", icon: CalendarCheck },
+    ] : []),
+    ...(isManagerOrAdmin && hasFeature("borrow") ? [
+      { href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package },
     ] : []),
     ...(isManagerOrAdmin && hasFeature("requests") ? [
       { href: "/requests", label: t("managerRequest") || "Request", icon: FileText },
@@ -155,8 +156,6 @@ export function Layout({ children }: { children: ReactNode }) {
     ...(isManagerOrAdmin && hasFeature("admin") ? [
       { href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield },
     ] : []),
-    { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
-    { href: "/chann", label: "Chann AI", icon: Sparkles },
     announcementNavItem,
     ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
     ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
@@ -481,32 +480,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {/* Menu Items */}
               <div className="py-1">
-                {!isViewer && hasFeature("work") && (
-                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                    <Link href="/work">
-                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-home">
-                        <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>Home (My Work)</span>
-                      </a>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
                 {!isViewer && hasFeature("settings") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/settings">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-profile">
                         <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>โปรไฟล์ของฉัน</span>
-                      </a>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {!isViewer && hasFeature("admin") && (
-                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                    <Link href="/admin">
-                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-activity">
-                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>กิจกรรมของฉัน</span>
+                        <span>{language === "th" ? "โปรไฟล์ของฉัน" : "My Profile"}</span>
                       </a>
                     </Link>
                   </DropdownMenuItem>
@@ -522,22 +501,20 @@ export function Layout({ children }: { children: ReactNode }) {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
+                  <Link href="/mobile">
+                    <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-mobile">
+                      <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>{language === "th" ? "แดชบอร์ดมือถือ" : "Mobile Dashboard"}</span>
+                    </a>
+                  </Link>
+                </DropdownMenuItem>
                 {hasFeature("handbook") && (
                   <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
                     <Link href="/handbook">
                       <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-handbook">
                         <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span>{language === "th" ? "คู่มือพนักงาน" : "Handbook"}</span>
-                      </a>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {!isViewer && hasFeature("handbook") && (
-                  <DropdownMenuItem asChild className="cursor-pointer px-4 py-2.5 gap-3">
-                    <Link href="/handbook">
-                      <a className="flex items-center gap-3 w-full" data-testid="dropdown-nav-changelog">
-                        <History className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>{language === "th" ? "ประวัติเวอร์ชัน" : "Version History"}</span>
                       </a>
                     </Link>
                   </DropdownMenuItem>

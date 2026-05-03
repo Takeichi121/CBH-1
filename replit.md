@@ -28,6 +28,8 @@ Key frontend patterns:
 - Custom hooks for auth (`use-auth`), shifts (`use-shifts`), and settings (`use-settings`)
 - Token stored in localStorage, sent in POST request body (not cookies/headers)
 - Mobile-first responsive design with bottom navigation on mobile
+- **Desktop layout**: Left sidebar navigation (collapsible 64px ↔ 220px) with top bar showing back button + page title + controls
+- **Mobile layout**: Top header (back, logo, bell, lang, hamburger) + slide-out sheet menu + bottom nav
 - Internationalization via custom `use-i18n` hook
 
 ### Backend Architecture

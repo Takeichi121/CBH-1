@@ -1,19 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <!-- viewport-fit=cover ensures full-screen on iPhone notch / Dynamic Island -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#10b981" />
     <meta name="description" content="Staff roster and shift scheduling management for Grand Diamond" />
+
+    <!-- PWA / Web App Capable -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="CBH" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="CBH" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-TileColor" content="#064e3b" />
-    <link rel="apple-touch-startup-image" href="/cbh-icon-512.png" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/favicon.png?v=3" />
-    <link rel="apple-touch-icon" href="/cbh-icon-192.png" />
+    <link rel="shortcut icon" href="/favicon.png?v=3" />
+
+    <!-- Apple Touch Icons (all sizes — iPhone & iPad) -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="60x60"   href="/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="76x76"   href="/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180x180.png" />
+
+    <!-- Apple Splash Screens — iPhone -->
+    <link rel="apple-touch-startup-image" href="/splash/iphone5.png"
+      media="(device-width:320px) and (device-height:568px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphone6.png"
+      media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphoneplus.png"
+      media="(device-width:414px) and (device-height:736px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphonex.png"
+      media="(device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphonexr.png"
+      media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphonexsmax.png"
+      media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphone12mini.png"
+      media="(device-width:360px) and (device-height:780px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphone12.png"
+      media="(device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphone12max.png"
+      media="(device-width:428px) and (device-height:926px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphone14pro.png"
+      media="(device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/iphone14promax.png"
+      media="(device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+
+    <!-- Apple Splash Screens — iPad -->
+    <link rel="apple-touch-startup-image" href="/splash/ipadmini.png"
+      media="(device-width:744px) and (device-height:1133px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/ipad.png"
+      media="(device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/ipadpro11.png"
+      media="(device-width:834px) and (device-height:1194px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/ipadpro129.png"
+      media="(device-width:1024px) and (device-height:1366px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+
+    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

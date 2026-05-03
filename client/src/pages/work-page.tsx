@@ -1746,9 +1746,9 @@ function ManagerDashboard() {
           {language === "th" ? "เมนูลัด" : "Quick Links"}
         </p>
         <div className="grid grid-cols-3 gap-3">
-          <Link href="/sales" data-testid="quicklink-sales">
-            <div className="glass-card border-none rounded-2xl p-4 flex flex-col items-center gap-2 cursor-pointer hover-elevate transition-all">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Link href="/sales" className="block h-full" data-testid="quicklink-sales">
+            <div className="glass-card border-none rounded-2xl p-4 h-full flex flex-col items-center justify-center gap-2 cursor-pointer hover-elevate transition-all">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <BarChart3 className="w-5 h-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-foreground text-center leading-tight">
@@ -1756,9 +1756,9 @@ function ManagerDashboard() {
               </span>
             </div>
           </Link>
-          <Link href="/attendance" data-testid="quicklink-attendance">
-            <div className="glass-card border-none rounded-2xl p-4 flex flex-col items-center gap-2 cursor-pointer hover-elevate transition-all">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Link href="/attendance" className="block h-full" data-testid="quicklink-attendance">
+            <div className="glass-card border-none rounded-2xl p-4 h-full flex flex-col items-center justify-center gap-2 cursor-pointer hover-elevate transition-all">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <CalendarCheck className="w-5 h-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-foreground text-center leading-tight">
@@ -1766,9 +1766,9 @@ function ManagerDashboard() {
               </span>
             </div>
           </Link>
-          <Link href="/borrow" data-testid="quicklink-borrow">
-            <div className="glass-card border-none rounded-2xl p-4 flex flex-col items-center gap-2 cursor-pointer hover-elevate transition-all">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Link href="/borrow" className="block h-full" data-testid="quicklink-borrow">
+            <div className="glass-card border-none rounded-2xl p-4 h-full flex flex-col items-center justify-center gap-2 cursor-pointer hover-elevate transition-all">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Package className="w-5 h-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-foreground text-center leading-tight">

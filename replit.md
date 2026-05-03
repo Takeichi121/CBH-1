@@ -397,6 +397,11 @@ This ensures the handbook and settings page always reflect the latest state auto
 - `borrow/History.tsx`: ExcelJS export button — downloads filtered transactions as .xlsx (C1)
 - `proactive-agent.ts`: Daily 09:00 cron checks overdue borrow transactions, sends LINE + pushToBoss (C2)
 
+**Sprint G — Chann AI Platform Page (/chann)**
+- `client/src/pages/chann-platform-page.tsx`: Full-page AI chat (ChatGPT/Claude-style layout) — left sidebar (model picker, quick actions, new chat), main chat area with welcome screen + starter prompts, SSE streaming, file/image upload, markdown rendering, suggested replies, tool progress steps
+- `client/src/App.tsx`: Added `/chann` route (ProtectedRoute)
+- `client/src/components/layout.tsx`: Added "Chann AI" nav link (desktop + mobile) with Sparkles icon
+
 **Sprint F — Chann AI Upgrade (Multi-Model + getClockRecords)**
 - `llm-types.ts`: Added `"claude"` to Provider type
 - `llm-router.ts`: Added `streamClaude()` using `@anthropic-ai/sdk` (claude-sonnet-4-6, Replit Anthropic integration)

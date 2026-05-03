@@ -39,6 +39,7 @@ import AgentRequestsPage from "@/pages/agent-requests-page";
 import AttendancePage from "@/pages/attendance-page";
 import AdminPermissionsPage from "@/pages/admin-permissions-page";
 import AnnouncementsPage from "@/pages/announcements-page";
+import ChannPlatformPage from "@/pages/chann-platform-page";
 
 // Settings Pages
 import DropdownSettingsPage from "@/pages/settings/dropdown-settings-page";
@@ -105,6 +106,7 @@ const PATH_TO_FEATURE: Record<string, string> = {
   "/borrow/items": "borrow",
   "/borrow/settings": "borrow",
   "/borrow/help": "borrow",
+  "/chann": "chann",
   "/admin": "admin",
   "/admin/permissions": "admin",
 };
@@ -287,6 +289,10 @@ function Router() {
 
           <Route path="/attendance">
             <ProtectedRoute component={AttendancePage} path="/attendance" />
+          </Route>
+
+          <Route path="/chann">
+            <ProtectedRoute component={ChannPlatformPage} path="/chann" />
           </Route>
           
           <Route component={NotFound} />

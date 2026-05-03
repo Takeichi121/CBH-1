@@ -205,7 +205,7 @@ export default function AuthPage() {
                 <h1 className="text-xl md:text-3xl font-bold font-display tracking-tight text-foreground leading-tight">
                   {t("appName")}
                 </h1>
-                <p className="hidden sm:block text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
+                <p className="hidden text-sm md:text-base font-medium text-primary">{t("branchName")}</p>
               </div>
               <div className="hidden md:block space-y-1 pt-2">
                 <p className="text-xs text-muted-foreground">

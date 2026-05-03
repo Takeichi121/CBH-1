@@ -3242,7 +3242,7 @@ ${pageContext}` : ''}`;
 
       const callOpenAITools = async (round: number): Promise<{ toolCalls: ToolCallResult[]; textContent: string }> => {
         const loopResponse = await openai.chat.completions.create({
-          model: "gpt-5.2",
+          model: "gpt-4o",
           messages: aiMessages,
           max_completion_tokens: 8192,
           tools: channTools,
@@ -3359,7 +3359,7 @@ ${pageContext}` : ''}`;
               });
               const claudeMsgsClean = sanitizeClaudeMessages(directMsgs as any);
               const claudeStream = anthropicClient.messages.stream({
-                model: "claude-sonnet-4-6",
+                model: "claude-opus-4-5",
                 system: systemPrompt,
                 messages: claudeMsgsClean,
                 max_tokens: 4096,
@@ -3372,7 +3372,7 @@ ${pageContext}` : ''}`;
               return;
             }
             const s = await openai.chat.completions.create({
-              model: "gpt-5.2",
+              model: "gpt-4o",
               messages: [{ role: "system", content: systemPrompt }, ...directMsgs],
               stream: true,
               max_completion_tokens: 4096,
@@ -3461,7 +3461,7 @@ ${pageContext}` : ''}`;
           });
           const claudeFbMsgs = sanitizeClaudeMessages(fallbackMsgs as any);
           const claudeFbStream = anthropicClientFb.messages.stream({
-            model: "claude-sonnet-4-6",
+            model: "claude-opus-4-5",
             system: systemPrompt,
             messages: claudeFbMsgs,
             max_tokens: 4096,
@@ -3474,7 +3474,7 @@ ${pageContext}` : ''}`;
           return;
         }
         const s = await openai.chat.completions.create({
-          model: "gpt-5.2",
+          model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }, ...fallbackMsgs],
           stream: true,
           max_completion_tokens: 4096,
@@ -8849,7 +8849,7 @@ ${pageContext}` : ''}`;
           baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
         });
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-4o",
           messages: [
             {
               role: "system",

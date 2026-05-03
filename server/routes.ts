@@ -3646,6 +3646,12 @@ ${pageContext}` : ''}`;
     res.json({ ok: true, ts: nowIso(), closed: isSystemClosed(cfg), branch: process.env.BRANCH_NAME || "Grand Diamond" });
   }));
 
+  // Multi-store mode config — public endpoint (used on login page, no auth required)
+  app.get("/api/config/multi-store", safe(async (_req, res) => {
+    const cfg = await storage.getConfig();
+    res.json({ ok: true, multiStoreEnabled: cfg.multi_store_enabled === "true" });
+  }));
+
   // Setup
   app.post(api.system.setup.path, safe(async (req, res) => {
     const cfg = await storage.getConfig();
@@ -3698,12 +3704,12 @@ ${pageContext}` : ''}`;
     if (!u || !u.active) return res.status(401).json({ ok: false, message: "ไม่พบบัญชี/ถูกปิดใช้งาน" });
     if (!(await comparePassword(password, u.passhash))) return res.status(401).json({ ok: false, message: "รหัสผ่านไม่ถูก" });
 
-    // Store code verification — required for staff and manager roles only
+    // Store code verification — required for staff and manager roles only when multi-store mode is ON
     const requiresStoreCode = u.role === "staff" || u.role === "manager";
-    // developerMode bypass is only trusted in non-production environments
     const isDevEnv = process.env.NODE_ENV !== "production";
     const isDevBypass = developerMode && isDevEnv;
-    if (requiresStoreCode && !isCreator && !isDevBypass) {
+    const isMultiStore = cfg.multi_store_enabled === "true";
+    if (requiresStoreCode && !isCreator && !isDevBypass && isMultiStore) {
       if (!storeCode || !storeCode.trim()) {
         return res.status(401).json({ ok: false, message: "กรุณากรอกรหัสร้าน" });
       }
@@ -4075,12 +4081,13 @@ ${pageContext}` : ''}`;
       endTime: cfg.maintenance_end_time ?? "00:00"
     };
     const systemClosed = isSystemClosed(cfg);
+    const multiStoreEnabled = cfg.multi_store_enabled === "true";
 
-    res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod, maintenance, systemClosed });
+    res.json({ ok: true, capacity, groups: SHIFT_GROUPS, lockTimePeriod, maintenance, systemClosed, multiStoreEnabled });
   }));
 
   app.post(api.settings.update.path, safe(async (req, res) => {
-    const { token, capacity, lockTimePeriod, maintenance } = req.body;
+    const { token, capacity, lockTimePeriod, maintenance, multiStoreEnabled } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false });
     const u = await storage.getUser(session.username);
@@ -4102,7 +4109,11 @@ ${pageContext}` : ''}`;
       await storage.setConfig("maintenance_end_time", String(maintenance.endTime ?? "00:00"));
     }
 
-    await storage.log("update_settings", u.username, JSON.stringify({ capacity, lockTimePeriod, maintenance }));
+    if (multiStoreEnabled !== undefined) {
+      await storage.setConfig("multi_store_enabled", String(multiStoreEnabled));
+    }
+
+    await storage.log("update_settings", u.username, JSON.stringify({ capacity, lockTimePeriod, maintenance, multiStoreEnabled }));
     res.json({ ok: true });
   }));
 

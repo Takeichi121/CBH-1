@@ -19,7 +19,7 @@ import { api } from "@shared/routes";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { managerPositions, type ManagerPosition } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function AuthPage() {
@@ -262,6 +262,13 @@ export default function AuthPage() {
 function LoginForm() {
   const { loginMutation } = useAuth();
   const { t, language } = useI18n();
+
+  const { data: multiStoreData } = useQuery<{ ok: boolean; multiStoreEnabled: boolean }>({
+    queryKey: ["/api/config/multi-store"],
+    queryFn: () => fetch("/api/config/multi-store").then(r => r.json()),
+    staleTime: 60_000,
+  });
+  const multiStoreEnabled = multiStoreData?.multiStoreEnabled ?? false;
   
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
@@ -269,6 +276,7 @@ function LoginForm() {
   });
 
   function onSubmit(data: z.infer<typeof api.auth.login.input>) {
+    if (!multiStoreEnabled) data = { ...data, storeCode: "" };
     loginMutation.mutate(data);
   }
 
@@ -307,27 +315,29 @@ function LoginForm() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="storeCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="select-none">
-                    {language === "th" ? "รหัสร้าน" : "Store Code"}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={language === "th" ? "กรอกรหัสร้านสาขา..." : "Enter store code..."}
-                      {...field}
-                      className="h-11"
-                      data-testid="input-store-code"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {multiStoreEnabled && (
+              <FormField
+                control={form.control}
+                name="storeCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="select-none">
+                      {language === "th" ? "รหัสร้าน" : "Store Code"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={language === "th" ? "กรอกรหัสร้านสาขา..." : "Enter store code..."}
+                        {...field}
+                        className="h-11"
+                        data-testid="input-store-code"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <Button 
               type="submit" 
               className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20"

@@ -1,10 +1,11 @@
 import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera, Wrench, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera, Wrench, Clock, AlertTriangle, Store } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState, useRef } from "react";
@@ -53,6 +54,8 @@ export default function SettingsPage() {
 
   const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [multiStoreEnabled, setMultiStoreEnabled] = useState(false);
+  const [multiStoreSaving, setMultiStoreSaving] = useState(false);
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -89,8 +92,38 @@ export default function SettingsPage() {
       if (settingsData.maintenance) {
         maintenanceForm.reset(settingsData.maintenance);
       }
+
+      if ((settingsData as any).multiStoreEnabled !== undefined) {
+        setMultiStoreEnabled((settingsData as any).multiStoreEnabled);
+      }
     }
   }, [settingsData, capacityForm, maintenanceForm]);
+
+  const handleSaveMultiStore = async (enabled: boolean) => {
+    setMultiStoreSaving(true);
+    try {
+      const res = await apiRequest("POST", "/api/settings/update", {
+        token: localStorage.getItem("bk_token"),
+        multiStoreEnabled: enabled,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMultiStoreEnabled(enabled);
+        toast({
+          title: language === "th" ? "บันทึกแล้ว" : "Saved",
+          description: language === "th"
+            ? enabled ? "เปิดโหมด Multi-Store แล้ว" : "ปิดโหมด Multi-Store แล้ว"
+            : enabled ? "Multi-Store mode enabled" : "Multi-Store mode disabled",
+        });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message || "Failed" });
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setMultiStoreSaving(false);
+    }
+  };
 
   const onCapacitySubmit = (values: any) => {
     const payload: any = { capacity: {} };
@@ -513,6 +546,56 @@ export default function SettingsPage() {
                 </Button>
               </Link>
             </CardHeader>
+          </Card>
+        )}
+
+        {/* Multi-Store Mode Toggle (Manager only) */}
+        {isManager && (
+          <Card className="glass-card border-none shadow-xl">
+            <CardHeader className="flex flex-row items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <Store className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div className="flex-1">
+                <CardTitle>{language === "th" ? "โหมด Multi-Store" : "Multi-Store Mode"}</CardTitle>
+                <CardDescription>
+                  {language === "th"
+                    ? "เมื่อปิด หน้าล็อคอินจะไม่แสดงช่องรหัสร้าน"
+                    : "When off, login page will not require Store Code"}
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {settingsLoading ? (
+                <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
+              ) : (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Store className={`w-3 h-3 ${multiStoreEnabled ? "text-emerald-500" : "text-muted-foreground"}`} />
+                      {language === "th"
+                        ? multiStoreEnabled ? "เปิดโหมด Multi-Store" : "ปิดโหมด Multi-Store"
+                        : multiStoreEnabled ? "Multi-Store Enabled" : "Single-Store Mode"}
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      {language === "th"
+                        ? multiStoreEnabled
+                          ? "พนักงานต้องกรอกรหัสร้านเพื่อเข้าสู่ระบบ"
+                          : "พนักงานไม่ต้องกรอกรหัสร้าน — ใช้สำหรับร้านเดียว"
+                        : multiStoreEnabled
+                          ? "Staff must enter store code to log in"
+                          : "No store code required — use for single-store setup"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={multiStoreEnabled}
+                    disabled={multiStoreSaving}
+                    onCheckedChange={handleSaveMultiStore}
+                    data-testid="switch-multi-store"
+                  />
+                </div>
+              )}
+            </CardContent>
           </Card>
         )}
 

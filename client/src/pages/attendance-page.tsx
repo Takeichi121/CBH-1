@@ -21,6 +21,40 @@ import {
   Clock, Upload, FileSpreadsheet, CheckCircle2, Loader2,
   Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid
 } from "lucide-react";
+import { PageTutorial, TutorialStep } from "@/components/page-tutorial";
+
+const ATTENDANCE_TUTORIAL: TutorialStep[] = [
+  {
+    titleTh: "📋 หน้าบันทึกเวลาทำงาน",
+    descriptionTh: "หน้านี้ใช้สำหรับดูและจัดการข้อมูลการ clock-in/out ของพนักงาน นำเข้าจาก Aloha POS",
+    icon: <Clock className="w-10 h-10 text-primary" />,
+  },
+  {
+    titleTh: "📅 เลือกเดือนและปี",
+    descriptionTh: "ใช้ปุ่มลูกศร ‹ › หรือ dropdown เดือน/ปีด้านบน เพื่อดูข้อมูลของเดือนที่ต้องการ",
+    icon: <Clock className="w-10 h-10 text-blue-500" />,
+  },
+  {
+    titleTh: "📊 แท็บ 'บันทึก'",
+    descriptionTh: "แสดงรายการ clock-in/out ทุกวันของเดือนนั้น สามารถแก้ไข เพิ่ม หรือลบข้อมูลได้",
+    icon: <FileSpreadsheet className="w-10 h-10 text-green-500" />,
+  },
+  {
+    titleTh: "🔲 แท็บ 'ตารางเปรียบ'",
+    descriptionTh: "แสดงข้อมูลพนักงานทุกคนแบบตารางเปรียบเทียบ แก้ไขข้อมูลได้โดยตรงในเซลล์",
+    icon: <LayoutGrid className="w-10 h-10 text-purple-500" />,
+  },
+  {
+    titleTh: "📥 Import Excel",
+    descriptionTh: "อัพโหลดไฟล์ Clock In/Out จาก Aloha (รูปแบบ .xlsx) ระบบจะอ่านข้อมูลพนักงาน 5 คนโดยอัตโนมัติ",
+    icon: <Upload className="w-10 h-10 text-orange-500" />,
+  },
+  {
+    titleTh: "⬇️ ดาวน์โหลด Excel",
+    descriptionTh: "กดปุ่ม 'ดาวน์โหลด Excel' เพื่อ export ข้อมูลเป็นไฟล์ .xlsx รูปแบบเดียวกับต้นฉบับ",
+    icon: <Download className="w-10 h-10 text-teal-500" />,
+  },
+];
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -848,6 +882,7 @@ export default function AttendancePage() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       <div className="container mx-auto max-w-6xl px-4 py-6 space-y-4">
         {/* Header */}
@@ -923,5 +958,7 @@ export default function AttendancePage() {
         </Tabs>
       </div>
     </div>
+    <PageTutorial pageKey="attendance" steps={ATTENDANCE_TUTORIAL} />
+    </>
   );
 }

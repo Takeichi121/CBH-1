@@ -37,6 +37,7 @@ import RosterImportPage from "@/pages/roster-import-page";
 import NotFound from "@/pages/not-found";
 import AgentRequestsPage from "@/pages/agent-requests-page";
 import AttendancePage from "@/pages/attendance-page";
+import GamificationPage from "@/pages/gamification-page";
 import AdminPermissionsPage from "@/pages/admin-permissions-page";
 import AnnouncementsPage from "@/pages/announcements-page";
 import ChannPlatformPage from "@/pages/chann-platform-page";
@@ -290,6 +291,10 @@ function Router() {
 
           <Route path="/attendance">
             <ProtectedRoute component={AttendancePage} path="/attendance" />
+          </Route>
+
+          <Route path="/gamification">
+            <ProtectedRoute component={GamificationPage} path="/gamification" />
           </Route>
 
           <Route path="/chann">

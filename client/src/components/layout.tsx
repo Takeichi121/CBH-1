@@ -6,7 +6,7 @@ import {
   Briefcase, Calendar, Settings, LogOut, User, Menu, Moon, Sun, Shield,
   BarChart3, Package, FileText, BookOpen, LayoutDashboard, Pencil, Clock,
   ChevronDown, Bot, Globe, History, Store, ChevronUp, Megaphone, CalendarCheck,
-  Sparkles, Smartphone, ArrowLeft, ChevronLeft, ChevronRight,
+  Sparkles, Smartphone, ArrowLeft, ChevronLeft, ChevronRight, Trophy,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -142,6 +142,7 @@ export function Layout({ children }: { children: ReactNode }) {
         ...(hasFeature("roster") ? [{ href: "/roster", label: t("roster") || "Roster", icon: Calendar }] : []),
         ...(isManagerOrAdmin && hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
         ...(isManagerOrAdmin ? [{ href: "/attendance", label: language === "th" ? "เวลาทำงาน" : "Attendance", icon: CalendarCheck }] : []),
+        ...(isManagerOrAdmin ? [{ href: "/gamification", label: language === "th" ? "กระดานอันดับ" : "Leaderboard", icon: Trophy }] : []),
         ...(isManagerOrAdmin && hasFeature("borrow") ? [{ href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package }] : []),
         { href: "/chann", label: "Chann AI", icon: Sparkles },
         announcementNavItem,
@@ -165,6 +166,7 @@ export function Layout({ children }: { children: ReactNode }) {
         { href: "/mobile", label: language === "th" ? "มือถือ" : "Mobile", icon: Smartphone },
         ...(isManagerOrAdmin && hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
         ...(isManagerOrAdmin ? [{ href: "/attendance", label: language === "th" ? "เวลาทำงาน" : "Attendance", icon: CalendarCheck }] : []),
+        ...(isManagerOrAdmin ? [{ href: "/gamification", label: language === "th" ? "กระดานอันดับ" : "Leaderboard", icon: Trophy }] : []),
         ...(isManagerOrAdmin && hasFeature("borrow") ? [{ href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package }] : []),
         ...(isManagerOrAdmin && hasFeature("requests") ? [{ href: "/requests", label: t("managerRequest") || "Request", icon: FileText }] : []),
         ...(isManagerOrAdmin && hasFeature("admin") ? [{ href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield }] : []),

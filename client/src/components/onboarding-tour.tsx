@@ -74,10 +74,18 @@ const steps: OnboardingStep[] = [
     highlight: "/settings",
   },
   {
+    title: "Staff Leaderboard",
+    titleTh: "กระดานอันดับพนักงาน",
+    description: "Track punctuality scores, earn badges, and see the monthly rankings. (Manager only)",
+    descriptionTh: "ติดตามคะแนนความตรงต่อเวลา รับ badge พิเศษ และดูอันดับประจำเดือน (สำหรับผู้จัดการ)",
+    icon: <Bot className="w-12 h-12 text-yellow-500" />,
+    highlight: "/gamification",
+  },
+  {
     title: "You're All Set!",
     titleTh: "พร้อมแล้ว!",
-    description: "Start exploring the app. If you need help, just ask Chann!",
-    descriptionTh: "เริ่มใช้งานแอปได้เลย ถ้าต้องการความช่วยเหลือ ถาม Chann ได้เลย!",
+    description: "Start exploring the app. Tap the ❓ button on any page for page-specific help!",
+    descriptionTh: "เริ่มใช้งานแอปได้เลย กดปุ่ม ❓ ในแต่ละหน้าเพื่อดูคู่มือเฉพาะหน้านั้น",
     icon: <CheckCircle className="w-12 h-12 text-green-500" />,
   },
 ];

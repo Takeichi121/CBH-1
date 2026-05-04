@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Clock, Upload, FileSpreadsheet, CheckCircle2, Loader2,
-  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download
+  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────
@@ -555,6 +555,270 @@ function MonthlyView({ year, month, storeId }: { year: number; month: number; st
 }
 
 // ─────────────────────────────────────────────────────────
+// Matrix View (Excel-style: rows=dates, cols=employees)
+// ─────────────────────────────────────────────────────────
+const DOW_TH = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+
+function MatrixView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+  const { language } = useI18n();
+  const { toast } = useToast();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+
+  const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
+  const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+    queryKey: ["/api/attendance/records", year, month, storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/records?token=${token}&year=${year}&month=${month}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const records = data?.records || [];
+
+  // Build employee list preserving order of first appearance
+  const employeeMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  records.forEach(r => {
+    if (!employeeMap.has(r.employeeFullName)) {
+      employeeMap.set(r.employeeFullName, {
+        fullName: r.employeeFullName,
+        nickName: r.employeeNickName,
+        position: r.position,
+      });
+    }
+  });
+  const employees = Array.from(employeeMap.values());
+
+  // Build record index: "date:fullName" -> record
+  const recordIndex: Record<string, ClockRecord> = {};
+  records.forEach(r => { recordIndex[`${r.date}:${r.employeeFullName}`] = r; });
+
+  // Generate all days in the month
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dowIdx = new Date(dateStr + "T00:00:00").getDay();
+    return { date: dateStr, day: d, dowIdx };
+  });
+
+  const getEdit = (date: string, empName: string, field: string) =>
+    localEdits[`${date}:${empName}`]?.[field];
+
+  const setEdit = (date: string, empName: string, field: string, value: string) => {
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+  };
+
+  const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    const k = `${date}:${emp.fullName}`;
+    const edits = localEdits[k];
+    if (!edits || Object.keys(edits).length === 0) return;
+    const existing = recordIndex[k];
+    const payload = {
+      token: localStorage.getItem("bk_token"),
+      date,
+      storeId,
+      employeeFullName: emp.fullName,
+      employeeNickName: edits.employeeNickName ?? emp.nickName ?? "",
+      position: edits.position ?? emp.position ?? "",
+      rosterTime: edits.rosterTime ?? existing?.rosterTime ?? "",
+      clockInTime: edits.clockInTime ?? existing?.clockInTime ?? "",
+      clockOutTime: edits.clockOutTime ?? existing?.clockOutTime ?? "",
+      notes: edits.notes ?? existing?.notes ?? "",
+    };
+    setSavingRows(prev => new Set(prev).add(k));
+    try {
+      const url = existing?.id ? `/api/attendance/record/${existing.id}` : "/api/attendance/record";
+      const method = existing?.id ? "PUT" : "POST";
+      const res = await apiRequest(method, url, payload);
+      const json = await res.json();
+      if (json.ok) {
+        setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; });
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: json.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; });
+    }
+  };
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+
+  if (employees.length === 0) return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-3 py-12">
+        <LayoutGrid className="h-12 w-12 text-muted-foreground/40" />
+        <p className="text-muted-foreground text-center">
+          {t("No records yet — Import Excel or add records first.", "ยังไม่มีข้อมูล — กรุณา Import Excel หรือเพิ่มรายการก่อน")}
+        </p>
+      </CardContent>
+    </Card>
+  );
+
+  const inputCls = "w-full h-6 px-1 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-primary rounded focus:outline-none min-w-[52px]";
+
+  return (
+    <div className="space-y-3">
+      {/* Legend */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs text-muted-foreground">
+          {t("Click any cell to edit — saves automatically on leaving.", "คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์")}
+        </p>
+        <div className="flex gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />{t("On time","ตรงเวลา")}</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />{t("Late","สาย")}</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{t("Early","เร็ว")}</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />{t("Weekend","เสาร์/อา")}</span>
+        </div>
+      </div>
+
+      {/* Matrix Table */}
+      <div className="rounded-lg border overflow-auto max-h-[65vh]">
+        <table className="text-xs border-collapse w-full min-w-max">
+          <thead className="sticky top-0 z-20 bg-background">
+            {/* Employee header row */}
+            <tr className="border-b">
+              <th
+                className="border-r px-2 py-2 text-left font-medium bg-muted/60 w-16 sticky left-0 z-30"
+                rowSpan={2}
+              >
+                {t("Date","วันที่")}
+              </th>
+              {employees.map(emp => (
+                <th
+                  key={emp.fullName}
+                  colSpan={4}
+                  className="border-r px-2 py-1.5 text-center font-semibold bg-primary/8 whitespace-nowrap border-x"
+                >
+                  <div className="text-primary text-xs">{emp.nickName || emp.fullName}</div>
+                  {emp.nickName && <div className="text-muted-foreground font-normal text-[10px] leading-tight">{emp.fullName}</div>}
+                  {emp.position && <div className="text-muted-foreground font-normal text-[10px] leading-tight">{emp.position}</div>}
+                </th>
+              ))}
+            </tr>
+            {/* Sub-header row */}
+            <tr className="border-b bg-muted/40">
+              {employees.map(emp => (
+                [
+                  { key: "roster", label: "Roster" },
+                  { key: "in", label: t("In","เข้า") },
+                  { key: "out", label: t("Out","ออก") },
+                  { key: "notes", label: t("Note","หมายเหตุ") },
+                ].map(col => (
+                  <th
+                    key={`${emp.fullName}-${col.key}`}
+                    className="border px-1 py-1 text-center font-normal text-muted-foreground whitespace-nowrap text-[10px]"
+                  >
+                    {col.label}
+                  </th>
+                ))
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {days.map(({ date, day, dowIdx }) => {
+              const isWeekend = dowIdx === 0 || dowIdx === 6;
+              const dowLabel = DOW_TH[dowIdx];
+              return (
+                <tr
+                  key={date}
+                  className={`border-b hover:bg-muted/20 transition-colors ${isWeekend ? "bg-amber-50/60 dark:bg-amber-950/15" : ""}`}
+                >
+                  {/* Date cell — sticky left */}
+                  <td className="border-r px-2 py-0.5 font-medium sticky left-0 z-10 whitespace-nowrap bg-inherit">
+                    <span className={`font-semibold ${isWeekend ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+                      {dowLabel}
+                    </span>
+                    <span className="text-muted-foreground ml-1 text-[11px]">{day}</span>
+                  </td>
+
+                  {/* Employee columns */}
+                  {employees.map(emp => {
+                    const k = `${date}:${emp.fullName}`;
+                    const rec = recordIndex[k];
+                    const isSaving = savingRows.has(k);
+
+                    const roster = getEdit(date, emp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
+                    const clockIn = getEdit(date, emp.fullName, "clockInTime") ?? rec?.clockInTime ?? "";
+                    const clockOut = getEdit(date, emp.fullName, "clockOutTime") ?? rec?.clockOutTime ?? "";
+                    const notes = getEdit(date, emp.fullName, "notes") ?? rec?.notes ?? "";
+
+                    const status = getLateStatus(roster, clockIn);
+                    const inColor = status === "late" ? "text-red-500 font-semibold"
+                      : status === "early" ? "text-blue-500"
+                      : status === "on-time" ? "text-green-600" : "";
+
+                    return (
+                      <>
+                        <td key={`${k}-r`} className="border px-0.5 py-0.5">
+                          <input
+                            className={inputCls}
+                            value={roster}
+                            placeholder="05:00"
+                            onChange={e => setEdit(date, emp.fullName, "rosterTime", e.target.value)}
+                            onBlur={() => saveRow(date, emp)}
+                            data-testid={`cell-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}
+                          />
+                        </td>
+                        <td key={`${k}-i`} className="border px-0.5 py-0.5">
+                          <input
+                            className={`${inputCls} ${inColor}`}
+                            value={clockIn}
+                            placeholder="05:02"
+                            onChange={e => setEdit(date, emp.fullName, "clockInTime", e.target.value)}
+                            onBlur={() => saveRow(date, emp)}
+                            data-testid={`cell-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}
+                          />
+                        </td>
+                        <td key={`${k}-o`} className="border px-0.5 py-0.5">
+                          <input
+                            className={inputCls}
+                            value={clockOut}
+                            placeholder="14:00"
+                            onChange={e => setEdit(date, emp.fullName, "clockOutTime", e.target.value)}
+                            onBlur={() => saveRow(date, emp)}
+                            data-testid={`cell-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}
+                          />
+                        </td>
+                        <td key={`${k}-n`} className="border px-0.5 py-0.5">
+                          {isSaving ? (
+                            <div className="flex items-center justify-center h-6">
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <input
+                              className={inputCls}
+                              value={notes}
+                              onChange={e => setEdit(date, emp.fullName, "notes", e.target.value)}
+                              onBlur={() => saveRow(date, emp)}
+                              data-testid={`cell-notes-${date}-${emp.fullName.replace(/\s/g,"_")}`}
+                            />
+                          )}
+                        </td>
+                      </>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────
 export default function AttendancePage() {
@@ -618,17 +882,24 @@ export default function AttendancePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="records" className="space-y-4">
-          <TabsList className="grid grid-cols-2 w-full max-w-xs">
-            <TabsTrigger value="records" data-testid="tab-records" className="gap-1">
-              <Clock className="h-4 w-4" />{t("Records","บันทึก")}
+          <TabsList className="grid grid-cols-3 w-full max-w-md">
+            <TabsTrigger value="records" data-testid="tab-records" className="gap-1 text-xs">
+              <Clock className="h-3.5 w-3.5" />{t("Records","บันทึก")}
             </TabsTrigger>
-            <TabsTrigger value="import" data-testid="tab-import" className="gap-1">
-              <Upload className="h-4 w-4" />{t("Import Excel","Import Excel")}
+            <TabsTrigger value="matrix" data-testid="tab-matrix" className="gap-1 text-xs">
+              <LayoutGrid className="h-3.5 w-3.5" />{t("Matrix","ตารางเปรียบ")}
+            </TabsTrigger>
+            <TabsTrigger value="import" data-testid="tab-import" className="gap-1 text-xs">
+              <Upload className="h-3.5 w-3.5" />{t("Import","Import Excel")}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="records">
             <MonthlyView year={year} month={month} storeId={storeId} />
+          </TabsContent>
+
+          <TabsContent value="matrix">
+            <MatrixView year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="import">

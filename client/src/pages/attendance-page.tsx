@@ -836,6 +836,17 @@ export default function AttendancePage() {
   const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1); } else setMonth(m => m - 1); };
   const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1); } else setMonth(m => m + 1); };
 
+  const handleDownloadExcel = () => {
+    const token = localStorage.getItem("bk_token") || "";
+    const url = `/api/attendance/export-excel?token=${encodeURIComponent(token)}&year=${year}&month=${month}&storeId=${encodeURIComponent(storeId)}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Clock_In_Out_${MONTH_EN[month - 1]}_${year}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto max-w-6xl px-4 py-6 space-y-4">
@@ -878,6 +889,10 @@ export default function AttendancePage() {
             </Select>
           </div>
           <Button variant="outline" size="icon" onClick={nextMonth} data-testid="button-next-month" className="h-9 w-9">›</Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadExcel} data-testid="button-download-excel" className="gap-1.5 h-9 ml-2">
+            <Download className="h-3.5 w-3.5" />
+            {t("Export Excel","ดาวน์โหลด Excel")}
+          </Button>
         </div>
 
         {/* Tabs */}

@@ -7209,6 +7209,185 @@ ${pageContext}` : ''}`;
     return res.json({ ok: true });
   }));
 
+  // GET /api/attendance/export-excel — generate Clock In/Out Excel matching original format
+  app.get("/api/attendance/export-excel", safe(async (req, res) => {
+    const token = String(req.query.token || req.headers["x-token"] || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+
+    const year = parseInt(String(req.query.year || new Date().getFullYear()));
+    const month = parseInt(String(req.query.month || new Date().getMonth() + 1));
+    const storeId = String(req.query.storeId || access.user.storeId || "BK1040");
+
+    const records = await storage.getClockRecords(year, month, storeId);
+    const storeCfg = await storage.getStoreSettings();
+    const storeName = (storeCfg as any)?.storeName || "Grand Diamond";
+
+    const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+    records.forEach(r => {
+      if (!empMap.has(r.employeeFullName))
+        empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+    });
+    const employees = Array.from(empMap.values());
+
+    const idx: Record<string, typeof records[0]> = {};
+    records.forEach(r => { idx[`${r.date}:${r.employeeFullName}`] = r; });
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const DOW_TH = ["อา","จ","อ","พ","พฤ","ศ","ส"];
+
+    function colLetter(n: number): string {
+      let s = "";
+      while (n > 0) { const r2 = (n - 1) % 26; s = String.fromCharCode(65 + r2) + s; n = Math.floor((n - 1) / 26); }
+      return s;
+    }
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(MONTH_NAMES[month - 1]);
+
+    const EMP_SCS = [1, 8, 15, 22, 29];
+    const empCount = Math.min(employees.length, 5);
+    const COL_W = [9.86, 8.71, 23.86, 10.43, 11.71, 11.57, 10.43];
+    for (let e = 0; e < empCount; e++) {
+      const sc = EMP_SCS[e];
+      COL_W.forEach((w, i) => { ws.getColumn(sc + i).width = w; });
+    }
+
+    const fillName = { type: "pattern" as const, pattern: "solid" as const, fgColor: { theme: 6, tint: 0.5999938962981048 } };
+    const fillHdr  = { type: "pattern" as const, pattern: "solid" as const, fgColor: { theme: 4, tint: 0.7999816888943144 } };
+
+    ws.getRow(1).height = 18;
+    ws.getRow(2).height = 19.5;
+    ws.getRow(3).height = 18;
+    ws.getRow(4).height = 60;
+
+    for (let e = 0; e < empCount; e++) {
+      const sc = EMP_SCS[e];
+      const emp = employees[e];
+      const ctr: Partial<ExcelJS.Alignment> = { horizontal: "center", vertical: "middle" };
+
+      // Row 1: ชื่อ | FullName (merged sc+1:sc+2) | ชื่อเล่น | NickName
+      ws.getCell(1, sc).value = "ชื่อ"; ws.getCell(1, sc).font = { bold: true }; ws.getCell(1, sc).alignment = ctr;
+      ws.getCell(1, sc + 1).value = emp.fullName; ws.getCell(1, sc + 1).fill = fillName; ws.getCell(1, sc + 1).alignment = ctr;
+      ws.mergeCells(1, sc + 1, 1, sc + 2);
+      ws.getCell(1, sc + 3).value = "ชื่อเล่น"; ws.getCell(1, sc + 3).font = { bold: true }; ws.getCell(1, sc + 3).alignment = ctr;
+      ws.getCell(1, sc + 4).value = emp.nickName || ""; ws.getCell(1, sc + 4).fill = fillName; ws.getCell(1, sc + 4).alignment = ctr;
+
+      // Row 2: สาขา | StoreName (merged) | Month of | MonthName
+      ws.getCell(2, sc).value = "สาขา"; ws.getCell(2, sc).font = { bold: true }; ws.getCell(2, sc).alignment = ctr;
+      ws.getCell(2, sc + 1).value = storeName; ws.getCell(2, sc + 1).alignment = ctr;
+      ws.mergeCells(2, sc + 1, 2, sc + 2);
+      ws.getCell(2, sc + 3).value = "Month of"; ws.getCell(2, sc + 3).font = { bold: true }; ws.getCell(2, sc + 3).alignment = ctr;
+      ws.getCell(2, sc + 4).value = MONTH_NAMES[month - 1]; ws.getCell(2, sc + 4).alignment = ctr;
+
+      // Row 3: ตำแหน่ง | Position (merged)
+      ws.getCell(3, sc).value = "ตำแหน่ง"; ws.getCell(3, sc).font = { bold: true }; ws.getCell(3, sc).alignment = ctr;
+      ws.getCell(3, sc + 1).value = emp.position || ""; ws.getCell(3, sc + 1).alignment = ctr;
+      ws.mergeCells(3, sc + 1, 3, sc + 2);
+
+      // Row 4: column headers
+      const hdrs = ["วัน","วันที่","เวลาเข้างาน (ตาม roster ที่มีลายเซ็น AC)","เวลาสแกนนิ้วเข้างาน (จาก Aloha)","เวลาสแกนนิ้วเลิกงาน (จาก Aloha)","หมายเหตุ"];
+      hdrs.forEach((h, i) => {
+        const cell = ws.getCell(4, sc + i);
+        cell.value = h; cell.fill = fillHdr;
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      });
+
+      // Data rows 5..(4+daysInMonth)
+      for (let d = 1; d <= daysInMonth; d++) {
+        const rn = 4 + d;
+        const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        const rec = idx[`${dateStr}:${emp.fullName}`];
+        const dow = new Date(year, month - 1, d).getDay();
+        ws.getCell(rn, sc).value = DOW_TH[dow]; ws.getCell(rn, sc).alignment = ctr;
+        ws.getCell(rn, sc + 1).value = new Date(year, month - 1, d);
+        ws.getCell(rn, sc + 1).numFmt = "D/MM/YY"; ws.getCell(rn, sc + 1).alignment = ctr;
+        ws.getCell(rn, sc + 2).value = rec?.rosterTime || ""; ws.getCell(rn, sc + 2).alignment = ctr;
+        ws.getCell(rn, sc + 3).value = rec?.clockInTime || ""; ws.getCell(rn, sc + 3).alignment = ctr;
+        ws.getCell(rn, sc + 4).value = rec?.clockOutTime || ""; ws.getCell(rn, sc + 4).alignment = ctr;
+        ws.getCell(rn, sc + 5).value = rec?.notes || ""; ws.getCell(rn, sc + 5).alignment = ctr;
+        ws.getRow(rn).height = 16.5;
+      }
+    }
+
+    // Shift summary section
+    const lastDataRow = 4 + daysInMonth;
+    const shR = lastDataRow + 2; // shift header row
+    const g1s = shR + 1,  g1e = shR + 7;   // group1: 7 swing/open shifts
+    const g2s = shR + 8,  g2e = shR + 12;  // group2: 5 mid/swing shifts
+    const g3s = shR + 13, g3e = shR + 14;  // group3: 2 late-night shifts
+    const totR = shR + 15;
+
+    const SHIFTS = [
+      { type: "Swing",  time: "05:00", roster: "05:00 - 14:00", group: 1 },
+      { type: "Open",   time: "06:00", roster: "06:00 - 15:00", group: 1 },
+      { type: "Swing",  time: "07:00", roster: "7:00 - 16:00",  group: 1 },
+      { type: "Swing",  time: "08:00", roster: "08:00 - 17:00", group: 1 },
+      { type: "Swing",  time: "09:00", roster: "09:00 - 18:00", group: 1 },
+      { type: "Swing",  time: "10:00", roster: "10:00 - 19:00", group: 1 },
+      { type: "Swing",  time: "11:00", roster: "11:00 - 20:00", group: 1 },
+      { type: "Mid",    time: "12:00", roster: "12:00 - 21:00", group: 2 },
+      { type: "Mid",    time: "13:00", roster: "13:00 - 22:00", group: 2 },
+      { type: "Swing",  time: "14:00", roster: "14:00 - 23:00", group: 2 },
+      { type: "Swing",  time: "15:00", roster: "15:00 - 00:00", group: 2 },
+      { type: "Swing",  time: "16:00", roster: "16:00 - 01:00", group: 2 },
+      { type: "Late N", time: "21:00", roster: "21:00 - 06:00", group: 3 },
+      { type: "Swing",  time: "22:00", roster: "22:00 - 07:00", group: 3 },
+    ];
+
+    for (let e = 0; e < empCount; e++) {
+      const sc = EMP_SCS[e];
+      const rCol = colLetter(sc + 2); // roster/count column
+      const ctr: Partial<ExcelJS.Alignment> = { horizontal: "center", vertical: "middle" };
+
+      // Shift header row
+      ["Shift","Time","Time Roster","Total"].forEach((h, i) => {
+        ws.getCell(shR, sc + i).value = h;
+        ws.getCell(shR, sc + i).font = { bold: true };
+        ws.getCell(shR, sc + i).alignment = ctr;
+      });
+
+      // Merge total column for each group
+      ws.mergeCells(g1s, sc + 3, g1e, sc + 3);
+      ws.getCell(g1s, sc + 3).value = { formula: `SUM(${rCol}${g1s}:${rCol}${g1e})` };
+      ws.getCell(g1s, sc + 3).alignment = ctr;
+
+      ws.mergeCells(g2s, sc + 3, g2e, sc + 3);
+      ws.getCell(g2s, sc + 3).value = { formula: `SUM(${rCol}${g2s}:${rCol}${g2e})` };
+      ws.getCell(g2s, sc + 3).alignment = ctr;
+
+      ws.mergeCells(g3s, sc + 3, g3e, sc + 3);
+      ws.getCell(g3s, sc + 3).value = { formula: `SUM(${rCol}${g3s},${rCol}${g3e})` };
+      ws.getCell(g3s, sc + 3).alignment = ctr;
+
+      // Individual shift rows
+      SHIFTS.forEach((sh, si) => {
+        const rn = shR + 1 + si;
+        ws.getCell(rn, sc).value = sh.type; ws.getCell(rn, sc).alignment = ctr;
+        const [hh, mm] = sh.time.split(":").map(Number);
+        ws.getCell(rn, sc + 1).value = new Date(Date.UTC(1899, 11, 30, hh, mm, 0));
+        ws.getCell(rn, sc + 1).numFmt = "HH:MM"; ws.getCell(rn, sc + 1).alignment = ctr;
+        ws.getCell(rn, sc + 2).value = { formula: `COUNTIF(${rCol}5:${rCol}${lastDataRow},"*${sh.roster}*")` };
+        ws.getCell(rn, sc + 2).alignment = ctr;
+      });
+
+      // Total row
+      ws.getCell(totR, sc).value = "Total"; ws.getCell(totR, sc).font = { bold: true }; ws.getCell(totR, sc).alignment = ctr;
+      ws.getCell(totR, sc + 1).value = "Total"; ws.getCell(totR, sc + 1).font = { bold: true }; ws.getCell(totR, sc + 1).alignment = ctr;
+      ws.getCell(totR, sc + 2).value = { formula: `SUM(${rCol}${g1s}:${rCol}${g3e})` };
+      ws.getCell(totR, sc + 2).font = { bold: true }; ws.getCell(totR, sc + 2).alignment = ctr;
+      ws.getCell(totR, sc + 3).value = { formula: `SUM(${rCol}${g1s}:${rCol}${g3e})` };
+      ws.getCell(totR, sc + 3).font = { bold: true }; ws.getCell(totR, sc + 3).alignment = ctr;
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const filename = `Clock_In_Out_${MONTH_NAMES[month - 1]}_${year}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(buf);
+  }));
+
   // POST /api/attendance/import-excel — parse Clock In/Out Excel (multi-employee format)
   app.post("/api/attendance/import-excel", upload.single("file"), safe(async (req, res) => {
     const token = String(req.body?.token || "");

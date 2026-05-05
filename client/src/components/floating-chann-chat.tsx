@@ -305,6 +305,7 @@ export function FloatingChannChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [isTogglingNotif, setIsTogglingNotif] = useState(false);
+  const [notifLoaded, setNotifLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -356,8 +357,9 @@ export function FloatingChannChat() {
       body: JSON.stringify({ token }),
     })
       .then(r => r.json())
-      .then(d => { if (d.ok) setNotifEnabled(d.allEnabled); })
-      .catch(() => {});
+      .then(d => { if (d.ok) { setNotifEnabled(d.allEnabled); } })
+      .catch(() => {})
+      .finally(() => setNotifLoaded(true));
   }, [user]);
 
   const toggleNotif = async () => {
@@ -378,9 +380,11 @@ export function FloatingChannChat() {
           title: newState ? "เปิดการแจ้งเตือนอัตโนมัติแล้ว" : "ปิดการแจ้งเตือนอัตโนมัติแล้ว",
           description: newState ? "Chann จะส่งแจ้งเตือนตามปกติครับ" : "Chann จะหยุดส่งทุกประเภทชั่วคราวครับ",
         });
+      } else {
+        toast({ title: "ไม่สำเร็จ", description: data.message ?? "ไม่สามารถเปลี่ยนค่าได้", variant: "destructive" });
       }
     } catch {
-      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+      toast({ title: "เกิดข้อผิดพลาด", description: "ไม่สามารถเชื่อมต่อ server ได้", variant: "destructive" });
     } finally {
       setIsTogglingNotif(false);
     }
@@ -1272,7 +1276,7 @@ export function FloatingChannChat() {
                     </>
                   )}
                 </div>
-                {(user?.role === "admin" || user?.role === "manager") && (
+                {(user?.role === "admin" || user?.role === "manager") && notifLoaded && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1536,7 +1540,7 @@ export function FloatingChannChat() {
         </div>
       ) : (
         <div className="flex flex-col items-end gap-2">
-          {(user?.role === "admin" || user?.role === "manager") && (
+          {(user?.role === "admin" || user?.role === "manager") && notifLoaded && (
             <button
               onClick={toggleNotif}
               disabled={isTogglingNotif}

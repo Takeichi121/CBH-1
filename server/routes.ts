@@ -8894,12 +8894,13 @@ ${pageContext}` : ''}`;
 
   app.post("/api/settings/toggle-proactive-all", safe(async (req, res) => {
     const { token, enabled } = req.body;
+    if (typeof enabled !== "boolean") return res.status(400).json({ ok: false, message: "enabled must be a boolean" });
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const user = await storage.getUser(session.username);
     if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
     await storage.setConfig("PROACTIVE_ALL_ENABLED", enabled ? "1" : "0");
-    res.json({ ok: true, allEnabled: !!enabled });
+    res.json({ ok: true, allEnabled: enabled });
   }));
 
   app.post("/api/settings/save-proactive-config", safe(async (req, res) => {

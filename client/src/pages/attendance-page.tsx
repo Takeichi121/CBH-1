@@ -870,7 +870,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                             title={errR}
                             onChange={e => setEdit(date, emp.fullName, "rosterTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                             data-testid={`cell-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
                           {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errR}</div>}
@@ -883,7 +883,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                             title={errI}
                             onChange={e => setEdit(date, emp.fullName, "clockInTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                             data-testid={`cell-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
                           {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errI}</div>}
@@ -896,7 +896,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                             title={errO}
                             onChange={e => setEdit(date, emp.fullName, "clockOutTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                             data-testid={`cell-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
                           {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errO}</div>}
@@ -912,7 +912,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                               value={notes}
                               onChange={e => setEdit(date, emp.fullName, "notes", e.target.value)}
                               onBlur={() => saveRow(date, emp)}
-                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                               data-testid={`cell-notes-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                             />
                           )}
@@ -928,6 +928,29 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
       </div>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────
+// Helper: move focus to next/prev row, same column on Enter
+// ─────────────────────────────────────────────────────────
+function moveRowFocus(e: React.KeyboardEvent, direction: 1 | -1) {
+  const input = e.target as HTMLInputElement;
+  const tr = input.closest("tr");
+  const tbody = tr?.closest("tbody");
+  if (!tr || !tbody) return;
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const rowIdx = rows.indexOf(tr);
+  const rowInputs = Array.from(tr.querySelectorAll("input"));
+  const colIdx = rowInputs.indexOf(input);
+  let nextRowIdx = rowIdx + direction;
+  while (nextRowIdx >= 0 && nextRowIdx < rows.length) {
+    const nextInputs = Array.from(rows[nextRowIdx].querySelectorAll("input"));
+    if (nextInputs[colIdx]) {
+      (nextInputs[colIdx] as HTMLInputElement).focus();
+      return;
+    }
+    nextRowIdx += direction;
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1234,7 +1257,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                             title={errR}
                             onChange={e => setEdit(dateStr, emp.fullName, "rosterTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                             data-testid={`cell-exroster-${idx}-${d}`}
                           />
                           {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exroster-${idx}-${d}`}>{errR}</div>}
@@ -1248,7 +1271,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                             title={errI}
                             onChange={e => setEdit(dateStr, emp.fullName, "clockInTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                             data-testid={`cell-exin-${idx}-${d}`}
                           />
                           {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exin-${idx}-${d}`}>{errI}</div>}
@@ -1261,7 +1284,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                             title={errO}
                             onChange={e => setEdit(dateStr, emp.fullName, "clockOutTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                             data-testid={`cell-exout-${idx}-${d}`}
                           />
                           {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exout-${idx}-${d}`}>{errO}</div>}
@@ -1277,7 +1300,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                               value={notesVal}
                               onChange={e => setEdit(dateStr, emp.fullName, "notes", e.target.value)}
                               onBlur={() => saveRow(dateStr, emp)}
-                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
                               data-testid={`cell-exnotes-${idx}-${d}`}
                             />
                           )}

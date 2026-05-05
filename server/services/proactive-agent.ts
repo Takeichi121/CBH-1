@@ -21,6 +21,11 @@ export function initProactiveChann() {
   cron.schedule(
     "0 8 * * *",
     async () => {
+      const cfg0 = await storage.getConfig();
+      if (cfg0["PROACTIVE_MORNING_REPORT"] === "0") {
+        console.log("[Chann] ⏭️ Morning report ถูกปิด — ข้าม");
+        return;
+      }
       console.log("🌞 [Chann] ตื่นมาเตรียมรายงานให้คุณผู้จัดการแล้วครับ...");
 
       const [alohaData, nboData] = await Promise.all([
@@ -126,6 +131,10 @@ export function initProactiveChann() {
       console.log("[WeeklyReminder] ⏰ ตรวจสอบ Weekly Report วันอังคาร 19:00...");
       try {
         const cfg = await storage.getConfig();
+        if (cfg["PROACTIVE_WEEKLY_REMINDER"] === "0") {
+          console.log("[WeeklyReminder] ⏭️ ถูกปิด — ข้าม");
+          return;
+        }
         const channelToken = cfg["LINE_CHANNEL_TOKEN"];
         const targetId = cfg["LINE_TARGET_ID"];
         if (!channelToken || !targetId) {
@@ -166,12 +175,17 @@ export function initProactiveChann() {
     async () => {
       console.log("[Chann] 📦 ตรวจ borrow transactions ที่เลยกำหนดคืน...");
       try {
+        const cfgCheck = await storage.getConfig();
+        if (cfgCheck["PROACTIVE_BORROW_OVERDUE"] === "0") {
+          console.log("[Chann] ⏭️ Borrow overdue notification ถูกปิด — ข้าม");
+          return;
+        }
         const overdueRows: any[] = await storage.getOverdueBorrowTransactions().catch(() => []);
         if (!overdueRows || overdueRows.length === 0) {
           console.log("[Chann] ✅ ไม่มี borrow ที่เลยกำหนดคืน");
           return;
         }
-        const cfg = await storage.getConfig();
+        const cfg = cfgCheck;
         const channelToken = cfg["LINE_CHANNEL_TOKEN"];
         const targetId = cfg["LINE_TARGET_ID"];
         if (!channelToken || !targetId) {
@@ -209,6 +223,10 @@ export function initProactiveChann() {
       console.log("[Digest] 📋 เตรียม manager digest...");
       try {
         const cfg = await storage.getConfig();
+        if (cfg["PROACTIVE_MANAGER_DIGEST"] === "0") {
+          console.log("[Digest] ⏭️ Manager digest ถูกปิด — ข้าม");
+          return;
+        }
         const channelToken = cfg["LINE_CHANNEL_TOKEN"];
         const targetId = cfg["LINE_TARGET_ID"];
         if (!channelToken || !targetId) return;
@@ -278,7 +296,12 @@ function scheduleOneTimeAlert22h45() {
   const minutesLeft = Math.round(delayMs / 60000);
   console.log(`[Chann] ⏰ ตั้ง 22:45 alert ไว้แล้ว (อีก ${minutesLeft} นาที)`);
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    const cfgNow = await storage.getConfig();
+    if (cfgNow["PROACTIVE_CLOSING_ALERT"] === "0") {
+      console.log("[Chann] ⏭️ Closing alert ถูกปิด — ข้าม");
+      return;
+    }
     const now = new Date();
     const dateStr = now.toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long" });
     pushToBoss("chann-alert", {

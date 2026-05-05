@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { SalesLayout } from "./sales-layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle, Upload, Pencil, CheckCircle } from "lucide-react";
+import { Loader2, Save, ChevronLeft, ChevronRight, Settings, Undo2, FileSpreadsheet, Database, Copy, RefreshCw, MessageSquare, Send, CheckCircle2, XCircle, Upload, Pencil, CheckCircle, Bell, BellOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useAreaLock } from "@/hooks/use-area-lock";
@@ -87,6 +88,13 @@ export default function SalesSettingsPage() {
   const [isRefreshingGroup, setIsRefreshingGroup] = useState(false);
   const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
   const [lineReportDate, setLineReportDate] = useState(todayStr);
+
+  const [proactiveMorningReport, setProactiveMorningReport] = useState(true);
+  const [proactiveWeeklyReminder, setProactiveWeeklyReminder] = useState(true);
+  const [proactiveBorrowOverdue, setProactiveBorrowOverdue] = useState(true);
+  const [proactiveManagerDigest, setProactiveManagerDigest] = useState(true);
+  const [proactiveClosingAlert, setProactiveClosingAlert] = useState(true);
+  const [isSavingProactive, setIsSavingProactive] = useState(false);
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -493,6 +501,27 @@ export default function SalesSettingsPage() {
   }, [user]);
 
   useEffect(() => {
+    if (user?.role !== "admin" && user?.role !== "manager") return;
+    const bkToken = localStorage.getItem("bk_token");
+    fetch("/api/settings/get-proactive-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: bkToken })
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          setProactiveMorningReport(d.morningReport);
+          setProactiveWeeklyReminder(d.weeklyReminder);
+          setProactiveBorrowOverdue(d.borrowOverdue);
+          setProactiveManagerDigest(d.managerDigest);
+          setProactiveClosingAlert(d.closingAlert);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
     if (user?.role !== "admin") return;
     const bkToken = localStorage.getItem("bk_token");
     fetch("/api/settings/get-line-config", {
@@ -835,6 +864,35 @@ export default function SalesSettingsPage() {
 
   const fmtNum = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const fmtDec = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const handleSaveProactiveConfig = async () => {
+    setIsSavingProactive(true);
+    const bkToken = localStorage.getItem("bk_token");
+    try {
+      const res = await fetch("/api/settings/save-proactive-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: bkToken,
+          morningReport: proactiveMorningReport,
+          weeklyReminder: proactiveWeeklyReminder,
+          borrowOverdue: proactiveBorrowOverdue,
+          managerDigest: proactiveManagerDigest,
+          closingAlert: proactiveClosingAlert,
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "บันทึกสำเร็จ", description: "ตั้งค่าการแจ้งเตือนอัตโนมัติเรียบร้อยแล้ว" });
+      } else {
+        toast({ title: "เกิดข้อผิดพลาด", description: data.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", description: "ไม่สามารถบันทึกได้", variant: "destructive" });
+    } finally {
+      setIsSavingProactive(false);
+    }
+  };
 
   const handleSaveLineConfig = async () => {
     const bkToken = localStorage.getItem("bk_token");
@@ -1741,6 +1799,85 @@ export default function SalesSettingsPage() {
                   )}
                 </div>
                 <p className="text-[11px] text-slate-500">ส่งข้อมูลของวันที่เลือกเป็น text message ไปยัง LINE group ที่ตั้งค่าไว้</p>
+              </div>
+
+              {/* Proactive Notification Toggles */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-slate-500" />
+                  <p className="text-sm font-medium">การแจ้งเตือนอัตโนมัติจาก Chann</p>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  เปิด/ปิดการแจ้งเตือนที่ Chann ส่งให้อัตโนมัติ — LINE group และ Dashboard
+                </p>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 dark:border-slate-700 px-3 py-2.5">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">รายงานเช้า (08:00)</p>
+                      <p className="text-[11px] text-slate-500">วิเคราะห์ยอดขาย + แจ้ง critical anomaly ไป LINE</p>
+                    </div>
+                    <Switch
+                      checked={proactiveMorningReport}
+                      onCheckedChange={setProactiveMorningReport}
+                      data-testid="switch-proactive-morning-report"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 dark:border-slate-700 px-3 py-2.5">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">สรุปรายการรอดำเนินการ (08:05)</p>
+                      <p className="text-[11px] text-slate-500">ส่งสรุป Swap / คำขอ / Borrow เกินกำหนด ไป LINE</p>
+                    </div>
+                    <Switch
+                      checked={proactiveManagerDigest}
+                      onCheckedChange={setProactiveManagerDigest}
+                      data-testid="switch-proactive-manager-digest"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 dark:border-slate-700 px-3 py-2.5">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">แจ้งเตือน Borrow เกินกำหนด (09:00)</p>
+                      <p className="text-[11px] text-slate-500">ส่งรายการยืมที่เลยกำหนดคืนไป LINE ทุกวัน</p>
+                    </div>
+                    <Switch
+                      checked={proactiveBorrowOverdue}
+                      onCheckedChange={setProactiveBorrowOverdue}
+                      data-testid="switch-proactive-borrow-overdue"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 dark:border-slate-700 px-3 py-2.5">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">แจ้งเตือน Weekly Report (ทุกอังคาร 19:00)</p>
+                      <p className="text-[11px] text-slate-500">เตือนถ้ายังไม่ได้ส่ง Weekly Report สัปดาห์ที่ผ่านมา</p>
+                    </div>
+                    <Switch
+                      checked={proactiveWeeklyReminder}
+                      onCheckedChange={setProactiveWeeklyReminder}
+                      data-testid="switch-proactive-weekly-reminder"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 dark:border-slate-700 px-3 py-2.5">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">แจ้งเตือนก่อนปิดร้าน (22:45)</p>
+                      <p className="text-[11px] text-slate-500">เตือนผ่าน Dashboard ให้ตรวจสอบงานก่อนปิด</p>
+                    </div>
+                    <Switch
+                      checked={proactiveClosingAlert}
+                      onCheckedChange={setProactiveClosingAlert}
+                      data-testid="switch-proactive-closing-alert"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end pt-1">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveProactiveConfig}
+                    disabled={isSavingProactive}
+                    data-testid="button-save-proactive-config"
+                  >
+                    {isSavingProactive ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+                    บันทึกการตั้งค่า
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

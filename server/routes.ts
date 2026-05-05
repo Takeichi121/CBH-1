@@ -8873,6 +8873,38 @@ ${pageContext}` : ''}`;
     }
   }));
 
+  // ── Proactive Notification Config ──────────────────────────
+  app.post("/api/settings/get-proactive-config", safe(async (req, res) => {
+    const { token } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
+    const cfg = await storage.getConfig();
+    res.json({
+      ok: true,
+      morningReport:    cfg["PROACTIVE_MORNING_REPORT"]    !== "0",
+      weeklyReminder:   cfg["PROACTIVE_WEEKLY_REMINDER"]   !== "0",
+      borrowOverdue:    cfg["PROACTIVE_BORROW_OVERDUE"]    !== "0",
+      managerDigest:    cfg["PROACTIVE_MANAGER_DIGEST"]    !== "0",
+      closingAlert:     cfg["PROACTIVE_CLOSING_ALERT"]     !== "0",
+    });
+  }));
+
+  app.post("/api/settings/save-proactive-config", safe(async (req, res) => {
+    const { token, morningReport, weeklyReminder, borrowOverdue, managerDigest, closingAlert } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
+    if (morningReport  !== undefined) await storage.setConfig("PROACTIVE_MORNING_REPORT",  morningReport  ? "1" : "0");
+    if (weeklyReminder !== undefined) await storage.setConfig("PROACTIVE_WEEKLY_REMINDER",  weeklyReminder ? "1" : "0");
+    if (borrowOverdue  !== undefined) await storage.setConfig("PROACTIVE_BORROW_OVERDUE",   borrowOverdue  ? "1" : "0");
+    if (managerDigest  !== undefined) await storage.setConfig("PROACTIVE_MANAGER_DIGEST",   managerDigest  ? "1" : "0");
+    if (closingAlert   !== undefined) await storage.setConfig("PROACTIVE_CLOSING_ALERT",    closingAlert   ? "1" : "0");
+    res.json({ ok: true });
+  }));
+
   app.post("/api/line/send-daily-report", safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);

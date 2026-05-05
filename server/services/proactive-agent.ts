@@ -22,6 +22,10 @@ export function initProactiveChann() {
     "0 8 * * *",
     async () => {
       const cfg0 = await storage.getConfig();
+      if (cfg0["PROACTIVE_ALL_ENABLED"] === "0") {
+        console.log("[Chann] ⏭️ การแจ้งเตือนทั้งหมดถูกปิด (master switch) — ข้าม");
+        return;
+      }
       if (cfg0["PROACTIVE_MORNING_REPORT"] === "0") {
         console.log("[Chann] ⏭️ Morning report ถูกปิด — ข้าม");
         return;
@@ -131,7 +135,7 @@ export function initProactiveChann() {
       console.log("[WeeklyReminder] ⏰ ตรวจสอบ Weekly Report วันอังคาร 19:00...");
       try {
         const cfg = await storage.getConfig();
-        if (cfg["PROACTIVE_WEEKLY_REMINDER"] === "0") {
+        if (cfg["PROACTIVE_ALL_ENABLED"] === "0" || cfg["PROACTIVE_WEEKLY_REMINDER"] === "0") {
           console.log("[WeeklyReminder] ⏭️ ถูกปิด — ข้าม");
           return;
         }
@@ -176,7 +180,7 @@ export function initProactiveChann() {
       console.log("[Chann] 📦 ตรวจ borrow transactions ที่เลยกำหนดคืน...");
       try {
         const cfgCheck = await storage.getConfig();
-        if (cfgCheck["PROACTIVE_BORROW_OVERDUE"] === "0") {
+        if (cfgCheck["PROACTIVE_ALL_ENABLED"] === "0" || cfgCheck["PROACTIVE_BORROW_OVERDUE"] === "0") {
           console.log("[Chann] ⏭️ Borrow overdue notification ถูกปิด — ข้าม");
           return;
         }
@@ -223,7 +227,7 @@ export function initProactiveChann() {
       console.log("[Digest] 📋 เตรียม manager digest...");
       try {
         const cfg = await storage.getConfig();
-        if (cfg["PROACTIVE_MANAGER_DIGEST"] === "0") {
+        if (cfg["PROACTIVE_ALL_ENABLED"] === "0" || cfg["PROACTIVE_MANAGER_DIGEST"] === "0") {
           console.log("[Digest] ⏭️ Manager digest ถูกปิด — ข้าม");
           return;
         }
@@ -298,7 +302,7 @@ function scheduleOneTimeAlert22h45() {
 
   setTimeout(async () => {
     const cfgNow = await storage.getConfig();
-    if (cfgNow["PROACTIVE_CLOSING_ALERT"] === "0") {
+    if (cfgNow["PROACTIVE_ALL_ENABLED"] === "0" || cfgNow["PROACTIVE_CLOSING_ALERT"] === "0") {
       console.log("[Chann] ⏭️ Closing alert ถูกปิด — ข้าม");
       return;
     }

@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, Download, ChevronDown } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, BellOff, Download, ChevronDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import ExcelJS from "exceljs";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -300,7 +301,10 @@ type ChannModel = "replit" | "claude";
 
 export function FloatingChannChat() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(true);
+  const [isTogglingNotif, setIsTogglingNotif] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -341,6 +345,46 @@ export function FloatingChannChat() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return;
+    const token = localStorage.getItem("bk_token");
+    if (!token) return;
+    fetch("/api/settings/get-proactive-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.ok) setNotifEnabled(d.allEnabled); })
+      .catch(() => {});
+  }, [user]);
+
+  const toggleNotif = async () => {
+    if (isTogglingNotif) return;
+    setIsTogglingNotif(true);
+    const token = localStorage.getItem("bk_token");
+    const newState = !notifEnabled;
+    try {
+      const res = await fetch("/api/settings/toggle-proactive-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, enabled: newState }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setNotifEnabled(newState);
+        toast({
+          title: newState ? "เปิดการแจ้งเตือนอัตโนมัติแล้ว" : "ปิดการแจ้งเตือนอัตโนมัติแล้ว",
+          description: newState ? "Chann จะส่งแจ้งเตือนตามปกติครับ" : "Chann จะหยุดส่งทุกประเภทชั่วคราวครับ",
+        });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    } finally {
+      setIsTogglingNotif(false);
+    }
+  };
 
   const flushPendingContent = () => {
     rafIdRef.current = null;
@@ -1228,6 +1272,29 @@ export function FloatingChannChat() {
                     </>
                   )}
                 </div>
+                {(user?.role === "admin" || user?.role === "manager") && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-7 w-7 hover:bg-white/10 transition-colors",
+                      notifEnabled
+                        ? "text-emerald-400 hover:text-emerald-300"
+                        : "text-slate-500 hover:text-slate-300"
+                    )}
+                    onClick={(e) => { e.stopPropagation(); toggleNotif(); }}
+                    disabled={isTogglingNotif}
+                    title={notifEnabled ? "แจ้งเตือนอัตโนมัติ: เปิด (คลิกเพื่อปิด)" : "แจ้งเตือนอัตโนมัติ: ปิด (คลิกเพื่อเปิด)"}
+                    data-testid="button-toggle-notifications"
+                  >
+                    {isTogglingNotif
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : notifEnabled
+                        ? <Bell className="w-3.5 h-3.5" />
+                        : <BellOff className="w-3.5 h-3.5" />
+                    }
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1468,19 +1535,42 @@ export function FloatingChannChat() {
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="group"
-          data-testid="button-open-chann-chat"
-        >
-          <div className="relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200">
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-              <Bot className="w-4 h-4" />
+        <div className="flex flex-col items-end gap-2">
+          {(user?.role === "admin" || user?.role === "manager") && (
+            <button
+              onClick={toggleNotif}
+              disabled={isTogglingNotif}
+              title={notifEnabled ? "แจ้งเตือนอัตโนมัติ: เปิด — คลิกเพื่อปิด" : "แจ้งเตือนอัตโนมัติ: ปิดอยู่ — คลิกเพื่อเปิด"}
+              data-testid="button-toggle-notifications-fab"
+              className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 transition-all duration-200 hover:scale-110",
+                notifEnabled
+                  ? "bg-emerald-500 border-emerald-400 text-white shadow-emerald-500/30"
+                  : "bg-slate-700 border-slate-500 text-slate-400 shadow-black/20"
+              )}
+            >
+              {isTogglingNotif
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : notifEnabled
+                  ? <Bell className="w-4 h-4" />
+                  : <BellOff className="w-4 h-4" />
+              }
+            </button>
+          )}
+          <button
+            onClick={() => setIsOpen(true)}
+            className="group"
+            data-testid="button-open-chann-chat"
+          >
+            <div className="relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200">
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                <Bot className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-semibold">Chann</span>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
             </div>
-            <span className="text-sm font-semibold">Chann</span>
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
-          </div>
-        </button>
+          </button>
+        </div>
       )}
     </div>
   );

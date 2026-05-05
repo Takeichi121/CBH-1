@@ -8883,12 +8883,23 @@ ${pageContext}` : ''}`;
     const cfg = await storage.getConfig();
     res.json({
       ok: true,
+      allEnabled:       cfg["PROACTIVE_ALL_ENABLED"]       !== "0",
       morningReport:    cfg["PROACTIVE_MORNING_REPORT"]    !== "0",
       weeklyReminder:   cfg["PROACTIVE_WEEKLY_REMINDER"]   !== "0",
       borrowOverdue:    cfg["PROACTIVE_BORROW_OVERDUE"]    !== "0",
       managerDigest:    cfg["PROACTIVE_MANAGER_DIGEST"]    !== "0",
       closingAlert:     cfg["PROACTIVE_CLOSING_ALERT"]     !== "0",
     });
+  }));
+
+  app.post("/api/settings/toggle-proactive-all", safe(async (req, res) => {
+    const { token, enabled } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
+    await storage.setConfig("PROACTIVE_ALL_ENABLED", enabled ? "1" : "0");
+    res.json({ ok: true, allEnabled: !!enabled });
   }));
 
   app.post("/api/settings/save-proactive-config", safe(async (req, res) => {

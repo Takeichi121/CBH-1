@@ -4633,6 +4633,32 @@ ${v.staffRosterText || ""}
 
                         const totalHeadcount = validEntries.length;
 
+                        const handleCopyRosterSummary = () => {
+                          const lines = Object.entries(grouped).map(
+                            ([shift, names]) =>
+                              `${shift} (${names.length} ${language === "th" ? "คน" : "pax"}): ${names.join(", ")}`
+                          );
+                          const text = lines.join("\n");
+                          navigator.clipboard.writeText(text).then(() => {
+                            toast({
+                              title: language === "th" ? "คัดลอกแล้ว" : "Copied",
+                              description:
+                                language === "th"
+                                  ? "คัดลอกสรุป Roster ไปยังคลิปบอร์ดแล้ว"
+                                  : "Roster summary copied to clipboard",
+                            });
+                          }).catch(() => {
+                            toast({
+                              variant: "destructive",
+                              title: language === "th" ? "คัดลอกไม่สำเร็จ" : "Copy failed",
+                              description:
+                                language === "th"
+                                  ? "ไม่สามารถเข้าถึงคลิปบอร์ดได้"
+                                  : "Unable to access clipboard",
+                            });
+                          });
+                        };
+
                         return (
                           <div
                             className="mt-3 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 p-3 space-y-1"
@@ -4642,14 +4668,27 @@ ${v.staffRosterText || ""}
                               <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                                 {language === "th" ? "สรุป Roster" : "Roster Summary"}
                               </span>
-                              <span
-                                className="text-xs font-medium text-blue-600 dark:text-blue-400"
-                                data-testid="roster-total-headcount"
-                              >
-                                {language === "th"
-                                  ? `รวม ${totalHeadcount} คน`
-                                  : `Total ${totalHeadcount} staff`}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="text-xs font-medium text-blue-600 dark:text-blue-400"
+                                  data-testid="roster-total-headcount"
+                                >
+                                  {language === "th"
+                                    ? `รวม ${totalHeadcount} คน`
+                                    : `Total ${totalHeadcount} staff`}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:text-blue-200 dark:hover:bg-blue-900/40"
+                                  onClick={handleCopyRosterSummary}
+                                  data-testid="button-copy-roster-summary"
+                                  title={language === "th" ? "คัดลอกสรุป" : "Copy summary"}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
                             {Object.entries(grouped).map(([shift, names]) => (
                               <div

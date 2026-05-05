@@ -181,17 +181,17 @@ export default function GamificationPage() {
   const storeId = (user as any)?.storeId || "BK1040";
   const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
 
-  const { data: records = [], isLoading } = useQuery<ClockRecord[]>({
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
     queryFn: async () => {
       const token = localStorage.getItem("bk_token") || "";
       const res = await fetch(
         `/api/attendance/records?year=${year}&month=${month}&storeId=${encodeURIComponent(storeId)}&token=${encodeURIComponent(token)}`
       );
-      const json = await res.json();
-      return Array.isArray(json?.records) ? json.records : [];
+      return res.json();
     },
   });
+  const records: ClockRecord[] = data?.records ?? [];
 
   const stats = useMemo(() => calcStats(records), [records]);
   const maxPoints = stats[0]?.points || 1;

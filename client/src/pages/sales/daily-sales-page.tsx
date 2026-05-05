@@ -4744,8 +4744,8 @@ ${v.staffRosterText || ""}
                                       <AlertTriangle className="w-3 h-3 shrink-0" />
                                       <span>
                                         {language === "th"
-                                          ? `${displayName} ถูกจัดกะซ้ำ ${count} ครั้ง`
-                                          : `${displayName} is assigned to ${count} shifts`}
+                                          ? `${displayName} ถูกจัดกะซ้ำ ${count} รายการ`
+                                          : `${displayName} is listed in ${count} shifts`}
                                       </span>
                                     </div>
                                   );

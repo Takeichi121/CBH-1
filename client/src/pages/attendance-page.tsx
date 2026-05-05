@@ -592,17 +592,28 @@ function MonthlyView({ year, month, storeId }: { year: number; month: number; st
 // Shared time-format validation
 // Accepts: "" | "OFF" | "HH:MM" | "HH:MM - HH:MM"
 // ─────────────────────────────────────────────────────────
-const TIME_RE       = /^\d{1,2}:\d{2}$/;
-const TIME_RANGE_RE = /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/;
+const TIME_RE       = /^(\d{2}):(\d{2})$/;
+const TIME_RANGE_RE = /^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/;
+
+function isValidTimePart(h: number, m: number): boolean {
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
 
 function isValidTimeInput(val: string): boolean {
   const v = val.trim();
   if (!v) return true;
   if (v.toUpperCase() === "OFF") return true;
-  return TIME_RE.test(v) || TIME_RANGE_RE.test(v);
+  const single = TIME_RE.exec(v);
+  if (single) return isValidTimePart(parseInt(single[1]), parseInt(single[2]));
+  const range = TIME_RANGE_RE.exec(v);
+  if (range) {
+    return isValidTimePart(parseInt(range[1]), parseInt(range[2]))
+        && isValidTimePart(parseInt(range[3]), parseInt(range[4]));
+  }
+  return false;
 }
 
-const TIME_ERR_MSG = "รูปแบบไม่ถูกต้อง เช่น 05:00 หรือ 05:00 - 14:00";
+const TIME_ERR_MSG = "รูปแบบไม่ถูกต้อง เช่น 05:00 หรือ 05:00 - 14:00 (ชั่วโมง 00-23, นาที 00-59)";
 
 // ─────────────────────────────────────────────────────────
 // Matrix View (Excel-style: rows=dates, cols=employees)

@@ -61,6 +61,7 @@ import {
   ChevronsUpDown,
   Pencil,
   RefreshCw,
+  UserPlus,
 } from "lucide-react";
 import {
   Popover,
@@ -928,10 +929,33 @@ export default function DailySalesPage() {
   ]);
 
   const addStaffEntry = () => {
+    const last = staffRosterEntries[staffRosterEntries.length - 1];
     setStaffRosterEntries([
       ...staffRosterEntries,
-      { shiftGroup: "", staffName: "", customStart: "08:00", customEnd: "16:00" },
+      {
+        shiftGroup: last?.shiftGroup || "",
+        staffName: "",
+        customStart: last?.customStart || "08:00",
+        customEnd: last?.customEnd || "16:00",
+      },
     ]);
+  };
+
+  const cloneStaffEntry = (index: number) => {
+    const src = staffRosterEntries[index];
+    const newEntry = {
+      shiftGroup: src.shiftGroup,
+      staffName: "",
+      customStart: src.customStart || "08:00",
+      customEnd: src.customEnd || "16:00",
+    };
+    const updated = [
+      ...staffRosterEntries.slice(0, index + 1),
+      newEntry,
+      ...staffRosterEntries.slice(index + 1),
+    ];
+    setStaffRosterEntries(updated);
+    setTimeout(() => setOpenNicknamePopover(index + 1), 50);
   };
 
   const removeStaffEntry = (index: number) => {
@@ -4553,6 +4577,17 @@ ${v.staffRosterText || ""}
                                 </Command>
                               </PopoverContent>
                             </Popover>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => cloneStaffEntry(index)}
+                              title={language === "th" ? "เพิ่มคนที่กะเดียวกัน" : "Add another person to same shift"}
+                              data-testid={`button-clone-staff-${index}`}
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <UserPlus className="w-4 h-4" />
+                            </Button>
                             {staffRosterEntries.length > 1 && (
                               <Button
                                 type="button"

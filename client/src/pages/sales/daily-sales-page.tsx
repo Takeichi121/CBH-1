@@ -4613,6 +4613,60 @@ ${v.staffRosterText || ""}
                           </div>
                         ))}
                       </div>
+
+                      {/* Roster summary grouped by shift */}
+                      {(() => {
+                        const validEntries = staffRosterEntries.filter(
+                          (e) => e.shiftGroup && e.staffName
+                        );
+                        if (validEntries.length === 0) return null;
+
+                        const grouped: Record<string, string[]> = {};
+                        validEntries.forEach((e) => {
+                          const shiftLabel =
+                            e.shiftGroup === "CUSTOM" && e.customStart && e.customEnd
+                              ? `${e.customStart}-${e.customEnd}`
+                              : e.shiftGroup;
+                          if (!grouped[shiftLabel]) grouped[shiftLabel] = [];
+                          grouped[shiftLabel].push(e.staffName);
+                        });
+
+                        const totalHeadcount = validEntries.length;
+
+                        return (
+                          <div
+                            className="mt-3 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 p-3 space-y-1"
+                            data-testid="roster-summary"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                                {language === "th" ? "สรุป Roster" : "Roster Summary"}
+                              </span>
+                              <span
+                                className="text-xs font-medium text-blue-600 dark:text-blue-400"
+                                data-testid="roster-total-headcount"
+                              >
+                                {language === "th"
+                                  ? `รวม ${totalHeadcount} คน`
+                                  : `Total ${totalHeadcount} staff`}
+                              </span>
+                            </div>
+                            {Object.entries(grouped).map(([shift, names]) => (
+                              <div
+                                key={shift}
+                                className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed"
+                                data-testid={`roster-shift-row-${shift.replace(/[^a-zA-Z0-9]/g, "-")}`}
+                              >
+                                <span className="font-medium">{shift}</span>
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  {" "}({names.length} {language === "th" ? "คน" : "pax"}):{" "}
+                                </span>
+                                {names.join(", ")}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <FormField

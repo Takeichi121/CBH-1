@@ -374,8 +374,8 @@ export default function ChannPlatformPage() {
   const isEmpty = messages.length === 0 || (messages.length === 1 && messages[0].role === "assistant" && !messages[0].content && isLoading);
 
   const MODEL_INFO = {
-    replit: { label: "Replit AI", sub: "GPT-5.2 · เครื่องมือครบ", icon: Cpu, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/30", active: "bg-violet-600 text-white" },
-    claude: { label: "Claude Sonnet", sub: "Anthropic · วิเคราะห์ลึก", icon: BrainCircuit, color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/30", active: "bg-orange-600 text-white" },
+    replit: { label: "Replit AI", sub: "GPT-4.1 · เครื่องมือครบ", icon: Cpu, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/30", active: "bg-violet-600 text-white" },
+    claude: { label: "Claude Opus", sub: "Anthropic · วิเคราะห์ลึก", icon: BrainCircuit, color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/30", active: "bg-orange-600 text-white" },
   };
 
   return (
@@ -500,7 +500,7 @@ export default function ChannPlatformPage() {
             <div>
               <span className="text-sm font-semibold text-white">Chann AI Platform</span>
               <span className={cn("ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium border", channModel === "claude" ? "text-orange-300 bg-orange-500/10 border-orange-500/20" : "text-violet-300 bg-violet-500/10 border-violet-500/20")}>
-                {channModel === "claude" ? "⬡ Claude Sonnet" : "⚡ Replit AI"}
+                {channModel === "claude" ? "⬡ Claude Opus" : "⚡ Replit AI"}
               </span>
             </div>
           </div>
@@ -531,7 +531,7 @@ export default function ChannPlatformPage() {
               <h2 className="text-2xl font-bold text-white mb-2">สวัสดีครับ</h2>
               <p className="text-slate-400 text-sm mb-1">ผม <span className="text-white font-semibold">Chann</span> — ผู้ช่วย AI ของระบบ Chann Back House</p>
               <p className={cn("text-xs mb-8 font-medium", channModel === "claude" ? "text-orange-300/80" : "text-violet-300/80")}>
-                {channModel === "claude" ? "ใช้งาน Claude Sonnet · Anthropic" : "ใช้งาน Replit AI · GPT-5.2"}
+                {channModel === "claude" ? "ใช้งาน Claude Opus · Anthropic" : "ใช้งาน Replit AI · GPT-4.1"}
               </p>
 
               {/* Starter prompts */}

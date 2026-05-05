@@ -277,8 +277,8 @@ This ensures the handbook and settings page always reflect the latest state auto
 
 ### Version 2.1.1 (March 15, 2026) — Claude AI + UI ใหม่
 
-- **Claude Default**: Chann ใช้ Claude (claude-sonnet-4-5) เป็น AI หลักแทน OpenAI
-- **Model Selector**: เลือก Claude / GPT-4o / Gemini ได้จาก dropdown ใน header ของ Chann chat
+- **Claude Default**: Chann ใช้ Claude Opus (claude-opus-4-5) เป็น AI หลักแทน OpenAI
+- **Model Selector**: เลือก Claude Opus / Replit AI (GPT-4.1) ได้จาก dropdown ใน header ของ Chann chat
 - **LLM Router**: เพิ่ม `streamClaude()` ใน llm-router.ts, fallback order: Claude → OpenAI → Gemini
 - **Dark Mode UI**: Chann chat ใช้ dark theme สไตล์ AI agent ทันสมัย (gradient header, animated dots)
 - **Provider param**: `/api/chann` รองรับ `provider` parameter จาก request body

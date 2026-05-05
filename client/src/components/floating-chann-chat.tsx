@@ -1163,8 +1163,8 @@ export function FloatingChannChat() {
                       : isLoading
                         ? "กำลังวิเคราะห์..."
                         : channModel === "claude"
-                          ? "Claude Sonnet · Anthropic"
-                          : "Replit AI · GPT-5.2"}
+                          ? "Claude Opus · Anthropic"
+                          : "Replit AI · GPT-4.1"}
                   </p>
                 </div>
               </div>
@@ -1205,7 +1205,7 @@ export function FloatingChannChat() {
                         <span className="text-violet-400 text-base leading-none">⚡</span>
                         <div className="flex-1 min-w-0">
                           <div className="text-[11px] font-semibold text-white">Replit AI</div>
-                          <div className="text-[9px] text-slate-400 mt-0.5">GPT-5.2 · เครื่องมือครบ 30+</div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">GPT-4.1 · เครื่องมือครบ 30+</div>
                         </div>
                         {channModel === "replit" && <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />}
                       </button>
@@ -1219,7 +1219,7 @@ export function FloatingChannChat() {
                       >
                         <span className="text-orange-400 text-base leading-none">⬡</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[11px] font-semibold text-white">Claude Sonnet</div>
+                          <div className="text-[11px] font-semibold text-white">Claude Opus</div>
                           <div className="text-[9px] text-slate-400 mt-0.5">Anthropic · วิเคราะห์ลึก ตอบยาว</div>
                         </div>
                         {channModel === "claude" && <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />}

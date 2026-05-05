@@ -70,7 +70,7 @@ async function streamReplit(params: StreamLLMParams): Promise<string> {
     : getSystemPrompt(params.mode);
 
   const stream = await openai.chat.completions.create({
-    model: "gpt-5.2",
+    model: "gpt-4.1",
     messages: [
       { role: "system", content: systemContent },
       ...messages,
@@ -110,7 +110,7 @@ async function streamClaude(params: StreamLLMParams): Promise<string> {
     : getSystemPrompt(params.mode);
 
   const stream = client.messages.stream({
-    model: "claude-sonnet-4-6",
+    model: "claude-opus-4-5",
     system: systemContent,
     messages,
     max_tokens: 4096,

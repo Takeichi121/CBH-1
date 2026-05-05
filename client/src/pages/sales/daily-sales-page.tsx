@@ -62,6 +62,7 @@ import {
   Pencil,
   RefreshCw,
   UserPlus,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Popover,
@@ -1840,6 +1841,15 @@ ${v.staffRosterText || ""}
     () => buildGrandDiamondText(watchedAllValues),
     [watchedAllValues, buildGrandDiamondText],
   );
+
+  const duplicateStaffNames = useMemo(() => {
+    const counts: Record<string, number> = {};
+    staffRosterEntries.forEach((e) => {
+      const k = e.staffName.trim().toLowerCase();
+      if (k) counts[k] = (counts[k] || 0) + 1;
+    });
+    return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
+  }, [staffRosterEntries]);
 
   const handleCopyNewReport = () => {
     const reportText = buildGrandDiamondText(form.getValues());
@@ -4443,8 +4453,17 @@ ${v.staffRosterText || ""}
                         {language === "th" ? "กด เพื่อเพิ่มคนที่กะเดียวกัน" : "Tap to add another person to the same shift"}
                       </p>
                       <div className="space-y-2">
-                        {staffRosterEntries.map((entry, index) => (
-                          <div key={index} className="flex flex-wrap items-center gap-2">
+                        {staffRosterEntries.map((entry, index) => {
+                          const _isDup = !!entry.staffName.trim() && duplicateStaffNames.has(entry.staffName.trim().toLowerCase());
+                          return (
+                          <div
+                            key={index}
+                            className={cn(
+                              "flex flex-wrap items-center gap-2",
+                              _isDup && "rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600 px-1 py-0.5"
+                            )}
+                            data-testid={_isDup ? `row-staff-duplicate-${index}` : undefined}
+                          >
                             <Select
                               value={entry.shiftGroup}
                               onValueChange={(v) =>
@@ -4611,7 +4630,8 @@ ${v.staffRosterText || ""}
                               </Button>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Roster summary grouped by shift */}
@@ -4703,6 +4723,35 @@ ${v.staffRosterText || ""}
                                 {names.join(", ")}
                               </div>
                             ))}
+                            {duplicateStaffNames.size > 0 && (
+                              <div
+                                className="mt-2 pt-2 border-t border-amber-300 dark:border-amber-700 space-y-1"
+                                data-testid="roster-duplicate-warning-section"
+                              >
+                                {Array.from(duplicateStaffNames).map((dupKey) => {
+                                  const displayName = staffRosterEntries.find(
+                                    (e) => e.staffName.trim().toLowerCase() === dupKey
+                                  )?.staffName ?? dupKey;
+                                  const count = staffRosterEntries.filter(
+                                    (e) => e.staffName.trim().toLowerCase() === dupKey
+                                  ).length;
+                                  return (
+                                    <div
+                                      key={dupKey}
+                                      className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+                                      data-testid={`roster-duplicate-warning-${dupKey}`}
+                                    >
+                                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                                      <span>
+                                        {language === "th"
+                                          ? `${displayName} ถูกจัดกะซ้ำ ${count} ครั้ง`
+                                          : `${displayName} is assigned to ${count} shifts`}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })()}

@@ -853,7 +853,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
 }
 
 // ─────────────────────────────────────────────────────────
-// Excel Roster View (Manager team — read-only)
+// Excel Roster View (Manager team — inline editable)
 // ─────────────────────────────────────────────────────────
 const DOW_EN3 = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -886,6 +886,10 @@ function isManagerPos(pos: string | null) {
 }
 
 function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
+  const { toast } = useToast();
+  const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
+  const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
     queryFn: async () => {
@@ -909,6 +913,50 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   // Record index: "YYYY-MM-DD:fullName"
   const recIdx: Record<string, ClockRecord> = {};
   records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
+
+  const getEdit = (date: string, empName: string, field: string) =>
+    localEdits[`${date}:${empName}`]?.[field];
+
+  const setEdit = (date: string, empName: string, field: string, value: string) => {
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+  };
+
+  const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    const k = `${date}:${emp.fullName}`;
+    const edits = localEdits[k];
+    if (!edits || Object.keys(edits).length === 0) return;
+    const existing = recIdx[k];
+    const payload = {
+      token: localStorage.getItem("bk_token"),
+      date,
+      storeId,
+      employeeFullName: emp.fullName,
+      employeeNickName: edits.employeeNickName ?? emp.nickName ?? "",
+      position: edits.position ?? emp.position ?? "",
+      rosterTime: edits.rosterTime ?? existing?.rosterTime ?? "",
+      clockInTime: edits.clockInTime ?? existing?.clockInTime ?? "",
+      clockOutTime: edits.clockOutTime ?? existing?.clockOutTime ?? "",
+      notes: edits.notes ?? existing?.notes ?? "",
+    };
+    setSavingRows(prev => new Set(prev).add(k));
+    try {
+      const url = existing?.id ? `/api/attendance/record/${existing.id}` : "/api/attendance/record";
+      const method = existing?.id ? "PUT" : "POST";
+      const res = await apiRequest(method, url, payload);
+      const json = await res.json();
+      if (json.ok) {
+        setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; });
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: json.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; });
+    }
+  };
 
   // Always render 31 rows; days beyond actual month length show blank data
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -1026,12 +1074,20 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                       );
                     }
                     const rec = recIdx[`${dateStr}:${emp.fullName}`];
+                    const k = `${dateStr}:${emp.fullName}`;
+                    const isSaving = savingRows.has(k);
                     const isWknd = dow === 0 || dow === 6;
-                    const roster = displayRoster(rec?.rosterTime ?? null);
-                    const isOff = roster.toUpperCase() === "OFF";
-                    const clockIn  = rec?.clockInTime  ? formatTime(rec.clockInTime)  : "";
-                    const clockOut = rec?.clockOutTime ? formatTime(rec.clockOutTime) : "";
-                    const status = getLateStatus(rec?.rosterTime ?? null, rec?.clockInTime ?? null);
+
+                    const rosterVal = getEdit(dateStr, emp.fullName, "rosterTime") ?? (rec?.rosterTime ? displayRoster(rec.rosterTime) : "");
+                    const clockInVal = getEdit(dateStr, emp.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
+                    const clockOutVal = getEdit(dateStr, emp.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
+                    const notesVal = getEdit(dateStr, emp.fullName, "notes") ?? (rec?.notes ?? "");
+
+                    const isOff = rosterVal.toUpperCase() === "OFF";
+                    const status = getLateStatus(rosterVal, clockInVal);
+                    const inColor = status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined;
+
+                    const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center";
 
                     return (
                       <tr
@@ -1046,19 +1102,53 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                         <td className={`${tdBorder} text-center whitespace-nowrap`}>
                           {d}-{monthShort}
                         </td>
-                        <td className={`${tdBorder} text-center`}
+                        <td className={`${tdBorder} p-0`}
                           style={{ color: isOff ? "#CC0000" : undefined, fontWeight: isOff ? 700 : undefined }}>
-                          {roster}
+                          <input
+                            className={cellInput}
+                            style={{ color: isOff ? "#CC0000" : undefined, fontWeight: isOff ? 700 : undefined }}
+                            value={rosterVal}
+                            placeholder="05:00 - 14:00"
+                            onChange={e => setEdit(dateStr, emp.fullName, "rosterTime", e.target.value)}
+                            onBlur={() => saveRow(dateStr, emp)}
+                            data-testid={`cell-exroster-${idx}-${d}`}
+                          />
                         </td>
-                        <td className={`${tdBorder} text-center`}
-                          style={{ color: status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined }}>
-                          {clockIn}
+                        <td className={`${tdBorder} p-0`}>
+                          <input
+                            className={cellInput}
+                            style={{ color: inColor }}
+                            value={clockInVal}
+                            placeholder="05:02"
+                            onChange={e => setEdit(dateStr, emp.fullName, "clockInTime", e.target.value)}
+                            onBlur={() => saveRow(dateStr, emp)}
+                            data-testid={`cell-exin-${idx}-${d}`}
+                          />
                         </td>
-                        <td className={`${tdBorder} text-center`}>
-                          {clockOut}
+                        <td className={`${tdBorder} p-0`}>
+                          <input
+                            className={cellInput}
+                            value={clockOutVal}
+                            placeholder="14:00"
+                            onChange={e => setEdit(dateStr, emp.fullName, "clockOutTime", e.target.value)}
+                            onBlur={() => saveRow(dateStr, emp)}
+                            data-testid={`cell-exout-${idx}-${d}`}
+                          />
                         </td>
-                        <td className={`${tdBorder} text-center`}>
-                          {rec?.notes || ""}
+                        <td className={`${tdBorder} p-0`}>
+                          {isSaving ? (
+                            <div className="flex items-center justify-center h-5">
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <input
+                              className={cellInput}
+                              value={notesVal}
+                              onChange={e => setEdit(dateStr, emp.fullName, "notes", e.target.value)}
+                              onBlur={() => saveRow(dateStr, emp)}
+                              data-testid={`cell-exnotes-${idx}-${d}`}
+                            />
+                          )}
                         </td>
                       </tr>
                     );

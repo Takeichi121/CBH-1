@@ -628,6 +628,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const escapingRef = useRef(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
@@ -675,7 +676,23 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
     setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
   };
 
+  const revertField = (date: string, empName: string, field: string) => {
+    escapingRef.current = true;
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => {
+      const n = { ...prev };
+      if (n[k]) {
+        const row = { ...n[k] };
+        delete row[field];
+        if (Object.keys(row).length === 0) delete n[k]; else n[k] = row;
+      }
+      return n;
+    });
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
   const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    if (escapingRef.current) { escapingRef.current = false; return; }
     const k = `${date}:${emp.fullName}`;
     const edits = localEdits[k];
     if (!edits || Object.keys(edits).length === 0) return;
@@ -853,6 +870,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                             title={errR}
                             onChange={e => setEdit(date, emp.fullName, "rosterTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); } }}
                             data-testid={`cell-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
                           {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errR}</div>}
@@ -865,6 +883,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                             title={errI}
                             onChange={e => setEdit(date, emp.fullName, "clockInTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } }}
                             data-testid={`cell-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
                           {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errI}</div>}
@@ -877,6 +896,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                             title={errO}
                             onChange={e => setEdit(date, emp.fullName, "clockOutTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } }}
                             data-testid={`cell-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
                           {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errO}</div>}
@@ -892,6 +912,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                               value={notes}
                               onChange={e => setEdit(date, emp.fullName, "notes", e.target.value)}
                               onBlur={() => saveRow(date, emp)}
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); } }}
                               data-testid={`cell-notes-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                             />
                           )}
@@ -947,6 +968,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const escapingRef = useRef(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
@@ -981,7 +1003,23 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
     setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
   };
 
+  const revertField = (date: string, empName: string, field: string) => {
+    escapingRef.current = true;
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => {
+      const n = { ...prev };
+      if (n[k]) {
+        const row = { ...n[k] };
+        delete row[field];
+        if (Object.keys(row).length === 0) delete n[k]; else n[k] = row;
+      }
+      return n;
+    });
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
   const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    if (escapingRef.current) { escapingRef.current = false; return; }
     const k = `${date}:${emp.fullName}`;
     const edits = localEdits[k];
     if (!edits || Object.keys(edits).length === 0) return;
@@ -1192,6 +1230,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                             title={errR}
                             onChange={e => setEdit(dateStr, emp.fullName, "rosterTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); } }}
                             data-testid={`cell-exroster-${idx}-${d}`}
                           />
                           {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exroster-${idx}-${d}`}>{errR}</div>}
@@ -1205,6 +1244,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                             title={errI}
                             onChange={e => setEdit(dateStr, emp.fullName, "clockInTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } }}
                             data-testid={`cell-exin-${idx}-${d}`}
                           />
                           {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exin-${idx}-${d}`}>{errI}</div>}
@@ -1217,6 +1257,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                             title={errO}
                             onChange={e => setEdit(dateStr, emp.fullName, "clockOutTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
+                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } }}
                             data-testid={`cell-exout-${idx}-${d}`}
                           />
                           {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exout-${idx}-${d}`}>{errO}</div>}
@@ -1232,6 +1273,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                               value={notesVal}
                               onChange={e => setEdit(dateStr, emp.fullName, "notes", e.target.value)}
                               onBlur={() => saveRow(dateStr, emp)}
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); } }}
                               data-testid={`cell-exnotes-${idx}-${d}`}
                             />
                           )}

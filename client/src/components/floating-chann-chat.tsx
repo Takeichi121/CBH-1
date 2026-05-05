@@ -373,6 +373,12 @@ export function FloatingChannChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, enabled: newState }),
       });
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        console.error("[toggleNotif] non-JSON response:", res.status, await res.text().catch(() => ""));
+        toast({ title: "ไม่สำเร็จ", description: "Server ตอบกลับผิดรูปแบบ", variant: "destructive" });
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         setNotifEnabled(newState);
@@ -383,8 +389,10 @@ export function FloatingChannChat() {
       } else {
         toast({ title: "ไม่สำเร็จ", description: data.message ?? "ไม่สามารถเปลี่ยนค่าได้", variant: "destructive" });
       }
-    } catch {
-      toast({ title: "เกิดข้อผิดพลาด", description: "ไม่สามารถเชื่อมต่อ server ได้", variant: "destructive" });
+    } catch (err) {
+      console.error("[toggleNotif] fetch error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: "เกิดข้อผิดพลาด", description: msg || "ไม่สามารถเชื่อมต่อ server ได้", variant: "destructive" });
     } finally {
       setIsTogglingNotif(false);
     }

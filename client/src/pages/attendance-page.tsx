@@ -864,15 +864,15 @@ const EMP_COLORS = [
   { header: "#FCE4D6", accent: "#833C00", colHead: "#F4B183" },
   { header: "#FFF2CC", accent: "#7F6000", colHead: "#FFD966" },
   { header: "#DDEBF7", accent: "#1F3864", colHead: "#9DC3E6" },
-  { header: "#EDEDED", accent: "#3F3F3F", colHead: "#BFBFBF" },
+  { header: "#EDD6F8", accent: "#7030A0", colHead: "#C5A3E3" },
 ];
 
-// Shift definitions: name, display time label, start/end hour range (inclusive), colours
+// Shift definitions matching original Excel (05:00/06:00, 06:00/08:00, 11:00/13:00, 20:00/22:00)
 const SHIFT_DEFS = [
-  { name: "Swing",  label: "05:00 / 07:00", bg: "#FF6600", fg: "#fff", h0: 5,  h1: 6  },
-  { name: "Open",   label: "07:00 / 10:00", bg: "#92D050", fg: "#fff", h0: 7,  h1: 9  },
-  { name: "Mid",    label: "10:00 / 14:00", bg: "#FFFF00", fg: "#333", h0: 10, h1: 13 },
-  { name: "Late N", label: "14:00 / 22:00", bg: "#FFC000", fg: "#333", h0: 14, h1: 22 },
+  { name: "Swing",  label: "05:00 / 06:00", bg: "#FF6600", fg: "#fff", h0: 5,  h1: 6  },
+  { name: "Open",   label: "06:00 / 08:00", bg: "#92D050", fg: "#fff", h0: 6,  h1: 8  },
+  { name: "Mid",    label: "11:00 / 13:00", bg: "#FFFF00", fg: "#333", h0: 11, h1: 13 },
+  { name: "Late N", label: "20:00 / 22:00", bg: "#FFC000", fg: "#333", h0: 20, h1: 22 },
 ];
 
 function isManagerPos(pos: string | null) {
@@ -965,7 +965,7 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
             <div
               key={emp.fullName}
               className="border-r last:border-r-0 shrink-0"
-              style={{ width: 330 }}
+              style={{ width: 390 }}
               data-testid={`block-roster-${idx}`}
             >
               <table className="w-full border-collapse" style={{ fontSize: 11 }}>
@@ -1000,6 +1000,9 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
                     </th>
                     <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>
                       เวลาสแกนนิ้ว<br />เลิกงาน (จาก<br />Aloha)
+                    </th>
+                    <th className={`${thBorder} font-semibold`} style={{ color: c.accent }}>
+                      หมายเหตุ
                     </th>
                   </tr>
 
@@ -1037,19 +1040,22 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
                         <td className={`${tdBorder} text-center`}>
                           {clockOut}
                         </td>
+                        <td className={`${tdBorder} text-center`}>
+                          {rec?.notes || ""}
+                        </td>
                       </tr>
                     );
                   })}
 
                   {/* ── Spacer ── */}
-                  <tr><td colSpan={5} style={{ height: 8 }} /></tr>
+                  <tr><td colSpan={6} style={{ height: 8 }} /></tr>
 
                   {/* ── Shift summary header ── */}
                   <tr style={{ backgroundColor: c.colHead }}>
                     <th className={thBorder} style={{ color: c.accent }} colSpan={2}>Shift</th>
                     <th className={thBorder} style={{ color: c.accent }}>Time Roster</th>
                     <th className={thBorder} style={{ color: c.accent }}>Total</th>
-                    <th className={thBorder} style={{ color: c.accent }} />
+                    <th className={thBorder} style={{ color: c.accent }} colSpan={2} />
                   </tr>
 
                   {/* ── Shift rows ── */}
@@ -1060,7 +1066,7 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
                         <td className={tdBorder} colSpan={2} style={{ fontWeight: 600 }}>{s.name}</td>
                         <td className={`${tdBorder} text-center`}>{s.label}</td>
                         <td className={`${tdBorder} text-center font-bold`}>{total > 0 ? total : ""}</td>
-                        <td className={tdBorder} />
+                        <td className={tdBorder} colSpan={2} />
                       </tr>
                     );
                   })}

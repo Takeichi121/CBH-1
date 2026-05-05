@@ -189,7 +189,7 @@ export default function GamificationPage() {
         `/api/attendance/records?year=${year}&month=${month}&storeId=${encodeURIComponent(storeId)}&token=${encodeURIComponent(token)}`
       );
       const json = await res.json();
-      return Array.isArray(json) ? json : [];
+      return Array.isArray(json?.records) ? json.records : [];
     },
   });
 

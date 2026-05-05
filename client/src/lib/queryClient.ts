@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { safeStorage } from "@/lib/safe-storage";
 
 const SELECTED_STORE_KEY = "selected_store_id";
 
@@ -7,7 +8,7 @@ async function throwIfResNotOk(res: Response) {
     if (res.status === 401) {
       const isLoginPage = window.location.pathname === "/" || window.location.pathname === "/auth";
       if (!isLoginPage) {
-        localStorage.removeItem("bk_token");
+        safeStorage.removeItem("bk_token");
         window.location.href = "/";
       }
     }
@@ -30,7 +31,7 @@ export async function apiRequest(
 
   // For POST requests, inject storeId from localStorage if admin/area has selected a store
   if (method === "POST" && data && typeof data === "object" && !Array.isArray(data)) {
-    const selectedStoreId = localStorage.getItem(SELECTED_STORE_KEY);
+    const selectedStoreId = safeStorage.getItem(SELECTED_STORE_KEY);
     if (selectedStoreId && !("storeId" in (data as Record<string, unknown>))) {
       body = { ...(data as Record<string, unknown>), storeId: selectedStoreId };
     }

@@ -4,6 +4,7 @@ import { api } from "@shared/routes";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { safeStorage } from "@/lib/safe-storage";
 
 type User = {
   username: string;
@@ -52,12 +53,12 @@ function authHeaders(token?: string | null) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => safeStorage.getItem(TOKEN_KEY));
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStoreId, setSelectedStoreIdState] = useState<string | null>(() => {
-    const stored = localStorage.getItem(SELECTED_STORE_KEY);
+    const stored = safeStorage.getItem(SELECTED_STORE_KEY);
     if (stored === 'BK001GDP') {
-      localStorage.removeItem(SELECTED_STORE_KEY);
+      safeStorage.removeItem(SELECTED_STORE_KEY);
       return null;
     }
     return stored;
@@ -67,14 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   const setSelectedStoreId = (id: string) => {
-    localStorage.setItem(SELECTED_STORE_KEY, id);
+    safeStorage.setItem(SELECTED_STORE_KEY, id);
     setSelectedStoreIdState(id);
     // Invalidate all queries so data refreshes for new store
     queryClient.invalidateQueries();
   };
 
   const clearSession = () => {
-    localStorage.removeItem(TOKEN_KEY);
+    safeStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
   };
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function validateSession() {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storedToken = safeStorage.getItem(TOKEN_KEY);
       if (!storedToken) {
         if (!cancelled) setIsLoading(false);
         return;
@@ -214,7 +215,7 @@ function useLoginMutation(
       if (data?.ok) {
         setUser(data.user);
         setToken(data.token);
-        localStorage.setItem(TOKEN_KEY, data.token);
+        safeStorage.setItem(TOKEN_KEY, data.token);
 
         // กัน cache ของ user/role เก่า
         queryClient.invalidateQueries();
@@ -249,7 +250,7 @@ function useLogoutMutation(
 ) {
   return useMutation({
     mutationFn: async () => {
-      const t = localStorage.getItem(TOKEN_KEY);
+      const t = safeStorage.getItem(TOKEN_KEY);
       if (!t) return { ok: true };
 
       const res = await fetch(api.auth.logout.path, {

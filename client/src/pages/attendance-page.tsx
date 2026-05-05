@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Clock, Upload, FileSpreadsheet, CheckCircle2, Loader2,
-  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid
+  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid, Printer
 } from "lucide-react";
 import { PageTutorial, TutorialStep } from "@/components/page-tutorial";
 
@@ -1373,7 +1373,27 @@ export default function AttendancePage() {
           </TabsContent>
 
           <TabsContent value="roster">
-            <ExcelRosterView year={year} month={month} storeId={storeId} />
+            <div className="flex justify-end mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  document.body.classList.add("printing-roster");
+                  window.print();
+                  window.addEventListener("afterprint", () => {
+                    document.body.classList.remove("printing-roster");
+                  }, { once: true });
+                }}
+                data-testid="button-print-roster"
+                className="gap-1.5 h-9"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                {t("Print","พิมพ์")}
+              </Button>
+            </div>
+            <div id="roster-print-area">
+              <ExcelRosterView year={year} month={month} storeId={storeId} />
+            </div>
           </TabsContent>
 
           <TabsContent value="matrix">

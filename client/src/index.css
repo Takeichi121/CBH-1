@@ -161,3 +161,42 @@ textarea:not([readonly]),
     overscroll-behavior-y: contain;
   }
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  body.printing-roster * {
+    visibility: hidden;
+  }
+
+  body.printing-roster #roster-print-area,
+  body.printing-roster #roster-print-area * {
+    visibility: visible;
+  }
+
+  body.printing-roster #roster-print-area {
+    position: fixed;
+    inset: 0;
+    overflow: visible;
+  }
+
+  body.printing-roster #roster-print-area .rounded-lg {
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.printing-roster #roster-print-area .flex {
+    flex-wrap: nowrap;
+  }
+
+  body.printing-roster #roster-print-area input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+}

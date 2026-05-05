@@ -867,11 +867,15 @@ const EMP_COLORS = [
   { header: "#EDD6F8", accent: "#7030A0", colHead: "#C5A3E3" },
 ];
 
-// Shift definitions matching original Excel (05:00/06:00, 06:00/08:00, 11:00/13:00, 20:00/22:00)
+// Shift definitions — display labels match Excel; h0/h1 are non-overlapping count ranges (inclusive)
+// Swing  05:00/06:00 → counts start hours 5–6
+// Open   06:00/08:00 → counts start hours 7–10 (6am belongs to Swing to avoid double-count)
+// Mid    11:00/13:00 → counts start hours 11–19
+// Late N 20:00/22:00 → counts start hours 20–22
 const SHIFT_DEFS = [
   { name: "Swing",  label: "05:00 / 06:00", bg: "#FF6600", fg: "#fff", h0: 5,  h1: 6  },
-  { name: "Open",   label: "06:00 / 08:00", bg: "#92D050", fg: "#fff", h0: 6,  h1: 8  },
-  { name: "Mid",    label: "11:00 / 13:00", bg: "#70AD47", fg: "#fff", h0: 11, h1: 13 },
+  { name: "Open",   label: "06:00 / 08:00", bg: "#92D050", fg: "#fff", h0: 7,  h1: 10 },
+  { name: "Mid",    label: "11:00 / 13:00", bg: "#70AD47", fg: "#fff", h0: 11, h1: 19 },
   { name: "Late N", label: "20:00 / 22:00", bg: "#FFC000", fg: "#333", h0: 20, h1: 22 },
 ];
 
@@ -881,7 +885,7 @@ function isManagerPos(pos: string | null) {
   return p.includes("manager") || p.includes("shift");
 }
 
-function ExcelRosterView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
     queryFn: async () => {
@@ -983,7 +987,7 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
                   </tr>
                   <tr style={{ backgroundColor: c.header }}>
                     <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
-                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={2}>Grand Diamond</td>
+                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={2}>{storeName}</td>
                     <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
                     <td className={`${tdBorder} font-bold`} style={{ color: c.accent }}>{monthShort}</td>
                   </tr>

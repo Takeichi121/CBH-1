@@ -871,7 +871,7 @@ const EMP_COLORS = [
 const SHIFT_DEFS = [
   { name: "Swing",  label: "05:00 / 06:00", bg: "#FF6600", fg: "#fff", h0: 5,  h1: 6  },
   { name: "Open",   label: "06:00 / 08:00", bg: "#92D050", fg: "#fff", h0: 6,  h1: 8  },
-  { name: "Mid",    label: "11:00 / 13:00", bg: "#FFFF00", fg: "#333", h0: 11, h1: 13 },
+  { name: "Mid",    label: "11:00 / 13:00", bg: "#70AD47", fg: "#fff", h0: 11, h1: 13 },
   { name: "Late N", label: "20:00 / 22:00", bg: "#FFC000", fg: "#333", h0: 20, h1: 22 },
 ];
 
@@ -906,20 +906,24 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
   const recIdx: Record<string, ClockRecord> = {};
   records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
 
-  // Days of month
+  // Always render 31 rows; days beyond actual month length show blank data
   const daysInMonth = new Date(year, month, 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
+  const days = Array.from({ length: 31 }, (_, i) => {
     const d = i + 1;
-    const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    const dow = new Date(dateStr + "T00:00:00").getDay();
-    return { dateStr, d, dow };
+    const isValid = d <= daysInMonth;
+    const dateStr = isValid
+      ? `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`
+      : null;
+    const dow = isValid && dateStr ? new Date(dateStr + "T00:00:00").getDay() : null;
+    return { dateStr, d, dow, isValid };
   });
 
   const monthShort = MONTH_SHORT[month - 1];
 
-  // Count shifts for shift summary table
+  // Count shifts for shift summary table (only valid days)
   function shiftCount(empName: string, h0: number, h1: number): number {
-    return days.reduce((acc, { dateStr }) => {
+    return days.reduce((acc, { dateStr, isValid }) => {
+      if (!isValid || !dateStr) return acc;
       const rec = recIdx[`${dateStr}:${empName}`];
       if (!rec?.rosterTime) return acc;
       const raw = rec.rosterTime.split(" - ")[0]?.trim() || "";
@@ -1006,8 +1010,17 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
                     </th>
                   </tr>
 
-                  {/* ── Daily rows ── */}
-                  {days.map(({ dateStr, d, dow }) => {
+                  {/* ── Daily rows (always 31) ── */}
+                  {days.map(({ dateStr, d, dow, isValid }) => {
+                    if (!isValid) {
+                      // Day doesn't exist in this month — blank row
+                      return (
+                        <tr key={`blank-${d}`} style={{ color: "#BFBFBF" }} data-testid={`row-roster-${idx}-${d}`}>
+                          <td className={`${tdBorder} text-center`}>{d}</td>
+                          <td className={tdBorder} colSpan={5} />
+                        </tr>
+                      );
+                    }
                     const rec = recIdx[`${dateStr}:${emp.fullName}`];
                     const isWknd = dow === 0 || dow === 6;
                     const roster = displayRoster(rec?.rosterTime ?? null);
@@ -1024,7 +1037,7 @@ function ExcelRosterView({ year, month, storeId }: { year: number; month: number
                       >
                         <td className={`${tdBorder} text-center whitespace-nowrap font-medium`}
                           style={{ color: isWknd ? "#833C00" : undefined }}>
-                          {DOW_EN3[dow]}
+                          {DOW_EN3[dow!]}
                         </td>
                         <td className={`${tdBorder} text-center whitespace-nowrap`}>
                           {d}-{monthShort}

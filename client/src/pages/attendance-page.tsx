@@ -853,6 +853,228 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
 }
 
 // ─────────────────────────────────────────────────────────
+// Excel Roster View (Manager team — read-only)
+// ─────────────────────────────────────────────────────────
+const DOW_EN3 = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Header colours per employee block (matching Excel palette)
+const EMP_COLORS = [
+  { header: "#E2EFDA", accent: "#375623", colHead: "#A9D18E" },
+  { header: "#FCE4D6", accent: "#833C00", colHead: "#F4B183" },
+  { header: "#FFF2CC", accent: "#7F6000", colHead: "#FFD966" },
+  { header: "#DDEBF7", accent: "#1F3864", colHead: "#9DC3E6" },
+  { header: "#EDEDED", accent: "#3F3F3F", colHead: "#BFBFBF" },
+];
+
+// Shift definitions: name, display time label, start/end hour range (inclusive), colours
+const SHIFT_DEFS = [
+  { name: "Swing",  label: "05:00 / 07:00", bg: "#FF6600", fg: "#fff", h0: 5,  h1: 6  },
+  { name: "Open",   label: "07:00 / 10:00", bg: "#92D050", fg: "#fff", h0: 7,  h1: 9  },
+  { name: "Mid",    label: "10:00 / 14:00", bg: "#FFFF00", fg: "#333", h0: 10, h1: 13 },
+  { name: "Late N", label: "14:00 / 22:00", bg: "#FFC000", fg: "#333", h0: 14, h1: 22 },
+];
+
+function isManagerPos(pos: string | null) {
+  if (!pos) return false;
+  const p = pos.toLowerCase();
+  return p.includes("manager") || p.includes("shift");
+}
+
+function ExcelRosterView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+    queryKey: ["/api/attendance/records", year, month, storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/records?token=${token}&year=${year}&month=${month}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const records = data?.records || [];
+
+  // Build ordered manager list (first appearance order)
+  const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  records.forEach(r => {
+    if (isManagerPos(r.position) && !empMap.has(r.employeeFullName)) {
+      empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+    }
+  });
+  const managers = Array.from(empMap.values());
+
+  // Record index: "YYYY-MM-DD:fullName"
+  const recIdx: Record<string, ClockRecord> = {};
+  records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
+
+  // Days of month
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const dow = new Date(dateStr + "T00:00:00").getDay();
+    return { dateStr, d, dow };
+  });
+
+  const monthShort = MONTH_SHORT[month - 1];
+
+  // Count shifts for shift summary table
+  function shiftCount(empName: string, h0: number, h1: number): number {
+    return days.reduce((acc, { dateStr }) => {
+      const rec = recIdx[`${dateStr}:${empName}`];
+      if (!rec?.rosterTime) return acc;
+      const raw = rec.rosterTime.split(" - ")[0]?.trim() || "";
+      const h = parseInt(formatTime(raw).split(":")[0] || "");
+      return (!isNaN(h) && h >= h0 && h <= h1) ? acc + 1 : acc;
+    }, 0);
+  }
+
+  // Parse roster time: show full range or single time
+  function displayRoster(rosterTime: string | null): string {
+    if (!rosterTime) return "";
+    if (rosterTime.toUpperCase().includes("OFF")) return "OFF";
+    // "HH:MM - HH:MM" -> keep as is (already readable), or handle datetime
+    if (rosterTime.includes("T")) return formatTime(rosterTime);
+    return rosterTime;
+  }
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+
+  if (managers.length === 0) return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-3 py-12">
+        <Users className="h-12 w-12 text-muted-foreground/40" />
+        <p className="text-muted-foreground text-center text-sm font-medium">ไม่มีข้อมูลทีมผู้จัดการในเดือนนี้</p>
+        <p className="text-xs text-muted-foreground/70">ข้อมูลแสดงเฉพาะตำแหน่ง Manager และ Shift Manager — กรุณา Import Excel ก่อน</p>
+      </CardContent>
+    </Card>
+  );
+
+  const tdBorder = "border border-gray-300 px-1.5 py-0.5";
+  const thBorder = "border border-gray-300 px-1.5 py-1 text-center";
+
+  return (
+    <div className="rounded-lg border overflow-auto" style={{ maxHeight: "75vh" }}>
+      <div className="flex min-w-max">
+        {managers.map((emp, idx) => {
+          const c = EMP_COLORS[idx % EMP_COLORS.length];
+          return (
+            <div
+              key={emp.fullName}
+              className="border-r last:border-r-0 shrink-0"
+              style={{ width: 330 }}
+              data-testid={`block-roster-${idx}`}
+            >
+              <table className="w-full border-collapse" style={{ fontSize: 11 }}>
+                <tbody>
+                  {/* ── Employee header ── */}
+                  <tr style={{ backgroundColor: c.header }}>
+                    <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อ</td>
+                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.fullName}</td>
+                    <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อเล่น</td>
+                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }}>{emp.nickName || "-"}</td>
+                  </tr>
+                  <tr style={{ backgroundColor: c.header }}>
+                    <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
+                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={2}>Grand Diamond</td>
+                    <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
+                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }}>{monthShort}</td>
+                  </tr>
+                  <tr style={{ backgroundColor: c.header }}>
+                    <td className={`${tdBorder} font-medium`} style={{ color: c.accent }}>ตำแหน่ง</td>
+                    <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={4}>{emp.position || "-"}</td>
+                  </tr>
+
+                  {/* ── Column headers ── */}
+                  <tr style={{ backgroundColor: c.colHead }}>
+                    <th className={`${thBorder} font-semibold`} style={{ color: c.accent }}>วัน</th>
+                    <th className={`${thBorder} font-semibold`} style={{ color: c.accent }}>วันที่</th>
+                    <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>
+                      เวลาเข้างาน<br />(ตาม roster ที่<br />มีลายเซ็น AC)
+                    </th>
+                    <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>
+                      เวลาสแกนนิ้ว<br />เข้างาน (จาก<br />Aloha)
+                    </th>
+                    <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>
+                      เวลาสแกนนิ้ว<br />เลิกงาน (จาก<br />Aloha)
+                    </th>
+                  </tr>
+
+                  {/* ── Daily rows ── */}
+                  {days.map(({ dateStr, d, dow }) => {
+                    const rec = recIdx[`${dateStr}:${emp.fullName}`];
+                    const isWknd = dow === 0 || dow === 6;
+                    const roster = displayRoster(rec?.rosterTime ?? null);
+                    const isOff = roster.toUpperCase() === "OFF";
+                    const clockIn  = rec?.clockInTime  ? formatTime(rec.clockInTime)  : "";
+                    const clockOut = rec?.clockOutTime ? formatTime(rec.clockOutTime) : "";
+                    const status = getLateStatus(rec?.rosterTime ?? null, rec?.clockInTime ?? null);
+
+                    return (
+                      <tr
+                        key={dateStr}
+                        style={{ backgroundColor: isWknd ? "#FFF2CC" : undefined }}
+                        data-testid={`row-roster-${idx}-${d}`}
+                      >
+                        <td className={`${tdBorder} text-center whitespace-nowrap font-medium`}
+                          style={{ color: isWknd ? "#833C00" : undefined }}>
+                          {DOW_EN3[dow]}
+                        </td>
+                        <td className={`${tdBorder} text-center whitespace-nowrap`}>
+                          {d}-{monthShort}
+                        </td>
+                        <td className={`${tdBorder} text-center`}
+                          style={{ color: isOff ? "#CC0000" : undefined, fontWeight: isOff ? 700 : undefined }}>
+                          {roster}
+                        </td>
+                        <td className={`${tdBorder} text-center`}
+                          style={{ color: status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined }}>
+                          {clockIn}
+                        </td>
+                        <td className={`${tdBorder} text-center`}>
+                          {clockOut}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {/* ── Spacer ── */}
+                  <tr><td colSpan={5} style={{ height: 8 }} /></tr>
+
+                  {/* ── Shift summary header ── */}
+                  <tr style={{ backgroundColor: c.colHead }}>
+                    <th className={thBorder} style={{ color: c.accent }} colSpan={2}>Shift</th>
+                    <th className={thBorder} style={{ color: c.accent }}>Time Roster</th>
+                    <th className={thBorder} style={{ color: c.accent }}>Total</th>
+                    <th className={thBorder} style={{ color: c.accent }} />
+                  </tr>
+
+                  {/* ── Shift rows ── */}
+                  {SHIFT_DEFS.map(s => {
+                    const total = shiftCount(emp.fullName, s.h0, s.h1);
+                    return (
+                      <tr key={s.name} style={{ backgroundColor: s.bg, color: s.fg }}>
+                        <td className={tdBorder} colSpan={2} style={{ fontWeight: 600 }}>{s.name}</td>
+                        <td className={`${tdBorder} text-center`}>{s.label}</td>
+                        <td className={`${tdBorder} text-center font-bold`}>{total > 0 ? total : ""}</td>
+                        <td className={tdBorder} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────
 export default function AttendancePage() {
@@ -932,9 +1154,12 @@ export default function AttendancePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="records" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
             <TabsTrigger value="records" data-testid="tab-records" className="gap-1 text-xs">
               <Clock className="h-3.5 w-3.5" />{t("Records","บันทึก")}
+            </TabsTrigger>
+            <TabsTrigger value="roster" data-testid="tab-roster" className="gap-1 text-xs">
+              <FileSpreadsheet className="h-3.5 w-3.5" />{t("Roster Sheet","ตารางงาน")}
             </TabsTrigger>
             <TabsTrigger value="matrix" data-testid="tab-matrix" className="gap-1 text-xs">
               <LayoutGrid className="h-3.5 w-3.5" />{t("Matrix","ตารางเปรียบ")}
@@ -946,6 +1171,10 @@ export default function AttendancePage() {
 
           <TabsContent value="records">
             <MonthlyView year={year} month={month} storeId={storeId} />
+          </TabsContent>
+
+          <TabsContent value="roster">
+            <ExcelRosterView year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="matrix">

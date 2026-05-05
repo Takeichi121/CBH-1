@@ -580,6 +580,7 @@ export default function DailySalesPage() {
   const [staffShiftGroups, setStaffShiftGroups] = useState(DEFAULT_STAFF_SHIFT_GROUPS);
   const [openNicknamePopover, setOpenNicknamePopover] = useState<number | null>(null);
   const [nicknameSearch, setNicknameSearch] = useState("");
+  const staffClonePendingRef = useRef<number | null>(null);
 
   const { saveData, restoreData, clearData, hasDraft } =
     useFormPersistence<FormData>("daily-sales-form");
@@ -949,14 +950,20 @@ export default function DailySalesPage() {
       customStart: src.customStart || "08:00",
       customEnd: src.customEnd || "16:00",
     };
-    const updated = [
+    staffClonePendingRef.current = index + 1;
+    setStaffRosterEntries([
       ...staffRosterEntries.slice(0, index + 1),
       newEntry,
       ...staffRosterEntries.slice(index + 1),
-    ];
-    setStaffRosterEntries(updated);
-    setTimeout(() => setOpenNicknamePopover(index + 1), 50);
+    ]);
   };
+
+  useEffect(() => {
+    if (staffClonePendingRef.current !== null) {
+      setOpenNicknamePopover(staffClonePendingRef.current);
+      staffClonePendingRef.current = null;
+    }
+  }, [staffRosterEntries.length]);
 
   const removeStaffEntry = (index: number) => {
     setStaffRosterEntries(staffRosterEntries.filter((_, i) => i !== index));
@@ -4431,6 +4438,10 @@ ${v.staffRosterText || ""}
                           {language === "th" ? "เพิ่ม" : "Add"}
                         </Button>
                       </div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                        <UserPlus className="w-3 h-3 shrink-0" />
+                        {language === "th" ? "กด เพื่อเพิ่มคนที่กะเดียวกัน" : "Tap to add another person to the same shift"}
+                      </p>
                       <div className="space-y-2">
                         {staffRosterEntries.map((entry, index) => (
                           <div key={index} className="flex flex-wrap items-center gap-2">

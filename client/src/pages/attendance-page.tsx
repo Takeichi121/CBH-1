@@ -589,6 +589,22 @@ function MonthlyView({ year, month, storeId }: { year: number; month: number; st
 }
 
 // ─────────────────────────────────────────────────────────
+// Shared time-format validation
+// Accepts: "" | "OFF" | "HH:MM" | "HH:MM - HH:MM"
+// ─────────────────────────────────────────────────────────
+const TIME_RE       = /^\d{1,2}:\d{2}$/;
+const TIME_RANGE_RE = /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/;
+
+function isValidTimeInput(val: string): boolean {
+  const v = val.trim();
+  if (!v) return true;
+  if (v.toUpperCase() === "OFF") return true;
+  return TIME_RE.test(v) || TIME_RANGE_RE.test(v);
+}
+
+const TIME_ERR_MSG = "รูปแบบไม่ถูกต้อง เช่น 05:00 หรือ 05:00 - 14:00";
+
+// ─────────────────────────────────────────────────────────
 // Matrix View (Excel-style: rows=dates, cols=employees)
 // ─────────────────────────────────────────────────────────
 const DOW_TH = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
@@ -600,6 +616,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
 
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
@@ -644,12 +661,31 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
   const setEdit = (date: string, empName: string, field: string, value: string) => {
     const k = `${date}:${empName}`;
     setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
   };
 
   const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
     const k = `${date}:${emp.fullName}`;
     const edits = localEdits[k];
     if (!edits || Object.keys(edits).length === 0) return;
+
+    // Validate time fields before sending to API
+    const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
+    const newErrors: Record<string, string> = {};
+    for (const field of timeFields) {
+      const val = edits[field] ?? "";
+      if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(prev => ({ ...prev, ...newErrors }));
+      return;
+    }
+    setFieldErrors(prev => {
+      const n = { ...prev };
+      timeFields.forEach(f => delete n[`${k}:${f}`]);
+      return n;
+    });
+
     const existing = recordIndex[k];
     const payload = {
       token: localStorage.getItem("bk_token"),
@@ -792,37 +828,47 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
                       : status === "early" ? "text-blue-500"
                       : status === "on-time" ? "text-green-600" : "";
 
+                    const errR = fieldErrors[`${k}:rosterTime`];
+                    const errI = fieldErrors[`${k}:clockInTime`];
+                    const errO = fieldErrors[`${k}:clockOutTime`];
+
                     return (
                       <>
                         <td key={`${k}-r`} className="border px-0.5 py-0.5">
                           <input
-                            className={inputCls}
+                            className={`${inputCls} ${errR ? "ring-1 ring-red-500 rounded" : ""}`}
                             value={roster}
                             placeholder="05:00"
+                            title={errR}
                             onChange={e => setEdit(date, emp.fullName, "rosterTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
                             data-testid={`cell-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
+                          {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errR}</div>}
                         </td>
                         <td key={`${k}-i`} className="border px-0.5 py-0.5">
                           <input
-                            className={`${inputCls} ${inColor}`}
+                            className={`${inputCls} ${inColor} ${errI ? "ring-1 ring-red-500 rounded" : ""}`}
                             value={clockIn}
                             placeholder="05:02"
+                            title={errI}
                             onChange={e => setEdit(date, emp.fullName, "clockInTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
                             data-testid={`cell-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
+                          {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errI}</div>}
                         </td>
                         <td key={`${k}-o`} className="border px-0.5 py-0.5">
                           <input
-                            className={inputCls}
+                            className={`${inputCls} ${errO ? "ring-1 ring-red-500 rounded" : ""}`}
                             value={clockOut}
                             placeholder="14:00"
+                            title={errO}
                             onChange={e => setEdit(date, emp.fullName, "clockOutTime", e.target.value)}
                             onBlur={() => saveRow(date, emp)}
                             data-testid={`cell-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}
                           />
+                          {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errO}</div>}
                         </td>
                         <td key={`${k}-n`} className="border px-0.5 py-0.5">
                           {isSaving ? (
@@ -889,6 +935,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   const { toast } = useToast();
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
@@ -920,12 +967,31 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   const setEdit = (date: string, empName: string, field: string, value: string) => {
     const k = `${date}:${empName}`;
     setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
   };
 
   const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
     const k = `${date}:${emp.fullName}`;
     const edits = localEdits[k];
     if (!edits || Object.keys(edits).length === 0) return;
+
+    // Validate time fields before sending to API
+    const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
+    const newErrors: Record<string, string> = {};
+    for (const field of timeFields) {
+      const val = edits[field] ?? "";
+      if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(prev => ({ ...prev, ...newErrors }));
+      return;
+    }
+    setFieldErrors(prev => {
+      const n = { ...prev };
+      timeFields.forEach(f => delete n[`${k}:${f}`]);
+      return n;
+    });
+
     const existing = recIdx[k];
     const payload = {
       token: localStorage.getItem("bk_token"),
@@ -1089,6 +1155,10 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
 
                     const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center";
 
+                    const errR = fieldErrors[`${k}:rosterTime`];
+                    const errI = fieldErrors[`${k}:clockInTime`];
+                    const errO = fieldErrors[`${k}:clockOutTime`];
+
                     return (
                       <tr
                         key={dateStr}
@@ -1102,38 +1172,43 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                         <td className={`${tdBorder} text-center whitespace-nowrap`}>
                           {d}-{monthShort}
                         </td>
-                        <td className={`${tdBorder} p-0`}
-                          style={{ color: isOff ? "#CC0000" : undefined, fontWeight: isOff ? 700 : undefined }}>
+                        <td className={`${tdBorder} p-0`}>
                           <input
-                            className={cellInput}
+                            className={`${cellInput} ${errR ? "ring-1 ring-red-500" : ""}`}
                             style={{ color: isOff ? "#CC0000" : undefined, fontWeight: isOff ? 700 : undefined }}
                             value={rosterVal}
                             placeholder="05:00 - 14:00"
+                            title={errR}
                             onChange={e => setEdit(dateStr, emp.fullName, "rosterTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
                             data-testid={`cell-exroster-${idx}-${d}`}
                           />
+                          {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exroster-${idx}-${d}`}>{errR}</div>}
                         </td>
                         <td className={`${tdBorder} p-0`}>
                           <input
-                            className={cellInput}
+                            className={`${cellInput} ${errI ? "ring-1 ring-red-500" : ""}`}
                             style={{ color: inColor }}
                             value={clockInVal}
                             placeholder="05:02"
+                            title={errI}
                             onChange={e => setEdit(dateStr, emp.fullName, "clockInTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
                             data-testid={`cell-exin-${idx}-${d}`}
                           />
+                          {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exin-${idx}-${d}`}>{errI}</div>}
                         </td>
                         <td className={`${tdBorder} p-0`}>
                           <input
-                            className={cellInput}
+                            className={`${cellInput} ${errO ? "ring-1 ring-red-500" : ""}`}
                             value={clockOutVal}
                             placeholder="14:00"
+                            title={errO}
                             onChange={e => setEdit(dateStr, emp.fullName, "clockOutTime", e.target.value)}
                             onBlur={() => saveRow(dateStr, emp)}
                             data-testid={`cell-exout-${idx}-${d}`}
                           />
+                          {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exout-${idx}-${d}`}>{errO}</div>}
                         </td>
                         <td className={`${tdBorder} p-0`}>
                           {isSaving ? (

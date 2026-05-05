@@ -770,7 +770,7 @@ function MatrixView({ year, month, storeId }: { year: number; month: number; sto
       {/* Legend */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs text-muted-foreground">
-          {t("Click any cell to edit — saves automatically on leaving.", "คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์")}
+          {t("Click any cell to edit — saves on blur. Press Escape to cancel.", "คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์ • กด Escape เพื่อยกเลิก")}
         </p>
         <div className="flex gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />{t("On time","ตรงเวลา")}</span>
@@ -1128,6 +1128,10 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   const thBorder = "border border-gray-300 px-1.5 py-1 text-center";
 
   return (
+    <>
+      <p className="text-xs text-muted-foreground mb-1.5">
+        คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์ • กด Escape เพื่อยกเลิก
+      </p>
     <div className="rounded-lg border overflow-auto" style={{ maxHeight: "75vh" }}>
       <div className="flex min-w-max">
         {managers.map((emp, idx) => {
@@ -1312,6 +1316,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
         })}
       </div>
     </div>
+    </>
   );
 }
 

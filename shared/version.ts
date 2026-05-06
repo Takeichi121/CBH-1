@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.1";
+export const APP_VERSION = "2.5.2";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.2",
+    date: "2026-05-06",
+    label: "feature",
+    changes: [
+      "หน้าการแจ้งเตือน: เพิ่มหน้า /notifications แสดงรายการแจ้งเตือนทั้งหมดแบบเต็มหน้าจอ พร้อม filter ตามประเภท (ทั้งหมด / ยังไม่อ่าน / แต่ละ type)",
+      "Notification Bell: เพิ่มปุ่ม 'ดูทั้งหมด' ที่ด้านล่าง popover เพื่อไปหน้า /notifications",
+      "Bugfix: แก้ไข localStorage calls ใน notification-bell.tsx ให้ใช้ safeStorage (Mobile Safari compatible)",
+    ],
+  },
   {
     version: "2.5.1",
     date: "2026-05-02",

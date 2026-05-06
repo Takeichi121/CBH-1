@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Bell, CheckCircle2, XCircle, CalendarDays, Package, Sparkles, ClipboardList, FileText } from "lucide-react";
+import { Bell, CheckCircle2, XCircle, CalendarDays, Package, Sparkles, ClipboardList, FileText, ArrowRight } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { safeStorage } from "@/lib/safe-storage";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Link } from "wouter";
 import type { Notification } from "@shared/schema";
 
 function formatRelativeTime(createdAt: string): string {
@@ -25,7 +27,7 @@ function formatRelativeTime(createdAt: string): string {
 }
 
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem("bk_token");
+  const token = safeStorage.getItem("bk_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -51,7 +53,7 @@ export function NotificationBell() {
 
   const markReadMutation = useMutation({
     mutationFn: async (id: number) => {
-      const token = localStorage.getItem("bk_token") || "";
+      const token = safeStorage.getItem("bk_token") || "";
       const res = await fetch(`/api/notifications/${id}/read`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
@@ -66,7 +68,7 @@ export function NotificationBell() {
 
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem("bk_token") || "";
+      const token = safeStorage.getItem("bk_token") || "";
       const res = await fetch("/api/notifications/read-all", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
@@ -187,6 +189,18 @@ export function NotificationBell() {
             </div>
           </ScrollArea>
         )}
+
+        <div className="border-t px-4 py-2">
+          <Link href="/notifications" onClick={() => setOpen(false)}>
+            <a
+              className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary/5 transition-colors"
+              data-testid="link-view-all-notifications"
+            >
+              ดูทั้งหมด
+              <ArrowRight className="w-3 h-3" />
+            </a>
+          </Link>
+        </div>
       </PopoverContent>
     </Popover>
   );

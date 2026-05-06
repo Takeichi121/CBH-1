@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "wouter";
+import { useI18n } from "@/hooks/use-i18n";
 import type { Notification } from "@shared/schema";
+
+function ViewAllLabel() {
+  const { language } = useI18n();
+  return <span>{language === "th" ? "ดูทั้งหมด" : "View all"}</span>;
+}
 
 function formatRelativeTime(createdAt: string): string {
   const now = Date.now();
@@ -196,7 +202,7 @@ export function NotificationBell() {
               className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary/5 transition-colors"
               data-testid="link-view-all-notifications"
             >
-              ดูทั้งหมด
+              <ViewAllLabel />
               <ArrowRight className="w-3 h-3" />
             </a>
           </Link>

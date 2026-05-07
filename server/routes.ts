@@ -9335,6 +9335,16 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     return res.json({ ok: true });
   }));
 
+  app.post("/api/notifications/clear-read", safe(async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body?.token;
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+    await storage.deleteReadNotifications(session.username);
+    return res.json({ ok: true });
+  }));
+
   // ==========================================
   // 📢 Announcements API
   // ==========================================

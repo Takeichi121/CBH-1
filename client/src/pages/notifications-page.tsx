@@ -16,6 +16,8 @@ import {
   FileText,
   CheckCheck,
   Filter,
+  Trash2,
+  X,
 } from "lucide-react";
 import type { Notification } from "@shared/schema";
 
@@ -141,6 +143,34 @@ export default function NotificationsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
   });
 
+  const deleteNotifMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/notifications/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+  });
+
+  const clearReadMutation = useMutation({
+    mutationFn: async () => {
+      const token = safeStorage.getItem("bk_token") || "";
+      const res = await fetch("/api/notifications/clear-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify({ token }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+  });
+
   const handleItemClick = (notif: Notification) => {
     if (!notif.isRead) {
       markReadMutation.mutate(notif.id);
@@ -158,6 +188,8 @@ export default function NotificationsPage() {
     return acc;
   }, {});
 
+  const readCount = allNotifications.filter((n) => n.isRead).length;
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
@@ -173,19 +205,34 @@ export default function NotificationsPage() {
             </Badge>
           )}
         </div>
-        {unreadCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8 text-xs"
-            onClick={() => markAllReadMutation.mutate()}
-            disabled={markAllReadMutation.isPending}
-            data-testid="button-mark-all-read-page"
-          >
-            <CheckCheck className="w-3.5 h-3.5" />
-            {language === "th" ? "อ่านทั้งหมด" : "Mark all read"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {readCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-8 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/50"
+              onClick={() => clearReadMutation.mutate()}
+              disabled={clearReadMutation.isPending}
+              data-testid="button-clear-read"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {language === "th" ? "ล้างที่อ่านแล้ว" : "Clear read"}
+            </Button>
+          )}
+          {unreadCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-8 text-xs"
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+              data-testid="button-mark-all-read-page"
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              {language === "th" ? "อ่านทั้งหมด" : "Mark all read"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -245,37 +292,53 @@ export default function NotificationsPage() {
         ) : (
           <div className="divide-y">
             {filteredNotifications.map((notif) => (
-              <button
+              <div
                 key={notif.id}
-                className={`w-full text-left px-4 py-4 transition-colors hover:bg-muted/40 flex gap-3 items-start ${
+                className={`relative group flex gap-3 items-start px-4 py-4 transition-colors hover:bg-muted/40 ${
                   !notif.isRead ? "bg-primary/5" : ""
                 }`}
-                onClick={() => handleItemClick(notif)}
                 data-testid={`notification-item-${notif.id}`}
               >
-                <div className="relative flex-shrink-0 mt-0.5">
-                  <NotifIcon type={notif.type} />
+                <button
+                  className="flex gap-3 items-start flex-1 text-left min-w-0"
+                  onClick={() => handleItemClick(notif)}
+                >
+                  <div className="relative flex-shrink-0 mt-0.5">
+                    <NotifIcon type={notif.type} />
+                    {!notif.isRead && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm leading-snug ${!notif.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
+                      {language === "th" ? (notif.titleTh || notif.title) : (notif.title || notif.titleTh)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {language === "th" ? (notif.messageTh || notif.message) : (notif.message || notif.messageTh)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1.5">
+                      {formatRelativeTime(notif.createdAt, language)}
+                    </p>
+                  </div>
                   {!notif.isRead && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />
+                    <span className="shrink-0 mt-1 text-[10px] text-primary font-medium" data-testid={`notif-unread-${notif.id}`}>
+                      {language === "th" ? "ใหม่" : "New"}
+                    </span>
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${!notif.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
-                    {language === "th" ? (notif.titleTh || notif.title) : (notif.title || notif.titleTh)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {language === "th" ? (notif.messageTh || notif.message) : (notif.message || notif.messageTh)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1.5">
-                    {formatRelativeTime(notif.createdAt, language)}
-                  </p>
-                </div>
-                {!notif.isRead && (
-                  <span className="shrink-0 mt-1 text-[10px] text-primary font-medium" data-testid={`notif-unread-${notif.id}`}>
-                    {language === "th" ? "ใหม่" : "New"}
-                  </span>
-                )}
-              </button>
+                </button>
+                <button
+                  className="shrink-0 mt-0.5 p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteNotifMutation.mutate(notif.id);
+                  }}
+                  disabled={deleteNotifMutation.isPending}
+                  title={language === "th" ? "ลบการแจ้งเตือนนี้" : "Delete this notification"}
+                  data-testid={`button-delete-notif-${notif.id}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         )}

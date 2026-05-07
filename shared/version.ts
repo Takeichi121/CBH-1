@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.2";
+export const APP_VERSION = "2.5.3";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.3",
+    date: "2026-05-06",
+    label: "feature",
+    changes: [
+      "Notifications: เพิ่มปุ่ม X ลบทีละรายการในหน้า /notifications (ปุ่มจะแสดงเมื่อ hover)",
+      "Notifications: เพิ่มปุ่ม 'ล้างที่อ่านแล้ว' ใน header ของหน้า notifications เพื่อลบทุกรายการที่อ่านแล้วในคราวเดียว",
+      "Backend: เพิ่ม API DELETE /api/notifications/:id และ POST /api/notifications/clear-read",
+    ],
+  },
   {
     version: "2.5.2",
     date: "2026-05-06",

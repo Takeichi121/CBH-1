@@ -140,6 +140,7 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<void>;
   markAllNotificationsAsRead(username: string): Promise<void>;
   deleteNotification(id: number): Promise<void>;
+  deleteReadNotifications(username: string): Promise<void>;
 
   // Announcements
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
@@ -931,6 +932,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNotification(id: number): Promise<void> {
     await db.delete(notifications).where(eq(notifications.id, id));
+  }
+
+  async deleteReadNotifications(username: string): Promise<void> {
+    await db.delete(notifications).where(
+      and(eq(notifications.recipientUsername, username), eq(notifications.isRead, 1))
+    );
   }
 
   // Announcements

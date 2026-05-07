@@ -6,9 +6,10 @@ import { safeStorage } from "@/lib/safe-storage";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
 import type { Notification } from "@shared/schema";
+import { getNotificationUrl } from "@/lib/notification-utils";
 
 function ViewAllLabel() {
   const { language } = useI18n();
@@ -39,6 +40,7 @@ function getAuthHeader(): Record<string, string> {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const [, navigate] = useLocation();
 
   const { data } = useQuery<{ ok: boolean; notifications: Notification[]; unreadCount: number }>({
     queryKey: ["/api/notifications"],
@@ -88,8 +90,13 @@ export function NotificationBell() {
   });
 
   const handleItemClick = (notif: Notification) => {
+    const url = getNotificationUrl(notif.type);
     if (!notif.isRead) {
       markReadMutation.mutate(notif.id);
+    }
+    if (url) {
+      setOpen(false);
+      navigate(url);
     }
   };
 
@@ -167,7 +174,7 @@ export function NotificationBell() {
               {notifications.map((notif) => (
                 <button
                   key={notif.id}
-                  className={`w-full text-left px-4 py-3 transition-colors hover:bg-muted/50 flex gap-3 items-start ${
+                  className={`group w-full text-left px-4 py-3 transition-colors hover:bg-muted/50 flex gap-3 items-start ${
                     !notif.isRead ? "bg-primary/5" : ""
                   }`}
                   onClick={() => handleItemClick(notif)}
@@ -190,6 +197,9 @@ export function NotificationBell() {
                       {formatRelativeTime(notif.createdAt)}
                     </p>
                   </div>
+                  {getNotificationUrl(notif.type) && (
+                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
+                  )}
                 </button>
               ))}
             </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { safeStorage } from "@/lib/safe-storage";
+import { useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +19,10 @@ import {
   Filter,
   Trash2,
   X,
+  ArrowRight,
 } from "lucide-react";
 import type { Notification } from "@shared/schema";
+import { getNotificationUrl } from "@/lib/notification-utils";
 
 function formatRelativeTime(createdAt: string, language: string): string {
   const now = Date.now();
@@ -95,6 +98,7 @@ const FILTER_TABS: NotifType[] = ["all", "unread", "version_update", "manager_re
 export default function NotificationsPage() {
   const { language } = useI18n();
   const [activeFilter, setActiveFilter] = useState<NotifType>("all");
+  const [, navigate] = useLocation();
 
   const { data, isLoading } = useQuery<{ ok: boolean; notifications: Notification[]; unreadCount: number }>({
     queryKey: ["/api/notifications"],
@@ -172,8 +176,12 @@ export default function NotificationsPage() {
   });
 
   const handleItemClick = (notif: Notification) => {
+    const url = getNotificationUrl(notif.type);
     if (!notif.isRead) {
       markReadMutation.mutate(notif.id);
+    }
+    if (url) {
+      navigate(url);
     }
   };
 
@@ -320,11 +328,16 @@ export default function NotificationsPage() {
                       {formatRelativeTime(notif.createdAt, language)}
                     </p>
                   </div>
-                  {!notif.isRead && (
-                    <span className="shrink-0 mt-1 text-[10px] text-primary font-medium" data-testid={`notif-unread-${notif.id}`}>
-                      {language === "th" ? "ใหม่" : "New"}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+                    {!notif.isRead && (
+                      <span className="text-[10px] text-primary font-medium" data-testid={`notif-unread-${notif.id}`}>
+                        {language === "th" ? "ใหม่" : "New"}
+                      </span>
+                    )}
+                    {getNotificationUrl(notif.type) && (
+                      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+                    )}
+                  </div>
                 </button>
                 <button
                   className="shrink-0 mt-0.5 p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"

@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.3";
+export const APP_VERSION = "2.5.4";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.4",
+    date: "2026-05-07",
+    label: "improvement",
+    changes: [
+      "Notifications: คลิกการแจ้งเตือนแล้วพาไปหน้าที่เกี่ยวข้องโดยตรง (mark read + navigate)",
+      "Notifications: request_approved/rejected/manager_request → /requests, roster_published → /roster, daily_report → /sales/daily, borrow_transaction → /borrow/transactions",
+      "Notifications: เพิ่มไอคอน arrow บนรายการที่มี deep-link เพื่อบอกผู้ใช้ว่าคลิกแล้วจะถูกพาไป",
+    ],
+  },
   {
     version: "2.5.3",
     date: "2026-05-06",

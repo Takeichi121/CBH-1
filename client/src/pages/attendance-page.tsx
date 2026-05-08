@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Clock, Upload, FileSpreadsheet, CheckCircle2, Loader2,
-  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid, Printer
+  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid, Printer, FileText
 } from "lucide-react";
 import { PageTutorial, TutorialStep } from "@/components/page-tutorial";
 
@@ -1344,6 +1344,391 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
 }
 
 // ─────────────────────────────────────────────────────────
+// Clock In Out CSV Sheet Tab
+// ─────────────────────────────────────────────────────────
+const CSV_SHIFTS_FE = [
+  { label: "Swing/5:00",   h0: 5,  h1: 5  },
+  { label: "Open/6:00",    h0: 6,  h1: 6  },
+  { label: "Swing/7:00",   h0: 7,  h1: 7  },
+  { label: "8:00-11:00",   h0: 8,  h1: 11 },
+  { label: "Mid/12:00",    h0: 12, h1: 12 },
+  { label: "13:00",        h0: 13, h1: 13 },
+  { label: "Swing/14:00",  h0: 14, h1: 14 },
+  { label: "15:00-16:00",  h0: 15, h1: 16 },
+  { label: "Late N/21:00", h0: 21, h1: 21 },
+  { label: "Swing/22:00",  h0: 22, h1: 22 },
+];
+
+const EMP_COLORS_CSV = [
+  { header: "#E2EFDA", accent: "#375623", colHead: "#A9D18E" },
+  { header: "#FCE4D6", accent: "#833C00", colHead: "#F4B183" },
+  { header: "#FFF2CC", accent: "#7F6000", colHead: "#FFD966" },
+  { header: "#DDEBF7", accent: "#1F3864", colHead: "#9DC3E6" },
+  { header: "#EDD6F8", accent: "#7030A0", colHead: "#C5A3E3" },
+];
+
+function rosterStartH(rosterTime: string | null): number | null {
+  if (!rosterTime) return null;
+  const raw = rosterTime.split(" - ")[0]?.trim() || "";
+  const h = parseInt(raw.split(":")[0] || "");
+  return isNaN(h) ? null : h;
+}
+
+function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
+  const { toast } = useToast();
+  const { language } = useI18n();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+  const csvFileRef = useRef<HTMLInputElement>(null);
+  const [importStep, setImportStep] = useState<"idle" | "preview" | "done">("idle");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importPreview, setImportPreview] = useState<ClockRecord[]>([]);
+  const [importCount, setImportCount] = useState(0);
+  const [importResult, setImportResult] = useState<{ imported: number; updated: number } | null>(null);
+  const [importFileName, setImportFileName] = useState("");
+
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+    queryKey: ["/api/attendance/records", year, month, storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/records?token=${token}&year=${year}&month=${month}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const records = data?.records || [];
+
+  const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  records.forEach(r => {
+    if (!empMap.has(r.employeeFullName))
+      empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+  });
+  const employees = Array.from(empMap.values());
+  const recIdx: Record<string, ClockRecord> = {};
+  records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dowIdx = new Date(dateStr + "T00:00:00").getDay();
+    return { dateStr, d, dowIdx };
+  });
+
+  function shiftCount(empName: string, h0: number, h1: number): number {
+    return days.reduce((acc, { dateStr }) => {
+      const rec = recIdx[`${dateStr}:${empName}`];
+      const h = rosterStartH(rec?.rosterTime || null);
+      return h !== null && h >= h0 && h <= h1 ? acc + 1 : acc;
+    }, 0);
+  }
+
+  function totalRosterDays(empName: string): number {
+    return days.reduce((acc, { dateStr }) => {
+      const rec = recIdx[`${dateStr}:${empName}`];
+      return rec?.rosterTime && rec.rosterTime.toUpperCase() !== "OFF" ? acc + 1 : acc;
+    }, 0);
+  }
+
+  const handleDownloadCSV = () => {
+    const token = localStorage.getItem("bk_token") || "";
+    const url = `/api/attendance/export-csv?token=${encodeURIComponent(token)}&year=${year}&month=${month}&storeId=${encodeURIComponent(storeId)}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Clock_In_Out_${MONTH_EN[month - 1]}_${year}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleCSVFile = async (file: File) => {
+    if (!file.name.match(/\.csv$/i)) {
+      toast({ variant: "destructive", title: "Error", description: t("Please select a CSV file (.csv)", "กรุณาเลือกไฟล์ CSV (.csv)") });
+      return;
+    }
+    setImportFileName(file.name);
+    setImportLoading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("token", localStorage.getItem("bk_token") || "");
+    fd.append("confirm", "false");
+    try {
+      const res = await fetch("/api/attendance/import-csv", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        setImportPreview(data.sample || []);
+        setImportCount(data.count || 0);
+        setImportStep("preview");
+        toast({ title: t("File parsed", "อ่านไฟล์สำเร็จ"), description: `${data.count} ${t("records found", "รายการ")}` });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally { setImportLoading(false); }
+  };
+
+  const handleConfirmCSVImport = async () => {
+    if (!csvFileRef.current?.files?.[0]) return;
+    setImportLoading(true);
+    const fd = new FormData();
+    fd.append("file", csvFileRef.current.files[0]);
+    fd.append("token", localStorage.getItem("bk_token") || "");
+    fd.append("confirm", "true");
+    try {
+      const res = await fetch("/api/attendance/import-csv", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        setImportResult({ imported: data.imported, updated: data.updated });
+        setImportStep("done");
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+        toast({ title: t("Import complete!", "Import สำเร็จ!"), description: data.message });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally { setImportLoading(false); }
+  };
+
+  const resetImport = () => {
+    setImportStep("idle");
+    setImportPreview([]);
+    setImportFileName("");
+    setImportResult(null);
+    if (csvFileRef.current) csvFileRef.current.value = "";
+  };
+
+  const GROUP = 5;
+  const tdB = "border border-gray-300 px-1.5 py-0.5 text-center";
+
+  return (
+    <div className="space-y-4">
+      {/* Action buttons */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={handleDownloadCSV} variant="outline" size="sm" className="gap-1.5" data-testid="button-download-csv">
+          <Download className="h-3.5 w-3.5" />
+          {t("Download CSV", "ดาวน์โหลด CSV")}
+        </Button>
+        {importStep === "idle" && (
+          <>
+            <input
+              ref={csvFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              data-testid="input-file-csv"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => csvFileRef.current?.click()}
+              disabled={importLoading}
+              data-testid="button-import-csv"
+            >
+              {importLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {importLoading ? t("Parsing…", "กำลังอ่าน…") : t("Import CSV", "Import CSV")}
+            </Button>
+          </>
+        )}
+        {importStep === "preview" && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={resetImport}>{t("← Cancel", "← ยกเลิก")}</Button>
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={handleConfirmCSVImport}
+              disabled={importLoading}
+              data-testid="button-confirm-csv-import"
+            >
+              {importLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              {importLoading ? t("Importing…", "กำลัง Import…") : `${t("Confirm Import", "ยืนยัน Import")} (${importCount})`}
+            </Button>
+          </div>
+        )}
+        {importStep === "done" && importResult && (
+          <div className="flex items-center gap-2">
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs px-2 py-0.5">{t("New","ใหม่")}: {importResult.imported}</Badge>
+            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs px-2 py-0.5">{t("Updated","อัพเดต")}: {importResult.updated}</Badge>
+            <Button variant="ghost" size="sm" onClick={resetImport}><RefreshCw className="h-3.5 w-3.5 mr-1" />{t("Import Another", "Import อื่น")}</Button>
+          </div>
+        )}
+      </div>
+
+      {/* Preview table (when import step = preview) */}
+      {importStep === "preview" && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-500" />
+              {importFileName} — {importCount} {t("records detected (showing first 30)", "รายการ (แสดง 30 แรก)")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded border overflow-auto max-h-64">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background">
+                  <TableRow>
+                    <TableHead className="text-xs">{t("Date","วันที่")}</TableHead>
+                    <TableHead className="text-xs">{t("Employee","พนักงาน")}</TableHead>
+                    <TableHead className="text-xs">{t("Roster","Roster")}</TableHead>
+                    <TableHead className="text-xs">{t("In","เข้า")}</TableHead>
+                    <TableHead className="text-xs">{t("Out","ออก")}</TableHead>
+                    <TableHead className="text-xs">{t("Notes","หมายเหตุ")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importPreview.map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs font-mono">{r.date}</TableCell>
+                      <TableCell className="text-xs font-medium">{r.employeeNickName || r.employeeFullName}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.rosterTime || "—"}</TableCell>
+                      <TableCell className="text-xs">{r.clockInTime || "—"}</TableCell>
+                      <TableCell className="text-xs">{r.clockOutTime || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-24 truncate">{r.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Paper-like sheet view */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : employees.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12">
+            <FileText className="h-12 w-12 text-muted-foreground/40" />
+            <p className="text-muted-foreground text-center text-sm">
+              {t("No records yet — Import data first.", "ยังไม่มีข้อมูล — กรุณา Import Excel หรือ CSV ก่อน")}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="rounded-lg border overflow-auto" style={{ maxHeight: "72vh" }}>
+          {/* Render groups of 5 employees */}
+          {Array.from({ length: Math.ceil(employees.length / GROUP) }, (_, gi) => {
+            const grpEmps = employees.slice(gi * GROUP, (gi + 1) * GROUP);
+            return (
+              <div key={gi}>
+                {gi > 0 && <div className="h-6 bg-muted/30 border-t border-b" />}
+                <div className="flex min-w-max">
+                  {grpEmps.map((emp, idx) => {
+                    const c = EMP_COLORS_CSV[idx % EMP_COLORS_CSV.length];
+                    const total = totalRosterDays(emp.fullName);
+                    return (
+                      <div key={emp.fullName} className="border-r last:border-r-0 shrink-0" style={{ width: 390 }} data-testid={`block-csv-${gi}-${idx}`}>
+                        <table className="w-full border-collapse" style={{ fontSize: 11 }}>
+                          <tbody>
+                            {/* Employee header rows — matching CSV row structure */}
+                            {/* Row 1: ชื่อ / fullName / ชื่อเล่น / nickName */}
+                            <tr style={{ backgroundColor: c.header }}>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อ</td>
+                              <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.fullName}</td>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อเล่น</td>
+                              <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.nickName || "—"}</td>
+                            </tr>
+                            {/* Row 2: สาขา / storeName / Month of / monthShort — mirrors CSV row 2 */}
+                            <tr style={{ backgroundColor: c.header }}>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
+                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{storeName}</td>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
+                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{MONTH_SHORT[month - 1]}</td>
+                            </tr>
+                            {/* Row 3: ตำแหน่ง / position */}
+                            <tr style={{ backgroundColor: c.header }}>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ตำแหน่ง</td>
+                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={5}>{emp.position || "—"}</td>
+                            </tr>
+                            {/* Column headers — 6 data cols matching CSV: Day/Date/Roster/Clock-In/Clock-Out/Notes */}
+                            <tr style={{ backgroundColor: c.colHead }}>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วัน</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วันที่</th>
+                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>Roster</th>
+                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>Clock-In</th>
+                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>Clock-Out</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Notes</th>
+                            </tr>
+                            {/* Daily rows — 6 data columns */}
+                            {days.map(({ dateStr, d, dowIdx }) => {
+                              const rec = recIdx[`${dateStr}:${emp.fullName}`];
+                              const isWknd = dowIdx === 0 || dowIdx === 6;
+                              const status = getLateStatus(rec?.rosterTime || null, rec?.clockInTime || null);
+                              const inColor = status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined;
+                              return (
+                                <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : undefined }}>
+                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : undefined, fontWeight: isWknd ? 600 : undefined }}>
+                                    {DOW_TH[dowIdx]}
+                                  </td>
+                                  <td className={tdB}>{d}</td>
+                                  <td className={tdB} style={{ color: rec?.rosterTime?.toUpperCase() === "OFF" ? "#CC0000" : undefined }}>
+                                    {rec?.rosterTime || ""}
+                                  </td>
+                                  <td className={tdB} style={{ color: inColor }}>
+                                    {rec?.clockInTime ? formatTime(rec.clockInTime) : ""}
+                                  </td>
+                                  <td className={tdB}>
+                                    {rec?.clockOutTime ? formatTime(rec.clockOutTime) : ""}
+                                  </td>
+                                  <td className={tdB} style={{ textAlign: "left", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {rec?.notes || ""}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {/* Spacer */}
+                            <tr><td colSpan={6} style={{ height: 6 }} /></tr>
+                            {/* Shift summary — columns match CSV: Shift | Time | Time Roster | Total | (blank) | (blank) */}
+                            <tr style={{ backgroundColor: c.colHead }}>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Shift</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time Roster</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Total</th>
+                              <th className={tdB} colSpan={2} />
+                            </tr>
+                            {/* Shift rows: label | h0:00 | count | blank | blank | blank */}
+                            {CSV_SHIFTS_FE.map(sh => {
+                              const cnt = shiftCount(emp.fullName, sh.h0, sh.h1);
+                              return (
+                                <tr key={sh.label}>
+                                  <td className={tdB} style={{ textAlign: "left", paddingLeft: 4 }}>{sh.label}</td>
+                                  <td className={tdB}>{sh.h0}:00</td>
+                                  <td className={tdB}>{cnt > 0 ? cnt : ""}</td>
+                                  <td className={tdB} />
+                                  <td className={tdB} colSpan={2} />
+                                </tr>
+                              );
+                            })}
+                            {/* Total row: "Total" | "Total" | total | total | blank | blank */}
+                            <tr style={{ backgroundColor: c.colHead, fontWeight: 600 }}>
+                              <td className={tdB} style={{ color: c.accent }}>Total</td>
+                              <td className={tdB} style={{ color: c.accent }}>Total</td>
+                              <td className={tdB} style={{ color: c.accent }}>{total > 0 ? total : ""}</td>
+                              <td className={tdB} style={{ color: c.accent }}>{total > 0 ? total : ""}</td>
+                              <td className={tdB} colSpan={2} />
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────
 export default function AttendancePage() {
@@ -1423,7 +1808,7 @@ export default function AttendancePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="records" className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-3xl">
             <TabsTrigger value="records" data-testid="tab-records" className="gap-1 text-xs">
               <Clock className="h-3.5 w-3.5" />{t("Records","บันทึก")}
             </TabsTrigger>
@@ -1432,6 +1817,9 @@ export default function AttendancePage() {
             </TabsTrigger>
             <TabsTrigger value="matrix" data-testid="tab-matrix" className="gap-1 text-xs">
               <LayoutGrid className="h-3.5 w-3.5" />{t("Matrix","ตารางเปรียบ")}
+            </TabsTrigger>
+            <TabsTrigger value="csv-sheet" data-testid="tab-csv-sheet" className="gap-1 text-xs">
+              <FileText className="h-3.5 w-3.5" />{t("CSV Sheet","Clock In Out")}
             </TabsTrigger>
             <TabsTrigger value="import" data-testid="tab-import" className="gap-1 text-xs">
               <Upload className="h-3.5 w-3.5" />{t("Import","Import Excel")}
@@ -1468,6 +1856,10 @@ export default function AttendancePage() {
 
           <TabsContent value="matrix">
             <MatrixView year={year} month={month} storeId={storeId} />
+          </TabsContent>
+
+          <TabsContent value="csv-sheet">
+            <ClockInOutCSVTab year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="import">

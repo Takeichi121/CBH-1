@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.4";
+export const APP_VERSION = "2.5.5";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.5",
+    date: "2026-05-08",
+    label: "feature",
+    changes: [
+      "Attendance: เพิ่มแท็บ 'Clock In Out Sheet' — แสดงข้อมูลแบบตารางกระดาษ side-by-side ตามรูปแบบ paper form จริง",
+      "Attendance: ปุ่ม 'ดาวน์โหลด CSV' — export ข้อมูลเดือนนั้นเป็น CSV รูปแบบ side-by-side (7 คอลัมน์/พนักงาน) พร้อม shift summary ด้านล่าง",
+      "Attendance: ปุ่ม 'Import CSV' — อัพโหลด CSV ที่กรอกแล้ว ระบบ parse พนักงานทุกคน + แสดง preview ก่อน confirm บันทึกลง clock_records",
+      "Backend: เพิ่ม GET /api/attendance/export-csv และ POST /api/attendance/import-csv",
+    ],
+  },
   {
     version: "2.5.4",
     date: "2026-05-07",

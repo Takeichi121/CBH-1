@@ -7538,6 +7538,323 @@ ${pageContext}` : ''}`;
   }));
 
   // ─────────────────────────────────────────────────────────
+  // Clock In Out CSV Export / Import
+  // ─────────────────────────────────────────────────────────
+
+  const CSV_SHIFTS = [
+    { label: "Swing/5:00",   h0: 5,  h1: 5  },
+    { label: "Open/6:00",    h0: 6,  h1: 6  },
+    { label: "Swing/7:00",   h0: 7,  h1: 7  },
+    { label: "8:00-11:00",   h0: 8,  h1: 11 },
+    { label: "Mid/12:00",    h0: 12, h1: 12 },
+    { label: "13:00",        h0: 13, h1: 13 },
+    { label: "Swing/14:00",  h0: 14, h1: 14 },
+    { label: "15:00-16:00",  h0: 15, h1: 16 },
+    { label: "Late N/21:00", h0: 21, h1: 21 },
+    { label: "Swing/22:00",  h0: 22, h1: 22 },
+  ];
+
+  function csvEsc(v: string): string {
+    if (v.includes(",") || v.includes('"') || v.includes("\n")) return `"${v.replace(/"/g, '""')}"`;
+    return v;
+  }
+
+  function clockCsvRow(cells: string[]): string {
+    return cells.map(csvEsc).join(",");
+  }
+
+  function rosterStartHour(rosterTime: string | null): number | null {
+    if (!rosterTime) return null;
+    const raw = rosterTime.split(" - ")[0]?.trim() || "";
+    const h = parseInt(raw.split(":")[0] || "");
+    return isNaN(h) ? null : h;
+  }
+
+  // GET /api/attendance/export-csv — side-by-side CSV matching paper form format
+  app.get("/api/attendance/export-csv", safe(async (req, res) => {
+    const token = String(req.query.token || req.headers["x-token"] || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+
+    const year    = parseInt(String(req.query.year  || new Date().getFullYear()));
+    const month   = parseInt(String(req.query.month || new Date().getMonth() + 1));
+    const storeId = String(req.query.storeId || access.user.storeId || "BK1040");
+
+    const records   = await storage.getClockRecords(year, month, storeId);
+    const storeCfg  = await storage.getStoreSettings();
+    const storeName = (storeCfg as any)?.storeName || "Grand Diamond";
+
+    const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const DOW_TH      = ["อา","จ","อ","พ","พฤ","ศ","ส"];
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthName   = MONTH_NAMES[month - 1];
+
+    // Build ordered employee list
+    const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+    records.forEach(r => {
+      if (!empMap.has(r.employeeFullName))
+        empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+    });
+    const employees = Array.from(empMap.values());
+
+    // Record index: "YYYY-MM-DD:fullName"
+    const recIdx: Record<string, typeof records[0]> = {};
+    records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
+
+    const BLOCK = 7; // columns per employee
+    const GROUP = 5; // employees per group (side-by-side)
+    const csvLines: string[] = [];
+
+    // Process employees in groups of up to GROUP
+    for (let g = 0; g < employees.length; g += GROUP) {
+      const grpEmps = employees.slice(g, g + GROUP);
+      const empCount = grpEmps.length;
+
+      if (g > 0) csvLines.push(""); // blank separator between groups
+
+      // Row 1: ชื่อ / fullName / … / ชื่อเล่น / nickName …
+      const r1: string[] = [];
+      grpEmps.forEach(emp => {
+        r1.push("ชื่อ", emp.fullName, "", "ชื่อเล่น", emp.nickName || "", "", "");
+      });
+      csvLines.push(clockCsvRow(r1));
+
+      // Row 2: สาขา / storeName / … / Month of / monthName …
+      const r2: string[] = [];
+      grpEmps.forEach(() => {
+        r2.push("สาขา", storeName, "", "Month of", monthName, "", "");
+      });
+      csvLines.push(clockCsvRow(r2));
+
+      // Row 3: ตำแหน่ง / position …
+      const r3: string[] = [];
+      grpEmps.forEach(emp => {
+        r3.push("ตำแหน่ง", emp.position || "", "", "", "", "", "");
+      });
+      csvLines.push(clockCsvRow(r3));
+
+      // Row 4: column headers
+      const r4: string[] = [];
+      grpEmps.forEach(() => {
+        r4.push("วัน", "วันที่", "Roster Time", "Clock-In", "Clock-Out", "Notes", "");
+      });
+      csvLines.push(clockCsvRow(r4));
+
+      // Rows 5+: daily data
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        const dow     = new Date(year, month - 1, d).getDay();
+        const dayRow: string[] = [];
+        grpEmps.forEach(emp => {
+          const rec = recIdx[`${dateStr}:${emp.fullName}`];
+          dayRow.push(
+            DOW_TH[dow],
+            dateStr,
+            rec?.rosterTime  || "",
+            rec?.clockInTime  || "",
+            rec?.clockOutTime || "",
+            rec?.notes        || "",
+            "",
+          );
+        });
+        csvLines.push(clockCsvRow(dayRow));
+      }
+
+      // Blank separator before shift summary
+      csvLines.push(clockCsvRow(Array(empCount * BLOCK).fill("")));
+
+      // Shift summary header
+      const shHdr: string[] = [];
+      grpEmps.forEach(() => {
+        shHdr.push("Shift", "Time", "Time Roster", "Total", "", "", "");
+      });
+      csvLines.push(clockCsvRow(shHdr));
+
+      // Shift rows
+      CSV_SHIFTS.forEach(sh => {
+        const shRow: string[] = [];
+        grpEmps.forEach(emp => {
+          let count = 0;
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+            const rec = recIdx[`${dateStr}:${emp.fullName}`];
+            const h = rosterStartHour(rec?.rosterTime || null);
+            if (h !== null && h >= sh.h0 && h <= sh.h1) count++;
+          }
+          shRow.push(sh.label, `${sh.h0}:00`, String(count), "", "", "", "");
+        });
+        csvLines.push(clockCsvRow(shRow));
+      });
+
+      // Total row
+      const totRow: string[] = [];
+      grpEmps.forEach(emp => {
+        let total = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+          const rec = recIdx[`${dateStr}:${emp.fullName}`];
+          if (rec?.rosterTime && rec.rosterTime.toUpperCase() !== "OFF") total++;
+        }
+        totRow.push("Total", "Total", String(total), String(total), "", "", "");
+      });
+      csvLines.push(clockCsvRow(totRow));
+    }
+
+    const csvText = csvLines.join("\r\n");
+    const filename = `Clock_In_Out_${monthName}_${year}.csv`;
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send("\uFEFF" + csvText); // BOM for Excel Thai compatibility
+  }));
+
+  // POST /api/attendance/import-csv — parse side-by-side CSV, preview or upsert
+  app.post("/api/attendance/import-csv", upload.single("file"), safe(async (req, res) => {
+    const token = String(req.body?.token || "");
+    const access = await verifyManagerAccess(token);
+    if (!access.ok) return res.json(access);
+    if (!req.file) return res.json({ ok: false, message: "ไม่พบไฟล์" });
+
+    const storeId       = access.user.storeId || "BK1040";
+    const confirmImport = req.body.confirm === "true" || req.body.confirm === true;
+
+    try {
+      const text = req.file.buffer.toString("utf-8").replace(/^\uFEFF/, "");
+
+      // Robust full-text CSV parser: handles quoted fields, escaped quotes (""),
+      // and embedded newlines inside quoted fields.
+      function parseFullCSV(src: string): string[][] {
+        const rows: string[][] = [];
+        let row: string[] = [];
+        let cell = "";
+        let inQ = false;
+        for (let ci = 0; ci < src.length; ci++) {
+          const ch = src[ci];
+          const nx = src[ci + 1];
+          if (inQ) {
+            if (ch === '"' && nx === '"') { cell += '"'; ci++; }          // escaped quote
+            else if (ch === '"') { inQ = false; }                          // end quote
+            else { cell += ch; }                                           // quoted content
+          } else {
+            if (ch === '"') { inQ = true; }
+            else if (ch === ',') { row.push(cell.trim()); cell = ""; }
+            else if (ch === '\r' && nx === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ""; ci++; }
+            else if (ch === '\r' || ch === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ""; }
+            else { cell += ch; }
+          }
+        }
+        if (cell || row.length > 0) { row.push(cell.trim()); rows.push(row); }
+        return rows;
+      }
+
+      const allRows = parseFullCSV(text);
+
+      const BLOCK = 7;
+      const allParsed: any[] = [];
+
+      // Process rows in "sections" separated by blank/all-empty rows.
+      // Each section starts with a ชื่อ header row (row1), followed by:
+      //   row2: สาขา row, row3: ตำแหน่ง row, row4: column headers row
+      //   rows 5+: daily data rows
+      //   then blank row → shift summary rows → blank row → next section
+      let i = 0;
+      while (i < allRows.length) {
+        // Skip blank rows
+        while (i < allRows.length && !allRows[i].some(c => c)) i++;
+        if (i >= allRows.length) break;
+
+        const row1 = allRows[i]; // expected: ชื่อ row
+        if (!row1[0]?.includes("ชื่อ")) { i++; continue; }
+
+        if (i + 3 >= allRows.length) break;
+        const row3 = allRows[i + 2]; // ตำแหน่ง row (position)
+        // row at i+1: สาขา row (skipped), row at i+3: column headers (skipped)
+
+        const numBlocks = Math.floor(row1.length / BLOCK);
+        if (numBlocks === 0) { i += 4; continue; }
+
+        const sectionEmps: Array<{ fullName: string; nickName: string; position: string }> = [];
+        for (let b = 0; b < numBlocks; b++) {
+          const base     = b * BLOCK;
+          const fullName = (row1[base + 1] || "").trim();
+          const nickName = (row1[base + 4] || "").trim();
+          const position = (row3[base + 1] || "").trim();
+          if (fullName && fullName !== "ชื่อ") {
+            sectionEmps.push({ fullName, nickName, position });
+          }
+        }
+
+        if (sectionEmps.length === 0) { i += 4; continue; }
+        i += 4; // skip the 4 header rows
+
+        // Parse daily data rows until blank row or shift summary header
+        while (i < allRows.length) {
+          const cells = allRows[i];
+          const isBlank = !cells.some(c => c);
+          if (isBlank) { i++; break; }
+
+          const firstCell = (cells[0] || "").trim();
+          // Stop at shift summary section
+          if (firstCell === "Shift" || CSV_SHIFTS.some(s => s.label === firstCell) || firstCell === "Total") {
+            while (i < allRows.length && allRows[i].some(c => c)) i++;
+            break;
+          }
+
+          for (let b = 0; b < sectionEmps.length; b++) {
+            const base       = b * BLOCK;
+            const emp        = sectionEmps[b];
+            const dateStr    = (cells[base + 1] || "").trim();
+            const rosterTime = (cells[base + 2] || "").trim();
+            const clockIn    = (cells[base + 3] || "").trim();
+            const clockOut   = (cells[base + 4] || "").trim();
+            const notes      = (cells[base + 5] || "").trim();
+
+            if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue;
+            if (!rosterTime && !clockIn && !clockOut) continue;
+
+            allParsed.push({
+              date: dateStr,
+              storeId,
+              employeeFullName: emp.fullName,
+              employeeNickName: emp.nickName || null,
+              position: emp.position || null,
+              rosterTime:   rosterTime || null,
+              clockInTime:  clockIn    || null,
+              clockOutTime: clockOut   || null,
+              notes:        notes      || null,
+              importSource: "csv",
+            });
+          }
+          i++;
+        }
+      }
+
+      if (allParsed.length === 0) {
+        return res.json({ ok: false, message: "ไม่พบข้อมูลใน CSV กรุณาตรวจสอบรูปแบบไฟล์" });
+      }
+
+      if (!confirmImport) {
+        return res.json({ ok: true, preview: true, count: allParsed.length, sample: allParsed.slice(0, 30) });
+      }
+
+      let imported = 0; let updated = 0; const errors: string[] = [];
+      for (const rec of allParsed) {
+        try {
+          const existing = (await storage.getClockRecordsByDate(rec.date, storeId))
+            .find(r => r.employeeFullName === rec.employeeFullName);
+          await storage.upsertClockRecord(rec);
+          if (existing) updated++; else imported++;
+        } catch (e: any) { errors.push(e.message); }
+      }
+
+      await storage.log("import_attendance_csv", access.user.username, `imported:${imported} updated:${updated} store:${storeId}`);
+      return res.json({ ok: true, imported, updated, errors: errors.slice(0, 5), message: `นำเข้า ${imported} รายการใหม่, อัพเดต ${updated} รายการ` });
+    } catch (e: any) {
+      console.error("Attendance CSV import error:", e);
+      return res.json({ ok: false, message: e.message || "Parse failed" });
+    }
+  }));
+
+  // ─────────────────────────────────────────────────────────
   // Aloha Sales CSV Import
   // ─────────────────────────────────────────────────────────
 

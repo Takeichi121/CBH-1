@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.8";
+export const APP_VERSION = "2.5.9";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.9",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: Excel Sheet — ดึงรายชื่อทีมผู้จัดการอัตโนมัติจากฐานข้อมูล ไม่ต้องกด 'เพิ่มพนักงาน' ทุกเดือน",
+      "Attendance: Excel Sheet — ใช้ข้อมูล all-time clock employees เป็น baseline, overlay กับ records เดือนปัจจุบัน",
+    ],
+  },
   {
     version: "2.5.8",
     date: "2026-05-08",

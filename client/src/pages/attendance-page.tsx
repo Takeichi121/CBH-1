@@ -1535,7 +1535,7 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
     }
   };
 
-  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+  const { data, isLoading: recordsLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
     queryFn: async () => {
       const token = localStorage.getItem("bk_token") || "";
@@ -1544,9 +1544,25 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
     },
   });
 
+  const { data: empData, isLoading: empLoading } = useQuery<{ ok: boolean; employees: Array<{ fullName: string; nickName: string | null; position: string | null }> }>({
+    queryKey: ["/api/attendance/employees", storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/employees?token=${token}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const isLoading = recordsLoading || empLoading;
   const records = data?.records || [];
 
+  // Build employee list: start from ALL-TIME manager employees so the table
+  // shows even in months with no clock records yet; overlay employees found
+  // in current-month records (in case someone new was added this month).
   const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  (empData?.employees || []).forEach(e => {
+    if (isManagerPos(e.position)) empMap.set(e.fullName, e);
+  });
   records.forEach(r => {
     if (isManagerPos(r.position) && !empMap.has(r.employeeFullName))
       empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });

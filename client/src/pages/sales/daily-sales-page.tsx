@@ -243,7 +243,6 @@ const formSchema = z.object({
 const MANAGER_NAMES = [
   { key: "managerPhongsathon", name: "Phongsathon" },
   { key: "managerNuttarika", name: "Nuttarika" },
-  { key: "managerSuppawit", name: "Suppawit" },
   { key: "managerBoonyisa", name: "Boonyisa" },
   { key: "managerChanon", name: "Chanon" },
   { key: "managerWashiraphan", name: "Washiraphan" },

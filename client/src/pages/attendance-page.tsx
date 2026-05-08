@@ -521,7 +521,7 @@ function MonthlyView({ year, month, storeId }: { year: number; month: number; st
                   <TableRow>
                     <TableHead className="text-xs w-28 shrink-0">{t("Date","วันที่")}</TableHead>
                     <TableHead className="text-xs w-40 min-w-[9rem]">{t("Employee","พนักงาน")}</TableHead>
-                    <TableHead className="text-xs w-44 min-w-[10rem] hidden md:table-cell">{t("Position","ตำแหน่ง")}</TableHead>
+                    <TableHead className="text-xs w-36 min-w-[8rem] hidden md:table-cell">{t("Position","ตำแหน่ง")}</TableHead>
                     <TableHead className="text-xs w-20 min-w-[4rem]">{t("Roster","Roster")}</TableHead>
                     <TableHead className="text-xs w-20 min-w-[4rem]">{t("In","เข้า")}</TableHead>
                     <TableHead className="text-xs w-20 min-w-[4rem]">{t("Out","ออก")}</TableHead>
@@ -987,13 +987,12 @@ function isManagerPos(pos: string | null) {
 }
 
 function getPosPriority(pos: string | null): number {
-  if (!pos) return 99;
+  if (!pos) return 3;
   const p = pos.toLowerCase();
   if (p.includes("store manager") && !p.includes("asst") && !p.includes("assistant")) return 0;
   if (p.includes("assistant") || p.includes("asst")) return 1;
   if (p.includes("shift")) return 2;
-  if (p.includes("manager")) return 3;
-  return 99;
+  return 3;
 }
 
 function AddEmployeeDialog({

@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.6";
+export const APP_VERSION = "2.5.7";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.7",
+    date: "2026-05-08",
+    label: "feature",
+    changes: [
+      "Attendance: เพิ่มแท็บ 'Excel Sheet' — แสดงตารางแบบ paper form เหมือน Excel จริง (header สี, 5 พนักงาน/แถว, 31 วันเต็มเสมอ)",
+      "Attendance: Excel Sheet — แก้ไข Roster / ScanIn / ScanOut / Notes ได้โดยตรง (save-on-blur, Escape เพื่อ revert)",
+      "Attendance: Excel Sheet — แสดง shift summary ด้านล่างตาราง, รองรับ 5 ชุดสีสลับตาม Excel workbook",
+      "Layout: แก้ไข JSX corruption ใน layout.tsx — restore ปุ่ม theme toggle ใน mobile drawer ให้ถูกต้อง",
+    ],
+  },
   {
     version: "2.5.6",
     date: "2026-05-08",

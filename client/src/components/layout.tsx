@@ -111,7 +111,15 @@ export function Layout({ children }: { children: ReactNode }) {
   }, [announcementsData, announcementsLastSeen]);
 
   if (!user) {
-    return <div className="min-h-screen bg-background">{children}</div>;
+    // เพิ่ม paddingTop (safe-area-inset-top) สำหรับ mobile/iOS
+    return (
+      <div
+        className="min-h-screen bg-background"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
+        {children}
+      </div>
+    );
   }
 
   const isManagerOrAdmin = user.role === "manager" || user.role === "admin";
@@ -351,9 +359,9 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="flex flex-col min-h-screen md:hidden">
         {/* Mobile Header */}
         <header
-  className="flex items-center h-14 px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md shadow-md"
-  style={{ paddingTop: 'env(safe-area-inset-top, 12px)' }}
->
+          className="flex items-center h-14 px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md shadow-md"
+          style={{ paddingTop: 'env(safe-area-inset-top, 12px)' }}
+        >
           <Button
             variant="ghost"
             size="icon"

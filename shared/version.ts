@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.16";
+export const APP_VERSION = "2.5.17";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.17",
+    date: "2026-05-09",
+    label: "feature",
+    changes: [
+      "Admin: เพิ่มแท็บ 'วันเกิด' — นำเข้าข้อมูลวันเกิดพนักงาน 28 คนจาก 4.02 Employee Birthday List",
+      "Admin: ระบบจับคู่ชื่ออัตโนมัติ (Thai/EN) กับผู้ใช้ในระบบ แก้ไข matching ได้ก่อนนำเข้า",
+      "Admin: เพิ่มฟิลด์วันเกิดในข้อมูลผู้ใช้ — ดูและแก้ไขได้ใน User Profile",
+      "DB: เพิ่มคอลัมน์ birthday ในตาราง users",
+    ],
+  },
   {
     version: "2.5.16",
     date: "2026-05-08",

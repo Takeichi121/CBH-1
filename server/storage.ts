@@ -54,7 +54,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUsers(): Promise<User[]>;
   updateUserStatus(username: string, active: number): Promise<void>;
-  updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; active: number; mustChangePassword: number; position: string }>): Promise<void>;
+  updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; birthday: string; active: number; mustChangePassword: number; position: string }>): Promise<void>;
   updateUserRole(username: string, role: string, position?: string): Promise<void>;
   updateUserFeatures(username: string, allowedFeatures: string | null): Promise<void>;
 
@@ -252,7 +252,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; active: number; mustChangePassword: number; position: string }>): Promise<void> {
+  async updateUser(username: string, data: Partial<{ fullName: string; fullNameTh: string; nickName: string; phone: string; email: string; birthday: string; active: number; mustChangePassword: number; position: string }>): Promise<void> {
     try {
       await db.update(users)
         .set(data)

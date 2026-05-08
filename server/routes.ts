@@ -4603,7 +4603,7 @@ ${pageContext}` : ''}`;
   }));
 
   app.post("/api/admin/updateUserProfile", safe(async (req, res) => {
-    const { token, username, nickName, phone, email, position } = req.body;
+    const { token, username, nickName, phone, email, position, birthday } = req.body;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
@@ -4617,6 +4617,7 @@ ${pageContext}` : ''}`;
     if (phone !== undefined) updates.phone = phone;
     if (email !== undefined) updates.email = email;
     if (position !== undefined) updates.position = position;
+    if (birthday !== undefined) updates.birthday = birthday;
 
     if (Object.keys(updates).length === 0) {
       return res.json({ ok: false, message: "No updates provided" });
@@ -4625,6 +4626,26 @@ ${pageContext}` : ''}`;
     await storage.updateUser(username, updates);
     await storage.log("admin_update_profile", u.username, `updated ${username}: ${JSON.stringify(updates)}`);
     res.json({ ok: true });
+  }));
+
+  app.post("/api/admin/bulkImportBirthdays", safe(async (req, res) => {
+    const { token, entries } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const u = await storage.getUser(session.username);
+    if (!u || u.role !== "admin") return res.json({ ok: false, message: "Admin only" });
+    if (!Array.isArray(entries)) return res.json({ ok: false, message: "Invalid entries" });
+
+    let count = 0;
+    for (const entry of entries) {
+      if (!entry.username || !entry.birthday) continue;
+      const target = await storage.getUser(entry.username);
+      if (!target) continue;
+      await storage.updateUser(entry.username, { birthday: entry.birthday });
+      count++;
+    }
+    await storage.log("admin_import_birthdays", u.username, `imported ${count} birthdays`);
+    res.json({ ok: true, count });
   }));
 
   app.post("/api/admin/updateUsername", safe(async (req, res) => {

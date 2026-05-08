@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft, Users } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft, Users, Cake, CheckCircle2, AlertCircle, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
@@ -28,6 +28,48 @@ const positionHierarchy: Record<string, number> = {
   "service_staff": 7,
 };
 
+const TH_MONTHS: Record<string, string> = {
+  "01": "มกราคม", "02": "กุมภาพันธ์", "03": "มีนาคม", "04": "เมษายน",
+  "05": "พฤษภาคม", "06": "มิถุนายน", "07": "กรกฎาคม", "08": "สิงหาคม",
+  "09": "กันยายน", "10": "ตุลาคม", "11": "พฤศจิกายน", "12": "ธันวาคม",
+};
+const formatBirthday = (bd: string) => {
+  if (!bd) return "-";
+  const [mm, dd] = bd.split("-");
+  return `${parseInt(dd)} ${TH_MONTHS[mm] || mm}`;
+};
+
+const PDF_BIRTHDAYS = [
+  { birthday: "02-08", nameTh: "ไพศิษฐ์ โกไสยสุข", nameEn: "Paisit Kosaisuk" },
+  { birthday: "02-25", nameTh: "เทพฐากูร แซ่ซ้ง", nameEn: "Thepthakun Saesong" },
+  { birthday: "02-26", nameTh: "ยศนันทน์ ติยะสุขสวัสดิ์", nameEn: "Yossanan Tiyasuksawad" },
+  { birthday: "03-09", nameTh: "สมโชค ศุภกิจบุญชู", nameEn: "Somchock Supakijboonchoo" },
+  { birthday: "03-10", nameTh: "ภูษณิศา คงหอม", nameEn: "Phusanisa Khonghom" },
+  { birthday: "03-19", nameTh: "พรนิภา โนนศิลา", nameEn: "Pornnipa Nonsila" },
+  { birthday: "03-20", nameTh: "อาทิตย์ สติใหม่", nameEn: "Arthit Satimai" },
+  { birthday: "03-27", nameTh: "ชานนท์ ใจมูล", nameEn: "Chanon Jaimool" },
+  { birthday: "03-31", nameTh: "นันทนัช ทองภูสวรรค์", nameEn: "Nuntanut Tongpoosawan" },
+  { birthday: "04-16", nameTh: "อดิศร นาสา", nameEn: "Adisorn Nasa" },
+  { birthday: "05-02", nameTh: "สุทธิดา สุขเจริญ", nameEn: "Suttida Sukcharoen" },
+  { birthday: "05-10", nameTh: "รัชนีกร วงศ์วาท", nameEn: "Ratchaneekorn Wongwat" },
+  { birthday: "05-11", nameTh: "ณัฐริกา แก้วคำ", nameEn: "Nuttarika Kaewkham" },
+  { birthday: "05-19", nameTh: "สราวุธ เก่งกาจ", nameEn: "Sarawut Kengkaj" },
+  { birthday: "05-27", nameTh: "เอธัส นาคนาวา", nameEn: "Athat Naknava" },
+  { birthday: "06-18", nameTh: "วชิรพันธ์ ณ สงขลา", nameEn: "Washiraphan Na Songkhla" },
+  { birthday: "06-28", nameTh: "ฟ้ารุ่ง ยิ่งได้ชม", nameEn: "Farung Yingdaichom" },
+  { birthday: "07-11", nameTh: "กฤตกวี สอนธรรม", nameEn: "Kritkawee Sorntham" },
+  { birthday: "08-04", nameTh: "กนกพงศ์ ฟูทำ", nameEn: "Kanogphong Footam" },
+  { birthday: "08-13", nameTh: "กิติพงศ์ วิทยาลักษณ์", nameEn: "Kitipong Wittayalak" },
+  { birthday: "08-23", nameTh: "กฤษฎา บุตรดาหาร", nameEn: "Kidsada Butdahand" },
+  { birthday: "09-23", nameTh: "บุญญิสา คงบุญ", nameEn: "Boonyisa Khongboon" },
+  { birthday: "09-30", nameTh: "พงศธร โพธิ์เรือง", nameEn: "Phongsathon Phoreung" },
+  { birthday: "10-03", nameTh: "เพ็ญพิชชา ถุงเกตุที", nameEn: "Phenphitcha Thungketthi" },
+  { birthday: "10-30", nameTh: "ณัฐริกา จงภักดี", nameEn: "Nattarika Jongpakdee" },
+  { birthday: "11-01", nameTh: "พิทักษ์ คงสิน", nameEn: "Pitak Kongsin" },
+  { birthday: "12-04", nameTh: "วงศกร บุญตา", nameEn: "Wongsakon Bunta" },
+  { birthday: "12-08", nameTh: "สุนารี ม่วงครวญ", nameEn: "Sunaree Moungkroun" },
+];
+
 export default function AdminPage() {
   const { user, token } = useAuth();
   const { language } = useI18n();
@@ -42,7 +84,9 @@ export default function AdminPage() {
   const [isUpdatingStore, setIsUpdatingStore] = useState(false);
   const [viewingUser, setViewingUser] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "" });
+  const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "", birthday: "" });
+  const [birthdayMatches, setBirthdayMatches] = useState<Record<number, string>>({});
+  const [isImportingBirthdays, setIsImportingBirthdays] = useState(false);
   const [isChangingUsername, setIsChangingUsername] = useState(false);
   const [newUsernameInput, setNewUsernameInput] = useState("");
   const [isSavingUsername, setIsSavingUsername] = useState(false);
@@ -351,6 +395,7 @@ export default function AdminPage() {
       phone: u.phone || "",
       email: u.email || "",
       position: u.position || "",
+      birthday: u.birthday || "",
     });
     setIsEditingProfile(true);
   };
@@ -375,6 +420,43 @@ export default function AdminPage() {
       }
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  useEffect(() => {
+    if (!data?.users) return;
+    const dbUsers: any[] = data.users;
+    const matches: Record<number, string> = {};
+    PDF_BIRTHDAYS.forEach((entry, i) => {
+      const thFirstName = entry.nameTh.split(" ")[0];
+      const matched = dbUsers.find((u: any) =>
+        (u.fullNameTh && u.fullNameTh.includes(thFirstName)) ||
+        (u.fullName && entry.nameEn.split(" ").some((w: string) => u.fullName?.includes(w)))
+      );
+      if (matched) matches[i] = matched.username;
+    });
+    setBirthdayMatches(matches);
+  }, [data?.users]);
+
+  const handleImportBirthdays = async () => {
+    setIsImportingBirthdays(true);
+    const token = localStorage.getItem("bk_token") || "";
+    const entries = PDF_BIRTHDAYS
+      .map((e, i) => ({ username: birthdayMatches[i], birthday: e.birthday }))
+      .filter(e => e.username);
+    try {
+      const res = await apiRequest("POST", "/api/admin/bulkImportBirthdays", { token, entries });
+      const result = await res.json();
+      if (result.ok) {
+        toast({ title: `นำเข้าวันเกิดสำเร็จ ${result.count} รายการ` });
+        refetch();
+      } else {
+        toast({ title: result.message || "Error", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
+    } finally {
+      setIsImportingBirthdays(false);
     }
   };
 
@@ -654,6 +736,12 @@ export default function AdminPage() {
             <TabsTrigger value="stores" data-testid="tab-admin-stores" aria-label={language === "th" ? `สาขา ${storesList.length} แห่ง` : `${storesList.length} stores`}>
               <Store className="w-4 h-4 mr-2" />
               {language === "th" ? `สาขา (${storesList.length})` : `Stores (${storesList.length})`}
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="birthdays" data-testid="tab-admin-birthdays">
+              <Cake className="w-4 h-4 mr-2" />
+              {language === "th" ? "วันเกิด" : "Birthdays"}
             </TabsTrigger>
           )}
         </TabsList>
@@ -967,6 +1055,15 @@ export default function AdminPage() {
                       data-testid="input-edit-email"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1"><Cake className="w-3.5 h-3.5 text-pink-500" />วันเกิด</label>
+                    <Input 
+                      value={editProfileData.birthday}
+                      onChange={(e) => setEditProfileData({ ...editProfileData, birthday: e.target.value })}
+                      placeholder="MM-DD เช่น 03-27"
+                      data-testid="input-edit-birthday"
+                    />
+                  </div>
                   <div className="flex gap-2 pt-4">
                     <Button variant="outline" onClick={() => setIsEditingProfile(false)} className="flex-1">
                       {labels.cancel}
@@ -1012,6 +1109,10 @@ export default function AdminPage() {
                     <div>
                       <p className="text-muted-foreground">{labels.email}</p>
                       <p className="font-medium break-all">{viewingUser.email || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground flex items-center gap-1"><Cake className="w-3 h-3 text-pink-500" />วันเกิด</p>
+                      <p className="font-medium">{viewingUser.birthday ? formatBirthday(viewingUser.birthday) : "-"}</p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-muted-foreground">{labels.createdAt}</p>
@@ -1134,6 +1235,92 @@ export default function AdminPage() {
       </Dialog>
 
         </TabsContent>
+
+        {isAdmin && (
+        <TabsContent value="birthdays">
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Cake className="w-5 h-5 text-pink-500" />
+                  นำเข้าวันเกิดพนักงาน
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  ข้อมูลจาก 4.02 Employee Birthday List — ระบบจับคู่ชื่ออัตโนมัติ แก้ไขได้ก่อนนำเข้า
+                </p>
+              </div>
+              <Button
+                onClick={handleImportBirthdays}
+                disabled={isImportingBirthdays || Object.keys(birthdayMatches).length === 0}
+                className="gap-2"
+                data-testid="button-import-birthdays"
+              >
+                {isImportingBirthdays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cake className="w-4 h-4" />}
+                นำเข้า {Object.keys(birthdayMatches).length} รายการ
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-32">วันเกิด</TableHead>
+                    <TableHead>ชื่อพนักงาน</TableHead>
+                    <TableHead className="w-44">จับคู่กับผู้ใช้</TableHead>
+                    <TableHead className="w-28">วันเกิดในระบบ</TableHead>
+                    <TableHead className="w-28">สถานะ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PDF_BIRTHDAYS.map((entry, i) => {
+                    const matchedUsername = birthdayMatches[i];
+                    const matchedUser = users.find((u: any) => u.username === matchedUsername);
+                    return (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium text-pink-600 dark:text-pink-400">{formatBirthday(entry.birthday)}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{entry.nameTh}</div>
+                          <div className="text-xs text-muted-foreground">{entry.nameEn}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={matchedUsername || "__none__"}
+                            onValueChange={(v) => setBirthdayMatches(prev => {
+                              const next = { ...prev };
+                              if (v === "__none__") { delete next[i]; } else { next[i] = v; }
+                              return next;
+                            })}
+                          >
+                            <SelectTrigger className="h-8 text-xs w-40" data-testid={`select-birthday-match-${i}`}>
+                              <SelectValue placeholder="เลือกผู้ใช้" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— ไม่จับคู่ —</SelectItem>
+                              {users.map((u: any) => (
+                                <SelectItem key={u.username} value={u.username}>
+                                  {u.nickName || u.fullName || u.username}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {matchedUser?.birthday ? formatBirthday(matchedUser.birthday) : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {matchedUsername
+                            ? <Badge className="gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-0"><CheckCircle2 className="w-3 h-3" />จับคู่แล้ว</Badge>
+                            : <Badge variant="outline" className="gap-1 text-muted-foreground"><AlertCircle className="w-3 h-3" />ยังไม่จับคู่</Badge>
+                          }
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
+        )}
 
         {isAdmin && (
         <TabsContent value="stores">

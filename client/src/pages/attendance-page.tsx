@@ -1729,6 +1729,15 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
   const GROUP = 5;
   const tdB = "border border-[#bfbfbf] px-1.5 py-0.5 text-center text-[#111111]";
   const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center text-[#111111]";
+  const cellSelect = "w-full h-5 px-0 text-[11px] bg-transparent border-0 focus:outline-none text-center text-[#111111] cursor-pointer appearance-none";
+
+  const ROSTER_OPTS = [
+    "OFF",
+    "05:00 - 14:00","06:00 - 15:00","07:00 - 16:00","08:00 - 17:00",
+    "09:00 - 18:00","10:00 - 19:00","11:00 - 20:00","12:00 - 21:00",
+    "13:00 - 22:00","14:00 - 23:00","15:00 - 00:00","16:00 - 01:00",
+    "20:00 - 05:00","22:00 - 07:00",
+  ];
 
 
   return (
@@ -1837,14 +1846,24 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                   </td>
                                   <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111" }}>{d}</td>
                                   {/* Roster */}
-                                  <td className={`${tdB} p-0.5`}>
-                                    <RosterTimeDropdown
-                                      compact
-                                      value={rosterVal}
-                                      onChange={v => setEditCell(dateStr, emp.fullName, "rosterTime", v)}
+                                  <td className={`${tdB} p-0`}>
+                                    <select
+                                      className={cellSelect}
+                                      style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : "#111111" }}
+                                      value={ROSTER_OPTS.includes(rosterVal) ? rosterVal : ""}
+                                      onChange={e => { setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value); }}
                                       onBlur={() => saveRow(dateStr, emp)}
-                                      testId={`cell-es-roster-${idx}-${d}`}
-                                    />
+                                      disabled={isSaving}
+                                      data-testid={`cell-es-roster-${idx}-${d}`}
+                                    >
+                                      <option value="">—</option>
+                                      {ROSTER_OPTS.map(o => (
+                                        <option key={o} value={o} style={{ color: o === "OFF" ? "#CC0000" : "#111111" }}>{o}</option>
+                                      ))}
+                                      {rosterVal && !ROSTER_OPTS.includes(rosterVal) && (
+                                        <option value={rosterVal}>{rosterVal}</option>
+                                      )}
+                                    </select>
                                     {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errR}</div>}
                                   </td>
                                   {/* ScanIn */}

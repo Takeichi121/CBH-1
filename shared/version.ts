@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.13";
+export const APP_VERSION = "2.5.14";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -11,12 +11,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2.5.14",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: Excel Sheet — คืนช่อง Roster กลับเป็น dropdown preset กะงาน (05:00-14:00, OFF ฯลฯ) ตามเดิม",
+      "Attendance: Excel Sheet — ScanIn/ScanOut ยังคงเป็น dropdown แยก HH/MM",
+    ],
+  },
+  {
     version: "2.5.13",
     date: "2026-05-08",
     label: "improvement",
     changes: [
       "Attendance: ตารางงาน — เปลี่ยน Roster/ScanIn/ScanOut จาก text input เป็น dropdown แยก ชั่วโมง + นาที (HH▾:MM▾)",
-      "Attendance: Excel Sheet — เปลี่ยน Roster/ScanIn/ScanOut เป็น dropdown แยก HH/MM เช่นเดียวกัน",
       "Attendance: Records Edit dialog — เปลี่ยน Roster/ClockIn/ClockOut เป็น dropdown แยก HH/MM",
       "สามารถเลือก OFF สำหรับ Roster ได้ด้วยปุ่ม OFF ในตัว dropdown",
     ],

@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.5";
+export const APP_VERSION = "2.5.6";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.6",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: Roster Sheet และ Clock In/Out Sheet — กรองเฉพาะ Team Manager (Store Manager, Asst SM, Shift Manager)",
+      "Attendance: Clock In/Out Sheet — แก้ไข Roster / Clock-In / Clock-Out / Notes ได้โดยตรงในตาราง (save อัตโนมัติเมื่อ blur)",
+      "Attendance: Clock In/Out Sheet — เพิ่มปุ่ม 'เพิ่มพนักงาน' ในแถบด้านบนและ empty state",
+    ],
+  },
   {
     version: "2.5.5",
     date: "2026-05-08",

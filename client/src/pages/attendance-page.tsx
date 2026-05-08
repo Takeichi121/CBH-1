@@ -1498,6 +1498,80 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
   const [importCount, setImportCount] = useState(0);
   const [importResult, setImportResult] = useState<{ imported: number; updated: number } | null>(null);
   const [importFileName, setImportFileName] = useState("");
+  const [showAddEmp, setShowAddEmp] = useState(false);
+
+  // Inline editing state (same pattern as ExcelRosterView)
+  const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
+  const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const escapingRef = useRef(false);
+
+  const getEdit = (date: string, empName: string, field: string) =>
+    localEdits[`${date}:${empName}`]?.[field];
+
+  const setEditCell = (date: string, empName: string, field: string, value: string) => {
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
+  const revertField = (date: string, empName: string, field: string) => {
+    escapingRef.current = true;
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => {
+      const n = { ...prev };
+      if (n[k]) {
+        const row = { ...n[k] }; delete row[field];
+        if (Object.keys(row).length === 0) delete n[k]; else n[k] = row;
+      }
+      return n;
+    });
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
+  const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    if (escapingRef.current) { escapingRef.current = false; return; }
+    const k = `${date}:${emp.fullName}`;
+    const edits = localEdits[k];
+    if (!edits || Object.keys(edits).length === 0) return;
+    const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
+    const newErrors: Record<string, string> = {};
+    for (const field of timeFields) {
+      const val = edits[field] ?? "";
+      if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
+    }
+    if (Object.keys(newErrors).length > 0) { setFieldErrors(prev => ({ ...prev, ...newErrors })); return; }
+    setFieldErrors(prev => { const n = { ...prev }; timeFields.forEach(f => delete n[`${k}:${f}`]); return n; });
+    const existing = recIdx[k];
+    const payload = {
+      token: localStorage.getItem("bk_token"),
+      date, storeId,
+      employeeFullName: emp.fullName,
+      employeeNickName: edits.employeeNickName ?? emp.nickName ?? "",
+      position: edits.position ?? emp.position ?? "",
+      rosterTime: edits.rosterTime ?? existing?.rosterTime ?? "",
+      clockInTime: edits.clockInTime ?? existing?.clockInTime ?? "",
+      clockOutTime: edits.clockOutTime ?? existing?.clockOutTime ?? "",
+      notes: edits.notes ?? existing?.notes ?? "",
+    };
+    setSavingRows(prev => new Set(prev).add(k));
+    try {
+      const url = existing?.id ? `/api/attendance/record/${existing.id}` : "/api/attendance/record";
+      const method = existing?.id ? "PUT" : "POST";
+      const res = await apiRequest(method, url, payload);
+      const json = await res.json();
+      if (json.ok) {
+        setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; });
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: json.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; });
+    }
+  };
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
@@ -1512,7 +1586,7 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
 
   const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
   records.forEach(r => {
-    if (!empMap.has(r.employeeFullName))
+    if (isManagerPos(r.position) && !empMap.has(r.employeeFullName))
       empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
   });
   const employees = Array.from(empMap.values());
@@ -1613,11 +1687,16 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
 
   const GROUP = 5;
   const tdB = "border border-gray-300 px-1.5 py-0.5 text-center";
+  const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center";
 
   return (
     <div className="space-y-4">
       {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-csv">
+          <UserPlus className="h-3.5 w-3.5" />
+          เพิ่มพนักงาน
+        </Button>
         <Button onClick={handleDownloadCSV} variant="outline" size="sm" className="gap-1.5" data-testid="button-download-csv">
           <Download className="h-3.5 w-3.5" />
           {t("Download CSV", "ดาวน์โหลด CSV")}
@@ -1709,6 +1788,15 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
         </Card>
       )}
 
+      {/* Add Employee Dialog (reuse ExcelRosterView's dialog) */}
+      {showAddEmp && (
+        <AddEmployeeDialog
+          year={year} month={month} storeId={storeId}
+          onClose={() => setShowAddEmp(false)}
+          onAdded={() => { setShowAddEmp(false); qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); }}
+        />
+      )}
+
       {/* Paper-like sheet view */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
@@ -1719,8 +1807,12 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
           <CardContent className="flex flex-col items-center gap-3 py-12">
             <FileText className="h-12 w-12 text-muted-foreground/40" />
             <p className="text-muted-foreground text-center text-sm">
-              {t("No records yet — Import data first.", "ยังไม่มีข้อมูล — กรุณา Import Excel หรือ CSV ก่อน")}
+              {t("No records yet — add an employee or import data.", "ยังไม่มีข้อมูล — เพิ่มพนักงานหรือ Import CSV ก่อน")}
             </p>
+            <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-csv-empty">
+              <UserPlus className="h-3.5 w-3.5" />
+              เพิ่มพนักงาน
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -1736,10 +1828,9 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
                     const c = EMP_COLORS_CSV[idx % EMP_COLORS_CSV.length];
                     const total = totalRosterDays(emp.fullName);
                     return (
-                      <div key={emp.fullName} className="border-r last:border-r-0 shrink-0" style={{ width: 390 }} data-testid={`block-csv-${gi}-${idx}`}>
+                      <div key={emp.fullName} className="border-r last:border-r-0 shrink-0" style={{ width: 420 }} data-testid={`block-csv-${gi}-${idx}`}>
                         <table className="w-full border-collapse" style={{ fontSize: 11 }}>
                           <tbody>
-                            {/* Employee header rows — matching CSV row structure */}
                             {/* Row 1: ชื่อ / fullName / ชื่อเล่น / nickName */}
                             <tr style={{ backgroundColor: c.header }}>
                               <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อ</td>
@@ -1747,19 +1838,19 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
                               <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อเล่น</td>
                               <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.nickName || "—"}</td>
                             </tr>
-                            {/* Row 2: สาขา / storeName / Month of / monthShort — mirrors CSV row 2 */}
+                            {/* Row 2: สาขา / Month */}
                             <tr style={{ backgroundColor: c.header }}>
                               <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
                               <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{storeName}</td>
                               <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
                               <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{MONTH_SHORT[month - 1]}</td>
                             </tr>
-                            {/* Row 3: ตำแหน่ง / position */}
+                            {/* Row 3: ตำแหน่ง */}
                             <tr style={{ backgroundColor: c.header }}>
                               <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ตำแหน่ง</td>
                               <td className={`${tdB}`} style={{ color: c.accent }} colSpan={5}>{emp.position || "—"}</td>
                             </tr>
-                            {/* Column headers — 6 data cols matching CSV: Day/Date/Roster/Clock-In/Clock-Out/Notes */}
+                            {/* Column headers */}
                             <tr style={{ backgroundColor: c.colHead }}>
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วัน</th>
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วันที่</th>
@@ -1768,36 +1859,99 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
                               <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>Clock-Out</th>
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Notes</th>
                             </tr>
-                            {/* Daily rows — 6 data columns */}
+                            {/* Daily editable rows */}
                             {days.map(({ dateStr, d, dowIdx }) => {
                               const rec = recIdx[`${dateStr}:${emp.fullName}`];
+                              const k = `${dateStr}:${emp.fullName}`;
+                              const isSaving = savingRows.has(k);
                               const isWknd = dowIdx === 0 || dowIdx === 6;
-                              const status = getLateStatus(rec?.rosterTime || null, rec?.clockInTime || null);
+
+                              const rosterVal = getEdit(dateStr, emp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
+                              const inVal     = getEdit(dateStr, emp.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
+                              const outVal    = getEdit(dateStr, emp.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
+                              const notesVal  = getEdit(dateStr, emp.fullName, "notes") ?? rec?.notes ?? "";
+
+                              const status = getLateStatus(rosterVal || null, inVal || null);
                               const inColor = status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined;
+
+                              const errR = fieldErrors[`${k}:rosterTime`];
+                              const errI = fieldErrors[`${k}:clockInTime`];
+                              const errO = fieldErrors[`${k}:clockOutTime`];
+
                               return (
                                 <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : undefined }}>
                                   <td className={tdB} style={{ color: isWknd ? "#833C00" : undefined, fontWeight: isWknd ? 600 : undefined }}>
                                     {DOW_TH[dowIdx]}
                                   </td>
                                   <td className={tdB}>{d}</td>
-                                  <td className={tdB} style={{ color: rec?.rosterTime?.toUpperCase() === "OFF" ? "#CC0000" : undefined }}>
-                                    {rec?.rosterTime || ""}
+                                  {/* Roster */}
+                                  <td className={`${tdB} p-0`}>
+                                    <input
+                                      className={cellInput}
+                                      style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : undefined }}
+                                      value={rosterVal}
+                                      onChange={e => setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value)}
+                                      onBlur={() => saveRow(dateStr, emp)}
+                                      onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                      disabled={isSaving}
+                                      data-testid={`cell-cvroster-${idx}-${d}`}
+                                    />
+                                    {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errR}</div>}
                                   </td>
-                                  <td className={tdB} style={{ color: inColor }}>
-                                    {rec?.clockInTime ? formatTime(rec.clockInTime) : ""}
+                                  {/* Clock-In */}
+                                  <td className={`${tdB} p-0`}>
+                                    {isSaving ? (
+                                      <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
+                                    ) : (
+                                      <input
+                                        className={cellInput}
+                                        style={{ color: inColor }}
+                                        value={inVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value)}
+                                        onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                        data-testid={`cell-cvin-${idx}-${d}`}
+                                      />
+                                    )}
+                                    {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errI}</div>}
                                   </td>
-                                  <td className={tdB}>
-                                    {rec?.clockOutTime ? formatTime(rec.clockOutTime) : ""}
+                                  {/* Clock-Out */}
+                                  <td className={`${tdB} p-0`}>
+                                    {isSaving ? (
+                                      <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
+                                    ) : (
+                                      <input
+                                        className={cellInput}
+                                        value={outVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value)}
+                                        onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                        data-testid={`cell-cvout-${idx}-${d}`}
+                                      />
+                                    )}
+                                    {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errO}</div>}
                                   </td>
-                                  <td className={tdB} style={{ textAlign: "left", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {rec?.notes || ""}
+                                  {/* Notes */}
+                                  <td className={`${tdB} p-0`}>
+                                    {isSaving ? (
+                                      <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
+                                    ) : (
+                                      <input
+                                        className={`${cellInput} text-left`}
+                                        value={notesVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "notes", e.target.value)}
+                                        onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                        data-testid={`cell-cvnotes-${idx}-${d}`}
+                                      />
+                                    )}
                                   </td>
                                 </tr>
                               );
                             })}
                             {/* Spacer */}
                             <tr><td colSpan={6} style={{ height: 6 }} /></tr>
-                            {/* Shift summary — columns match CSV: Shift | Time | Time Roster | Total | (blank) | (blank) */}
+                            {/* Shift summary header */}
                             <tr style={{ backgroundColor: c.colHead }}>
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Shift</th>
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time</th>
@@ -1805,7 +1959,6 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Total</th>
                               <th className={tdB} colSpan={2} />
                             </tr>
-                            {/* Shift rows: label | h0:00 | count | blank | blank | blank */}
                             {CSV_SHIFTS_FE.map(sh => {
                               const cnt = shiftCount(emp.fullName, sh.h0, sh.h1);
                               return (
@@ -1818,7 +1971,7 @@ function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }:
                                 </tr>
                               );
                             })}
-                            {/* Total row: "Total" | "Total" | total | total | blank | blank */}
+                            {/* Total row */}
                             <tr style={{ backgroundColor: c.colHead, fontWeight: 600 }}>
                               <td className={tdB} style={{ color: c.accent }}>Total</td>
                               <td className={tdB} style={{ color: c.accent }}>Total</td>

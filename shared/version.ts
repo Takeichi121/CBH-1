@@ -18,6 +18,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Attendance: Records — กำหนด fixed width ทุกคอลัมน์ (Date/Employee/Position/Roster/In/Out/Status/Notes) ตารางไม่ยืดหดตาม content อีกต่อไป",
       "Attendance: Records — เรียงลำดับชื่อในแต่ละวันตาม seniority: Store Manager → Asst SM → Shift Manager → อื่นๆ",
       "Attendance: Excel Sheet — เรียงลำดับคอลัมน์พนักงานตาม seniority: Store Manager → Asst SM → Shift Manager",
+      "Attendance: Excel Sheet — เพิ่มพื้นที่ตาราง: ปรับ maxHeight เป็น calc(100vh - 210px) และย่อ toolbar ให้กระชับ",
     ],
   },
   {

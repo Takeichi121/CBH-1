@@ -1611,11 +1611,11 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
   const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center text-[#111111]";
 
   return (
-    <div className="space-y-4">
-      {/* Action buttons */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-excel-sheet">
-          <UserPlus className="h-3.5 w-3.5" />
+    <div className="space-y-2">
+      {/* Action buttons — compact single row */}
+      <div className="flex items-center justify-between">
+        <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs px-2.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-excel-sheet">
+          <UserPlus className="h-3 w-3" />
           เพิ่มพนักงาน
         </Button>
       </div>
@@ -1648,7 +1648,7 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-lg border overflow-auto bg-white" style={{ maxHeight: "72vh" }}>
+        <div className="rounded-lg border overflow-auto bg-white" style={{ maxHeight: "calc(100vh - 210px)" }}>
           {Array.from({ length: Math.ceil(employees.length / GROUP) }, (_, gi) => {
             const grpEmps = employees.slice(gi * GROUP, (gi + 1) * GROUP);
             return (

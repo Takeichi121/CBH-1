@@ -1576,7 +1576,10 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
     if (isManagerPos(r.position) && !empMap.has(r.employeeFullName))
       empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
   });
-  const employees = Array.from(empMap.values());
+  const employees = Array.from(empMap.values()).sort((a, b) =>
+    getPosPriority(a.position) - getPosPriority(b.position) ||
+    (a.nickName || a.fullName).localeCompare(b.nickName || b.fullName)
+  );
   const recIdx: Record<string, ClockRecord> = {};
   records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
 

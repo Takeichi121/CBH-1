@@ -519,20 +519,20 @@ function MonthlyView({ year, month, storeId }: { year: number; month: number; st
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="text-xs w-28">{t("Date","วันที่")}</TableHead>
-                    <TableHead className="text-xs">{t("Employee","พนักงาน")}</TableHead>
-                    <TableHead className="text-xs hidden md:table-cell">{t("Position","ตำแหน่ง")}</TableHead>
-                    <TableHead className="text-xs">{t("Roster","Roster")}</TableHead>
-                    <TableHead className="text-xs">{t("In","เข้า")}</TableHead>
-                    <TableHead className="text-xs">{t("Out","ออก")}</TableHead>
-                    <TableHead className="text-xs">{t("Status","สถานะ")}</TableHead>
-                    <TableHead className="text-xs hidden lg:table-cell">{t("Notes","หมายเหตุ")}</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="text-xs w-28 shrink-0">{t("Date","วันที่")}</TableHead>
+                    <TableHead className="text-xs w-40 min-w-[9rem]">{t("Employee","พนักงาน")}</TableHead>
+                    <TableHead className="text-xs w-44 min-w-[10rem] hidden md:table-cell">{t("Position","ตำแหน่ง")}</TableHead>
+                    <TableHead className="text-xs w-20 min-w-[4rem]">{t("Roster","Roster")}</TableHead>
+                    <TableHead className="text-xs w-20 min-w-[4rem]">{t("In","เข้า")}</TableHead>
+                    <TableHead className="text-xs w-20 min-w-[4rem]">{t("Out","ออก")}</TableHead>
+                    <TableHead className="text-xs w-24 min-w-[5rem]">{t("Status","สถานะ")}</TableHead>
+                    <TableHead className="text-xs w-28 min-w-[6rem] hidden lg:table-cell">{t("Notes","หมายเหตุ")}</TableHead>
+                    <TableHead className="w-16 shrink-0"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {dates.map(date =>
-                    byDate[date].map((r, ri) => {
+                    [...byDate[date]].sort((a, b) => getPosPriority(a.position) - getPosPriority(b.position) || (a.employeeNickName || a.employeeFullName).localeCompare(b.employeeNickName || b.employeeFullName)).map((r, ri) => {
                       const status = getLateStatus(r.rosterTime, r.clockInTime);
                       const day = new Date(date + "T00:00:00").toLocaleDateString(language === "th" ? "th-TH" : "en-US", { weekday: "short", day: "numeric" });
                       return (
@@ -984,6 +984,16 @@ function isManagerPos(pos: string | null) {
   if (!pos) return false;
   const p = pos.toLowerCase();
   return p.includes("manager") || p.includes("shift");
+}
+
+function getPosPriority(pos: string | null): number {
+  if (!pos) return 99;
+  const p = pos.toLowerCase();
+  if (p.includes("store manager") && !p.includes("asst") && !p.includes("assistant")) return 0;
+  if (p.includes("assistant") || p.includes("asst")) return 1;
+  if (p.includes("shift")) return 2;
+  if (p.includes("manager")) return 3;
+  return 99;
 }
 
 function AddEmployeeDialog({

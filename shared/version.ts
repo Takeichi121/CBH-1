@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.9";
+export const APP_VERSION = "2.5.10";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.10",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: Records — กำหนด fixed width ทุกคอลัมน์ (Date/Employee/Position/Roster/In/Out/Status/Notes) ตารางไม่ยืดหดตาม content อีกต่อไป",
+      "Attendance: Records — เรียงลำดับชื่อในแต่ละวันตาม seniority: Store Manager → Asst SM → Shift Manager → อื่นๆ",
+    ],
+  },
   {
     version: "2.5.9",
     date: "2026-05-08",

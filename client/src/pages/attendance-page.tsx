@@ -377,15 +377,15 @@ function EditRecordDialog({
           </div>
           <div>
             <Label className="text-xs">{t("Roster Time","เวลา Roster")}</Label>
-            <Input value={form.rosterTime} onChange={e => setForm({...form, rosterTime: e.target.value})} placeholder="05:00 - 14:00" className="h-8 text-sm" data-testid="input-record-roster" />
+            <RosterTimeDropdown value={form.rosterTime} onChange={v => setForm({...form, rosterTime: v})} testId="input-record-roster" />
           </div>
           <div>
             <Label className="text-xs">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
-            <Input type="time" value={form.clockInTime} onChange={e => setForm({...form, clockInTime: e.target.value})} className="h-8 text-sm" data-testid="input-record-clockin" />
+            <TimeDropdown value={form.clockInTime} onChange={v => setForm({...form, clockInTime: v})} testId="input-record-clockin" />
           </div>
           <div>
             <Label className="text-xs">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
-            <Input type="time" value={form.clockOutTime} onChange={e => setForm({...form, clockOutTime: e.target.value})} className="h-8 text-sm" data-testid="input-record-clockout" />
+            <TimeDropdown value={form.clockOutTime} onChange={v => setForm({...form, clockOutTime: v})} testId="input-record-clockout" />
           </div>
           <div className="col-span-2">
             <Label className="text-xs">{t("Notes","หมายเหตุ")}</Label>
@@ -614,6 +614,108 @@ function isValidTimeInput(val: string): boolean {
 }
 
 const TIME_ERR_MSG = "รูปแบบไม่ถูกต้อง เช่น 05:00 หรือ 05:00 - 14:00 (ชั่วโมง 00-23, นาที 00-59)";
+
+// ─────────────────────────────────────────────────────────
+// TimeDropdown — compact or normal HH:MM selects
+// ─────────────────────────────────────────────────────────
+const HH_OPTS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MM_OPTS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
+
+function TimeDropdown({ value: valueProp, onChange, onBlur, style, compact = false, testId }: {
+  value: string | null | undefined;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  style?: React.CSSProperties;
+  compact?: boolean;
+  testId?: string;
+}) {
+  const value = valueProp ?? "";
+  const [hh, mm] = value ? value.split(":") : ["", ""];
+  const selCls = compact
+    ? "bg-transparent border-0 focus:outline-none cursor-pointer text-center p-0 text-[11px]"
+    : "h-8 text-sm border rounded px-1 bg-background text-foreground";
+
+  const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
+    if (onBlur && !e.currentTarget.contains(e.relatedTarget as Node)) onBlur();
+  };
+
+  return (
+    <span className="inline-flex items-center" style={style} onBlur={handleBlur} data-testid={testId}>
+      <select
+        className={selCls}
+        style={compact ? { width: 30 } : { width: 70 }}
+        value={hh || ""}
+        onChange={e => onChange(e.target.value && (mm || "00") ? `${e.target.value}:${mm || "00"}` : "")}
+      >
+        <option value="">--</option>
+        {HH_OPTS.map(h => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span className={compact ? "text-[11px] leading-none" : "text-sm mx-0.5"}>:</span>
+      <select
+        className={selCls}
+        style={compact ? { width: 30 } : { width: 70 }}
+        value={mm || ""}
+        onChange={e => onChange(hh && e.target.value ? `${hh}:${e.target.value}` : hh ? `${hh}:${e.target.value}` : "")}
+      >
+        <option value="">--</option>
+        {MM_OPTS.map(m => <option key={m} value={m}>{m}</option>)}
+      </select>
+    </span>
+  );
+}
+
+function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact = false, testId }: {
+  value: string | null | undefined;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  compact?: boolean;
+  testId?: string;
+}) {
+  const value = valueProp ?? "";
+  const isOff = value?.toUpperCase() === "OFF";
+  const parts = isOff ? ["", ""] : (value || "").split(" - ");
+  const startTime = parts[0]?.trim() || "";
+  const endTime   = parts[1]?.trim() || "";
+
+  const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
+    if (onBlur && !e.currentTarget.contains(e.relatedTarget as Node)) onBlur();
+  };
+
+  return (
+    <span className="inline-flex items-center flex-wrap gap-px" onBlur={handleBlur} data-testid={testId}>
+      {isOff ? (
+        <>
+          <span style={{ color: "#CC0000", fontWeight: 700, fontSize: compact ? 11 : undefined }}>OFF</span>
+          <button
+            type="button"
+            className={compact ? "text-[9px] text-muted-foreground ml-0.5 underline" : "text-xs text-muted-foreground ml-1 underline"}
+            onClick={() => onChange("")}
+          >×</button>
+        </>
+      ) : (
+        <>
+          <TimeDropdown
+            compact={compact}
+            value={startTime}
+            onChange={v => onChange(v ? `${v} - ${endTime || "00:00"}` : endTime ? `00:00 - ${endTime}` : "")}
+          />
+          <span className={compact ? "text-[11px] leading-none mx-px" : "text-sm mx-1"}>–</span>
+          <TimeDropdown
+            compact={compact}
+            value={endTime}
+            onChange={v => onChange(startTime || v ? `${startTime || "00:00"} - ${v}` : "")}
+          />
+          <button
+            type="button"
+            title="ตั้งเป็น OFF"
+            className={compact ? "text-[9px] text-red-500 ml-0.5 leading-none" : "text-xs text-red-500 ml-1"}
+            onClick={() => onChange("OFF")}
+          >OFF</button>
+        </>
+      )}
+    </span>
+  );
+}
 
 // ─────────────────────────────────────────────────────────
 // Matrix View (Excel-style: rows=dates, cols=employees)
@@ -1398,44 +1500,34 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
                         <td className={`${tdBorder} text-center whitespace-nowrap`}>
                           {d}-{monthShort}
                         </td>
-                        <td className={`${tdBorder} p-0`}>
-                          <input
-                            className={`${cellInput} ${errR ? "ring-1 ring-red-500" : ""}`}
-                            style={{ color: isOff ? "#CC0000" : undefined, fontWeight: isOff ? 700 : undefined }}
+                        <td className={`${tdBorder} p-0.5`}>
+                          <RosterTimeDropdown
+                            compact
                             value={rosterVal}
-                            placeholder="05:00 - 14:00"
-                            title={errR}
-                            onChange={e => setEdit(dateStr, emp.fullName, "rosterTime", e.target.value)}
+                            onChange={v => setEdit(dateStr, emp.fullName, "rosterTime", v)}
                             onBlur={() => saveRow(dateStr, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
-                            data-testid={`cell-exroster-${idx}-${d}`}
+                            testId={`cell-exroster-${idx}-${d}`}
                           />
                           {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exroster-${idx}-${d}`}>{errR}</div>}
                         </td>
-                        <td className={`${tdBorder} p-0`}>
-                          <input
-                            className={`${cellInput} ${errI ? "ring-1 ring-red-500" : ""}`}
-                            style={{ color: inColor }}
+                        <td className={`${tdBorder} p-0.5`}>
+                          <TimeDropdown
+                            compact
                             value={clockInVal}
-                            placeholder="05:02"
-                            title={errI}
-                            onChange={e => setEdit(dateStr, emp.fullName, "clockInTime", e.target.value)}
+                            onChange={v => setEdit(dateStr, emp.fullName, "clockInTime", v)}
                             onBlur={() => saveRow(dateStr, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
-                            data-testid={`cell-exin-${idx}-${d}`}
+                            style={{ color: inColor }}
+                            testId={`cell-exin-${idx}-${d}`}
                           />
                           {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exin-${idx}-${d}`}>{errI}</div>}
                         </td>
-                        <td className={`${tdBorder} p-0`}>
-                          <input
-                            className={`${cellInput} ${errO ? "ring-1 ring-red-500" : ""}`}
+                        <td className={`${tdBorder} p-0.5`}>
+                          <TimeDropdown
+                            compact
                             value={clockOutVal}
-                            placeholder="14:00"
-                            title={errO}
-                            onChange={e => setEdit(dateStr, emp.fullName, "clockOutTime", e.target.value)}
+                            onChange={v => setEdit(dateStr, emp.fullName, "clockOutTime", v)}
                             onBlur={() => saveRow(dateStr, emp)}
-                            onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
-                            data-testid={`cell-exout-${idx}-${d}`}
+                            testId={`cell-exout-${idx}-${d}`}
                           />
                           {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exout-${idx}-${d}`}>{errO}</div>}
                         </td>
@@ -1637,15 +1729,6 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
   const GROUP = 5;
   const tdB = "border border-[#bfbfbf] px-1.5 py-0.5 text-center text-[#111111]";
   const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center text-[#111111]";
-  const cellSelect = "w-full h-5 px-0 text-[11px] bg-transparent border-0 focus:outline-none text-center text-[#111111] cursor-pointer appearance-none";
-
-  const ROSTER_OPTS = [
-    "OFF",
-    "05:00 - 14:00","06:00 - 15:00","07:00 - 16:00","08:00 - 17:00",
-    "09:00 - 18:00","10:00 - 19:00","11:00 - 20:00","12:00 - 21:00",
-    "13:00 - 22:00","14:00 - 23:00","15:00 - 00:00","16:00 - 01:00",
-    "20:00 - 05:00","22:00 - 07:00",
-  ];
 
 
   return (
@@ -1754,57 +1837,43 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                   </td>
                                   <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111" }}>{d}</td>
                                   {/* Roster */}
-                                  <td className={`${tdB} p-0`}>
-                                    <select
-                                      className={cellSelect}
-                                      style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : "#111111" }}
-                                      value={ROSTER_OPTS.includes(rosterVal) ? rosterVal : ""}
-                                      onChange={e => { setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value); }}
+                                  <td className={`${tdB} p-0.5`}>
+                                    <RosterTimeDropdown
+                                      compact
+                                      value={rosterVal}
+                                      onChange={v => setEditCell(dateStr, emp.fullName, "rosterTime", v)}
                                       onBlur={() => saveRow(dateStr, emp)}
-                                      disabled={isSaving}
-                                      data-testid={`cell-es-roster-${idx}-${d}`}
-                                    >
-                                      <option value="">—</option>
-                                      {ROSTER_OPTS.map(o => (
-                                        <option key={o} value={o} style={{ color: o === "OFF" ? "#CC0000" : "#111111" }}>{o}</option>
-                                      ))}
-                                      {rosterVal && !ROSTER_OPTS.includes(rosterVal) && (
-                                        <option value={rosterVal}>{rosterVal}</option>
-                                      )}
-                                    </select>
+                                      testId={`cell-es-roster-${idx}-${d}`}
+                                    />
                                     {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errR}</div>}
                                   </td>
                                   {/* ScanIn */}
-                                  <td className={`${tdB} p-0`}>
+                                  <td className={`${tdB} p-0.5`}>
                                     {isSaving ? (
                                       <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
                                     ) : (
-                                      <input
-                                        type="time"
-                                        className={cellInput}
-                                        style={{ color: inColor ?? "#111111" }}
+                                      <TimeDropdown
+                                        compact
                                         value={inVal}
-                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value)}
+                                        onChange={v => setEditCell(dateStr, emp.fullName, "clockInTime", v)}
                                         onBlur={() => saveRow(dateStr, emp)}
-                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
-                                        data-testid={`cell-es-scanin-${idx}-${d}`}
+                                        style={{ color: inColor ?? "#111111" }}
+                                        testId={`cell-es-scanin-${idx}-${d}`}
                                       />
                                     )}
                                     {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errI}</div>}
                                   </td>
                                   {/* ScanOut */}
-                                  <td className={`${tdB} p-0`}>
+                                  <td className={`${tdB} p-0.5`}>
                                     {isSaving ? (
                                       <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
                                     ) : (
-                                      <input
-                                        type="time"
-                                        className={cellInput}
+                                      <TimeDropdown
+                                        compact
                                         value={outVal}
-                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value)}
+                                        onChange={v => setEditCell(dateStr, emp.fullName, "clockOutTime", v)}
                                         onBlur={() => saveRow(dateStr, emp)}
-                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
-                                        data-testid={`cell-es-scanout-${idx}-${d}`}
+                                        testId={`cell-es-scanout-${idx}-${d}`}
                                       />
                                     )}
                                     {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errO}</div>}

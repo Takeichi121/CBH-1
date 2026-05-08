@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.14";
+export const APP_VERSION = "2.5.15";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.15",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: รวมแท็บ Roster Sheet และ Excel Sheet เข้าเป็นแท็บเดียว — สลับมุมมองด้วยปุ่ม Roster Sheet / Excel Sheet ภายในแท็บ",
+    ],
+  },
   {
     version: "2.5.14",
     date: "2026-05-08",

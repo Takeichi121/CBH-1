@@ -1991,6 +1991,62 @@ function rosterStartH(rosterTime: string | null): number | null {
   return isNaN(h) ? null : h;
 }
 
+function ExcelSheetCombined({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+  const { t } = useI18n();
+  const [subView, setSubView] = useState<"roster" | "excel">("roster");
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setSubView("roster")}
+          data-testid="subtab-roster-sheet"
+          className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${subView === "roster" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            {t("Roster Sheet","ตารางงาน")}
+          </span>
+        </button>
+        <button
+          onClick={() => setSubView("excel")}
+          data-testid="subtab-excel-sheet"
+          className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${subView === "excel" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            {t("Excel Sheet","Excel Sheet")}
+          </span>
+        </button>
+        {subView === "roster" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              document.body.classList.add("printing-roster");
+              window.print();
+              window.addEventListener("afterprint", () => {
+                document.body.classList.remove("printing-roster");
+              }, { once: true });
+            }}
+            data-testid="button-print-roster"
+            className="gap-1.5 h-7 text-xs ml-auto"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            {t("Print","พิมพ์")}
+          </Button>
+        )}
+      </div>
+      {subView === "roster" ? (
+        <div id="roster-print-area">
+          <ExcelRosterView year={year} month={month} storeId={storeId} />
+        </div>
+      ) : (
+        <ExcelSheetTab year={year} month={month} storeId={storeId} />
+      )}
+    </div>
+  );
+}
+
 function ClockInOutCSVTab({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
   const { toast } = useToast();
   const { language } = useI18n();
@@ -2578,18 +2634,15 @@ export default function AttendancePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="records" className="space-y-4">
-          <TabsList className="grid grid-cols-6 w-full max-w-4xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-3xl">
             <TabsTrigger value="records" data-testid="tab-records" className="gap-1 text-xs">
               <Clock className="h-3.5 w-3.5" />{t("Records","บันทึก")}
             </TabsTrigger>
-            <TabsTrigger value="roster" data-testid="tab-roster" className="gap-1 text-xs">
-              <FileSpreadsheet className="h-3.5 w-3.5" />{t("Roster Sheet","ตารางงาน")}
+            <TabsTrigger value="excel-sheet" data-testid="tab-excel-sheet" className="gap-1 text-xs">
+              <FileSpreadsheet className="h-3.5 w-3.5" />{t("Excel Sheet","Excel Sheet")}
             </TabsTrigger>
             <TabsTrigger value="matrix" data-testid="tab-matrix" className="gap-1 text-xs">
               <LayoutGrid className="h-3.5 w-3.5" />{t("Matrix","ตารางเปรียบ")}
-            </TabsTrigger>
-            <TabsTrigger value="excel-sheet" data-testid="tab-excel-sheet" className="gap-1 text-xs">
-              <FileSpreadsheet className="h-3.5 w-3.5" />{t("Excel Sheet","Excel Sheet")}
             </TabsTrigger>
             <TabsTrigger value="csv-sheet" data-testid="tab-csv-sheet" className="gap-1 text-xs">
               <FileText className="h-3.5 w-3.5" />{t("CSV Sheet","Clock In Out")}
@@ -2603,36 +2656,12 @@ export default function AttendancePage() {
             <MonthlyView year={year} month={month} storeId={storeId} />
           </TabsContent>
 
-          <TabsContent value="roster">
-            <div className="flex justify-end mb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  document.body.classList.add("printing-roster");
-                  window.print();
-                  window.addEventListener("afterprint", () => {
-                    document.body.classList.remove("printing-roster");
-                  }, { once: true });
-                }}
-                data-testid="button-print-roster"
-                className="gap-1.5 h-9"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                {t("Print","พิมพ์")}
-              </Button>
-            </div>
-            <div id="roster-print-area">
-              <ExcelRosterView year={year} month={month} storeId={storeId} />
-            </div>
+          <TabsContent value="excel-sheet">
+            <ExcelSheetCombined year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="matrix">
             <MatrixView year={year} month={month} storeId={storeId} />
-          </TabsContent>
-
-          <TabsContent value="excel-sheet">
-            <ExcelSheetTab year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="csv-sheet">

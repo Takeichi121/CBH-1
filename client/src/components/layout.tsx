@@ -141,7 +141,6 @@ export function Layout({ children }: { children: ReactNode }) {
         ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
         ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
         announcementNavItem,
-        notificationsNavItem,
       ]
     : [
         ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
@@ -153,7 +152,6 @@ export function Layout({ children }: { children: ReactNode }) {
         ...(isManagerOrAdmin && hasFeature("borrow") ? [{ href: "/borrow", label: t("borrowTracker") || "Borrow", icon: Package }] : []),
         { href: "/chann", label: "Chann AI", icon: Sparkles },
         announcementNavItem,
-        notificationsNavItem,
         ...(isManagerOrAdmin && hasFeature("requests") ? [{ href: "/requests", label: t("managerRequest") || "Request", icon: FileText }] : []),
         ...(isManagerOrAdmin && hasFeature("admin") ? [{ href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield }] : []),
         ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
@@ -165,7 +163,6 @@ export function Layout({ children }: { children: ReactNode }) {
         ...(hasFeature("sales") ? [{ href: "/sales", label: t("salesReport") || "Sales Report", icon: BarChart3 }] : []),
         ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
         announcementNavItem,
-        notificationsNavItem,
       ]
     : [
         ...(hasFeature("dashboard") ? [{ href: "/dashboard", label: t("dashboard") || "Dashboard", icon: LayoutDashboard }] : []),
@@ -180,7 +177,6 @@ export function Layout({ children }: { children: ReactNode }) {
         ...(isManagerOrAdmin && hasFeature("requests") ? [{ href: "/requests", label: t("managerRequest") || "Request", icon: FileText }] : []),
         ...(isManagerOrAdmin && hasFeature("admin") ? [{ href: "/admin", label: t("manageTeam") || "Manage Team", icon: Shield }] : []),
         announcementNavItem,
-        notificationsNavItem,
         ...(hasFeature("settings") ? [{ href: "/settings", label: t("settings") || "Settings", icon: Settings }] : []),
         ...(hasFeature("handbook") ? [{ href: "/handbook", label: t("employeeHandbook") || "Handbook", icon: BookOpen }] : []),
       ];
@@ -354,7 +350,10 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* ── MOBILE LAYOUT ─────────────────────────────────────────────── */}
       <div className="flex flex-col min-h-screen md:hidden">
         {/* Mobile Header */}
-        <header className="flex items-center h-14 px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+        <header
+  className="flex items-center h-14 px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md shadow-md"
+  style={{ paddingTop: 'env(safe-area-inset-top, 12px)' }}
+>
           <Button
             variant="ghost"
             size="icon"

@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Clock, Upload, FileSpreadsheet, CheckCircle2, Loader2,
-  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid, Printer, FileText
+  Plus, Pencil, Trash2, Info, Users, RefreshCw, AlertTriangle, Download, LayoutGrid, Printer, FileText, UserPlus, X
 } from "lucide-react";
 import { PageTutorial, TutorialStep } from "@/components/page-tutorial";
 
@@ -986,11 +986,109 @@ function isManagerPos(pos: string | null) {
   return p.includes("manager") || p.includes("shift");
 }
 
+function AddEmployeeDialog({
+  year, month, storeId, onClose, onAdded,
+}: { year: number; month: number; storeId: string; onClose: () => void; onAdded: () => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({ fullName: "", nickName: "", position: "" });
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = async () => {
+    if (!form.fullName.trim()) {
+      toast({ variant: "destructive", title: "Error", description: "กรุณาใส่ชื่อเต็มพนักงาน" });
+      return;
+    }
+    setSaving(true);
+    const date = `${year}-${String(month).padStart(2, "0")}-01`;
+    try {
+      const res = await apiRequest("POST", "/api/attendance/record", {
+        token: localStorage.getItem("bk_token"),
+        date,
+        storeId,
+        employeeFullName: form.fullName.trim(),
+        employeeNickName: form.nickName.trim(),
+        position: form.position.trim(),
+        rosterTime: "",
+        clockInTime: "",
+        clockOutTime: "",
+        notes: "",
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast({ title: "เพิ่มพนักงานแล้ว", description: `${form.fullName} ปรากฏในตารางแล้ว` });
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+        onAdded();
+        onClose();
+      } else {
+        toast({ variant: "destructive", title: "Error", description: json.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            เพิ่มพนักงานในตาราง
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <div>
+            <Label className="text-xs">ชื่อเต็ม *</Label>
+            <Input
+              value={form.fullName}
+              onChange={e => setForm({ ...form, fullName: e.target.value })}
+              placeholder="Firstname Lastname"
+              className="h-8 text-sm mt-1"
+              data-testid="input-add-emp-fullname"
+              autoFocus
+            />
+          </div>
+          <div>
+            <Label className="text-xs">ชื่อเล่น</Label>
+            <Input
+              value={form.nickName}
+              onChange={e => setForm({ ...form, nickName: e.target.value })}
+              placeholder="เช่น Jew, Non, Yo"
+              className="h-8 text-sm mt-1"
+              data-testid="input-add-emp-nickname"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">ตำแหน่ง</Label>
+            <Input
+              value={form.position}
+              onChange={e => setForm({ ...form, position: e.target.value })}
+              placeholder="เช่น Shift Manager, Store Manager"
+              className="h-8 text-sm mt-1"
+              data-testid="input-add-emp-position"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose}>ยกเลิก</Button>
+          <Button size="sm" onClick={handleAdd} disabled={saving} data-testid="button-add-emp-confirm">
+            {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <UserPlus className="h-4 w-4 mr-1" />}
+            เพิ่มพนักงาน
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
   const { toast } = useToast();
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showAddEmp, setShowAddEmp] = useState(false);
   const escapingRef = useRef(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
@@ -1004,7 +1102,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
 
   const records = data?.records || [];
 
-  // Build ordered manager list (first appearance order)
+  // Build ordered manager list (manager/shift manager positions only)
   const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
   records.forEach(r => {
     if (isManagerPos(r.position) && !empMap.has(r.employeeFullName)) {
@@ -1138,13 +1236,28 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   );
 
   if (managers.length === 0) return (
-    <Card>
-      <CardContent className="flex flex-col items-center gap-3 py-12">
-        <Users className="h-12 w-12 text-muted-foreground/40" />
-        <p className="text-muted-foreground text-center text-sm font-medium">ไม่มีข้อมูลทีมผู้จัดการในเดือนนี้</p>
-        <p className="text-xs text-muted-foreground/70">ข้อมูลแสดงเฉพาะตำแหน่ง Manager และ Shift Manager — กรุณา Import Excel ก่อน</p>
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-empty">
+          <UserPlus className="h-4 w-4" />
+          เพิ่มพนักงาน
+        </Button>
+      </div>
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-12">
+          <Users className="h-12 w-12 text-muted-foreground/40" />
+          <p className="text-muted-foreground text-center text-sm font-medium">ยังไม่มีข้อมูลพนักงานในเดือนนี้</p>
+          <p className="text-xs text-muted-foreground/70">กด "เพิ่มพนักงาน" เพื่อเริ่มกรอกข้อมูล หรือ Import Excel ก่อน</p>
+          <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={() => setShowAddEmp(true)}>
+            <UserPlus className="h-4 w-4" />
+            เพิ่มพนักงาน
+          </Button>
+        </CardContent>
+      </Card>
+      {showAddEmp && (
+        <AddEmployeeDialog year={year} month={month} storeId={storeId} onClose={() => setShowAddEmp(false)} onAdded={() => {}} />
+      )}
+    </div>
   );
 
   const tdBorder = "border border-gray-300 px-1.5 py-0.5";

@@ -1457,6 +1457,347 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
 }
 
 // ─────────────────────────────────────────────────────────
+// Excel Sheet Tab (paper form — manager side-by-side, blank template)
+// ─────────────────────────────────────────────────────────
+function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
+  const { toast } = useToast();
+  const [showAddEmp, setShowAddEmp] = useState(false);
+
+  const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
+  const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const escapingRef = useRef(false);
+
+  const getEdit = (date: string, empName: string, field: string) =>
+    localEdits[`${date}:${empName}`]?.[field];
+
+  const setEditCell = (date: string, empName: string, field: string, value: string) => {
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
+  const revertField = (date: string, empName: string, field: string) => {
+    escapingRef.current = true;
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => {
+      const n = { ...prev };
+      if (n[k]) {
+        const row = { ...n[k] }; delete row[field];
+        if (Object.keys(row).length === 0) delete n[k]; else n[k] = row;
+      }
+      return n;
+    });
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
+  const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    if (escapingRef.current) { escapingRef.current = false; return; }
+    const k = `${date}:${emp.fullName}`;
+    const edits = localEdits[k];
+    if (!edits || Object.keys(edits).length === 0) return;
+    const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
+    const newErrors: Record<string, string> = {};
+    for (const field of timeFields) {
+      const val = edits[field] ?? "";
+      if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
+    }
+    if (Object.keys(newErrors).length > 0) { setFieldErrors(prev => ({ ...prev, ...newErrors })); return; }
+    setFieldErrors(prev => { const n = { ...prev }; timeFields.forEach(f => delete n[`${k}:${f}`]); return n; });
+    const existing = recIdx[k];
+    const payload = {
+      token: localStorage.getItem("bk_token"),
+      date, storeId,
+      employeeFullName: emp.fullName,
+      employeeNickName: edits.employeeNickName ?? emp.nickName ?? "",
+      position: edits.position ?? emp.position ?? "",
+      rosterTime: edits.rosterTime ?? existing?.rosterTime ?? "",
+      clockInTime: edits.clockInTime ?? existing?.clockInTime ?? "",
+      clockOutTime: edits.clockOutTime ?? existing?.clockOutTime ?? "",
+      notes: edits.notes ?? existing?.notes ?? "",
+    };
+    setSavingRows(prev => new Set(prev).add(k));
+    try {
+      const url = existing?.id ? `/api/attendance/record/${existing.id}` : "/api/attendance/record";
+      const method = existing?.id ? "PUT" : "POST";
+      const res = await apiRequest(method, url, payload);
+      const json = await res.json();
+      if (json.ok) {
+        setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; });
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: json.message });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; });
+    }
+  };
+
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+    queryKey: ["/api/attendance/records", year, month, storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/records?token=${token}&year=${year}&month=${month}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const records = data?.records || [];
+
+  const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  records.forEach(r => {
+    if (isManagerPos(r.position) && !empMap.has(r.employeeFullName))
+      empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+  });
+  const employees = Array.from(empMap.values());
+  const recIdx: Record<string, ClockRecord> = {};
+  records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dowIdx = new Date(dateStr + "T00:00:00").getDay();
+    return { dateStr, d, dowIdx };
+  });
+
+  function shiftCount(empName: string, h0: number, h1: number): number {
+    return days.reduce((acc, { dateStr }) => {
+      const rec = recIdx[`${dateStr}:${empName}`];
+      const h = rosterStartH(rec?.rosterTime || null);
+      return h !== null && h >= h0 && h <= h1 ? acc + 1 : acc;
+    }, 0);
+  }
+
+  function totalRosterDays(empName: string): number {
+    return days.reduce((acc, { dateStr }) => {
+      const rec = recIdx[`${dateStr}:${empName}`];
+      return rec?.rosterTime && rec.rosterTime.toUpperCase() !== "OFF" ? acc + 1 : acc;
+    }, 0);
+  }
+
+  const GROUP = 5;
+  const tdB = "border border-gray-300 px-1.5 py-0.5 text-center";
+  const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center";
+
+  return (
+    <div className="space-y-4">
+      {/* Action buttons */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-excel-sheet">
+          <UserPlus className="h-3.5 w-3.5" />
+          เพิ่มพนักงาน
+        </Button>
+      </div>
+
+      {/* Add Employee Dialog */}
+      {showAddEmp && (
+        <AddEmployeeDialog
+          year={year} month={month} storeId={storeId}
+          onClose={() => setShowAddEmp(false)}
+          onAdded={() => { setShowAddEmp(false); qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); }}
+        />
+      )}
+
+      {/* Sheet view */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : employees.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12">
+            <FileSpreadsheet className="h-12 w-12 text-muted-foreground/40" />
+            <p className="text-muted-foreground text-center text-sm">
+              ยังไม่มีพนักงานในเดือนนี้ — เพิ่มพนักงานเพื่อเริ่มกรอกข้อมูล
+            </p>
+            <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-excel-sheet-empty">
+              <UserPlus className="h-3.5 w-3.5" />
+              เพิ่มพนักงาน
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="rounded-lg border overflow-auto" style={{ maxHeight: "72vh" }}>
+          {Array.from({ length: Math.ceil(employees.length / GROUP) }, (_, gi) => {
+            const grpEmps = employees.slice(gi * GROUP, (gi + 1) * GROUP);
+            return (
+              <div key={gi}>
+                {gi > 0 && <div className="h-6 bg-muted/30 border-t border-b" />}
+                <div className="flex min-w-max">
+                  {grpEmps.map((emp, idx) => {
+                    const c = EMP_COLORS_CSV[idx % EMP_COLORS_CSV.length];
+                    const total = totalRosterDays(emp.fullName);
+                    return (
+                      <div key={emp.fullName} className="border-r last:border-r-0 shrink-0" style={{ width: 420 }} data-testid={`block-excel-sheet-${gi}-${idx}`}>
+                        <table className="w-full border-collapse" style={{ fontSize: 11 }}>
+                          <tbody>
+                            {/* Row 1: ชื่อ / fullName / ชื่อเล่น / nickName */}
+                            <tr style={{ backgroundColor: c.header }}>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อ</td>
+                              <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.fullName}</td>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อเล่น</td>
+                              <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.nickName || "—"}</td>
+                            </tr>
+                            {/* Row 2: สาขา / Month */}
+                            <tr style={{ backgroundColor: c.header }}>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
+                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{storeName}</td>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
+                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{MONTH_SHORT[month - 1]}</td>
+                            </tr>
+                            {/* Row 3: ตำแหน่ง */}
+                            <tr style={{ backgroundColor: c.header }}>
+                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ตำแหน่ง</td>
+                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={5}>{emp.position || "—"}</td>
+                            </tr>
+                            {/* Column headers */}
+                            <tr style={{ backgroundColor: c.colHead }}>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วัน</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วันที่</th>
+                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>Roster</th>
+                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>ScanIn</th>
+                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>ScanOut</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Notes</th>
+                            </tr>
+                            {/* Daily editable rows — always 31 */}
+                            {days.map(({ dateStr, d, dowIdx }) => {
+                              const rec = recIdx[`${dateStr}:${emp.fullName}`];
+                              const k = `${dateStr}:${emp.fullName}`;
+                              const isSaving = savingRows.has(k);
+                              const isWknd = dowIdx === 0 || dowIdx === 6;
+
+                              const rosterVal = getEdit(dateStr, emp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
+                              const inVal     = getEdit(dateStr, emp.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
+                              const outVal    = getEdit(dateStr, emp.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
+                              const notesVal  = getEdit(dateStr, emp.fullName, "notes") ?? rec?.notes ?? "";
+
+                              const status = getLateStatus(rosterVal || null, inVal || null);
+                              const inColor = status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined;
+
+                              const errR = fieldErrors[`${k}:rosterTime`];
+                              const errI = fieldErrors[`${k}:clockInTime`];
+                              const errO = fieldErrors[`${k}:clockOutTime`];
+
+                              return (
+                                <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : undefined }}>
+                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : undefined, fontWeight: isWknd ? 600 : undefined }}>
+                                    {DOW_TH[dowIdx]}
+                                  </td>
+                                  <td className={tdB}>{d}</td>
+                                  {/* Roster */}
+                                  <td className={`${tdB} p-0`}>
+                                    <input
+                                      className={cellInput}
+                                      style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : undefined }}
+                                      value={rosterVal}
+                                      onChange={e => setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value)}
+                                      onBlur={() => saveRow(dateStr, emp)}
+                                      onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                      disabled={isSaving}
+                                      data-testid={`cell-es-roster-${idx}-${d}`}
+                                    />
+                                    {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errR}</div>}
+                                  </td>
+                                  {/* ScanIn */}
+                                  <td className={`${tdB} p-0`}>
+                                    {isSaving ? (
+                                      <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
+                                    ) : (
+                                      <input
+                                        className={cellInput}
+                                        style={{ color: inColor }}
+                                        value={inVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value)}
+                                        onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                        data-testid={`cell-es-scanin-${idx}-${d}`}
+                                      />
+                                    )}
+                                    {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errI}</div>}
+                                  </td>
+                                  {/* ScanOut */}
+                                  <td className={`${tdB} p-0`}>
+                                    {isSaving ? (
+                                      <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
+                                    ) : (
+                                      <input
+                                        className={cellInput}
+                                        value={outVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value)}
+                                        onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                        data-testid={`cell-es-scanout-${idx}-${d}`}
+                                      />
+                                    )}
+                                    {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errO}</div>}
+                                  </td>
+                                  {/* Notes */}
+                                  <td className={`${tdB} p-0`}>
+                                    {isSaving ? (
+                                      <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
+                                    ) : (
+                                      <input
+                                        className={`${cellInput} text-left`}
+                                        value={notesVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "notes", e.target.value)}
+                                        onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                                        data-testid={`cell-es-notes-${idx}-${d}`}
+                                      />
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {/* Spacer */}
+                            <tr><td colSpan={6} style={{ height: 6 }} /></tr>
+                            {/* Shift summary header */}
+                            <tr style={{ backgroundColor: c.colHead }}>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Shift</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time Roster</th>
+                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Total</th>
+                              <th className={tdB} colSpan={2} />
+                            </tr>
+                            {CSV_SHIFTS_FE.map(sh => {
+                              const cnt = shiftCount(emp.fullName, sh.h0, sh.h1);
+                              return (
+                                <tr key={sh.label}>
+                                  <td className={tdB} style={{ textAlign: "left", paddingLeft: 4 }}>{sh.label}</td>
+                                  <td className={tdB}>{sh.h0}:00</td>
+                                  <td className={tdB}>{cnt > 0 ? cnt : ""}</td>
+                                  <td className={tdB} />
+                                  <td className={tdB} colSpan={2} />
+                                </tr>
+                              );
+                            })}
+                            {/* Total row */}
+                            <tr style={{ backgroundColor: c.colHead, fontWeight: 600 }}>
+                              <td className={tdB} style={{ color: c.accent }}>Total</td>
+                              <td className={tdB} style={{ color: c.accent }}>Total</td>
+                              <td className={tdB} style={{ color: c.accent }}>{total > 0 ? total : ""}</td>
+                              <td className={tdB} style={{ color: c.accent }}>{total > 0 ? total : ""}</td>
+                              <td className={tdB} colSpan={2} />
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Clock In Out CSV Sheet Tab
 // ─────────────────────────────────────────────────────────
 const CSV_SHIFTS_FE = [
@@ -2415,6 +2756,9 @@ export default function AttendancePage() {
             <TabsTrigger value="matrix" data-testid="tab-matrix" className="gap-1 text-xs">
               <LayoutGrid className="h-3.5 w-3.5" />{t("Matrix","ตารางเปรียบ")}
             </TabsTrigger>
+            <TabsTrigger value="excel-sheet" data-testid="tab-excel-sheet" className="gap-1 text-xs">
+              <FileSpreadsheet className="h-3.5 w-3.5" />{t("Excel Sheet","Excel Sheet")}
+            </TabsTrigger>
             <TabsTrigger value="csv-sheet" data-testid="tab-csv-sheet" className="gap-1 text-xs">
               <FileText className="h-3.5 w-3.5" />{t("CSV Sheet","Clock In Out")}
             </TabsTrigger>
@@ -2457,6 +2801,10 @@ export default function AttendancePage() {
 
           <TabsContent value="matrix">
             <MatrixView year={year} month={month} storeId={storeId} />
+          </TabsContent>
+
+          <TabsContent value="excel-sheet">
+            <ExcelSheetTab year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="csv-sheet">

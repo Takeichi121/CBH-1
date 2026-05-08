@@ -405,7 +405,7 @@ export function Layout({ children }: { children: ReactNode }) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                        className="h-8 w-8 rounded-full hover:text-foreground"
                         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                         data-testid="button-theme-toggle-mobile"
                       >

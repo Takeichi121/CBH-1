@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.15";
+export const APP_VERSION = "2.5.16";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.16",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: แยกไฟล์ attendance-page.tsx (2,681 บรรทัด) ออกเป็น 9 ไฟล์ย่อยใน client/src/pages/attendance/ — types, utils, shared-components, import-excel-tab, monthly-view, matrix-view, excel-roster-view, excel-sheet-tab, csv-sheet-tab",
+    ],
+  },
   {
     version: "2.5.15",
     date: "2026-05-08",

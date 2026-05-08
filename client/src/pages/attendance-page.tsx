@@ -1120,7 +1120,17 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
     }
   });
   const managers = Array.from(empMap.values());
-  const visibleManagers = selectedEmp === "all" ? managers : managers.filter(e => e.fullName === selectedEmp);
+
+  // Reset selection if selected employee no longer exists in the current month/store
+  React.useEffect(() => {
+    if (selectedEmp !== "all" && !managers.some(e => e.fullName === selectedEmp)) {
+      setSelectedEmp("all");
+    }
+  }, [managers, selectedEmp]);
+
+  const filtered = selectedEmp === "all" ? managers : managers.filter(e => e.fullName === selectedEmp);
+  // Defensive fallback: never render empty roster (e.g. race condition during reset)
+  const visibleManagers = filtered.length > 0 ? filtered : managers;
 
   // Record index: "YYYY-MM-DD:fullName"
   const recIdx: Record<string, ClockRecord> = {};

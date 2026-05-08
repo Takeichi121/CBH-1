@@ -1619,13 +1619,6 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
     "20:00 - 05:00","22:00 - 07:00",
   ];
 
-  function genTimeOpts(): string[] {
-    const opts: string[] = [];
-    for (let h = 4; h < 24; h++) for (const m of [0, 15, 30, 45]) opts.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
-    for (let h = 0; h < 4;  h++) for (const m of [0, 15, 30, 45]) opts.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
-    return opts;
-  }
-  const TIME_OPTS = genTimeOpts();
 
   return (
     <div className="space-y-2">
@@ -1758,18 +1751,16 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                     {isSaving ? (
                                       <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
                                     ) : (
-                                      <select
-                                        className={cellSelect}
+                                      <input
+                                        type="time"
+                                        className={cellInput}
                                         style={{ color: inColor ?? "#111111" }}
-                                        value={TIME_OPTS.includes(inVal) ? inVal : ""}
-                                        onChange={e => { setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value); }}
+                                        value={inVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value)}
                                         onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                                         data-testid={`cell-es-scanin-${idx}-${d}`}
-                                      >
-                                        <option value="">—</option>
-                                        {TIME_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
-                                        {inVal && !TIME_OPTS.includes(inVal) && <option value={inVal}>{inVal}</option>}
-                                      </select>
+                                      />
                                     )}
                                     {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errI}</div>}
                                   </td>
@@ -1778,18 +1769,15 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                     {isSaving ? (
                                       <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
                                     ) : (
-                                      <select
-                                        className={cellSelect}
-                                        style={{ color: "#111111" }}
-                                        value={TIME_OPTS.includes(outVal) ? outVal : ""}
-                                        onChange={e => { setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value); }}
+                                      <input
+                                        type="time"
+                                        className={cellInput}
+                                        value={outVal}
+                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value)}
                                         onBlur={() => saveRow(dateStr, emp)}
+                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                                         data-testid={`cell-es-scanout-${idx}-${d}`}
-                                      >
-                                        <option value="">—</option>
-                                        {TIME_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
-                                        {outVal && !TIME_OPTS.includes(outVal) && <option value={outVal}>{outVal}</option>}
-                                      </select>
+                                      />
                                     )}
                                     {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errO}</div>}
                                   </td>

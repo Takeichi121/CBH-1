@@ -30,7 +30,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Attendance: Records — เรียงลำดับชื่อในแต่ละวันตาม seniority: Store Manager → Asst SM → Shift Manager → อื่นๆ",
       "Attendance: Excel Sheet — เรียงลำดับคอลัมน์พนักงานตาม seniority: Store Manager → Asst SM → Shift Manager",
       "Attendance: Excel Sheet — เพิ่มพื้นที่ตาราง: ปรับ maxHeight เป็น calc(100vh - 210px) และย่อ toolbar ให้กระชับ",
-      "Attendance: Excel Sheet — Roster/ScanIn/ScanOut เปลี่ยนเป็น dropdown: Roster มี preset กะงาน, ScanIn/ScanOut มีเวลาทุก 15 นาที (04:00–03:45)",
+      "Attendance: Excel Sheet — Roster เปลี่ยนเป็น dropdown preset กะงาน, ScanIn/ScanOut เปลี่ยนเป็น time picker (พิมพ์นาทีเองได้ทุกนาที)",
     ],
   },
   {

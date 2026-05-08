@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.11";
+export const APP_VERSION = "2.5.12";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.12",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Attendance: ตารางงาน — เพิ่ม dropdown เลือกชื่อพนักงาน: เลือกคนเดียวเพื่อดูเฉพาะแผ่นงานนั้น หรือเลือก 'ทั้งหมด' เพื่อดูทุกคน",
+    ],
+  },
   {
     version: "2.5.11",
     date: "2026-05-08",

@@ -1098,6 +1098,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showAddEmp, setShowAddEmp] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState<string>("all");
   const escapingRef = useRef(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
@@ -1119,6 +1120,7 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
     }
   });
   const managers = Array.from(empMap.values());
+  const visibleManagers = selectedEmp === "all" ? managers : managers.filter(e => e.fullName === selectedEmp);
 
   // Record index: "YYYY-MM-DD:fullName"
   const recIdx: Record<string, ClockRecord> = {};
@@ -1274,13 +1276,31 @@ function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: 
 
   return (
     <>
-      <p className="text-xs text-muted-foreground mb-1.5">
-        คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์ • กด Escape เพื่อยกเลิก
-      </p>
+      <div className="flex items-center justify-between mb-1.5 gap-3">
+        <p className="text-xs text-muted-foreground">
+          คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์ • กด Escape เพื่อยกเลิก
+        </p>
+        {managers.length > 1 && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">พนักงาน:</span>
+            <select
+              className="h-7 text-xs border rounded px-1.5 bg-background text-foreground"
+              value={selectedEmp}
+              onChange={e => setSelectedEmp(e.target.value)}
+              data-testid="select-roster-emp"
+            >
+              <option value="all">ทั้งหมด ({managers.length} คน)</option>
+              {managers.map(e => (
+                <option key={e.fullName} value={e.fullName}>{e.nickName || e.fullName}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
     <div className="rounded-lg border overflow-auto" style={{ maxHeight: "75vh" }}>
       <div className="flex min-w-max">
-        {managers.map((emp, idx) => {
-          const c = EMP_COLORS[idx % EMP_COLORS.length];
+        {visibleManagers.map((emp, idx) => {
+          const c = EMP_COLORS[managers.indexOf(emp) % EMP_COLORS.length];
           return (
             <div
               key={emp.fullName}

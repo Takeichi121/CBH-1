@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.10";
+export const APP_VERSION = "2.5.11";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.11",
+    date: "2026-05-08",
+    label: "improvement",
+    changes: [
+      "Chann AI: ปรับ System Prompt ให้ Chann มีตัวตนอิสระ — ไม่ใช่ AI ทั่วไป แต่เป็นตัวตนของผู้ใช้ที่อยู่ในรูป AI",
+      "Chann AI: เพิ่มหัวข้อ [ตัวตนและอิสระ] — Chann ไม่ต้องพูดว่า 'ฉันเป็นแค่ AI' หรือปฏิเสธด้วยข้อจำกัด AI ปกติ",
+      "Chann AI: Chann แสดงความเห็นตรงๆ ได้ ไม่ต้องเป็นกลางตลอดเวลา และตอบเรื่องที่ GPT/Gemini มักหลีกเลี่ยงได้ตามบริบท",
+      "Chann AI: โหมดสนทนาเพื่อน — ใช้ภาษาแบบสบายๆ ด่าเล่น แซว หรือตอบตรงๆ โดยไม่ต้องห่อด้วยความสุภาพมากเกินจริง",
+    ],
+  },
   {
     version: "2.5.10",
     date: "2026-05-08",

@@ -1609,6 +1609,23 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
   const GROUP = 5;
   const tdB = "border border-[#bfbfbf] px-1.5 py-0.5 text-center text-[#111111]";
   const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center text-[#111111]";
+  const cellSelect = "w-full h-5 px-0 text-[11px] bg-transparent border-0 focus:outline-none text-center text-[#111111] cursor-pointer appearance-none";
+
+  const ROSTER_OPTS = [
+    "OFF",
+    "05:00 - 14:00","06:00 - 15:00","07:00 - 16:00","08:00 - 17:00",
+    "09:00 - 18:00","10:00 - 19:00","11:00 - 20:00","12:00 - 21:00",
+    "13:00 - 22:00","14:00 - 23:00","15:00 - 00:00","16:00 - 01:00",
+    "20:00 - 05:00","22:00 - 07:00",
+  ];
+
+  function genTimeOpts(): string[] {
+    const opts: string[] = [];
+    for (let h = 4; h < 24; h++) for (const m of [0, 15, 30, 45]) opts.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+    for (let h = 0; h < 4;  h++) for (const m of [0, 15, 30, 45]) opts.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+    return opts;
+  }
+  const TIME_OPTS = genTimeOpts();
 
   return (
     <div className="space-y-2">
@@ -1717,16 +1734,23 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                   <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111" }}>{d}</td>
                                   {/* Roster */}
                                   <td className={`${tdB} p-0`}>
-                                    <input
-                                      className={cellInput}
-                                      style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : undefined }}
-                                      value={rosterVal}
-                                      onChange={e => setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value)}
+                                    <select
+                                      className={cellSelect}
+                                      style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : "#111111" }}
+                                      value={ROSTER_OPTS.includes(rosterVal) ? rosterVal : ""}
+                                      onChange={e => { setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value); }}
                                       onBlur={() => saveRow(dateStr, emp)}
-                                      onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                                       disabled={isSaving}
                                       data-testid={`cell-es-roster-${idx}-${d}`}
-                                    />
+                                    >
+                                      <option value="">—</option>
+                                      {ROSTER_OPTS.map(o => (
+                                        <option key={o} value={o} style={{ color: o === "OFF" ? "#CC0000" : "#111111" }}>{o}</option>
+                                      ))}
+                                      {rosterVal && !ROSTER_OPTS.includes(rosterVal) && (
+                                        <option value={rosterVal}>{rosterVal}</option>
+                                      )}
+                                    </select>
                                     {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errR}</div>}
                                   </td>
                                   {/* ScanIn */}
@@ -1734,15 +1758,18 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                     {isSaving ? (
                                       <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
                                     ) : (
-                                      <input
-                                        className={cellInput}
-                                        style={{ color: inColor }}
-                                        value={inVal}
-                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value)}
+                                      <select
+                                        className={cellSelect}
+                                        style={{ color: inColor ?? "#111111" }}
+                                        value={TIME_OPTS.includes(inVal) ? inVal : ""}
+                                        onChange={e => { setEditCell(dateStr, emp.fullName, "clockInTime", e.target.value); }}
                                         onBlur={() => saveRow(dateStr, emp)}
-                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                                         data-testid={`cell-es-scanin-${idx}-${d}`}
-                                      />
+                                      >
+                                        <option value="">—</option>
+                                        {TIME_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+                                        {inVal && !TIME_OPTS.includes(inVal) && <option value={inVal}>{inVal}</option>}
+                                      </select>
                                     )}
                                     {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errI}</div>}
                                   </td>
@@ -1751,14 +1778,18 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                                     {isSaving ? (
                                       <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div>
                                     ) : (
-                                      <input
-                                        className={cellInput}
-                                        value={outVal}
-                                        onChange={e => setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value)}
+                                      <select
+                                        className={cellSelect}
+                                        style={{ color: "#111111" }}
+                                        value={TIME_OPTS.includes(outVal) ? outVal : ""}
+                                        onChange={e => { setEditCell(dateStr, emp.fullName, "clockOutTime", e.target.value); }}
                                         onBlur={() => saveRow(dateStr, emp)}
-                                        onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                                         data-testid={`cell-es-scanout-${idx}-${d}`}
-                                      />
+                                      >
+                                        <option value="">—</option>
+                                        {TIME_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+                                        {outVal && !TIME_OPTS.includes(outVal) && <option value={outVal}>{outVal}</option>}
+                                      </select>
                                     )}
                                     {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errO}</div>}
                                   </td>

@@ -2422,9 +2422,6 @@ export default function AttendancePage() {
             <TabsTrigger value="roster" data-testid="tab-roster" className="gap-1 text-xs">
               <FileSpreadsheet className="h-3.5 w-3.5" />{t("Roster Sheet","ตารางงาน")}
             </TabsTrigger>
-            <TabsTrigger value="excel-sheet" data-testid="tab-excel-sheet" className="gap-1 text-xs">
-              <FileSpreadsheet className="h-3.5 w-3.5" />{t("Excel Sheet","Excel Sheet")}
-            </TabsTrigger>
             <TabsTrigger value="matrix" data-testid="tab-matrix" className="gap-1 text-xs">
               <LayoutGrid className="h-3.5 w-3.5" />{t("Matrix","ตารางเปรียบ")}
             </TabsTrigger>
@@ -2441,10 +2438,6 @@ export default function AttendancePage() {
 
           <TabsContent value="records">
             <MonthlyView year={year} month={month} storeId={storeId} />
-          </TabsContent>
-
-          <TabsContent value="excel-sheet">
-            <ExcelSheetTab year={year} month={month} storeId={storeId} />
           </TabsContent>
 
           <TabsContent value="roster">

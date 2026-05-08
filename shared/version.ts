@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.7";
+export const APP_VERSION = "2.5.8";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.8",
+    date: "2026-05-08",
+    label: "bugfix",
+    changes: [
+      "Attendance: Excel Sheet — แก้สีอ่านยากใน dark mode: บังคับพื้นหลังขาวเสมอ (เหมือนกระดาษ Excel จริง)",
+      "Attendance: Excel Sheet — ตัวอักษรทุก cell บังคับสี #111111 ป้องกัน dark mode กลืนสี",
+      "Attendance: Excel Sheet — weekend rows, shift summary rows ทุกแถวมีพื้นขาวชัดเจน",
+    ],
+  },
   {
     version: "2.5.7",
     date: "2026-05-08",

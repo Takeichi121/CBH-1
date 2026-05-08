@@ -1579,8 +1579,8 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
   }
 
   const GROUP = 5;
-  const tdB = "border border-gray-300 px-1.5 py-0.5 text-center";
-  const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center";
+  const tdB = "border border-[#bfbfbf] px-1.5 py-0.5 text-center text-[#111111]";
+  const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center text-[#111111]";
 
   return (
     <div className="space-y-4">
@@ -1620,12 +1620,12 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-lg border overflow-auto" style={{ maxHeight: "72vh" }}>
+        <div className="rounded-lg border overflow-auto bg-white" style={{ maxHeight: "72vh" }}>
           {Array.from({ length: Math.ceil(employees.length / GROUP) }, (_, gi) => {
             const grpEmps = employees.slice(gi * GROUP, (gi + 1) * GROUP);
             return (
               <div key={gi}>
-                {gi > 0 && <div className="h-6 bg-muted/30 border-t border-b" />}
+                {gi > 0 && <div className="h-6 border-t border-b" style={{ backgroundColor: "#d9d9d9" }} />}
                 <div className="flex min-w-max">
                   {grpEmps.map((emp, idx) => {
                     const c = EMP_COLORS_CSV[idx % EMP_COLORS_CSV.length];
@@ -1682,11 +1682,11 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                               const errO = fieldErrors[`${k}:clockOutTime`];
 
                               return (
-                                <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : undefined }}>
-                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : undefined, fontWeight: isWknd ? 600 : undefined }}>
+                                <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : "#ffffff" }}>
+                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111", fontWeight: isWknd ? 600 : undefined }}>
                                     {DOW_TH[dowIdx]}
                                   </td>
-                                  <td className={tdB}>{d}</td>
+                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111" }}>{d}</td>
                                   {/* Roster */}
                                   <td className={`${tdB} p-0`}>
                                     <input
@@ -1753,7 +1753,7 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                               );
                             })}
                             {/* Spacer */}
-                            <tr><td colSpan={6} style={{ height: 6 }} /></tr>
+                            <tr><td colSpan={6} style={{ height: 6, backgroundColor: "#f2f2f2", borderTop: "1px solid #bfbfbf", borderBottom: "1px solid #bfbfbf" }} /></tr>
                             {/* Shift summary header */}
                             <tr style={{ backgroundColor: c.colHead }}>
                               <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Shift</th>
@@ -1765,10 +1765,10 @@ function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { 
                             {CSV_SHIFTS_FE.map(sh => {
                               const cnt = shiftCount(emp.fullName, sh.h0, sh.h1);
                               return (
-                                <tr key={sh.label}>
-                                  <td className={tdB} style={{ textAlign: "left", paddingLeft: 4 }}>{sh.label}</td>
-                                  <td className={tdB}>{sh.h0}:00</td>
-                                  <td className={tdB}>{cnt > 0 ? cnt : ""}</td>
+                                <tr key={sh.label} style={{ backgroundColor: "#ffffff" }}>
+                                  <td className={tdB} style={{ textAlign: "left", paddingLeft: 4, color: "#111111" }}>{sh.label}</td>
+                                  <td className={tdB} style={{ color: "#111111" }}>{sh.h0}:00</td>
+                                  <td className={tdB} style={{ color: cnt > 0 ? c.accent : "#111111", fontWeight: cnt > 0 ? 600 : undefined }}>{cnt > 0 ? cnt : ""}</td>
                                   <td className={tdB} />
                                   <td className={tdB} colSpan={2} />
                                 </tr>

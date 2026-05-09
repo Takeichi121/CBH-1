@@ -4,7 +4,7 @@ import { useI18n } from "@/hooks/use-i18n";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Clock, Upload, FileSpreadsheet, LayoutGrid, FileText, Download } from "lucide-react";
+import { Clock, Upload, FileSpreadsheet, LayoutGrid, FileText, Download, Users } from "lucide-react";
 import { PageTutorial, TutorialStep } from "@/components/page-tutorial";
 
 import { MONTH_TH, MONTH_EN } from "./attendance/types";
@@ -13,6 +13,7 @@ import { AppMatrixView } from "./attendance/matrix-view";
 import { ImportExcelTab } from "./attendance/import-excel-tab";
 import { EmployeeAppView } from "./attendance/excel-sheet-tab";
 import { ClockInOutCSVTab } from "./attendance/csv-sheet-tab";
+import { OverviewTab } from "./attendance/overview-tab";
 
 const ATTENDANCE_TUTORIAL: TutorialStep[] = [
   {
@@ -113,8 +114,11 @@ export default function AttendancePage() {
             </Button>
           </div>
 
-          <Tabs defaultValue="records" className="space-y-4">
-            <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="grid grid-cols-6 w-full max-w-4xl">
+              <TabsTrigger value="overview" data-testid="tab-overview" className="gap-1 text-xs">
+                <Users className="h-3.5 w-3.5" />{t("Overview","ภาพรวม")}
+              </TabsTrigger>
               <TabsTrigger value="records" data-testid="tab-records" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" />{t("Records","บันทึก")}
               </TabsTrigger>
@@ -132,6 +136,9 @@ export default function AttendancePage() {
               </TabsTrigger>
             </TabsList>
 
+            <TabsContent value="overview">
+              <OverviewTab year={year} month={month} storeId={storeId} />
+            </TabsContent>
             <TabsContent value="records">
               <AppMonthlyView year={year} month={month} storeId={storeId} />
             </TabsContent>

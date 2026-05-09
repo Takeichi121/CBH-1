@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.19";
+export const APP_VERSION = "2.5.20";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.20",
+    date: "2026-05-09",
+    label: "feature",
+    changes: [
+      "Attendance: เพิ่มแท็บ 'ภาพรวม' (Overview) — แสดงสถิติพนักงานทุกคนในเดือนนั้นพร้อมกัน (กะทั้งหมด, ตรงเวลา, สาย, ขาด) พร้อม progress bar อัตราเข้างานตรงเวลา",
+      "Attendance: ภาพรวมทีมแสดง summary cards ด้านบน รวม total shifts, on-time, late, absent",
+      "Attendance: แท็บ Overview เป็น default tab แรกที่เปิดขึ้นมา",
+    ],
+  },
   {
     version: "2.5.19",
     date: "2026-05-09",

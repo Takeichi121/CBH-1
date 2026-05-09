@@ -58,47 +58,47 @@ function EditRecordDialog({ record, onClose, storeId, employeeNamePreFill }: { r
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
+            <Clock className="h-5 w-5 text-blue-500" />
             {record?.id ? t("Edit Record","แก้ไขบันทึก") : t("Add Record","เพิ่มบันทึก")}
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-2">
           <div className="col-span-2">
-            <Label className="text-xs font-semibold text-gray-500">{t("Date","วันที่")} *</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Date","วันที่")} *</Label>
             <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">{t("Full Name","ชื่อเต็ม")} *</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Full Name","ชื่อเต็ม")} *</Label>
             <Input value={form.employeeFullName} onChange={e => setForm({...form, employeeFullName: e.target.value})} placeholder="Firstname Lastname" className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">{t("Nickname","ชื่อเล่น")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Nickname","ชื่อเล่น")}</Label>
             <Input value={form.employeeNickName} onChange={e => setForm({...form, employeeNickName: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">{t("Position","ตำแหน่ง")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Position","ตำแหน่ง")}</Label>
             <Input value={form.position} onChange={e => setForm({...form, position: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">{t("Roster Time","เวลา Roster")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Roster Time","เวลา Roster")}</Label>
             <div className="mt-1"><RosterTimeDropdown value={form.rosterTime} onChange={v => setForm({...form, rosterTime: v})} /></div>
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
             <div className="mt-1"><TimeDropdown value={form.clockInTime} onChange={v => setForm({...form, clockInTime: v})} /></div>
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
             <div className="mt-1"><TimeDropdown value={form.clockOutTime} onChange={v => setForm({...form, clockOutTime: v})} /></div>
           </div>
           <div className="col-span-2">
-            <Label className="text-xs font-semibold text-gray-500">{t("Notes","หมายเหตุ")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Notes","หมายเหตุ")}</Label>
             <Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{t("Cancel","ยกเลิก")}</Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
             {t("Save","บันทึก")}
           </Button>
@@ -153,7 +153,6 @@ export function AppMonthlyView({ year, month, storeId }: { year: number; month: 
   }, [employees, selectedEmp]);
 
   const currentEmp = employees.find(e => e.fullName === selectedEmp);
-  
   const empRecords = records.filter(r => r.employeeFullName === selectedEmp).sort((a, b) => a.date.localeCompare(b.date));
 
   const totalShifts = empRecords.filter(r => r.clockInTime || r.rosterTime).length;
@@ -161,7 +160,7 @@ export function AppMonthlyView({ year, month, storeId }: { year: number; month: 
   const absentCount = empRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "absent").length;
   const onTimeCount = empRecords.filter(r => ["on-time","early"].includes(getLateStatus(r.rosterTime, r.clockInTime))).length;
 
-  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>;
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   if (employees.length === 0) return (
     <Card className="border-dashed shadow-sm">
@@ -177,11 +176,11 @@ export function AppMonthlyView({ year, month, storeId }: { year: number; month: 
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-lg border shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-4 rounded-lg border shadow-sm">
         <div className="flex-1 w-full max-w-sm">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">เลือกพนักงานเพื่อดูประวัติรายเดือน</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">เลือกพนักงานเพื่อดูประวัติรายเดือน</label>
           <select 
-            className="w-full p-2 border rounded-md bg-gray-50 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full p-2 border border-border rounded-md bg-muted/50 text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary"
             value={selectedEmp}
             onChange={(e) => setSelectedEmp(e.target.value)}
           >
@@ -192,38 +191,38 @@ export function AppMonthlyView({ year, month, storeId }: { year: number; month: 
             ))}
           </select>
         </div>
-        <Button size="sm" onClick={() => setEditRecord({ employeeFullName: selectedEmp })} className="gap-2 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white">
+        <Button size="sm" onClick={() => setEditRecord({ employeeFullName: selectedEmp })} className="gap-2 whitespace-nowrap">
           <Plus className="h-4 w-4" /> {t("Add Record","เพิ่มบันทึก")}
         </Button>
       </div>
 
       {!currentEmp ? (
-        <Card className="border-dashed"><CardContent className="py-16 text-center text-gray-400">กรุณาเลือกพนักงาน</CardContent></Card>
+        <Card className="border-dashed"><CardContent className="py-16 text-center text-muted-foreground">กรุณาเลือกพนักงาน</CardContent></Card>
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="bg-blue-50/50 border-blue-100 shadow-sm lg:col-span-1">
+            <Card className="bg-blue-500/10 border-blue-500/20 shadow-sm lg:col-span-1">
               <CardContent className="p-4 flex items-center gap-4 h-full">
-                <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold shrink-0">
+                <div className="h-16 w-16 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center text-2xl font-bold shrink-0">
                   {currentEmp.nickName?.[0] || currentEmp.fullName[0]}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <strong className="text-gray-900 text-lg leading-tight">{currentEmp.fullName}</strong>
-                  <span className="text-gray-500 text-sm">{currentEmp.nickName || "-"} • {currentEmp.position || "Staff"}</span>
+                  <strong className="text-foreground text-lg leading-tight">{currentEmp.fullName}</strong>
+                  <span className="text-muted-foreground text-sm">{currentEmp.nickName || "-"} • {currentEmp.position || "Staff"}</span>
                 </div>
               </CardContent>
             </Card>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:col-span-2">
               {[
-                { label: t("Total Shifts","กะทั้งหมด"), value: totalShifts, color: "text-gray-900" },
-                { label: t("On Time / Early","ตรงเวลา / เร็ว"), value: onTimeCount, color: "text-green-600" },
+                { label: t("Total Shifts","กะทั้งหมด"), value: totalShifts, color: "text-foreground" },
+                { label: t("On Time / Early","ตรงเวลา / เร็ว"), value: onTimeCount, color: "text-green-500" },
                 { label: t("Late","สาย"), value: lateCount, color: "text-red-500" },
                 { label: t("Absent","ขาด / ไม่มีข้อมูล"), value: absentCount, color: "text-amber-500" },
               ].map(s => (
-                <Card key={s.label} className="shadow-sm border-gray-200 flex flex-col justify-center">
+                <Card key={s.label} className="shadow-sm flex flex-col justify-center">
                   <CardContent className="p-4 text-center">
-                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">{s.label}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{s.label}</p>
                     <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
                   </CardContent>
                 </Card>
@@ -234,21 +233,21 @@ export function AppMonthlyView({ year, month, storeId }: { year: number; month: 
           <Card className="shadow-sm overflow-hidden">
             <div className="overflow-x-auto max-h-[60vh]">
               <Table>
-                <TableHeader className="sticky top-0 bg-gray-100 z-10 shadow-sm">
+                <TableHeader className="sticky top-0 bg-muted/50 z-10 shadow-sm">
                   <TableRow>
-                    <TableHead className="text-xs font-semibold text-gray-600 w-32">{t("Date","วันที่")}</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("Roster","เข้างาน Roster")}</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("In","สแกนเข้า")}</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("Out","สแกนออก")}</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("Status","สถานะ")}</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600">{t("Notes","หมายเหตุ")}</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 text-right w-24">จัดการ</TableHead>
+                    <TableHead className="text-xs font-semibold w-32">{t("Date","วันที่")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-center w-28">{t("Roster","เข้างาน Roster")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-center w-28">{t("In","สแกนเข้า")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-center w-28">{t("Out","สแกนออก")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-center w-28">{t("Status","สถานะ")}</TableHead>
+                    <TableHead className="text-xs font-semibold">{t("Notes","หมายเหตุ")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-right w-24">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="bg-white">
+                <TableBody>
                   {empRecords.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-gray-400 py-8">ไม่มีข้อมูลการทำงานในเดือนนี้</TableCell>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">ไม่มีข้อมูลการทำงานในเดือนนี้</TableCell>
                     </TableRow>
                   ) : (
                     empRecords.map((r) => {
@@ -257,31 +256,31 @@ export function AppMonthlyView({ year, month, storeId }: { year: number; month: 
                       const isWeekend = new Date(r.date + "T00:00:00").getDay() === 0 || new Date(r.date + "T00:00:00").getDay() === 6;
 
                       return (
-                        <TableRow key={r.id} className={`hover:bg-gray-50 transition-colors ${isWeekend ? 'bg-amber-50/20' : ''}`}>
-                          <TableCell className="text-sm font-medium text-gray-700 whitespace-nowrap">{dayStr}</TableCell>
-                          <TableCell className="text-sm text-center text-gray-600">{r.rosterTime || "—"}</TableCell>
+                        <TableRow key={r.id} className={isWeekend ? 'bg-amber-500/5' : ''}>
+                          <TableCell className="text-sm font-medium whitespace-nowrap">{dayStr}</TableCell>
+                          <TableCell className="text-sm text-center text-muted-foreground">{r.rosterTime || "—"}</TableCell>
                           <TableCell className="text-sm text-center">
                             {r.clockInTime ? (
-                              <span className={status === "late" ? "text-red-600 font-bold" : status === "early" ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
+                              <span className={status === "late" ? "text-red-500 font-bold" : status === "early" ? "text-blue-500 font-medium" : "text-green-500 font-medium"}>
                                 {formatTime(r.clockInTime)}
                               </span>
-                            ) : <span className="text-gray-400">—</span>}
+                            ) : <span className="text-muted-foreground/50">—</span>}
                           </TableCell>
-                          <TableCell className="text-sm text-center text-gray-600">{r.clockOutTime ? formatTime(r.clockOutTime) : "—"}</TableCell>
+                          <TableCell className="text-sm text-center text-muted-foreground">{r.clockOutTime ? formatTime(r.clockOutTime) : "—"}</TableCell>
                           <TableCell className="text-center">
-                            {status === "on-time" && <Badge className="text-[10px] bg-green-100 text-green-700 hover:bg-green-100 border-none">{t("On Time","ตรงเวลา")}</Badge>}
-                            {status === "early"   && <Badge className="text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">{t("Early","เร็ว")}</Badge>}
-                            {status === "late"    && <Badge className="text-[10px] bg-red-100 text-red-700 hover:bg-red-100 border-none">{t("Late","สาย")}</Badge>}
-                            {status === "absent"  && <Badge className="text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">{t("Absent","ขาด")}</Badge>}
-                            {status === "unknown" && <span className="text-gray-300">—</span>}
+                            {status === "on-time" && <Badge className="text-[10px] bg-green-500/15 text-green-500 hover:bg-green-500/15 border-none">{t("On Time","ตรงเวลา")}</Badge>}
+                            {status === "early"   && <Badge className="text-[10px] bg-blue-500/15 text-blue-500 hover:bg-blue-500/15 border-none">{t("Early","เร็ว")}</Badge>}
+                            {status === "late"    && <Badge className="text-[10px] bg-red-500/15 text-red-500 hover:bg-red-500/15 border-none">{t("Late","สาย")}</Badge>}
+                            {status === "absent"  && <Badge className="text-[10px] bg-amber-500/15 text-amber-500 hover:bg-amber-500/15 border-none">{t("Absent","ขาด")}</Badge>}
+                            {status === "unknown" && <span className="text-muted-foreground/30">—</span>}
                           </TableCell>
-                          <TableCell className="text-sm text-gray-500 truncate max-w-[200px]">{r.notes || ""}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground truncate max-w-[200px]">{r.notes || ""}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditRecord(r)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => setEditRecord(r)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50" onClick={() => { if (confirm(t("Delete this record?","ลบรายการนี้?"))) deleteMutation.mutate(r.id); }}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-red-500 hover:bg-red-500/10" onClick={() => { if (confirm(t("Delete this record?","ลบรายการนี้?"))) deleteMutation.mutate(r.id); }}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>

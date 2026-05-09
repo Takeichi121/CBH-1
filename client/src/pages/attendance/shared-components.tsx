@@ -22,7 +22,7 @@ export function TimeDropdown({ value: valueProp, onChange, onBlur, style, compac
   
   const selCls = compact
     ? "bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded cursor-pointer text-center p-0 text-[11px] w-8 appearance-none focus:outline-none"
-    : "h-9 text-sm border border-gray-200 rounded-md px-2 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none w-16 cursor-pointer";
+    : "h-9 text-sm border border-border rounded-md px-2 bg-muted/50 text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none w-16 cursor-pointer";
 
   const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
     if (onBlur && !e.currentTarget.contains(e.relatedTarget as Node)) onBlur();
@@ -38,7 +38,7 @@ export function TimeDropdown({ value: valueProp, onChange, onBlur, style, compac
         <option value="">--</option>
         {HH_OPTS.map(h => <option key={h} value={h}>{h}</option>)}
       </select>
-      <span className={compact ? "text-[11px] leading-none mx-0.5 text-gray-400" : "text-sm mx-1 text-gray-500"}>:</span>
+      <span className={compact ? "text-[11px] leading-none mx-0.5 text-muted-foreground" : "text-sm mx-1 text-muted-foreground"}>:</span>
       <select
         className={selCls}
         value={mm || ""}
@@ -71,11 +71,11 @@ export function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact
   return (
     <span className="inline-flex items-center flex-wrap gap-px" onBlur={handleBlur} data-testid={testId}>
       {isOff ? (
-        <span className="flex items-center bg-red-50 px-2 py-0.5 rounded border border-red-100">
-          <span className={`text-red-600 font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>OFF</span>
+        <span className="flex items-center bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+          <span className={`text-red-500 font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>OFF</span>
           <button
             type="button"
-            className={`text-red-400 hover:text-red-600 ml-2 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
+            className={`text-red-400 hover:text-red-500 ml-2 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
             onClick={() => onChange("")}
           >
             ✕
@@ -88,7 +88,7 @@ export function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact
             value={startTime}
             onChange={v => onChange(v ? `${v} - ${endTime || "00:00"}` : endTime ? `00:00 - ${endTime}` : "")}
           />
-          <span className={compact ? "text-[11px] leading-none mx-1 text-gray-400" : "text-sm mx-2 text-gray-500"}>–</span>
+          <span className={compact ? "text-[11px] leading-none mx-1 text-muted-foreground" : "text-sm mx-2 text-muted-foreground"}>–</span>
           <TimeDropdown
             compact={compact}
             value={endTime}
@@ -97,7 +97,7 @@ export function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact
           <button
             type="button"
             title="ตั้งเป็น OFF"
-            className={`font-semibold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded px-1.5 transition-colors ${compact ? 'text-[9px] ml-1' : 'text-xs ml-2 py-1'}`}
+            className={`font-semibold text-red-500 hover:text-red-600 bg-red-500/10 hover:bg-red-500/20 rounded px-1.5 transition-colors ${compact ? 'text-[9px] ml-1' : 'text-xs ml-2 py-1'}`}
             onClick={() => onChange("OFF")}
           >
             OFF
@@ -152,27 +152,27 @@ export function AddEmployeeDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-blue-600" />
+            <UserPlus className="h-5 w-5 text-blue-500" />
             เพิ่มพนักงานในตาราง
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label className="text-xs font-semibold text-gray-500">ชื่อเต็ม *</Label>
-            <Input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} placeholder="Firstname Lastname" className="h-9 text-sm mt-1 focus:ring-blue-500" data-testid="input-add-emp-fullname" autoFocus />
+            <Label className="text-xs font-semibold text-muted-foreground">ชื่อเต็ม *</Label>
+            <Input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} placeholder="Firstname Lastname" className="h-9 text-sm mt-1" data-testid="input-add-emp-fullname" autoFocus />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">ชื่อเล่น</Label>
-            <Input value={form.nickName} onChange={e => setForm({ ...form, nickName: e.target.value })} placeholder="เช่น Jew, Non, Yo" className="h-9 text-sm mt-1 focus:ring-blue-500" data-testid="input-add-emp-nickname" />
+            <Label className="text-xs font-semibold text-muted-foreground">ชื่อเล่น</Label>
+            <Input value={form.nickName} onChange={e => setForm({ ...form, nickName: e.target.value })} placeholder="เช่น Jew, Non, Yo" className="h-9 text-sm mt-1" data-testid="input-add-emp-nickname" />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-gray-500">ตำแหน่ง</Label>
-            <Input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} placeholder="เช่น Shift Manager, Store Manager" className="h-9 text-sm mt-1 focus:ring-blue-500" data-testid="input-add-emp-position" />
+            <Label className="text-xs font-semibold text-muted-foreground">ตำแหน่ง</Label>
+            <Input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} placeholder="เช่น Shift Manager, Store Manager" className="h-9 text-sm mt-1" data-testid="input-add-emp-position" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose} className="hover:bg-gray-50">ยกเลิก</Button>
-          <Button size="sm" onClick={handleAdd} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-add-emp-confirm">
+          <Button variant="outline" size="sm" onClick={onClose}>ยกเลิก</Button>
+          <Button size="sm" onClick={handleAdd} disabled={saving} data-testid="button-add-emp-confirm">
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
             เพิ่มพนักงาน
           </Button>

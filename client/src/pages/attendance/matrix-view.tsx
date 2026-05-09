@@ -128,14 +128,14 @@ export function AppMatrixView({ year, month, storeId }: { year: number; month: n
     </Card>
   );
 
-  const inputCls = "w-full text-sm bg-transparent border border-gray-200 rounded p-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900";
+  const inputCls = "w-full text-sm bg-transparent border border-border rounded p-1.5 focus:ring-2 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/40";
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
-      <div className="bg-white p-4 rounded-lg border shadow-sm">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">เลือกพนักงาน (Employee)</label>
+      <div className="bg-card p-4 rounded-lg border shadow-sm">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">เลือกพนักงาน (Employee)</label>
         <select 
-          className="w-full sm:w-1/2 p-2 border rounded-md bg-gray-50 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full sm:w-1/2 p-2 border border-border rounded-md bg-muted/50 text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary"
           value={selectedEmp}
           onChange={(e) => setSelectedEmp(e.target.value)}
         >
@@ -148,34 +148,34 @@ export function AppMatrixView({ year, month, storeId }: { year: number; month: n
       </div>
 
       {!currentEmp ? (
-        <Card className="border-dashed"><CardContent className="py-16 text-center text-gray-400">กรุณาเลือกพนักงาน</CardContent></Card>
+        <Card className="border-dashed"><CardContent className="py-16 text-center text-muted-foreground">กรุณาเลือกพนักงาน</CardContent></Card>
       ) : (
         <div className="space-y-4">
-          <Card className="bg-blue-50/50 border-blue-100 shadow-sm">
+          <Card className="bg-blue-500/10 border-blue-500/20 shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="h-14 w-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+              <div className="h-14 w-14 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
                 {currentEmp.nickName?.[0] || currentEmp.fullName[0]}
               </div>
               <div className="flex-1 grid grid-cols-2 gap-2 text-sm w-full">
-                <div><span className="text-gray-500">ชื่อ-นามสกุล:</span> <strong className="text-gray-900">{currentEmp.fullName}</strong></div>
-                <div><span className="text-gray-500">ชื่อเล่น:</span> <strong className="text-gray-900">{currentEmp.nickName || "-"}</strong></div>
-                <div><span className="text-gray-500">ตำแหน่ง:</span> <strong className="text-gray-900">{currentEmp.position || "-"}</strong></div>
+                <div><span className="text-muted-foreground">ชื่อ-นามสกุล:</span> <strong className="text-foreground">{currentEmp.fullName}</strong></div>
+                <div><span className="text-muted-foreground">ชื่อเล่น:</span> <strong className="text-foreground">{currentEmp.nickName || "-"}</strong></div>
+                <div><span className="text-muted-foreground">ตำแหน่ง:</span> <strong className="text-foreground">{currentEmp.position || "-"}</strong></div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex flex-wrap gap-4 text-xs font-medium text-gray-600 bg-white p-3 rounded-lg border">
+          <div className="flex flex-wrap gap-4 text-xs font-medium text-muted-foreground bg-card p-3 rounded-lg border">
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />{t("On time","ตรงเวลา")}</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />{t("Late","สาย")}</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" />{t("Early","เร็ว")}</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-100 border border-amber-200" />{t("Weekend","เสาร์/อา")}</span>
-            <span className="ml-auto text-gray-400 font-normal hidden sm:inline-block">คลิกเซลล์เพื่อแก้ไข • กด Esc เพื่อยกเลิก • กด Enter เพื่อลงบรรทัดใหม่</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500/30 border border-amber-500/40" />{t("Weekend","เสาร์/อา")}</span>
+            <span className="ml-auto text-muted-foreground/50 font-normal hidden sm:inline-block">คลิกเซลล์เพื่อแก้ไข • กด Esc เพื่อยกเลิก • กด Enter เพื่อลงบรรทัดใหม่</span>
           </div>
 
           <Card className="shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider">
+                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 font-semibold w-24">วันที่</th>
                     <th className="px-4 py-3 font-semibold text-center w-32">Roster</th>
@@ -184,7 +184,7 @@ export function AppMatrixView({ year, month, storeId }: { year: number; month: n
                     <th className="px-4 py-3 font-semibold">หมายเหตุ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="divide-y divide-border">
                   {days.map(({ date, day, dowIdx }) => {
                     const isWeekend = dowIdx === 0 || dowIdx === 6;
                     const dowLabel = DOW_TH[dowIdx];
@@ -199,17 +199,17 @@ export function AppMatrixView({ year, month, storeId }: { year: number; month: n
                     const notes = getEdit(date, currentEmp.fullName, "notes") ?? rec?.notes ?? "";
                     
                     const status = getLateStatus(roster, clockIn);
-                    const inColor = status === "late" ? "text-red-600 font-bold" : status === "early" ? "text-blue-600 font-medium" : status === "on-time" ? "text-green-600 font-medium" : "text-gray-900";
+                    const inColor = status === "late" ? "text-red-500 font-bold" : status === "early" ? "text-blue-500 font-medium" : status === "on-time" ? "text-green-500 font-medium" : "text-foreground";
                     
                     const errR = fieldErrors[`${k}:rosterTime`];
                     const errI = fieldErrors[`${k}:clockInTime`];
                     const errO = fieldErrors[`${k}:clockOutTime`];
 
                     return (
-                      <tr key={date} className={`hover:bg-gray-50 transition-colors ${isWeekend ? "bg-amber-50/40" : ""}`}>
+                      <tr key={date} className={`hover:bg-muted/30 transition-colors ${isWeekend ? "bg-amber-500/5" : ""}`}>
                         <td className="px-4 py-2 whitespace-nowrap">
-                          <span className={`font-semibold ${isWeekend ? "text-amber-600" : "text-gray-700"}`}>{dowLabel}</span>
-                          <span className="text-gray-500 ml-1.5">{day}</span>
+                          <span className={`font-semibold ${isWeekend ? "text-amber-500" : "text-foreground/80"}`}>{dowLabel}</span>
+                          <span className="text-muted-foreground ml-1.5">{day}</span>
                         </td>
                         <td className="px-2 py-2">
                           <div className="relative">
@@ -248,7 +248,7 @@ export function AppMatrixView({ year, month, storeId }: { year: number; month: n
                           </div>
                         </td>
                         <td className="px-2 py-2 pr-4">
-                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-gray-400 ml-2" /> : (
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2" /> : (
                             <input 
                               className={inputCls} 
                               placeholder="เพิ่มหมายเหตุ..."

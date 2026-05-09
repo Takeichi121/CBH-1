@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.18";
+export const APP_VERSION = "2.5.19";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.19",
+    date: "2026-05-09",
+    label: "improvement",
+    changes: [
+      "Attendance: ปรับสีทุกไฟล์ (Monthly, Matrix, Excel Sheet, Roster, Shared) ให้เข้ากับธีม dark/light — ใช้ bg-card, bg-muted, text-foreground, border-border แทน hardcoded gray/white",
+      "Attendance: profile card ใช้ bg-blue-500/10 และ bg-orange-500/10 สำหรับ dark mode compatibility",
+      "Attendance: select dropdown, input field, table header ล้วนรองรับ dark mode แล้ว",
+    ],
+  },
   {
     version: "2.5.18",
     date: "2026-05-09",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -11,19 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Plus, Pencil, Trash2, Users, Loader2 } from "lucide-react";
+import { Clock, Plus, Pencil, Trash2, Users, Loader2, UserCircle } from "lucide-react";
 import { ClockRecord } from "./types";
-import { getLateStatus, formatTime, getPosPriority } from "./utils";
+import { getLateStatus, formatTime } from "./utils";
 import { TimeDropdown, RosterTimeDropdown } from "./shared-components";
 
-function EditRecordDialog({ record, onClose, storeId }: { record: Partial<ClockRecord> | null; onClose: () => void; storeId: string }) {
+function EditRecordDialog({ record, onClose, storeId, employeeNamePreFill }: { record: Partial<ClockRecord> | null; onClose: () => void; storeId: string; employeeNamePreFill?: string }) {
   const { toast } = useToast();
   const { language } = useI18n();
   const t = (en: string, th: string) => language === "th" ? th : en;
   const [form, setForm] = useState({
     date: record?.date || "",
-    employeeFullName: record?.employeeFullName || "",
+    employeeFullName: record?.employeeFullName || employeeNamePreFill || "",
     employeeNickName: record?.employeeNickName || "",
     position: record?.position || "",
     rosterTime: record?.rosterTime || "",
@@ -59,47 +58,47 @@ function EditRecordDialog({ record, onClose, storeId }: { record: Partial<ClockR
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
+            <Clock className="h-5 w-5 text-blue-600" />
             {record?.id ? t("Edit Record","แก้ไขบันทึก") : t("Add Record","เพิ่มบันทึก")}
           </DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3 py-2">
+        <div className="grid grid-cols-2 gap-4 py-2">
           <div className="col-span-2">
-            <Label className="text-xs">{t("Date","วันที่")} *</Label>
-            <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-8 text-sm" data-testid="input-record-date" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Date","วันที่")} *</Label>
+            <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs">{t("Full Name","ชื่อเต็ม")} *</Label>
-            <Input value={form.employeeFullName} onChange={e => setForm({...form, employeeFullName: e.target.value})} placeholder="Firstname Lastname" className="h-8 text-sm" data-testid="input-record-fullname" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Full Name","ชื่อเต็ม")} *</Label>
+            <Input value={form.employeeFullName} onChange={e => setForm({...form, employeeFullName: e.target.value})} placeholder="Firstname Lastname" className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs">{t("Nickname","ชื่อเล่น")}</Label>
-            <Input value={form.employeeNickName} onChange={e => setForm({...form, employeeNickName: e.target.value})} className="h-8 text-sm" data-testid="input-record-nickname" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Nickname","ชื่อเล่น")}</Label>
+            <Input value={form.employeeNickName} onChange={e => setForm({...form, employeeNickName: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs">{t("Position","ตำแหน่ง")}</Label>
-            <Input value={form.position} onChange={e => setForm({...form, position: e.target.value})} className="h-8 text-sm" data-testid="input-record-position" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Position","ตำแหน่ง")}</Label>
+            <Input value={form.position} onChange={e => setForm({...form, position: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
           <div>
-            <Label className="text-xs">{t("Roster Time","เวลา Roster")}</Label>
-            <RosterTimeDropdown value={form.rosterTime} onChange={v => setForm({...form, rosterTime: v})} testId="input-record-roster" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Roster Time","เวลา Roster")}</Label>
+            <div className="mt-1"><RosterTimeDropdown value={form.rosterTime} onChange={v => setForm({...form, rosterTime: v})} /></div>
           </div>
           <div>
-            <Label className="text-xs">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
-            <TimeDropdown value={form.clockInTime} onChange={v => setForm({...form, clockInTime: v})} testId="input-record-clockin" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
+            <div className="mt-1"><TimeDropdown value={form.clockInTime} onChange={v => setForm({...form, clockInTime: v})} /></div>
           </div>
           <div>
-            <Label className="text-xs">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
-            <TimeDropdown value={form.clockOutTime} onChange={v => setForm({...form, clockOutTime: v})} testId="input-record-clockout" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
+            <div className="mt-1"><TimeDropdown value={form.clockOutTime} onChange={v => setForm({...form, clockOutTime: v})} /></div>
           </div>
           <div className="col-span-2">
-            <Label className="text-xs">{t("Notes","หมายเหตุ")}</Label>
-            <Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="h-8 text-sm" data-testid="input-record-notes" />
+            <Label className="text-xs font-semibold text-gray-500">{t("Notes","หมายเหตุ")}</Label>
+            <Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="h-9 text-sm mt-1" />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{t("Cancel","ยกเลิก")}</Button>
-          <Button onClick={handleSave} disabled={saving} data-testid="button-save-record">
+          <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
             {t("Save","บันทึก")}
           </Button>
@@ -109,12 +108,13 @@ function EditRecordDialog({ record, onClose, storeId }: { record: Partial<ClockR
   );
 }
 
-export function MonthlyView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+export function AppMonthlyView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
   const { language } = useI18n();
   const { toast } = useToast();
   const t = (en: string, th: string) => language === "th" ? th : en;
+  
   const [editRecord, setEditRecord] = useState<Partial<ClockRecord> | null>(null);
-  const [filterEmp, setFilterEmp] = useState("all");
+  const [selectedEmp, setSelectedEmp] = useState<string>("");
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
     queryKey: ["/api/attendance/records", year, month, storeId],
@@ -135,116 +135,155 @@ export function MonthlyView({ year, month, storeId }: { year: number; month: num
   });
 
   const records = data?.records || [];
-  const employees = Array.from(new Map(records.map(r => [r.employeeFullName, r])).values());
-  const filteredRecords = filterEmp === "all" ? records : records.filter(r => r.employeeFullName === filterEmp);
-  const byDate = filteredRecords.reduce((acc, r) => { if (!acc[r.date]) acc[r.date] = []; acc[r.date].push(r); return acc; }, {} as Record<string, ClockRecord[]>);
-  const dates = Object.keys(byDate).sort();
+  
+  const employeeMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  records.forEach(r => {
+    if (!employeeMap.has(r.employeeFullName)) {
+      employeeMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+    }
+  });
+  const employees = Array.from(employeeMap.values()).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-  const totalShifts = filteredRecords.filter(r => r.clockInTime || r.rosterTime).length;
-  const lateCount   = filteredRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "late").length;
-  const absentCount = filteredRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "absent").length;
-  const onTimeCount = filteredRecords.filter(r => ["on-time","early"].includes(getLateStatus(r.rosterTime, r.clockInTime))).length;
+  useEffect(() => {
+    if (employees.length > 0 && !selectedEmp) {
+      setSelectedEmp(employees[0].fullName);
+    } else if (employees.length > 0 && !employees.some(e => e.fullName === selectedEmp)) {
+      setSelectedEmp(employees[0].fullName);
+    }
+  }, [employees, selectedEmp]);
+
+  const currentEmp = employees.find(e => e.fullName === selectedEmp);
+  
+  const empRecords = records.filter(r => r.employeeFullName === selectedEmp).sort((a, b) => a.date.localeCompare(b.date));
+
+  const totalShifts = empRecords.filter(r => r.clockInTime || r.rosterTime).length;
+  const lateCount   = empRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "late").length;
+  const absentCount = empRecords.filter(r => getLateStatus(r.rosterTime, r.clockInTime) === "absent").length;
+  const onTimeCount = empRecords.filter(r => ["on-time","early"].includes(getLateStatus(r.rosterTime, r.clockInTime))).length;
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>;
+
+  if (employees.length === 0) return (
+    <Card className="border-dashed shadow-sm">
+      <CardContent className="flex flex-col items-center gap-3 py-16">
+        <Clock className="h-16 w-16 text-muted-foreground/30" />
+        <p className="text-muted-foreground text-center font-medium">{t("No attendance records for this month yet.","ยังไม่มีข้อมูล Clock In/Out สำหรับเดือนนี้")}</p>
+        <Button size="sm" onClick={() => setEditRecord({})} className="gap-2 mt-2">
+          <Plus className="h-4 w-4" />{t("Add Record Manually","เพิ่มรายการด้วยตนเอง")}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: t("Total Shifts","กะทั้งหมด"), value: totalShifts, color: "text-foreground" },
-          { label: t("On Time / Early","ตรงเวลา / เร็ว"), value: onTimeCount, color: "text-green-600" },
-          { label: t("Late","สาย"), value: lateCount, color: "text-red-500" },
-          { label: t("Absent / No Scan","ขาด / ไม่มีข้อมูล"), value: absentCount, color: "text-amber-500" },
-        ].map(s => (
-          <Card key={s.label} className="py-3">
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <Select value={filterEmp} onValueChange={setFilterEmp}>
-            <SelectTrigger className="h-8 w-52 text-sm" data-testid="select-filter-employee">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("All Employees","พนักงานทุกคน")}</SelectItem>
-              {employees.map(e => (
-                <SelectItem key={e.employeeFullName} value={e.employeeFullName}>
-                  {e.employeeNickName ? `${e.employeeNickName} (${e.employeeFullName})` : e.employeeFullName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="space-y-4 max-w-5xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-lg border shadow-sm">
+        <div className="flex-1 w-full max-w-sm">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">เลือกพนักงานเพื่อดูประวัติรายเดือน</label>
+          <select 
+            className="w-full p-2 border rounded-md bg-gray-50 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={selectedEmp}
+            onChange={(e) => setSelectedEmp(e.target.value)}
+          >
+            {employees.map(emp => (
+              <option key={emp.fullName} value={emp.fullName}>
+                {emp.fullName} {emp.nickName ? `(${emp.nickName})` : ""}
+              </option>
+            ))}
+          </select>
         </div>
-        <Button size="sm" onClick={() => setEditRecord({})} data-testid="button-add-record" className="gap-1">
-          <Plus className="h-4 w-4" />{t("Add","เพิ่ม")}
+        <Button size="sm" onClick={() => setEditRecord({ employeeFullName: selectedEmp })} className="gap-2 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white">
+          <Plus className="h-4 w-4" /> {t("Add Record","เพิ่มบันทึก")}
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : records.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Clock className="h-12 w-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-center">{t("No attendance records for this month yet.","ยังไม่มีข้อมูล Clock In/Out สำหรับเดือนนี้")}</p>
-            <p className="text-sm text-muted-foreground">{t("Import Excel or add records manually.","Import Excel หรือเพิ่มรายการด้วยตนเอง")}</p>
-          </CardContent>
-        </Card>
+      {!currentEmp ? (
+        <Card className="border-dashed"><CardContent className="py-16 text-center text-gray-400">กรุณาเลือกพนักงาน</CardContent></Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="rounded-lg overflow-auto max-h-[60vh]">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="bg-blue-50/50 border-blue-100 shadow-sm lg:col-span-1">
+              <CardContent className="p-4 flex items-center gap-4 h-full">
+                <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold shrink-0">
+                  {currentEmp.nickName?.[0] || currentEmp.fullName[0]}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <strong className="text-gray-900 text-lg leading-tight">{currentEmp.fullName}</strong>
+                  <span className="text-gray-500 text-sm">{currentEmp.nickName || "-"} • {currentEmp.position || "Staff"}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:col-span-2">
+              {[
+                { label: t("Total Shifts","กะทั้งหมด"), value: totalShifts, color: "text-gray-900" },
+                { label: t("On Time / Early","ตรงเวลา / เร็ว"), value: onTimeCount, color: "text-green-600" },
+                { label: t("Late","สาย"), value: lateCount, color: "text-red-500" },
+                { label: t("Absent","ขาด / ไม่มีข้อมูล"), value: absentCount, color: "text-amber-500" },
+              ].map(s => (
+                <Card key={s.label} className="shadow-sm border-gray-200 flex flex-col justify-center">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">{s.label}</p>
+                    <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <Card className="shadow-sm overflow-hidden">
+            <div className="overflow-x-auto max-h-[60vh]">
               <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
+                <TableHeader className="sticky top-0 bg-gray-100 z-10 shadow-sm">
                   <TableRow>
-                    <TableHead className="text-xs w-28 shrink-0">{t("Date","วันที่")}</TableHead>
-                    <TableHead className="text-xs w-40 min-w-[9rem]">{t("Employee","พนักงาน")}</TableHead>
-                    <TableHead className="text-xs w-36 min-w-[8rem] hidden md:table-cell">{t("Position","ตำแหน่ง")}</TableHead>
-                    <TableHead className="text-xs w-20 min-w-[4rem]">{t("Roster","Roster")}</TableHead>
-                    <TableHead className="text-xs w-20 min-w-[4rem]">{t("In","เข้า")}</TableHead>
-                    <TableHead className="text-xs w-20 min-w-[4rem]">{t("Out","ออก")}</TableHead>
-                    <TableHead className="text-xs w-24 min-w-[5rem]">{t("Status","สถานะ")}</TableHead>
-                    <TableHead className="text-xs w-28 min-w-[6rem] hidden lg:table-cell">{t("Notes","หมายเหตุ")}</TableHead>
-                    <TableHead className="w-16 shrink-0"></TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 w-32">{t("Date","วันที่")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("Roster","เข้างาน Roster")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("In","สแกนเข้า")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("Out","สแกนออก")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 text-center w-28">{t("Status","สถานะ")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600">{t("Notes","หมายเหตุ")}</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 text-right w-24">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {dates.map(date =>
-                    [...byDate[date]].sort((a, b) => getPosPriority(a.position) - getPosPriority(b.position) || (a.employeeNickName || a.employeeFullName).localeCompare(b.employeeNickName || b.employeeFullName)).map((r, ri) => {
+                <TableBody className="bg-white">
+                  {empRecords.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-gray-400 py-8">ไม่มีข้อมูลการทำงานในเดือนนี้</TableCell>
+                    </TableRow>
+                  ) : (
+                    empRecords.map((r) => {
                       const status = getLateStatus(r.rosterTime, r.clockInTime);
-                      const day = new Date(date + "T00:00:00").toLocaleDateString(language === "th" ? "th-TH" : "en-US", { weekday: "short", day: "numeric" });
+                      const dayStr = new Date(r.date + "T00:00:00").toLocaleDateString(language === "th" ? "th-TH" : "en-US", { weekday: "short", day: "numeric", month: "short" });
+                      const isWeekend = new Date(r.date + "T00:00:00").getDay() === 0 || new Date(r.date + "T00:00:00").getDay() === 6;
+
                       return (
-                        <TableRow key={r.id} data-testid={`row-record-${r.id}`} className={ri === 0 ? "border-t-2 border-border/50" : ""}>
-                          <TableCell className="text-xs font-mono">{ri === 0 ? day : ""}</TableCell>
-                          <TableCell className="text-xs">
-                            <div className="font-medium">{r.employeeNickName || r.employeeFullName}</div>
-                            {r.employeeNickName && <div className="text-muted-foreground text-xs">{r.employeeFullName}</div>}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{r.position || "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{r.rosterTime || "—"}</TableCell>
-                          <TableCell className="text-xs">
+                        <TableRow key={r.id} className={`hover:bg-gray-50 transition-colors ${isWeekend ? 'bg-amber-50/20' : ''}`}>
+                          <TableCell className="text-sm font-medium text-gray-700 whitespace-nowrap">{dayStr}</TableCell>
+                          <TableCell className="text-sm text-center text-gray-600">{r.rosterTime || "—"}</TableCell>
+                          <TableCell className="text-sm text-center">
                             {r.clockInTime ? (
-                              <span className={status === "late" ? "text-red-500 font-semibold" : status === "early" ? "text-blue-500" : "text-green-600"}>{formatTime(r.clockInTime)}</span>
-                            ) : <span className="text-muted-foreground">—</span>}
+                              <span className={status === "late" ? "text-red-600 font-bold" : status === "early" ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
+                                {formatTime(r.clockInTime)}
+                              </span>
+                            ) : <span className="text-gray-400">—</span>}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{r.clockOutTime ? formatTime(r.clockOutTime) : "—"}</TableCell>
-                          <TableCell>
-                            {status === "on-time" && <Badge className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">{t("On Time","ตรงเวลา")}</Badge>}
-                            {status === "early"   && <Badge className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{t("Early","เร็ว")}</Badge>}
-                            {status === "late"    && <Badge className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">{t("Late","สาย")}</Badge>}
-                            {status === "absent"  && <Badge className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">{t("Absent","ขาด")}</Badge>}
-                            {status === "unknown" && <Badge variant="outline" className="text-xs">{t("—","—")}</Badge>}
+                          <TableCell className="text-sm text-center text-gray-600">{r.clockOutTime ? formatTime(r.clockOutTime) : "—"}</TableCell>
+                          <TableCell className="text-center">
+                            {status === "on-time" && <Badge className="text-[10px] bg-green-100 text-green-700 hover:bg-green-100 border-none">{t("On Time","ตรงเวลา")}</Badge>}
+                            {status === "early"   && <Badge className="text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">{t("Early","เร็ว")}</Badge>}
+                            {status === "late"    && <Badge className="text-[10px] bg-red-100 text-red-700 hover:bg-red-100 border-none">{t("Late","สาย")}</Badge>}
+                            {status === "absent"  && <Badge className="text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">{t("Absent","ขาด")}</Badge>}
+                            {status === "unknown" && <span className="text-gray-300">—</span>}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground hidden lg:table-cell max-w-32 truncate">{r.notes || ""}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditRecord(r)} data-testid={`button-edit-${r.id}`}><Pencil className="h-3 w-3" /></Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-600" onClick={() => { if (confirm(t("Delete this record?","ลบรายการนี้?"))) deleteMutation.mutate(r.id); }} data-testid={`button-delete-${r.id}`}><Trash2 className="h-3 w-3" /></Button>
+                          <TableCell className="text-sm text-gray-500 truncate max-w-[200px]">{r.notes || ""}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditRecord(r)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50" onClick={() => { if (confirm(t("Delete this record?","ลบรายการนี้?"))) deleteMutation.mutate(r.id); }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -254,12 +293,17 @@ export function MonthlyView({ year, month, storeId }: { year: number; month: num
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {editRecord !== null && (
-        <EditRecordDialog record={editRecord} onClose={() => setEditRecord(null)} storeId={storeId} />
+        <EditRecordDialog 
+          record={editRecord} 
+          onClose={() => setEditRecord(null)} 
+          storeId={storeId} 
+          employeeNamePreFill={selectedEmp}
+        />
       )}
     </div>
   );

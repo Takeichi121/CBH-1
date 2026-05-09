@@ -1,4 +1,4 @@
-export const APP_VERSION = "2.5.17";
+export const APP_VERSION = "2.5.18";
 
 export type ChangelogLabel = "feature" | "bugfix" | "release" | "improvement";
 
@@ -10,6 +10,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.18",
+    date: "2026-05-09",
+    label: "improvement",
+    changes: [
+      "Attendance: อัพเดต Monthly, Matrix, Excel Sheet, Excel Roster, Shared Components — เพิ่ม dropdown เลือกพนักงานรายบุคคล, auto-select พนักงานคนแรก, profile card",
+      "Attendance: AppMonthlyView เพิ่มสถิติ (กะทั้งหมด, ตรงเวลา, สาย, ขาด) และ profile card",
+      "Attendance: AppRosterView เพิ่ม shift summary table ด้านล่าง",
+    ],
+  },
   {
     version: "2.5.17",
     date: "2026-05-09",

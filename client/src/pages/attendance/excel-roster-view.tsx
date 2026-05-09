@@ -5,18 +5,18 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient as qc } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, UserPlus } from "lucide-react";
-import { ClockRecord, EMP_COLORS, SHIFT_DEFS, DOW_EN3, MONTH_SHORT } from "./types";
+import { Loader2, Users, UserPlus, UserCircle } from "lucide-react";
+import { ClockRecord, SHIFT_DEFS, DOW_EN3, MONTH_SHORT } from "./types";
 import { getLateStatus, formatTime, isValidTimeInput, TIME_ERR_MSG, isManagerPos, moveRowFocus } from "./utils";
 import { RosterTimeDropdown, TimeDropdown, AddEmployeeDialog } from "./shared-components";
 
-export function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
+export function AppRosterView({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
   const { toast } = useToast();
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showAddEmp, setShowAddEmp] = useState(false);
-  const [selectedEmp, setSelectedEmp] = useState<string>("all");
+  const [selectedEmp, setSelectedEmp] = useState<string>("");
   const escapingRef = useRef(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
@@ -38,10 +38,14 @@ export function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamo
   const managers = Array.from(empMap.values());
 
   useEffect(() => {
-    if (selectedEmp !== "all" && !managers.some(e => e.fullName === selectedEmp)) setSelectedEmp("all");
+    if (managers.length > 0 && !selectedEmp) {
+      setSelectedEmp(managers[0].fullName);
+    } else if (managers.length > 0 && !managers.some(e => e.fullName === selectedEmp)) {
+      setSelectedEmp(managers[0].fullName);
+    }
   }, [managers, selectedEmp]);
 
-  const visibleManagers = selectedEmp === "all" ? managers : managers.filter(e => e.fullName === selectedEmp);
+  const selectedManager = managers.find(e => e.fullName === selectedEmp);
 
   const recIdx: Record<string, ClockRecord> = {};
   records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
@@ -132,148 +136,173 @@ export function ExcelRosterView({ year, month, storeId, storeName = "Grand Diamo
     return rosterTime;
   }
 
+  const inputClass = "w-full text-sm bg-transparent border border-gray-200 rounded p-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900";
+
   if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   if (managers.length === 0) return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-empty">
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)}>
           <UserPlus className="h-4 w-4" />เพิ่มพนักงาน
         </Button>
       </div>
-      <Card>
-        <CardContent className="flex flex-col items-center gap-3 py-12">
-          <Users className="h-12 w-12 text-muted-foreground/40" />
+      <Card className="border-dashed shadow-sm">
+        <CardContent className="flex flex-col items-center gap-3 py-16">
+          <Users className="h-16 w-16 text-muted-foreground/30" />
           <p className="text-muted-foreground text-center text-sm font-medium">ยังไม่มีข้อมูลพนักงานในเดือนนี้</p>
           <p className="text-xs text-muted-foreground/70">กด "เพิ่มพนักงาน" เพื่อเริ่มกรอกข้อมูล หรือ Import Excel ก่อน</p>
-          <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={() => setShowAddEmp(true)}>
+          <Button size="sm" variant="outline" className="gap-1.5 mt-2" onClick={() => setShowAddEmp(true)}>
             <UserPlus className="h-4 w-4" />เพิ่มพนักงาน
           </Button>
         </CardContent>
       </Card>
-      {showAddEmp && <AddEmployeeDialog year={year} month={month} storeId={storeId} onClose={() => setShowAddEmp(false)} onAdded={() => {}} />}
+      {showAddEmp && <AddEmployeeDialog year={year} month={month} storeId={storeId} onClose={() => setShowAddEmp(false)} onAdded={() => { qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); }} />}
     </div>
   );
 
-  const tdBorder = "border border-gray-300 px-1.5 py-0.5";
-  const thBorder = "border border-gray-300 px-1.5 py-1 text-center";
-
   return (
-    <>
-      <div className="flex items-center justify-between mb-1.5 gap-3">
-        <p className="text-xs text-muted-foreground">คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์ • กด Escape เพื่อยกเลิก</p>
-        {managers.length > 1 && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">พนักงาน:</span>
-            <select className="h-7 text-xs border rounded px-1.5 bg-background text-foreground" value={selectedEmp} onChange={e => setSelectedEmp(e.target.value)} data-testid="select-roster-emp">
-              <option value="all">ทั้งหมด ({managers.length} คน)</option>
-              {managers.map(e => <option key={e.fullName} value={e.fullName}>{e.nickName || e.fullName}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
-      <div className="rounded-lg border overflow-auto" style={{ maxHeight: "75vh" }}>
-        <div className="flex min-w-max">
-          {visibleManagers.map((emp, idx) => {
-            const c = EMP_COLORS[managers.indexOf(emp) % EMP_COLORS.length];
-            return (
-              <div key={emp.fullName} className="border-r last:border-r-0 shrink-0" style={{ width: 390 }} data-testid={`block-roster-${idx}`}>
-                <table className="w-full border-collapse" style={{ fontSize: 11 }}>
-                  <tbody>
-                    <tr style={{ backgroundColor: c.header }}>
-                      <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อ</td>
-                      <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.fullName}</td>
-                      <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อเล่น</td>
-                      <td className={`${tdBorder} font-bold`} style={{ color: c.accent }}>{emp.nickName || "-"}</td>
-                    </tr>
-                    <tr style={{ backgroundColor: c.header }}>
-                      <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
-                      <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={2}>{storeName}</td>
-                      <td className={`${tdBorder} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
-                      <td className={`${tdBorder} font-bold`} style={{ color: c.accent }}>{monthShort}</td>
-                    </tr>
-                    <tr style={{ backgroundColor: c.header }}>
-                      <td className={`${tdBorder} font-medium`} style={{ color: c.accent }}>ตำแหน่ง</td>
-                      <td className={`${tdBorder} font-bold`} style={{ color: c.accent }} colSpan={4}>{emp.position || "-"}</td>
-                    </tr>
-                    <tr style={{ backgroundColor: c.colHead }}>
-                      <th className={`${thBorder} font-semibold`} style={{ color: c.accent }}>วัน</th>
-                      <th className={`${thBorder} font-semibold`} style={{ color: c.accent }}>วันที่</th>
-                      <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>เวลาเข้างาน<br />(ตาม roster ที่<br />มีลายเซ็น AC)</th>
-                      <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>เวลาสแกนนิ้ว<br />เข้างาน (จาก<br />Aloha)</th>
-                      <th className={`${thBorder} font-semibold leading-tight`} style={{ color: c.accent }}>เวลาสแกนนิ้ว<br />เลิกงาน (จาก<br />Aloha)</th>
-                      <th className={`${thBorder} font-semibold`} style={{ color: c.accent }}>หมายเหตุ</th>
-                    </tr>
-                    {days.map(({ dateStr, d, dow, isValid }) => {
-                      if (!isValid) return (
-                        <tr key={`blank-${d}`} style={{ color: "#BFBFBF" }} data-testid={`row-roster-${idx}-${d}`}>
-                          <td className={`${tdBorder} text-center`}>{d}</td>
-                          <td className={tdBorder} colSpan={5} />
-                        </tr>
-                      );
-                      const rec = recIdx[`${dateStr}:${emp.fullName}`];
-                      const k = `${dateStr}:${emp.fullName}`;
-                      const isSaving = savingRows.has(k);
-                      const isWknd = dow === 0 || dow === 6;
-                      const rosterVal = getEdit(dateStr!, emp.fullName, "rosterTime") ?? (rec?.rosterTime ? displayRoster(rec.rosterTime) : "");
-                      const clockInVal = getEdit(dateStr!, emp.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
-                      const clockOutVal = getEdit(dateStr!, emp.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
-                      const notesVal = getEdit(dateStr!, emp.fullName, "notes") ?? (rec?.notes ?? "");
-                      const status = getLateStatus(rosterVal, clockInVal);
-                      const inColor = status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined;
-                      const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center";
-                      const errR = fieldErrors[`${k}:rosterTime`];
-                      const errI = fieldErrors[`${k}:clockInTime`];
-                      const errO = fieldErrors[`${k}:clockOutTime`];
-                      return (
-                        <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : undefined }} data-testid={`row-roster-${idx}-${d}`}>
-                          <td className={`${tdBorder} text-center whitespace-nowrap font-medium`} style={{ color: isWknd ? "#833C00" : undefined }}>{DOW_EN3[dow!]}</td>
-                          <td className={`${tdBorder} text-center whitespace-nowrap`}>{d}-{monthShort}</td>
-                          <td className={`${tdBorder} p-0.5`}>
-                            <RosterTimeDropdown compact value={rosterVal} onChange={v => setEdit(dateStr!, emp.fullName, "rosterTime", v)} onBlur={() => saveRow(dateStr!, emp)} testId={`cell-exroster-${idx}-${d}`} />
-                            {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exroster-${idx}-${d}`}>{errR}</div>}
-                          </td>
-                          <td className={`${tdBorder} p-0.5`}>
-                            <TimeDropdown compact value={clockInVal} onChange={v => setEdit(dateStr!, emp.fullName, "clockInTime", v)} onBlur={() => saveRow(dateStr!, emp)} style={{ color: inColor }} testId={`cell-exin-${idx}-${d}`} />
-                            {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exin-${idx}-${d}`}>{errI}</div>}
-                          </td>
-                          <td className={`${tdBorder} p-0.5`}>
-                            <TimeDropdown compact value={clockOutVal} onChange={v => setEdit(dateStr!, emp.fullName, "clockOutTime", v)} onBlur={() => saveRow(dateStr!, emp)} testId={`cell-exout-${idx}-${d}`} />
-                            {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-exout-${idx}-${d}`}>{errO}</div>}
-                          </td>
-                          <td className={`${tdBorder} p-0`}>
-                            {isSaving ? <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div> : (
-                              <input className={cellInput} value={notesVal} onChange={e => setEdit(dateStr!, emp.fullName, "notes", e.target.value)} onBlur={() => saveRow(dateStr!, emp)} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr!, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} data-testid={`cell-exnotes-${idx}-${d}`} />
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    <tr><td colSpan={6} style={{ height: 8 }} /></tr>
-                    <tr style={{ backgroundColor: c.colHead }}>
-                      <th className={thBorder} style={{ color: c.accent }} colSpan={2}>Shift</th>
-                      <th className={thBorder} style={{ color: c.accent }}>Time Roster</th>
-                      <th className={thBorder} style={{ color: c.accent }}>Total</th>
-                      <th className={thBorder} style={{ color: c.accent }} colSpan={2} />
-                    </tr>
-                    {SHIFT_DEFS.map(s => {
-                      const total = shiftCount(emp.fullName, s.h0, s.h1);
-                      return (
-                        <tr key={s.name} style={{ backgroundColor: s.bg, color: s.fg }}>
-                          <td className={tdBorder} colSpan={2} style={{ fontWeight: 600 }}>{s.name}</td>
-                          <td className={`${tdBorder} text-center`}>{s.label}</td>
-                          <td className={`${tdBorder} text-center font-bold`}>{total > 0 ? total : ""}</td>
-                          <td className={tdBorder} colSpan={2} />
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
+    <div className="space-y-4 max-w-5xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-lg border shadow-sm">
+        <div className="flex-1 w-full max-w-sm">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">เลือกพนักงานระดับจัดการ (Manager)</label>
+          <select 
+            className="w-full p-2 border rounded-md bg-gray-50 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={selectedEmp} 
+            onChange={e => setSelectedEmp(e.target.value)}
+          >
+            {managers.map(e => (
+              <option key={e.fullName} value={e.fullName}>{e.fullName} {e.nickName ? `(${e.nickName})` : ""}</option>
+            ))}
+          </select>
         </div>
+        <Button size="sm" onClick={() => setShowAddEmp(true)} className="gap-2 whitespace-nowrap">
+          <UserPlus className="h-4 w-4" /> เพิ่มพนักงาน
+        </Button>
       </div>
-    </>
+
+      {showAddEmp && <AddEmployeeDialog year={year} month={month} storeId={storeId} onClose={() => setShowAddEmp(false)} onAdded={() => { qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); }} />}
+
+      {!selectedManager ? (
+        <Card className="border-dashed"><CardContent className="py-16 text-center text-gray-400">กรุณาเลือกพนักงาน</CardContent></Card>
+      ) : (
+        <div className="space-y-4">
+          <Card className="bg-orange-50/50 border-orange-100 shadow-sm">
+            <CardContent className="p-4 flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+              <div className="h-16 w-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+                {selectedManager.nickName?.[0] || selectedManager.fullName[0]}
+              </div>
+              <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm w-full">
+                <div className="col-span-2 md:col-span-1"><span className="text-gray-500">ชื่อ-นามสกุล:</span> <br/><strong className="text-gray-900">{selectedManager.fullName}</strong></div>
+                <div><span className="text-gray-500">ชื่อเล่น:</span> <br/><strong className="text-gray-900">{selectedManager.nickName || "-"}</strong></div>
+                <div><span className="text-gray-500">ตำแหน่ง:</span> <br/><strong className="text-gray-900">{selectedManager.position || "-"}</strong></div>
+                <div><span className="text-gray-500">สาขา:</span> <br/><strong className="text-gray-900">{storeName}</strong></div>
+                <div><span className="text-gray-500">ประจำเดือน:</span> <br/><strong className="text-gray-900">{monthShort} {year}</strong></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b text-xs text-gray-500 flex justify-between">
+              <span>คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออก</span>
+              <span>กด Escape เพื่อยกเลิก / Enter เพื่อเลื่อนลง</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-3 py-3 font-semibold text-center w-12">วัน</th>
+                    <th className="px-3 py-3 font-semibold text-center w-16">วันที่</th>
+                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาเข้า (Roster AC)</th>
+                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาเข้า (Aloha)</th>
+                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาออก (Aloha)</th>
+                    <th className="px-3 py-3 font-semibold text-left">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {days.map(({ dateStr, d, dow, isValid }) => {
+                    if (!isValid) return (
+                      <tr key={`blank-${d}`} className="bg-gray-50 text-gray-300">
+                        <td className="px-3 py-2 text-center" colSpan={2}>{d}</td>
+                        <td colSpan={4}></td>
+                      </tr>
+                    );
+
+                    const rec = recIdx[`${dateStr}:${selectedManager.fullName}`];
+                    const k = `${dateStr}:${selectedManager.fullName}`;
+                    const isSaving = savingRows.has(k);
+                    const isWknd = dow === 0 || dow === 6;
+                    
+                    const rosterVal = getEdit(dateStr!, selectedManager.fullName, "rosterTime") ?? (rec?.rosterTime ? displayRoster(rec.rosterTime) : "");
+                    const clockInVal = getEdit(dateStr!, selectedManager.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
+                    const clockOutVal = getEdit(dateStr!, selectedManager.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
+                    const notesVal = getEdit(dateStr!, selectedManager.fullName, "notes") ?? (rec?.notes ?? "");
+                    
+                    const status = getLateStatus(rosterVal, clockInVal);
+                    const inColor = status === "late" ? "text-red-600 font-medium" : status === "early" ? "text-blue-700" : status === "on-time" ? "text-green-700" : "text-gray-900";
+
+                    return (
+                      <tr key={dateStr} className={`hover:bg-gray-50 transition-colors ${isWknd ? 'bg-orange-50/30' : ''}`}>
+                        <td className={`px-3 py-2 text-center whitespace-nowrap font-medium ${isWknd ? 'text-orange-600' : 'text-gray-600'}`}>{DOW_EN3[dow!]}</td>
+                        <td className={`px-3 py-2 text-center whitespace-nowrap ${isWknd ? 'text-orange-600' : 'text-gray-600'}`}>{d}-{monthShort}</td>
+                        <td className="px-3 py-2">
+                          <div className="relative flex justify-center">
+                            <RosterTimeDropdown value={rosterVal} onChange={v => setEdit(dateStr!, selectedManager.fullName, "rosterTime", v)} onBlur={() => saveRow(dateStr!, selectedManager)} />
+                            {fieldErrors[`${k}:rosterTime`] && <span className="absolute -bottom-4 left-0 text-[10px] text-red-500 w-full text-center">{fieldErrors[`${k}:rosterTime`]}</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className={`relative flex justify-center ${inColor}`}>
+                            <TimeDropdown value={clockInVal} onChange={v => setEdit(dateStr!, selectedManager.fullName, "clockInTime", v)} onBlur={() => saveRow(dateStr!, selectedManager)} />
+                            {fieldErrors[`${k}:clockInTime`] && <span className="absolute -bottom-4 left-0 text-[10px] text-red-500 w-full text-center">{fieldErrors[`${k}:clockInTime`]}</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="relative flex justify-center">
+                            <TimeDropdown value={clockOutVal} onChange={v => setEdit(dateStr!, selectedManager.fullName, "clockOutTime", v)} onBlur={() => saveRow(dateStr!, selectedManager)} />
+                            {fieldErrors[`${k}:clockOutTime`] && <span className="absolute -bottom-4 left-0 text-[10px] text-red-500 w-full text-center">{fieldErrors[`${k}:clockOutTime`]}</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : (
+                            <input 
+                              className={inputClass} 
+                              placeholder="เพิ่มหมายเหตุ..."
+                              value={notesVal} 
+                              onChange={e => setEdit(dateStr!, selectedManager.fullName, "notes", e.target.value)} 
+                              onBlur={() => saveRow(dateStr!, selectedManager)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr!, selectedManager.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  
+                  <tr><td colSpan={6} className="bg-gray-100 h-2 border-y border-gray-200"></td></tr>
+                  <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                    <th colSpan={2} className="px-4 py-3 font-semibold text-right">Shift (กะการทำงาน)</th>
+                    <th className="px-4 py-3 font-semibold text-center">เวลาเข้า (Time Roster)</th>
+                    <th className="px-4 py-3 font-semibold text-center">รวมจำนวนวัน (Total)</th>
+                    <th colSpan={2}></th>
+                  </tr>
+                  {SHIFT_DEFS.map(s => {
+                    const total = shiftCount(selectedManager.fullName, s.h0, s.h1);
+                    return (
+                      <tr key={s.name} style={{ backgroundColor: s.bg, color: s.fg }} className="border-b border-gray-100 last:border-0">
+                        <td colSpan={2} className="px-4 py-2 font-semibold text-right text-xs">{s.name}</td>
+                        <td className="px-4 py-2 text-center text-xs">{s.label}</td>
+                        <td className="px-4 py-2 text-center font-bold">{total > 0 ? total : "-"}</td>
+                        <td colSpan={2}></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,15 +1,15 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient as qc } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, LayoutGrid } from "lucide-react";
+import { Loader2, LayoutGrid, UserCircle } from "lucide-react";
 import { ClockRecord, DOW_TH } from "./types";
 import { getLateStatus, isValidTimeInput, TIME_ERR_MSG, moveRowFocus } from "./utils";
 
-export function MatrixView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+export function AppMatrixView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
   const { language } = useI18n();
   const { toast } = useToast();
   const t = (en: string, th: string) => language === "th" ? th : en;
@@ -17,6 +17,7 @@ export function MatrixView({ year, month, storeId }: { year: number; month: numb
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [selectedEmp, setSelectedEmp] = useState<string>("");
   const escapingRef = useRef(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
@@ -35,7 +36,18 @@ export function MatrixView({ year, month, storeId }: { year: number; month: numb
     if (!employeeMap.has(r.employeeFullName))
       employeeMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
   });
-  const employees = Array.from(employeeMap.values());
+  
+  const employees = Array.from(employeeMap.values()).sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+  useEffect(() => {
+    if (employees.length > 0 && !selectedEmp) {
+      setSelectedEmp(employees[0].fullName);
+    } else if (employees.length > 0 && !employees.some(e => e.fullName === selectedEmp)) {
+      setSelectedEmp(employees[0].fullName);
+    }
+  }, [employees, selectedEmp]);
+
+  const currentEmp = employees.find(e => e.fullName === selectedEmp);
 
   const recordIndex: Record<string, ClockRecord> = {};
   records.forEach(r => { recordIndex[`${r.date}:${r.employeeFullName}`] = r; });
@@ -108,100 +120,154 @@ export function MatrixView({ year, month, storeId }: { year: number; month: numb
   if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   if (employees.length === 0) return (
-    <Card>
-      <CardContent className="flex flex-col items-center gap-3 py-12">
-        <LayoutGrid className="h-12 w-12 text-muted-foreground/40" />
-        <p className="text-muted-foreground text-center">{t("No records yet — Import Excel or add records first.", "ยังไม่มีข้อมูล — กรุณา Import Excel หรือเพิ่มรายการก่อน")}</p>
+    <Card className="border-dashed shadow-sm">
+      <CardContent className="flex flex-col items-center gap-3 py-16">
+        <LayoutGrid className="h-16 w-16 text-muted-foreground/30" />
+        <p className="text-muted-foreground text-center font-medium">{t("No records yet — Import Excel or add records first.", "ยังไม่มีข้อมูล — กรุณา Import Excel หรือเพิ่มรายการก่อน")}</p>
       </CardContent>
     </Card>
   );
 
-  const inputCls = "w-full h-6 px-1 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-primary rounded focus:outline-none min-w-[52px]";
+  const inputCls = "w-full text-sm bg-transparent border border-gray-200 rounded p-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900";
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs text-muted-foreground">{t("Click any cell to edit — saves on blur. Press Escape to cancel.", "คลิกเซลล์เพื่อแก้ไข — บันทึกอัตโนมัติเมื่อออกจากเซลล์ • กด Escape เพื่อยกเลิก")}</p>
-        <div className="flex gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />{t("On time","ตรงเวลา")}</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />{t("Late","สาย")}</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{t("Early","เร็ว")}</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />{t("Weekend","เสาร์/อา")}</span>
-        </div>
+    <div className="space-y-4 max-w-4xl mx-auto">
+      <div className="bg-white p-4 rounded-lg border shadow-sm">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">เลือกพนักงาน (Employee)</label>
+        <select 
+          className="w-full sm:w-1/2 p-2 border rounded-md bg-gray-50 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={selectedEmp}
+          onChange={(e) => setSelectedEmp(e.target.value)}
+        >
+          {employees.map(emp => (
+            <option key={emp.fullName} value={emp.fullName}>
+              {emp.fullName} {emp.nickName ? `(${emp.nickName})` : ""}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="rounded-lg border overflow-auto max-h-[65vh]">
-        <table className="text-xs border-collapse w-full min-w-max">
-          <thead className="sticky top-0 z-20 bg-background">
-            <tr className="border-b">
-              <th className="border-r px-2 py-2 text-left font-medium bg-muted/60 w-16 sticky left-0 z-30" rowSpan={2}>{t("Date","วันที่")}</th>
-              {employees.map(emp => (
-                <th key={emp.fullName} colSpan={4} className="border-r px-2 py-1.5 text-center font-semibold bg-primary/8 whitespace-nowrap border-x">
-                  <div className="text-primary text-xs">{emp.nickName || emp.fullName}</div>
-                  {emp.nickName && <div className="text-muted-foreground font-normal text-[10px] leading-tight">{emp.fullName}</div>}
-                  {emp.position && <div className="text-muted-foreground font-normal text-[10px] leading-tight">{emp.position}</div>}
-                </th>
-              ))}
-            </tr>
-            <tr className="border-b bg-muted/40">
-              {employees.map(emp => (
-                [{ key: "roster", label: "Roster" }, { key: "in", label: t("In","เข้า") }, { key: "out", label: t("Out","ออก") }, { key: "notes", label: t("Note","หมายเหตุ") }].map(col => (
-                  <th key={`${emp.fullName}-${col.key}`} className="border px-1 py-1 text-center font-normal text-muted-foreground whitespace-nowrap text-[10px]">{col.label}</th>
-                ))
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {days.map(({ date, day, dowIdx }) => {
-              const isWeekend = dowIdx === 0 || dowIdx === 6;
-              const dowLabel = DOW_TH[dowIdx];
-              return (
-                <tr key={date} className={`border-b hover:bg-muted/20 transition-colors ${isWeekend ? "bg-amber-50/60 dark:bg-amber-950/15" : ""}`}>
-                  <td className="border-r px-2 py-0.5 font-medium sticky left-0 z-10 whitespace-nowrap bg-inherit">
-                    <span className={`font-semibold ${isWeekend ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>{dowLabel}</span>
-                    <span className="text-muted-foreground ml-1 text-[11px]">{day}</span>
-                  </td>
-                  {employees.map(emp => {
-                    const k = `${date}:${emp.fullName}`;
+      {!currentEmp ? (
+        <Card className="border-dashed"><CardContent className="py-16 text-center text-gray-400">กรุณาเลือกพนักงาน</CardContent></Card>
+      ) : (
+        <div className="space-y-4">
+          <Card className="bg-blue-50/50 border-blue-100 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="h-14 w-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+                {currentEmp.nickName?.[0] || currentEmp.fullName[0]}
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-2 text-sm w-full">
+                <div><span className="text-gray-500">ชื่อ-นามสกุล:</span> <strong className="text-gray-900">{currentEmp.fullName}</strong></div>
+                <div><span className="text-gray-500">ชื่อเล่น:</span> <strong className="text-gray-900">{currentEmp.nickName || "-"}</strong></div>
+                <div><span className="text-gray-500">ตำแหน่ง:</span> <strong className="text-gray-900">{currentEmp.position || "-"}</strong></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-wrap gap-4 text-xs font-medium text-gray-600 bg-white p-3 rounded-lg border">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />{t("On time","ตรงเวลา")}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />{t("Late","สาย")}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" />{t("Early","เร็ว")}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-100 border border-amber-200" />{t("Weekend","เสาร์/อา")}</span>
+            <span className="ml-auto text-gray-400 font-normal hidden sm:inline-block">คลิกเซลล์เพื่อแก้ไข • กด Esc เพื่อยกเลิก • กด Enter เพื่อลงบรรทัดใหม่</span>
+          </div>
+
+          <Card className="shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold w-24">วันที่</th>
+                    <th className="px-4 py-3 font-semibold text-center w-32">Roster</th>
+                    <th className="px-4 py-3 font-semibold text-center w-32">{t("In", "เข้า")}</th>
+                    <th className="px-4 py-3 font-semibold text-center w-32">{t("Out", "ออก")}</th>
+                    <th className="px-4 py-3 font-semibold">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {days.map(({ date, day, dowIdx }) => {
+                    const isWeekend = dowIdx === 0 || dowIdx === 6;
+                    const dowLabel = DOW_TH[dowIdx];
+                    
+                    const k = `${date}:${currentEmp.fullName}`;
                     const rec = recordIndex[k];
                     const isSaving = savingRows.has(k);
-                    const roster = getEdit(date, emp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
-                    const clockIn = getEdit(date, emp.fullName, "clockInTime") ?? rec?.clockInTime ?? "";
-                    const clockOut = getEdit(date, emp.fullName, "clockOutTime") ?? rec?.clockOutTime ?? "";
-                    const notes = getEdit(date, emp.fullName, "notes") ?? rec?.notes ?? "";
+                    
+                    const roster = getEdit(date, currentEmp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
+                    const clockIn = getEdit(date, currentEmp.fullName, "clockInTime") ?? rec?.clockInTime ?? "";
+                    const clockOut = getEdit(date, currentEmp.fullName, "clockOutTime") ?? rec?.clockOutTime ?? "";
+                    const notes = getEdit(date, currentEmp.fullName, "notes") ?? rec?.notes ?? "";
+                    
                     const status = getLateStatus(roster, clockIn);
-                    const inColor = status === "late" ? "text-red-500 font-semibold" : status === "early" ? "text-blue-500" : status === "on-time" ? "text-green-600" : "";
+                    const inColor = status === "late" ? "text-red-600 font-bold" : status === "early" ? "text-blue-600 font-medium" : status === "on-time" ? "text-green-600 font-medium" : "text-gray-900";
+                    
                     const errR = fieldErrors[`${k}:rosterTime`];
                     const errI = fieldErrors[`${k}:clockInTime`];
                     const errO = fieldErrors[`${k}:clockOutTime`];
+
                     return (
-                      <>
-                        <td key={`${k}-r`} className="border px-0.5 py-0.5">
-                          <input className={`${inputCls} ${errR ? "ring-1 ring-red-500 rounded" : ""}`} value={roster} placeholder="05:00" title={errR} onChange={e => setEdit(date, emp.fullName, "rosterTime", e.target.value)} onBlur={() => saveRow(date, emp)} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} data-testid={`cell-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`} />
-                          {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-roster-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errR}</div>}
+                      <tr key={date} className={`hover:bg-gray-50 transition-colors ${isWeekend ? "bg-amber-50/40" : ""}`}>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`font-semibold ${isWeekend ? "text-amber-600" : "text-gray-700"}`}>{dowLabel}</span>
+                          <span className="text-gray-500 ml-1.5">{day}</span>
                         </td>
-                        <td key={`${k}-i`} className="border px-0.5 py-0.5">
-                          <input className={`${inputCls} ${inColor} ${errI ? "ring-1 ring-red-500 rounded" : ""}`} value={clockIn} placeholder="05:02" title={errI} onChange={e => setEdit(date, emp.fullName, "clockInTime", e.target.value)} onBlur={() => saveRow(date, emp)} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} data-testid={`cell-in-${date}-${emp.fullName.replace(/\s/g,"_")}`} />
-                          {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-in-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errI}</div>}
+                        <td className="px-2 py-2">
+                          <div className="relative">
+                            <input 
+                              className={`${inputCls} text-center ${errR ? "ring-2 ring-red-500" : ""}`} 
+                              value={roster} placeholder="05:00" 
+                              onChange={e => setEdit(date, currentEmp.fullName, "rosterTime", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                            {errR && <span className="absolute -bottom-3 left-0 w-full text-center text-[10px] text-red-500">{errR}</span>}
+                          </div>
                         </td>
-                        <td key={`${k}-o`} className="border px-0.5 py-0.5">
-                          <input className={`${inputCls} ${errO ? "ring-1 ring-red-500 rounded" : ""}`} value={clockOut} placeholder="14:00" title={errO} onChange={e => setEdit(date, emp.fullName, "clockOutTime", e.target.value)} onBlur={() => saveRow(date, emp)} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} data-testid={`cell-out-${date}-${emp.fullName.replace(/\s/g,"_")}`} />
-                          {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5" data-testid={`err-out-${date}-${emp.fullName.replace(/\s/g,"_")}`}>{errO}</div>}
+                        <td className="px-2 py-2">
+                          <div className="relative">
+                            <input 
+                              className={`${inputCls} text-center ${inColor} ${errI ? "ring-2 ring-red-500" : ""}`} 
+                              value={clockIn} placeholder="05:02" 
+                              onChange={e => setEdit(date, currentEmp.fullName, "clockInTime", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                            {errI && <span className="absolute -bottom-3 left-0 w-full text-center text-[10px] text-red-500">{errI}</span>}
+                          </div>
                         </td>
-                        <td key={`${k}-n`} className="border px-0.5 py-0.5">
-                          {isSaving ? <div className="flex items-center justify-center h-6"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div> : (
-                            <input className={inputCls} value={notes} onChange={e => setEdit(date, emp.fullName, "notes", e.target.value)} onBlur={() => saveRow(date, emp)} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} data-testid={`cell-notes-${date}-${emp.fullName.replace(/\s/g,"_")}`} />
+                        <td className="px-2 py-2">
+                          <div className="relative">
+                            <input 
+                              className={`${inputCls} text-center ${errO ? "ring-2 ring-red-500" : ""}`} 
+                              value={clockOut} placeholder="14:00" 
+                              onChange={e => setEdit(date, currentEmp.fullName, "clockOutTime", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                            {errO && <span className="absolute -bottom-3 left-0 w-full text-center text-[10px] text-red-500">{errO}</span>}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 pr-4">
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-gray-400 ml-2" /> : (
+                            <input 
+                              className={inputCls} 
+                              placeholder="เพิ่มหมายเหตุ..."
+                              value={notes} 
+                              onChange={e => setEdit(date, currentEmp.fullName, "notes", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
                           )}
                         </td>
-                      </>
+                      </tr>
                     );
                   })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

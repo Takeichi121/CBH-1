@@ -1,41 +1,38 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient as qc } from "@/lib/queryClient";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, Loader2, UserPlus, Printer } from "lucide-react";
-import { ClockRecord, EMP_COLORS_CSV, CSV_SHIFTS_FE, DOW_TH, MONTH_SHORT } from "./types";
-import { getLateStatus, formatTime, isValidTimeInput, TIME_ERR_MSG, isManagerPos, getPosPriority, rosterStartH } from "./utils";
+import { FileSpreadsheet, Loader2, UserPlus, UserCircle } from "lucide-react";
+import { ClockRecord, DOW_TH, MONTH_SHORT } from "./types";
+import { getLateStatus, formatTime, isValidTimeInput, TIME_ERR_MSG, isManagerPos, getPosPriority } from "./utils";
 import { TimeDropdown, AddEmployeeDialog } from "./shared-components";
-import { ExcelRosterView } from "./excel-roster-view";
 
 const ROSTER_OPTS = [
-  "OFF",
-  "05:00 - 14:00","06:00 - 15:00","07:00 - 16:00","08:00 - 17:00",
-  "09:00 - 18:00","10:00 - 19:00","11:00 - 20:00","12:00 - 21:00",
-  "13:00 - 22:00","14:00 - 23:00","15:00 - 00:00","16:00 - 01:00",
-  "20:00 - 05:00","22:00 - 07:00",
+  "OFF", "05:00 - 14:00", "06:00 - 15:00", "07:00 - 16:00", "08:00 - 17:00",
+  "09:00 - 18:00", "10:00 - 19:00", "11:00 - 20:00", "12:00 - 21:00",
+  "13:00 - 22:00", "14:00 - 23:00", "15:00 - 00:00", "16:00 - 01:00",
+  "20:00 - 05:00", "22:00 - 07:00",
 ];
 
-export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
+export function EmployeeAppView({ year, month, storeId, storeName = "Grand Diamond" }: { year: number; month: number; storeId: string; storeName?: string }) {
   const { toast } = useToast();
   const [showAddEmp, setShowAddEmp] = useState(false);
+  const [selectedEmpName, setSelectedEmpName] = useState<string>("");
+  
   const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const escapingRef = useRef(false);
 
   const getEdit = (date: string, empName: string, field: string) => localEdits[`${date}:${empName}`]?.[field];
-
   const setEditCell = (date: string, empName: string, field: string, value: string) => {
     const k = `${date}:${empName}`;
     setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
     setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
   };
-
   const revertField = (date: string, empName: string, field: string) => {
     escapingRef.current = true;
     const k = `${date}:${empName}`;
@@ -52,6 +49,7 @@ export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond
     const k = `${date}:${emp.fullName}`;
     const edits = localEdits[k];
     if (!edits || Object.keys(edits).length === 0) return;
+    
     const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
     const newErrors: Record<string, string> = {};
     for (const field of timeFields) {
@@ -59,6 +57,7 @@ export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond
       if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
     }
     if (Object.keys(newErrors).length > 0) { setFieldErrors(prev => ({ ...prev, ...newErrors })); return; }
+    
     setFieldErrors(prev => { const n = { ...prev }; timeFields.forEach(f => delete n[`${k}:${f}`]); return n; });
     const existing = recIdx[k];
     const payload = {
@@ -70,17 +69,24 @@ export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond
       clockOutTime: edits.clockOutTime ?? existing?.clockOutTime ?? "",
       notes: edits.notes ?? existing?.notes ?? "",
     };
+    
     setSavingRows(prev => new Set(prev).add(k));
     try {
       const url = existing?.id ? `/api/attendance/record/${existing.id}` : "/api/attendance/record";
       const method = existing?.id ? "PUT" : "POST";
       const res = await apiRequest(method, url, payload);
       const json = await res.json();
-      if (json.ok) { setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; }); qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); }
-      else { toast({ variant: "destructive", title: "Error", description: json.message }); }
+      if (json.ok) { 
+        setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; }); 
+        qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); 
+      } else { 
+        toast({ variant: "destructive", title: "Error", description: json.message }); 
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: err.message });
-    } finally { setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; }); }
+    } finally { 
+      setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; }); 
+    }
   };
 
   const { data, isLoading: recordsLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
@@ -107,7 +113,14 @@ export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond
   const empMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
   (empData?.employees || []).forEach(e => { if (isManagerPos(e.position)) empMap.set(e.fullName, e); });
   records.forEach(r => { if (isManagerPos(r.position) && !empMap.has(r.employeeFullName)) empMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position }); });
+  
   const employees = Array.from(empMap.values()).sort((a, b) => getPosPriority(a.position) - getPosPriority(b.position) || (a.nickName || a.fullName).localeCompare(b.nickName || b.fullName));
+
+  useEffect(() => {
+    if (employees.length > 0 && !selectedEmpName) {
+      setSelectedEmpName(employees[0].fullName);
+    }
+  }, [employees, selectedEmpName]);
 
   const recIdx: Record<string, ClockRecord> = {};
   records.forEach(r => { recIdx[`${r.date}:${r.employeeFullName}`] = r; });
@@ -120,31 +133,35 @@ export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond
     return { dateStr, d, dowIdx };
   });
 
-  function shiftCount(empName: string, h0: number, h1: number): number {
-    return days.reduce((acc, { dateStr }) => {
-      const rec = recIdx[`${dateStr}:${empName}`];
-      const h = rosterStartH(rec?.rosterTime || null);
-      return h !== null && h >= h0 && h <= h1 ? acc + 1 : acc;
-    }, 0);
-  }
+  const selectedEmp = employees.find(e => e.fullName === selectedEmpName);
 
-  function totalRosterDays(empName: string): number {
-    return days.reduce((acc, { dateStr }) => {
-      const rec = recIdx[`${dateStr}:${empName}`];
-      return rec?.rosterTime && rec.rosterTime.toUpperCase() !== "OFF" ? acc + 1 : acc;
-    }, 0);
-  }
-
-  const GROUP = 5;
-  const tdB = "border border-[#bfbfbf] px-1.5 py-0.5 text-center text-[#111111]";
-  const cellInput = "w-full h-5 px-0.5 text-[11px] bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded focus:outline-none text-center text-[#111111]";
-  const cellSelect = "w-full h-5 px-0 text-[11px] bg-transparent border-0 focus:outline-none text-center text-[#111111] cursor-pointer appearance-none";
+  const inputClass = "w-full text-sm bg-transparent border border-gray-200 rounded p-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900";
+  const selectClass = "w-full text-sm bg-transparent border border-gray-200 rounded p-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 cursor-pointer";
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs px-2.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-excel-sheet">
-          <UserPlus className="h-3 w-3" />เพิ่มพนักงาน
+    <div className="space-y-4 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-lg border shadow-sm">
+        <div className="flex-1 w-full max-w-sm">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">เลือกพนักงาน (Employee)</label>
+          <select 
+            className="w-full p-2 border rounded-md bg-gray-50 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={selectedEmpName}
+            onChange={(e) => setSelectedEmpName(e.target.value)}
+            disabled={isLoading || employees.length === 0}
+          >
+            {employees.length === 0 ? (
+              <option value="">ไม่มีพนักงาน</option>
+            ) : (
+              employees.map(emp => (
+                <option key={emp.fullName} value={emp.fullName}>
+                  {emp.fullName} {emp.nickName ? `(${emp.nickName})` : ""}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+        <Button size="sm" onClick={() => setShowAddEmp(true)} className="gap-2 whitespace-nowrap">
+          <UserPlus className="h-4 w-4" /> เพิ่มพนักงาน
         </Button>
       </div>
 
@@ -154,165 +171,109 @@ export function ExcelSheetTab({ year, month, storeId, storeName = "Grand Diamond
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : employees.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <FileSpreadsheet className="h-12 w-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-center text-sm">ยังไม่มีพนักงานในเดือนนี้ — เพิ่มพนักงานเพื่อเริ่มกรอกข้อมูล</p>
-            <Button size="sm" className="gap-1.5" onClick={() => setShowAddEmp(true)} data-testid="button-add-employee-excel-sheet-empty">
-              <UserPlus className="h-3.5 w-3.5" />เพิ่มพนักงาน
-            </Button>
+      ) : !selectedEmp ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-16">
+            <UserCircle className="h-16 w-16 text-muted-foreground/30" />
+            <p className="text-muted-foreground text-center">ยังไม่มีข้อมูลพนักงาน หรือยังไม่ได้เลือกพนักงาน</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-lg border overflow-auto bg-white" style={{ maxHeight: "calc(100vh - 210px)" }}>
-          {Array.from({ length: Math.ceil(employees.length / GROUP) }, (_, gi) => {
-            const grpEmps = employees.slice(gi * GROUP, (gi + 1) * GROUP);
-            return (
-              <div key={gi}>
-                {gi > 0 && <div className="h-6 border-t border-b" style={{ backgroundColor: "#d9d9d9" }} />}
-                <div className="flex min-w-max">
-                  {grpEmps.map((emp, idx) => {
-                    const c = EMP_COLORS_CSV[idx % EMP_COLORS_CSV.length];
-                    const total = totalRosterDays(emp.fullName);
+        <div className="space-y-4">
+          <Card className="bg-blue-50/50 border-blue-100 shadow-sm">
+            <CardContent className="p-4 flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+              <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+                {selectedEmp.nickName?.[0] || selectedEmp.fullName[0]}
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 text-sm w-full">
+                <div><span className="text-gray-500">ชื่อ-นามสกุล:</span> <strong className="text-gray-900">{selectedEmp.fullName}</strong></div>
+                <div><span className="text-gray-500">ชื่อเล่น:</span> <strong className="text-gray-900">{selectedEmp.nickName || "-"}</strong></div>
+                <div><span className="text-gray-500">ตำแหน่ง:</span> <strong className="text-gray-900">{selectedEmp.position || "-"}</strong></div>
+                <div><span className="text-gray-500">สาขา:</span> <strong className="text-gray-900">{storeName}</strong></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold w-16">วัน/ที่</th>
+                    <th className="px-4 py-3 font-semibold w-40">กะการทำงาน (Roster)</th>
+                    <th className="px-4 py-3 font-semibold w-32">เวลาเข้า (In)</th>
+                    <th className="px-4 py-3 font-semibold w-32">เวลาออก (Out)</th>
+                    <th className="px-4 py-3 font-semibold">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {days.map(({ dateStr, d, dowIdx }) => {
+                    const rec = recIdx[`${dateStr}:${selectedEmp.fullName}`];
+                    const k = `${dateStr}:${selectedEmp.fullName}`;
+                    const isSaving = savingRows.has(k);
+                    const isWknd = dowIdx === 0 || dowIdx === 6;
+                    
+                    const rosterVal = getEdit(dateStr, selectedEmp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
+                    const inVal = getEdit(dateStr, selectedEmp.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
+                    const outVal = getEdit(dateStr, selectedEmp.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
+                    const notesVal = getEdit(dateStr, selectedEmp.fullName, "notes") ?? rec?.notes ?? "";
+                    
+                    const status = getLateStatus(rosterVal || null, inVal || null);
+                    const inColor = status === "late" ? "text-red-600 font-medium" : status === "early" ? "text-blue-700" : status === "on-time" ? "text-green-700" : "text-gray-900";
+                    
                     return (
-                      <div key={emp.fullName} className="border-r last:border-r-0 shrink-0" style={{ width: 420 }} data-testid={`block-excel-sheet-${gi}-${idx}`}>
-                        <table className="w-full border-collapse" style={{ fontSize: 11 }}>
-                          <tbody>
-                            <tr style={{ backgroundColor: c.header }}>
-                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อ</td>
-                              <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.fullName}</td>
-                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ชื่อเล่น</td>
-                              <td className={`${tdB} font-bold`} style={{ color: c.accent }} colSpan={2}>{emp.nickName || "—"}</td>
-                            </tr>
-                            <tr style={{ backgroundColor: c.header }}>
-                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>สาขา</td>
-                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{storeName}</td>
-                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>Month of</td>
-                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={2}>{MONTH_SHORT[month - 1]}</td>
-                            </tr>
-                            <tr style={{ backgroundColor: c.header }}>
-                              <td className={`${tdB} font-medium whitespace-nowrap`} style={{ color: c.accent }}>ตำแหน่ง</td>
-                              <td className={`${tdB}`} style={{ color: c.accent }} colSpan={5}>{emp.position || "—"}</td>
-                            </tr>
-                            <tr style={{ backgroundColor: c.colHead }}>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วัน</th>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>วันที่</th>
-                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>Roster</th>
-                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>ScanIn</th>
-                              <th className={`${tdB} font-semibold leading-tight`} style={{ color: c.accent }}>ScanOut</th>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Notes</th>
-                            </tr>
-                            {days.map(({ dateStr, d, dowIdx }) => {
-                              const rec = recIdx[`${dateStr}:${emp.fullName}`];
-                              const k = `${dateStr}:${emp.fullName}`;
-                              const isSaving = savingRows.has(k);
-                              const isWknd = dowIdx === 0 || dowIdx === 6;
-                              const rosterVal = getEdit(dateStr, emp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
-                              const inVal = getEdit(dateStr, emp.fullName, "clockInTime") ?? (rec?.clockInTime ? formatTime(rec.clockInTime) : "");
-                              const outVal = getEdit(dateStr, emp.fullName, "clockOutTime") ?? (rec?.clockOutTime ? formatTime(rec.clockOutTime) : "");
-                              const notesVal = getEdit(dateStr, emp.fullName, "notes") ?? rec?.notes ?? "";
-                              const status = getLateStatus(rosterVal || null, inVal || null);
-                              const inColor = status === "late" ? "#CC0000" : status === "early" ? "#1F3864" : status === "on-time" ? "#375623" : undefined;
-                              const errR = fieldErrors[`${k}:rosterTime`];
-                              const errI = fieldErrors[`${k}:clockInTime`];
-                              const errO = fieldErrors[`${k}:clockOutTime`];
-                              return (
-                                <tr key={dateStr} style={{ backgroundColor: isWknd ? "#FFF2CC" : "#ffffff" }}>
-                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111", fontWeight: isWknd ? 600 : undefined }}>{DOW_TH[dowIdx]}</td>
-                                  <td className={tdB} style={{ color: isWknd ? "#833C00" : "#111111" }}>{d}</td>
-                                  <td className={`${tdB} p-0`}>
-                                    <select className={cellSelect} style={{ color: rosterVal?.toUpperCase() === "OFF" ? "#CC0000" : "#111111" }} value={ROSTER_OPTS.includes(rosterVal) ? rosterVal : ""} onChange={e => { setEditCell(dateStr, emp.fullName, "rosterTime", e.target.value); }} onBlur={() => saveRow(dateStr, emp)} disabled={isSaving} data-testid={`cell-es-roster-${idx}-${d}`}>
-                                      <option value="">—</option>
-                                      {ROSTER_OPTS.map(o => <option key={o} value={o} style={{ color: o === "OFF" ? "#CC0000" : "#111111" }}>{o}</option>)}
-                                      {rosterVal && !ROSTER_OPTS.includes(rosterVal) && <option value={rosterVal}>{rosterVal}</option>}
-                                    </select>
-                                    {errR && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errR}</div>}
-                                  </td>
-                                  <td className={`${tdB} p-0.5`}>
-                                    {isSaving ? <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div> : (
-                                      <TimeDropdown compact value={inVal} onChange={v => setEditCell(dateStr, emp.fullName, "clockInTime", v)} onBlur={() => saveRow(dateStr, emp)} style={{ color: inColor ?? "#111111" }} testId={`cell-es-scanin-${idx}-${d}`} />
-                                    )}
-                                    {errI && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errI}</div>}
-                                  </td>
-                                  <td className={`${tdB} p-0.5`}>
-                                    {isSaving ? <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div> : (
-                                      <TimeDropdown compact value={outVal} onChange={v => setEditCell(dateStr, emp.fullName, "clockOutTime", v)} onBlur={() => saveRow(dateStr, emp)} testId={`cell-es-scanout-${idx}-${d}`} />
-                                    )}
-                                    {errO && <div className="text-[9px] text-red-500 leading-tight px-0.5">{errO}</div>}
-                                  </td>
-                                  <td className={`${tdB} p-0`}>
-                                    {isSaving ? <div className="flex items-center justify-center h-5"><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /></div> : (
-                                      <input className={`${cellInput} text-left`} value={notesVal} onChange={e => setEditCell(dateStr, emp.fullName, "notes", e.target.value)} onBlur={() => saveRow(dateStr, emp)} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, emp.fullName, "notes"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }} data-testid={`cell-es-notes-${idx}-${d}`} />
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                            <tr><td colSpan={6} style={{ height: 6, backgroundColor: "#f2f2f2", borderTop: "1px solid #bfbfbf", borderBottom: "1px solid #bfbfbf" }} /></tr>
-                            <tr style={{ backgroundColor: c.colHead }}>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Shift</th>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time</th>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Time Roster</th>
-                              <th className={`${tdB} font-semibold`} style={{ color: c.accent }}>Total</th>
-                              <th className={tdB} colSpan={2} />
-                            </tr>
-                            {CSV_SHIFTS_FE.map(sh => {
-                              const cnt = shiftCount(emp.fullName, sh.h0, sh.h1);
-                              return (
-                                <tr key={sh.label} style={{ backgroundColor: "#ffffff" }}>
-                                  <td className={tdB} style={{ textAlign: "left", paddingLeft: 4, color: "#111111" }}>{sh.label}</td>
-                                  <td className={tdB} style={{ color: "#111111" }}>{sh.h0}:00</td>
-                                  <td className={tdB} style={{ color: cnt > 0 ? c.accent : "#111111", fontWeight: cnt > 0 ? 600 : undefined }}>{cnt > 0 ? cnt : ""}</td>
-                                  <td className={tdB} /><td className={tdB} colSpan={2} />
-                                </tr>
-                              );
-                            })}
-                            <tr style={{ backgroundColor: c.colHead, fontWeight: 600 }}>
-                              <td className={tdB} style={{ color: c.accent }}>Total</td>
-                              <td className={tdB} style={{ color: c.accent }}>Total</td>
-                              <td className={tdB} style={{ color: c.accent }}>{total > 0 ? total : ""}</td>
-                              <td className={tdB} style={{ color: c.accent }}>{total > 0 ? total : ""}</td>
-                              <td className={tdB} colSpan={2} />
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                      <tr key={dateStr} className={`hover:bg-gray-50 transition-colors ${isWknd ? 'bg-orange-50/30' : ''}`}>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`font-medium ${isWknd ? 'text-orange-600' : 'text-gray-700'}`}>{DOW_TH[dowIdx]} {d}</span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="relative">
+                            <select 
+                              className={`${selectClass} ${rosterVal === "OFF" ? "text-red-600 font-medium" : ""}`}
+                              value={ROSTER_OPTS.includes(rosterVal) ? rosterVal : ""} 
+                              onChange={e => setEditCell(dateStr, selectedEmp.fullName, "rosterTime", e.target.value)} 
+                              onBlur={() => saveRow(dateStr, selectedEmp)} 
+                              disabled={isSaving}
+                            >
+                              <option value="">— เลือกเวลา —</option>
+                              {ROSTER_OPTS.map(o => <option key={o} value={o}>{o}</option>)}
+                              {rosterVal && !ROSTER_OPTS.includes(rosterVal) && <option value={rosterVal}>{rosterVal}</option>}
+                            </select>
+                            {fieldErrors[`${k}:rosterTime`] && <span className="absolute -bottom-4 left-0 text-[10px] text-red-500">{fieldErrors[`${k}:rosterTime`]}</span>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" /> : (
+                            <div className={`relative ${inColor}`}>
+                              <TimeDropdown value={inVal} onChange={v => setEditCell(dateStr, selectedEmp.fullName, "clockInTime", v)} onBlur={() => saveRow(dateStr, selectedEmp)} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" /> : (
+                            <TimeDropdown value={outVal} onChange={v => setEditCell(dateStr, selectedEmp.fullName, "clockOutTime", v)} onBlur={() => saveRow(dateStr, selectedEmp)} />
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" /> : (
+                            <input 
+                              className={inputClass} 
+                              placeholder="เพิ่มหมายเหตุ..."
+                              value={notesVal} 
+                              onChange={e => setEditCell(dateStr, selectedEmp.fullName, "notes", e.target.value)} 
+                              onBlur={() => saveRow(dateStr, selectedEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(dateStr, selectedEmp.fullName, "notes"); (e.target as HTMLInputElement).blur(); } else if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }} 
+                            />
+                          )}
+                        </td>
+                      </tr>
                     );
                   })}
-                </div>
-              </div>
-            );
-          })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
-      )}
-    </div>
-  );
-}
-
-export function ExcelSheetCombined({ year, month, storeId }: { year: number; month: number; storeId: string }) {
-  const { language } = useI18n();
-  const t = (en: string, th: string) => language === "th" ? th : en;
-  const [subView, setSubView] = useState<"roster" | "excel">("roster");
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <button onClick={() => setSubView("roster")} data-testid="subtab-roster-sheet" className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${subView === "roster" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}>
-          <span className="flex items-center gap-1.5"><FileSpreadsheet className="h-3.5 w-3.5" />{t("Roster Sheet","ตารางงาน")}</span>
-        </button>
-        <button onClick={() => setSubView("excel")} data-testid="subtab-excel-sheet" className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${subView === "excel" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}>
-          <span className="flex items-center gap-1.5"><FileSpreadsheet className="h-3.5 w-3.5" />{t("Excel Sheet","Excel Sheet")}</span>
-        </button>
-        {subView === "roster" && (
-          <Button variant="outline" size="sm" onClick={() => { document.body.classList.add("printing-roster"); window.print(); window.addEventListener("afterprint", () => { document.body.classList.remove("printing-roster"); }, { once: true }); }} data-testid="button-print-roster" className="gap-1.5 h-7 text-xs ml-auto">
-            <Printer className="h-3.5 w-3.5" />{t("Print","พิมพ์")}
-          </Button>
-        )}
-      </div>
-      {subView === "roster" ? (
-        <div id="roster-print-area"><ExcelRosterView year={year} month={month} storeId={storeId} /></div>
-      ) : (
-        <ExcelSheetTab year={year} month={month} storeId={storeId} />
       )}
     </div>
   );

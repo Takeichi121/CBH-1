@@ -8,10 +8,10 @@ import { Clock, Upload, FileSpreadsheet, LayoutGrid, FileText, Download } from "
 import { PageTutorial, TutorialStep } from "@/components/page-tutorial";
 
 import { MONTH_TH, MONTH_EN } from "./attendance/types";
-import { MonthlyView } from "./attendance/monthly-view";
-import { MatrixView } from "./attendance/matrix-view";
+import { AppMonthlyView } from "./attendance/monthly-view";
+import { AppMatrixView } from "./attendance/matrix-view";
 import { ImportExcelTab } from "./attendance/import-excel-tab";
-import { ExcelSheetCombined } from "./attendance/excel-sheet-tab";
+import { EmployeeAppView } from "./attendance/excel-sheet-tab";
 import { ClockInOutCSVTab } from "./attendance/csv-sheet-tab";
 
 const ATTENDANCE_TUTORIAL: TutorialStep[] = [
@@ -133,13 +133,13 @@ export default function AttendancePage() {
             </TabsList>
 
             <TabsContent value="records">
-              <MonthlyView year={year} month={month} storeId={storeId} />
+              <AppMonthlyView year={year} month={month} storeId={storeId} />
             </TabsContent>
             <TabsContent value="excel-sheet">
-              <ExcelSheetCombined year={year} month={month} storeId={storeId} />
+              <EmployeeAppView year={year} month={month} storeId={storeId} />
             </TabsContent>
             <TabsContent value="matrix">
-              <MatrixView year={year} month={month} storeId={storeId} />
+              <AppMatrixView year={year} month={month} storeId={storeId} />
             </TabsContent>
             <TabsContent value="csv-sheet">
               <ClockInOutCSVTab year={year} month={month} storeId={storeId} />

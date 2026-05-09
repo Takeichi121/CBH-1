@@ -19,9 +19,10 @@ export function TimeDropdown({ value: valueProp, onChange, onBlur, style, compac
 }) {
   const value = valueProp ?? "";
   const [hh, mm] = value ? value.split(":") : ["", ""];
+  
   const selCls = compact
-    ? "bg-transparent border-0 focus:outline-none cursor-pointer text-center p-0 text-[11px]"
-    : "h-8 text-sm border rounded px-1 bg-background text-foreground";
+    ? "bg-transparent border-0 focus:ring-1 focus:ring-blue-400 rounded cursor-pointer text-center p-0 text-[11px] w-8 appearance-none focus:outline-none"
+    : "h-9 text-sm border border-gray-200 rounded-md px-2 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none w-16 cursor-pointer";
 
   const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
     if (onBlur && !e.currentTarget.contains(e.relatedTarget as Node)) onBlur();
@@ -31,17 +32,15 @@ export function TimeDropdown({ value: valueProp, onChange, onBlur, style, compac
     <span className="inline-flex items-center" style={style} onBlur={handleBlur} data-testid={testId}>
       <select
         className={selCls}
-        style={compact ? { width: 30 } : { width: 70 }}
         value={hh || ""}
         onChange={e => onChange(e.target.value && (mm || "00") ? `${e.target.value}:${mm || "00"}` : "")}
       >
         <option value="">--</option>
         {HH_OPTS.map(h => <option key={h} value={h}>{h}</option>)}
       </select>
-      <span className={compact ? "text-[11px] leading-none" : "text-sm mx-0.5"}>:</span>
+      <span className={compact ? "text-[11px] leading-none mx-0.5 text-gray-400" : "text-sm mx-1 text-gray-500"}>:</span>
       <select
         className={selCls}
-        style={compact ? { width: 30 } : { width: 70 }}
         value={mm || ""}
         onChange={e => onChange(hh && e.target.value ? `${hh}:${e.target.value}` : hh ? `${hh}:${e.target.value}` : "")}
       >
@@ -72,14 +71,16 @@ export function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact
   return (
     <span className="inline-flex items-center flex-wrap gap-px" onBlur={handleBlur} data-testid={testId}>
       {isOff ? (
-        <>
-          <span style={{ color: "#CC0000", fontWeight: 700, fontSize: compact ? 11 : undefined }}>OFF</span>
+        <span className="flex items-center bg-red-50 px-2 py-0.5 rounded border border-red-100">
+          <span className={`text-red-600 font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>OFF</span>
           <button
             type="button"
-            className={compact ? "text-[9px] text-muted-foreground ml-0.5 underline" : "text-xs text-muted-foreground ml-1 underline"}
+            className={`text-red-400 hover:text-red-600 ml-2 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
             onClick={() => onChange("")}
-          >×</button>
-        </>
+          >
+            ✕
+          </button>
+        </span>
       ) : (
         <>
           <TimeDropdown
@@ -87,7 +88,7 @@ export function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact
             value={startTime}
             onChange={v => onChange(v ? `${v} - ${endTime || "00:00"}` : endTime ? `00:00 - ${endTime}` : "")}
           />
-          <span className={compact ? "text-[11px] leading-none mx-px" : "text-sm mx-1"}>–</span>
+          <span className={compact ? "text-[11px] leading-none mx-1 text-gray-400" : "text-sm mx-2 text-gray-500"}>–</span>
           <TimeDropdown
             compact={compact}
             value={endTime}
@@ -96,9 +97,11 @@ export function RosterTimeDropdown({ value: valueProp, onChange, onBlur, compact
           <button
             type="button"
             title="ตั้งเป็น OFF"
-            className={compact ? "text-[9px] text-red-500 ml-0.5 leading-none" : "text-xs text-red-500 ml-1"}
+            className={`font-semibold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded px-1.5 transition-colors ${compact ? 'text-[9px] ml-1' : 'text-xs ml-2 py-1'}`}
             onClick={() => onChange("OFF")}
-          >OFF</button>
+          >
+            OFF
+          </button>
         </>
       )}
     </span>
@@ -149,28 +152,28 @@ export function AddEmployeeDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-primary" />
+            <UserPlus className="h-5 w-5 text-blue-600" />
             เพิ่มพนักงานในตาราง
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 py-1">
+        <div className="space-y-4 py-2">
           <div>
-            <Label className="text-xs">ชื่อเต็ม *</Label>
-            <Input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} placeholder="Firstname Lastname" className="h-8 text-sm mt-1" data-testid="input-add-emp-fullname" autoFocus />
+            <Label className="text-xs font-semibold text-gray-500">ชื่อเต็ม *</Label>
+            <Input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} placeholder="Firstname Lastname" className="h-9 text-sm mt-1 focus:ring-blue-500" data-testid="input-add-emp-fullname" autoFocus />
           </div>
           <div>
-            <Label className="text-xs">ชื่อเล่น</Label>
-            <Input value={form.nickName} onChange={e => setForm({ ...form, nickName: e.target.value })} placeholder="เช่น Jew, Non, Yo" className="h-8 text-sm mt-1" data-testid="input-add-emp-nickname" />
+            <Label className="text-xs font-semibold text-gray-500">ชื่อเล่น</Label>
+            <Input value={form.nickName} onChange={e => setForm({ ...form, nickName: e.target.value })} placeholder="เช่น Jew, Non, Yo" className="h-9 text-sm mt-1 focus:ring-blue-500" data-testid="input-add-emp-nickname" />
           </div>
           <div>
-            <Label className="text-xs">ตำแหน่ง</Label>
-            <Input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} placeholder="เช่น Shift Manager, Store Manager" className="h-8 text-sm mt-1" data-testid="input-add-emp-position" />
+            <Label className="text-xs font-semibold text-gray-500">ตำแหน่ง</Label>
+            <Input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} placeholder="เช่น Shift Manager, Store Manager" className="h-9 text-sm mt-1 focus:ring-blue-500" data-testid="input-add-emp-position" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose}>ยกเลิก</Button>
-          <Button size="sm" onClick={handleAdd} disabled={saving} data-testid="button-add-emp-confirm">
-            {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <UserPlus className="h-4 w-4 mr-1" />}
+          <Button variant="outline" size="sm" onClick={onClose} className="hover:bg-gray-50">ยกเลิก</Button>
+          <Button size="sm" onClick={handleAdd} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-add-emp-confirm">
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
             เพิ่มพนักงาน
           </Button>
         </DialogFooter>

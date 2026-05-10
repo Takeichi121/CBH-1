@@ -1,90 +1,82 @@
 [
-  {
-    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "position": 1,
-    "filepath": "src/pages/slides/Slide01Title.tsx",
-    "title": "BK Work Schedule · Grand Diamond",
-    "description": "Title slide — Chann Back House system introduction",
-    "speakerNotes": ""
-  },
-  {
-    "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-    "position": 2,
-    "filepath": "src/pages/slides/Slide02Problems.tsx",
-    "title": "ปัญหาก่อนมีระบบ",
-    "description": "Three pain points before the system existed",
-    "speakerNotes": ""
-  },
-  {
-    "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-    "position": 3,
-    "filepath": "src/pages/slides/Slide03ShiftRoster.tsx",
-    "title": "ระบบจัดการกะ & Roster",
-    "description": "Shift scheduling and roster management module",
-    "speakerNotes": ""
-  },
-  {
-    "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
-    "position": 4,
-    "filepath": "src/pages/slides/Slide04Attendance.tsx",
-    "title": "บันทึกเวลาทำงาน",
-    "description": "Attendance and clock in-out module",
-    "speakerNotes": ""
-  },
-  {
-    "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
-    "position": 5,
-    "filepath": "src/pages/slides/Slide05StaffChat.tsx",
-    "title": "แชทพนักงาน",
-    "description": "Staff chat with real-time messaging and push notifications",
-    "speakerNotes": ""
-  },
-  {
-    "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
-    "position": 6,
-    "filepath": "src/pages/slides/Slide06ChannAI.tsx",
-    "title": "Chann AI Assistant",
-    "description": "GPT-powered AI assistant for back-of-house queries",
-    "speakerNotes": ""
-  },
-  {
-    "id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
-    "position": 7,
-    "filepath": "src/pages/slides/Slide07BorrowTracker.tsx",
-    "title": "ระบบยืม-คืนอุปกรณ์",
-    "description": "Equipment borrow tracker module",
-    "speakerNotes": ""
-  },
-  {
-    "id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
-    "position": 8,
-    "filepath": "src/pages/slides/Slide08LaborCost.tsx",
-    "title": "Labor Cost Management",
-    "description": "Labor cost percentage tracking and weekly KPI dashboard",
-    "speakerNotes": ""
-  },
-  {
-    "id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
-    "position": 9,
-    "filepath": "src/pages/slides/Slide09Benefits.tsx",
-    "title": "สรุปประโยชน์",
-    "description": "Summary of key benefits from the system",
-    "speakerNotes": ""
-  },
-  {
-    "id": "e1f2a3b4-c5d6-7890-ef12-345678901234",
-    "position": 10,
-    "filepath": "src/pages/slides/Slide10Team.tsx",
-    "title": "Grand Diamond Management Team",
-    "description": "Management team profile cards — 4 restaurant managers",
-    "speakerNotes": ""
-  },
-  {
-    "id": "d0e1f2a3-b4c5-6789-defa-890123456789",
-    "position": 11,
-    "filepath": "src/pages/slides/Slide11ThankYou.tsx",
-    "title": "ขอบคุณ",
-    "description": "Closing slide — thank you and contact",
-    "speakerNotes": ""
-  }
+	{
+		"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"position": 1,
+		"filepath": "src/pages/slides/Slide01Title.tsx",
+		"title": "BK Work Schedule · Grand Diamond",
+		"description": "Title slide — Chann Back House system introduction",
+		"speakerNotes": ""
+	},
+	{
+		"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+		"position": 2,
+		"filepath": "src/pages/slides/Slide02Problems.tsx",
+		"title": "ปัญหาก่อนมีระบบ",
+		"description": "Three pain points before the system existed",
+		"speakerNotes": ""
+	},
+	{
+		"id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+		"position": 3,
+		"filepath": "src/pages/slides/Slide03ShiftRoster.tsx",
+		"title": "ระบบจัดการกะ & Roster",
+		"description": "Shift scheduling and roster management module",
+		"speakerNotes": ""
+	},
+	{
+		"id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+		"position": 4,
+		"filepath": "src/pages/slides/Slide04Attendance.tsx",
+		"title": "บันทึกเวลาทำงาน",
+		"description": "Attendance and clock in-out module",
+		"speakerNotes": ""
+	},
+	{
+		"id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+		"position": 5,
+		"filepath": "src/pages/slides/Slide05StaffChat.tsx",
+		"title": "แชทพนักงาน",
+		"description": "Staff chat with real-time messaging and push notifications",
+		"speakerNotes": ""
+	},
+	{
+		"id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+		"position": 6,
+		"filepath": "src/pages/slides/Slide06ChannAI.tsx",
+		"title": "Chann AI Assistant",
+		"description": "GPT-powered AI assistant for back-of-house queries",
+		"speakerNotes": ""
+	},
+	{
+		"id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+		"position": 7,
+		"filepath": "src/pages/slides/Slide07BorrowTracker.tsx",
+		"title": "ระบบยืม-คืนอุปกรณ์",
+		"description": "Equipment borrow tracker module",
+		"speakerNotes": ""
+	},
+	{
+		"id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+		"position": 8,
+		"filepath": "src/pages/slides/Slide08LaborCost.tsx",
+		"title": "Labor Cost Management",
+		"description": "Labor cost percentage tracking and weekly KPI dashboard",
+		"speakerNotes": ""
+	},
+	{
+		"id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
+		"position": 9,
+		"filepath": "src/pages/slides/Slide09Benefits.tsx",
+		"title": "สรุปประโยชน์",
+		"description": "Summary of key benefits from the system",
+		"speakerNotes": ""
+	},
+	{
+		"id": "d0e1f2a3-b4c5-6789-defa-890123456789",
+		"position": 10,
+		"filepath": "src/pages/slides/Slide11ThankYou.tsx",
+		"title": "ขอบคุณ",
+		"description": "Closing slide — thank you and contact",
+		"speakerNotes": ""
+	}
 ]

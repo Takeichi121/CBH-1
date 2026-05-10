@@ -72,9 +72,17 @@
     "speakerNotes": ""
   },
   {
-    "id": "d0e1f2a3-b4c5-6789-defa-890123456789",
+    "id": "e1f2a3b4-c5d6-7890-ef12-345678901234",
     "position": 10,
-    "filepath": "src/pages/slides/Slide10ThankYou.tsx",
+    "filepath": "src/pages/slides/Slide10Team.tsx",
+    "title": "Grand Diamond Management Team",
+    "description": "Management team profile cards — 4 restaurant managers",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d0e1f2a3-b4c5-6789-defa-890123456789",
+    "position": 11,
+    "filepath": "src/pages/slides/Slide11ThankYou.tsx",
     "title": "ขอบคุณ",
     "description": "Closing slide — thank you and contact",
     "speakerNotes": ""

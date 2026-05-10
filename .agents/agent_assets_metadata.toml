@@ -29,3 +29,9 @@ id = "Q-Gij2szfEEuQQJzgddJj"
 uri = "file://.local/outputs/CBH.pdf"
 type = "pdf"
 title = "CBH.pdf"
+
+[[outputs]]
+id = "FqPlaa7Owgua_jUDaZa0T"
+uri = "file://.local/outputs/CBH.pptx"
+type = "slides"
+title = "CBH.pptx"

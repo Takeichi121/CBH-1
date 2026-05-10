@@ -342,6 +342,19 @@ const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   return `${hour}:00`;
 });
 
+const KNOWN_SHIFT_VALUES = new Set(
+  DEFAULT_STAFF_SHIFT_GROUPS.map((s) => s.value).filter((v) => v !== "CUSTOM")
+);
+
+function parseShiftKey(key: string): { shiftGroup: string; customStart?: string; customEnd?: string } {
+  if (!key || KNOWN_SHIFT_VALUES.has(key)) return { shiftGroup: key };
+  const dashIdx = key.lastIndexOf("-");
+  if (dashIdx > 0) {
+    return { shiftGroup: "CUSTOM", customStart: key.slice(0, dashIdx), customEnd: key.slice(dashIdx + 1) };
+  }
+  return { shiftGroup: key };
+}
+
 type FormData = z.infer<typeof formSchema>;
 
 interface SectionNoteProps {
@@ -783,7 +796,7 @@ export default function DailySalesPage() {
       lines.forEach((line: string) => {
         const parts = line.split("|").map((p: string) => p.trim());
         const key = parts[0] || "";
-        if (!grouped[key]) grouped[key] = { shiftGroup: key, staffNames: [] };
+        if (!grouped[key]) grouped[key] = { ...parseShiftKey(key), staffNames: [] };
         if (parts[1]) grouped[key].staffNames.push(parts[1]);
       });
       const entries = Object.values(grouped);
@@ -1207,7 +1220,7 @@ export default function DailySalesPage() {
             lines.forEach((line: string) => {
               const parts = line.split("|").map((p: string) => p.trim());
               const key = parts[0] || "";
-              if (!grouped[key]) grouped[key] = { shiftGroup: key, staffNames: [] };
+              if (!grouped[key]) grouped[key] = { ...parseShiftKey(key), staffNames: [] };
               if (parts[1]) grouped[key].staffNames.push(parts[1]);
             });
             const entries = Object.values(grouped);

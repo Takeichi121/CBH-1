@@ -583,7 +583,6 @@ export default function DailySalesPage() {
   const [staffShiftGroups, setStaffShiftGroups] = useState(DEFAULT_STAFF_SHIFT_GROUPS);
   const [openNicknamePopover, setOpenNicknamePopover] = useState<number | null>(null);
   const [nicknameSearch, setNicknameSearch] = useState("");
-  const staffClonePendingRef = useRef<number | null>(null);
 
   const { saveData, restoreData, clearData, hasDraft } =
     useFormPersistence<FormData>("daily-sales-form");
@@ -963,28 +962,6 @@ export default function DailySalesPage() {
     setStaffRosterEntries(updated);
   };
 
-  const _cloneStaffEntry_unused = (index: number) => {
-    const src = staffRosterEntries[index];
-    const newEntry = {
-      shiftGroup: src.shiftGroup,
-      staffNames: [],
-      customStart: src.customStart || "08:00",
-      customEnd: src.customEnd || "16:00",
-    };
-    staffClonePendingRef.current = index + 1;
-    setStaffRosterEntries([
-      ...staffRosterEntries.slice(0, index + 1),
-      newEntry,
-      ...staffRosterEntries.slice(index + 1),
-    ]);
-  };
-
-  useEffect(() => {
-    if (staffClonePendingRef.current !== null) {
-      setOpenNicknamePopover(staffClonePendingRef.current);
-      staffClonePendingRef.current = null;
-    }
-  }, [staffRosterEntries.length]);
 
   const removeStaffEntry = (index: number) => {
     setStaffRosterEntries(staffRosterEntries.filter((_, i) => i !== index));

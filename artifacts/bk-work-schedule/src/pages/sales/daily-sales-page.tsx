@@ -797,7 +797,10 @@ export default function DailySalesPage() {
         const parts = line.split("|").map((p: string) => p.trim());
         const key = parts[0] || "";
         if (!grouped[key]) grouped[key] = { ...parseShiftKey(key), staffNames: [] };
-        if (parts[1]) grouped[key].staffNames.push(parts[1]);
+        if (parts[1]) {
+          const names = parts[1].split(",").map((n: string) => n.trim()).filter(Boolean);
+          grouped[key].staffNames.push(...names);
+        }
       });
       const entries = Object.values(grouped);
       if (entries.length > 0) setStaffRosterEntries(entries);
@@ -908,11 +911,12 @@ export default function DailySalesPage() {
   useEffect(() => {
     const text = staffRosterEntries
       .filter((e) => e.shiftGroup && e.staffNames.length > 0)
-      .flatMap((e) => {
+      .map((e) => {
         const shift = e.shiftGroup === "CUSTOM" && e.customStart && e.customEnd
           ? `${e.customStart}-${e.customEnd}`
           : e.shiftGroup;
-        return e.staffNames.filter((n) => n.trim()).map((n) => `${shift} | ${n}`);
+        const names = e.staffNames.filter((n) => n.trim()).join(", ");
+        return `${shift} | ${names}`;
       })
       .join("\n");
     form.setValue("staffRosterText", text);
@@ -1221,7 +1225,10 @@ export default function DailySalesPage() {
               const parts = line.split("|").map((p: string) => p.trim());
               const key = parts[0] || "";
               if (!grouped[key]) grouped[key] = { ...parseShiftKey(key), staffNames: [] };
-              if (parts[1]) grouped[key].staffNames.push(parts[1]);
+              if (parts[1]) {
+                const names = parts[1].split(",").map((n: string) => n.trim()).filter(Boolean);
+                grouped[key].staffNames.push(...names);
+              }
             });
             const entries = Object.values(grouped);
             if (entries.length > 0) setStaffRosterEntries(entries);

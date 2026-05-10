@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "dUw3bsniBgfM8MkASU9-f"
+uri = "file://artifacts/bk-slides/public/hero-kitchen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kZWegDljDVXEVUa1g4wjR"
+uri = "file://artifacts/bk-slides/public/grid-bg.png"
+type = "image"
+title = "generated_image"

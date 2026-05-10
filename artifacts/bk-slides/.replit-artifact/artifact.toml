@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/bk-slides/"
+title = "BK Work Schedule — Grand Diamond"
+version = "1.0.0"
+id = "artifacts/bk-slides"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/bk-slides/" ]
+localPort = 20639
+
+[services.development]
+run = "pnpm --filter @workspace/bk-slides run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bk-slides", "run", "build" ]
+publicDir = "artifacts/bk-slides/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20639"
+BASE_PATH = "/bk-slides/"

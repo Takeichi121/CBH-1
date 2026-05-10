@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "dUw3bsniBgfM8MkASU9-f"
@@ -12,3 +11,15 @@ id = "kZWegDljDVXEVUa1g4wjR"
 uri = "file://artifacts/bk-slides/public/grid-bg.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "Gb-bVcPmIT2FUI4uK3MIR"
+uri = "file://.local/outputs/BK-Work-Schedule-Grand-Diamond.pdf"
+type = "pdf"
+title = "BK Work Schedule — Grand Diamond (PDF)"
+
+[[outputs]]
+id = "GPYjJ1u_F2QpI39d57CoZ"
+uri = "file://.local/outputs/BK-Work-Schedule-Grand-Diamond.pptx"
+type = "slides"
+title = "BK Work Schedule — Grand Diamond (PPTX)"

@@ -576,8 +576,8 @@ export default function DailySalesPage() {
     Array<{ username: string; nickName?: string; fullName?: string }>
   >([]);
   const [staffRosterEntries, setStaffRosterEntries] = useState<
-    Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }>
-  >([{ shiftGroup: "", staffName: "", customStart: "08:00", customEnd: "16:00" }]);
+    Array<{ shiftGroup: string; staffNames: string[]; customStart?: string; customEnd?: string }>
+  >([{ shiftGroup: "", staffNames: [], customStart: "08:00", customEnd: "16:00" }]);
   const [customManagerMode, setCustomManagerMode] = useState<Record<string, boolean>>({});
   const [shiftOptions, setShiftOptions] = useState(DEFAULT_SHIFT_OPTIONS);
   const [staffShiftGroups, setStaffShiftGroups] = useState(DEFAULT_STAFF_SHIFT_GROUPS);
@@ -779,16 +779,16 @@ export default function DailySalesPage() {
 
     // Hydrate staff roster entries from saved text
     if (restored.staffRosterText) {
-      const lines = restored.staffRosterText
-        .split("\n")
-        .filter((l) => l.trim());
-      const entries = lines.map((line) => {
-        const parts = line.split("|").map((p) => p.trim());
-        return { shiftGroup: parts[0] || "", staffName: parts[1] || "" };
+      const lines = restored.staffRosterText.split("\n").filter((l: string) => l.trim());
+      const grouped: Record<string, { shiftGroup: string; staffNames: string[]; customStart?: string; customEnd?: string }> = {};
+      lines.forEach((line: string) => {
+        const parts = line.split("|").map((p: string) => p.trim());
+        const key = parts[0] || "";
+        if (!grouped[key]) grouped[key] = { shiftGroup: key, staffNames: [] };
+        if (parts[1]) grouped[key].staffNames.push(parts[1]);
       });
-      if (entries.length > 0) {
-        setStaffRosterEntries(entries);
-      }
+      const entries = Object.values(grouped);
+      if (entries.length > 0) setStaffRosterEntries(entries);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -895,12 +895,12 @@ export default function DailySalesPage() {
   // Update staffRosterText when entries change
   useEffect(() => {
     const text = staffRosterEntries
-      .filter((e) => e.shiftGroup && e.staffName)
-      .map((e) => {
-        const shift = e.shiftGroup === "CUSTOM" && e.customStart && e.customEnd 
-          ? `${e.customStart}-${e.customEnd}` 
+      .filter((e) => e.shiftGroup && e.staffNames.length > 0)
+      .flatMap((e) => {
+        const shift = e.shiftGroup === "CUSTOM" && e.customStart && e.customEnd
+          ? `${e.customStart}-${e.customEnd}`
           : e.shiftGroup;
-        return `${shift} | ${e.staffName}`;
+        return e.staffNames.filter((n) => n.trim()).map((n) => `${shift} | ${n}`);
       })
       .join("\n");
     form.setValue("staffRosterText", text);
@@ -937,19 +937,37 @@ export default function DailySalesPage() {
     setStaffRosterEntries([
       ...staffRosterEntries,
       {
-        shiftGroup: last?.shiftGroup || "",
-        staffName: "",
+        shiftGroup: "",
+        staffNames: [],
         customStart: last?.customStart || "08:00",
         customEnd: last?.customEnd || "16:00",
       },
     ]);
   };
 
-  const cloneStaffEntry = (index: number) => {
+  const addNameToEntry = (rowIndex: number, name: string) => {
+    if (!name.trim()) return;
+    const updated = staffRosterEntries.map((e, i) =>
+      i === rowIndex ? { ...e, staffNames: [...e.staffNames, name.trim()] } : e
+    );
+    setStaffRosterEntries(updated);
+  };
+
+  const removeNameFromEntry = (rowIndex: number, nameIndex: number) => {
+    const updated = staffRosterEntries.map((e, i) => {
+      if (i !== rowIndex) return e;
+      const names = [...e.staffNames];
+      names.splice(nameIndex, 1);
+      return { ...e, staffNames: names };
+    });
+    setStaffRosterEntries(updated);
+  };
+
+  const _cloneStaffEntry_unused = (index: number) => {
     const src = staffRosterEntries[index];
     const newEntry = {
       shiftGroup: src.shiftGroup,
-      staffName: "",
+      staffNames: [],
       customStart: src.customStart || "08:00",
       customEnd: src.customEnd || "16:00",
     };
@@ -974,7 +992,7 @@ export default function DailySalesPage() {
 
   const updateStaffEntry = (
     index: number,
-    field: "shiftGroup" | "staffName" | "customStart" | "customEnd",
+    field: "shiftGroup" | "customStart" | "customEnd",
     value: string,
   ) => {
     const updated = [...staffRosterEntries];
@@ -1099,7 +1117,7 @@ export default function DailySalesPage() {
         Object.entries(dailyFieldsToReset).forEach(([key, value]) => {
           form.setValue(key as keyof FormData, value);
         });
-        setStaffRosterEntries([{ shiftGroup: "", staffName: "" }]);
+        setStaffRosterEntries([{ shiftGroup: "", staffNames: [] }]);
 
         // Load existing report for this date
         const existingRes = await apiRequest(
@@ -1207,16 +1225,16 @@ export default function DailySalesPage() {
 
           // Hydrate staff roster entries from saved text
           if (r.staffRosterText) {
-            const lines = r.staffRosterText
-              .split("\n")
-              .filter((l: string) => l.trim());
-            const entries = lines.map((line: string) => {
+            const lines = r.staffRosterText.split("\n").filter((l: string) => l.trim());
+            const grouped: Record<string, { shiftGroup: string; staffNames: string[]; customStart?: string; customEnd?: string }> = {};
+            lines.forEach((line: string) => {
               const parts = line.split("|").map((p: string) => p.trim());
-              return { shiftGroup: parts[0] || "", staffName: parts[1] || "" };
+              const key = parts[0] || "";
+              if (!grouped[key]) grouped[key] = { shiftGroup: key, staffNames: [] };
+              if (parts[1]) grouped[key].staffNames.push(parts[1]);
             });
-            if (entries.length > 0) {
-              setStaffRosterEntries(entries);
-            }
+            const entries = Object.values(grouped);
+            if (entries.length > 0) setStaffRosterEntries(entries);
           }
           setReportSavedInDb(true);
           setIsEditMode(false);
@@ -1880,8 +1898,10 @@ ${v.staffRosterText || ""}
   const duplicateStaffNames = useMemo(() => {
     const counts: Record<string, number> = {};
     staffRosterEntries.forEach((e) => {
-      const k = e.staffName.trim().toLowerCase();
-      if (k) counts[k] = (counts[k] || 0) + 1;
+      e.staffNames.forEach((n) => {
+        const k = n.trim().toLowerCase();
+        if (k) counts[k] = (counts[k] || 0) + 1;
+      });
     });
     return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
   }, [staffRosterEntries]);
@@ -2350,21 +2370,18 @@ ${v.staffRosterText || ""}
 
     if (rosterBlock) {
       const blockLines = rosterBlock.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-      const staffEntries: Array<{ shiftGroup: string; staffName: string; customStart?: string; customEnd?: string }> = [];
+      const staffEntries: Array<{ shiftGroup: string; staffNames: string[]; customStart?: string; customEnd?: string }> = [];
       const knownShifts = ["07:00-16:00","09:00-18:00","10:00-19:00","11:00-20:00","12:00-21:00","13:00-22:00","14:00-23:00","15:00-00:00","15:00-22:00","16:00-01:00","18:00-00:00","19:00-04:00","21:00-06:00","22:00-07:00"];
       for (const line of blockLines) {
         const timeMatch = line.match(/([\d.:]+\s*-\s*[\d.:]+)\s*[=:|]\s*(.+)/);
         if (timeMatch) {
           const normalizedTime = normalizeShift(timeMatch[1]);
-          const names = timeMatch[2].trim().split(/\s+/);
-          for (const name of names) {
-            if (!name.trim()) continue;
-            if (knownShifts.includes(normalizedTime)) {
-              staffEntries.push({ shiftGroup: normalizedTime, staffName: name.trim() });
-            } else {
-              const [cs, ce] = normalizedTime.split("-");
-              staffEntries.push({ shiftGroup: "CUSTOM", staffName: name.trim(), customStart: cs, customEnd: ce });
-            }
+          const names = timeMatch[2].trim().split(/\s+/).filter((n: string) => n.trim());
+          if (knownShifts.includes(normalizedTime)) {
+            staffEntries.push({ shiftGroup: normalizedTime, staffNames: names });
+          } else {
+            const [cs, ce] = normalizedTime.split("-");
+            staffEntries.push({ shiftGroup: "CUSTOM", staffNames: names, customStart: cs, customEnd: ce });
           }
         }
       }
@@ -4480,40 +4497,33 @@ ${v.staffRosterText || ""}
                           data-testid="button-add-staff-entry"
                         >
                           <Plus className="w-3 h-3" />
-                          {language === "th" ? "เพิ่ม" : "Add"}
+                          {language === "th" ? "เพิ่มกะ" : "Add shift"}
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <UserPlus className="w-3 h-3 shrink-0" />
-                        {language === "th" ? "กด เพื่อเพิ่มคนที่กะเดียวกัน" : "Tap to add another person to the same shift"}
-                      </p>
-                      <div className="space-y-2">
-                        {staffRosterEntries.map((entry, index) => {
-                          const _isDup = !!entry.staffName.trim() && duplicateStaffNames.has(entry.staffName.trim().toLowerCase());
+                      <div className="space-y-1.5">
+                        {staffRosterEntries.map((entry, rowIdx) => {
+                          const hasAnyDup = entry.staffNames.some(
+                            (n) => n.trim() && duplicateStaffNames.has(n.trim().toLowerCase())
+                          );
                           return (
                           <div
-                            key={index}
+                            key={rowIdx}
                             className={cn(
-                              "flex flex-wrap items-center gap-2",
-                              _isDup && "rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600 px-1 py-0.5"
+                              "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-border/50 bg-muted/30 px-2 py-1.5",
+                              hasAnyDup && "border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600"
                             )}
-                            data-testid={_isDup ? `row-staff-duplicate-${index}` : undefined}
+                            data-testid={hasAnyDup ? `row-staff-duplicate-${rowIdx}` : `row-staff-${rowIdx}`}
                           >
+                            {/* Shift time selector */}
                             <Select
                               value={entry.shiftGroup}
-                              onValueChange={(v) =>
-                                updateStaffEntry(index, "shiftGroup", v)
-                              }
+                              onValueChange={(v) => updateStaffEntry(rowIdx, "shiftGroup", v)}
                             >
                               <SelectTrigger
-                                className="w-[100px] text-sm"
-                                data-testid={`select-staff-shift-${index}`}
+                                className="w-[100px] text-xs h-7 shrink-0"
+                                data-testid={`select-staff-shift-${rowIdx}`}
                               >
-                                <SelectValue
-                                  placeholder={
-                                    language === "th" ? "กลุ่มกะ" : "Shift"
-                                  }
-                                />
+                                <SelectValue placeholder={language === "th" ? "กะ" : "Shift"} />
                               </SelectTrigger>
                               <SelectContent>
                                 {staffShiftGroups.map((opt) => (
@@ -4527,11 +4537,9 @@ ${v.staffRosterText || ""}
                               <>
                                 <Select
                                   value={entry.customStart || "08:00"}
-                                  onValueChange={(v) =>
-                                    updateStaffEntry(index, "customStart", v)
-                                  }
+                                  onValueChange={(v) => updateStaffEntry(rowIdx, "customStart", v)}
                                 >
-                                  <SelectTrigger className="w-[70px] text-xs">
+                                  <SelectTrigger className="w-[68px] text-xs h-7 shrink-0">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -4540,14 +4548,12 @@ ${v.staffRosterText || ""}
                                     ))}
                                   </SelectContent>
                                 </Select>
-                                <span className="text-xs">-</span>
+                                <span className="text-xs text-muted-foreground">-</span>
                                 <Select
                                   value={entry.customEnd || "16:00"}
-                                  onValueChange={(v) =>
-                                    updateStaffEntry(index, "customEnd", v)
-                                  }
+                                  onValueChange={(v) => updateStaffEntry(rowIdx, "customEnd", v)}
                                 >
-                                  <SelectTrigger className="w-[70px] text-xs">
+                                  <SelectTrigger className="w-[68px] text-xs h-7 shrink-0">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -4558,110 +4564,132 @@ ${v.staffRosterText || ""}
                                 </Select>
                               </>
                             )}
-                            <Popover
-                              open={openNicknamePopover === index}
-                              onOpenChange={(open) => {
-                                setOpenNicknamePopover(open ? index : null);
-                                if (!open) setNicknameSearch("");
-                              }}
-                            >
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  aria-expanded={openNicknamePopover === index}
-                                  className="flex-1 min-w-[100px] justify-between text-sm font-normal h-9"
-                                  data-testid={`input-staff-name-${index}`}
-                                >
-                                  <span className={cn("truncate", !entry.staffName && "text-muted-foreground")}>
-                                    {entry.staffName || (language === "th" ? "ชื่อเล่น" : "Nickname")}
+                            {/* Staff name chips */}
+                            <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+                              {entry.staffNames.map((name, nameIdx) => {
+                                const isDupName = name.trim() && duplicateStaffNames.has(name.trim().toLowerCase());
+                                return (
+                                  <span
+                                    key={nameIdx}
+                                    className={cn(
+                                      "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                                      isDupName
+                                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+                                        : "bg-primary/10 text-primary dark:bg-primary/20"
+                                    )}
+                                    data-testid={`chip-staff-${rowIdx}-${nameIdx}`}
+                                  >
+                                    {name}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeNameFromEntry(rowIdx, nameIdx)}
+                                      className="ml-0.5 rounded-full hover:bg-destructive/20 hover:text-destructive p-0.5"
+                                      data-testid={`button-remove-name-${rowIdx}-${nameIdx}`}
+                                    >
+                                      <X className="w-2.5 h-2.5" />
+                                    </button>
                                   </span>
-                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[200px] p-0" align="start">
-                                <Command shouldFilter={false}>
-                                  <CommandInput
-                                    placeholder={language === "th" ? "ค้นหา/พิมพ์ชื่อ..." : "Search/type name..."}
-                                    value={nicknameSearch}
-                                    onValueChange={setNicknameSearch}
-                                    data-testid={`input-staff-name-search-${index}`}
-                                  />
-                                  <CommandList>
-                                    <CommandEmpty>
-                                      <span className="text-muted-foreground">{language === "th" ? "ไม่พบ" : "No results"}</span>
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                      {nicknameSearch && (
-                                        <CommandItem
-                                          value={`__custom__${nicknameSearch}`}
-                                          onSelect={() => {
-                                            updateStaffEntry(index, "staffName", nicknameSearch);
-                                            setOpenNicknamePopover(null);
-                                            setNicknameSearch("");
-                                          }}
-                                          className="text-blue-600 font-medium"
-                                          data-testid={`button-use-custom-name-${index}`}
-                                        >
-                                          <Plus className="mr-2 h-4 w-4" />
-                                          {language === "th" ? `ใช้ "${nicknameSearch}"` : `Use "${nicknameSearch}"`}
-                                        </CommandItem>
-                                      )}
-                                      {staffList
-                                        .filter((s) => {
-                                          if (!nicknameSearch) return true;
-                                          const search = nicknameSearch.toLowerCase();
-                                          return (
-                                            s.nickName?.toLowerCase().includes(search) ||
-                                            s.fullName?.toLowerCase().includes(search) ||
-                                            s.username.toLowerCase().includes(search)
-                                          );
-                                        })
-                                        .map((staff) => (
+                                );
+                              })}
+                              {/* Add person to this shift */}
+                              <Popover
+                                open={openNicknamePopover === rowIdx}
+                                onOpenChange={(open) => {
+                                  setOpenNicknamePopover(open ? rowIdx : null);
+                                  if (!open) setNicknameSearch("");
+                                }}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground hover:text-primary hover:border-primary"
+                                    title={language === "th" ? "เพิ่มคนในกะนี้" : "Add person to this shift"}
+                                    data-testid={`button-add-name-${rowIdx}`}
+                                  >
+                                    <UserPlus className="w-3 h-3" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[200px] p-0" align="start">
+                                  <Command shouldFilter={false}>
+                                    <CommandInput
+                                      placeholder={language === "th" ? "ค้นหา/พิมพ์ชื่อ..." : "Search/type name..."}
+                                      value={nicknameSearch}
+                                      onValueChange={setNicknameSearch}
+                                      data-testid={`input-staff-name-search-${rowIdx}`}
+                                    />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        <span className="text-muted-foreground">{language === "th" ? "ไม่พบ" : "No results"}</span>
+                                      </CommandEmpty>
+                                      <CommandGroup>
+                                        {nicknameSearch && (
                                           <CommandItem
-                                            key={staff.username}
-                                            value={staff.nickName || staff.username}
+                                            value={`__custom__${nicknameSearch}`}
                                             onSelect={() => {
-                                              updateStaffEntry(index, "staffName", staff.nickName || staff.username);
+                                              addNameToEntry(rowIdx, nicknameSearch);
                                               setOpenNicknamePopover(null);
                                               setNicknameSearch("");
                                             }}
-                                            data-testid={`option-staff-${staff.username}`}
+                                            className="text-blue-600 font-medium"
+                                            data-testid={`button-use-custom-name-${rowIdx}`}
                                           >
-                                            <Check
-                                              className={cn(
-                                                "mr-2 h-4 w-4",
-                                                entry.staffName === (staff.nickName || staff.username) ? "opacity-100" : "opacity-0"
-                                              )}
-                                            />
-                                            {staff.nickName || staff.username}
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            {language === "th" ? `ใช้ "${nicknameSearch}"` : `Use "${nicknameSearch}"`}
                                           </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => cloneStaffEntry(index)}
-                              title={language === "th" ? "เพิ่มคนที่กะเดียวกัน" : "Add another person to same shift"}
-                              data-testid={`button-clone-staff-${index}`}
-                              className="text-muted-foreground hover:text-primary"
-                            >
-                              <UserPlus className="w-4 h-4" />
-                            </Button>
+                                        )}
+                                        {staffList
+                                          .filter((s) => {
+                                            if (!nicknameSearch) return true;
+                                            const search = nicknameSearch.toLowerCase();
+                                            return (
+                                              s.nickName?.toLowerCase().includes(search) ||
+                                              s.fullName?.toLowerCase().includes(search) ||
+                                              s.username.toLowerCase().includes(search)
+                                            );
+                                          })
+                                          .map((staff) => {
+                                            const displayName = staff.nickName || staff.username;
+                                            const alreadyAdded = entry.staffNames.includes(displayName);
+                                            return (
+                                              <CommandItem
+                                                key={staff.username}
+                                                value={displayName}
+                                                onSelect={() => {
+                                                  addNameToEntry(rowIdx, displayName);
+                                                  setOpenNicknamePopover(null);
+                                                  setNicknameSearch("");
+                                                }}
+                                                data-testid={`option-staff-${staff.username}`}
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    alreadyAdded ? "opacity-100" : "opacity-0"
+                                                  )}
+                                                />
+                                                {displayName}
+                                              </CommandItem>
+                                            );
+                                          })}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                            {/* Remove entire shift row */}
                             {staffRosterEntries.length > 1 && (
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => removeStaffEntry(index)}
-                                data-testid={`button-remove-staff-${index}`}
+                                onClick={() => removeStaffEntry(rowIdx)}
+                                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                                data-testid={`button-remove-staff-${rowIdx}`}
                               >
-                                <X className="w-4 h-4" />
+                                <X className="w-3.5 h-3.5" />
                               </Button>
                             )}
                           </div>
@@ -4672,7 +4700,7 @@ ${v.staffRosterText || ""}
                       {/* Roster summary grouped by shift */}
                       {(() => {
                         const validEntries = staffRosterEntries.filter(
-                          (e) => e.shiftGroup && e.staffName
+                          (e) => e.shiftGroup && e.staffNames.length > 0
                         );
                         if (validEntries.length === 0) return null;
 
@@ -4683,10 +4711,10 @@ ${v.staffRosterText || ""}
                               ? `${e.customStart}-${e.customEnd}`
                               : e.shiftGroup;
                           if (!grouped[shiftLabel]) grouped[shiftLabel] = [];
-                          grouped[shiftLabel].push(e.staffName);
+                          e.staffNames.forEach((n) => { if (n.trim()) grouped[shiftLabel].push(n); });
                         });
 
-                        const totalHeadcount = validEntries.length;
+                        const totalHeadcount = validEntries.reduce((acc, e) => acc + e.staffNames.filter(n => n.trim()).length, 0);
 
                         const handleCopyRosterSummary = () => {
                           const lines = Object.entries(grouped).map(
@@ -4764,12 +4792,13 @@ ${v.staffRosterText || ""}
                                 data-testid="roster-duplicate-warning-section"
                               >
                                 {Array.from(duplicateStaffNames).map((dupKey) => {
-                                  const displayName = staffRosterEntries.find(
-                                    (e) => e.staffName.trim().toLowerCase() === dupKey
-                                  )?.staffName ?? dupKey;
-                                  const count = staffRosterEntries.filter(
-                                    (e) => e.staffName.trim().toLowerCase() === dupKey
-                                  ).length;
+                                  const displayName = staffRosterEntries
+                                    .flatMap((e) => e.staffNames)
+                                    .find((n) => n.trim().toLowerCase() === dupKey) ?? dupKey;
+                                  const count = staffRosterEntries.reduce(
+                                    (acc, e) => acc + e.staffNames.filter((n) => n.trim().toLowerCase() === dupKey).length,
+                                    0
+                                  );
                                   return (
                                     <div
                                       key={dupKey}

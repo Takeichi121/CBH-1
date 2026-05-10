@@ -15,8 +15,12 @@ export default function Slide10ThankYou() {
           ขอบคุณทุกคน
         </h2>
 
-        <p className="font-body text-center mb-[3vh]" style={{ fontSize: "2.4vw", color: "#94a3b8" }}>
+        <p className="font-body text-center mb-[1.5vh]" style={{ fontSize: "2.4vw", color: "#94a3b8" }}>
           ระบบนี้สร้างขึ้นเพื่อทีม Grand Diamond — ด้วยความตั้งใจจริง
+        </p>
+
+        <p className="font-body text-center mb-[3vh]" style={{ fontSize: "2vw", color: "#64748b" }}>
+          Sales · Roster · Attendance · Labor · AI — ครบในที่เดียว
         </p>
 
         <div className="w-[15vw] h-[0.4vh] mb-[4vh]" style={{ background: "linear-gradient(90deg, transparent, #10b981, transparent)" }} />

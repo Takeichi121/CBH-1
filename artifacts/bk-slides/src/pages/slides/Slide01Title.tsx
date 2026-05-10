@@ -19,7 +19,7 @@ export default function Slide01Title() {
           <div className="w-[12vw] h-[0.4vh] mx-auto mb-[3vh]" style={{ background: "linear-gradient(90deg, transparent, #10b981, transparent)" }} />
 
           <p className="font-body font-semibold" style={{ fontSize: "2.4vw", color: "#94a3b8" }}>
-            ระบบจัดการพนักงานฝ่ายหลังร้าน
+            ระบบ Sales &amp; Back of House ในที่เดียว
           </p>
 
           <p className="font-body mt-[1.5vh]" style={{ fontSize: "2vw", color: "#64748b" }}>

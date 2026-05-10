@@ -1,0 +1,82 @@
+import { pgTable, text, serial, integer, boolean, timestamp, real, date } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// 1. ตารางหลัก: ยอดขายและลูกค้า (Sales & Traffic) - จาก Sales Management Sheet สีเขียว/เหลือง
+export const dailySales = pgTable("daily_sales", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull().unique(), // เก็บเป็น YYYY-MM-DD
+  
+  // Sales (ยอดขาย)
+  salesLastYear: real("sales_last_year").default(0), // ปีที่แล้ว
+  salesTarget: real("sales_target").default(0),      // เป้า Incentive
+  salesForecast: real("sales_forecast").default(0),  // NBO Forecast
+  salesActual: real("sales_actual").default(0),      // ยอดขายจริง
+  salesDelivery: real("sales_delivery").default(0),  // ยอด Delivery แยกต่างหาก
+  
+  // Ticket Count (จำนวนบิล - TC)
+  tcLastYear: integer("tc_last_year").default(0),
+  tcTarget: integer("tc_target").default(0),
+  tcActual: integer("tc_actual").default(0),
+  
+  // Waste (ของเสีย)
+  wasteBaht: real("waste_baht").default(0),
+  
+  updatedAt: text("updated_at"),
+  updatedBy: text("updated_by"),
+});
+
+// 2. ตารางแรงงานและต้นทุน (Labor & COL) - จาก COL Daily และ Sheet สีม่วง
+export const dailyLabor = pgTable("daily_labor", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull().unique(), // เชื่อมกับ dailySales ด้วยวันที่
+  
+  // Hours (ชั่วโมงทำงาน)
+  rosterHours: real("roster_hours").default(0),      // ชั่วโมงตามตารางงาน (Area Commit)
+  dutyManagerHours: real("duty_manager_hours").default(0), // ชั่วโมงผู้จัดการ (Fix)
+  staffHours: real("staff_hours").default(0),        // ชั่วโมงพนักงาน (PT+FT Actual)
+  otHours: real("ot_hours").default(0),              // โอที
+  
+  // Cost Calculation (คำนวณเงิน) - จากไฟล์ COL Daily
+  fixCost: real("fix_cost").default(0),              // ค่าแรง Fulltime/Manager เฉลี่ยต่อวัน
+  partTimeWage: real("part_time_wage").default(0),   // ค่าแรง Parttime ที่จ่ายจริง
+  closeShiftCost: real("close_shift_cost").default(0), // ค่ารถปิดร้าน
+  
+  // สูตร: Productivity
+  tcmh: real("tcmh").default(0), // Ticket Count per Man Hour
+});
+
+// 3. ตารางโปรโมชั่นและสินค้า (Promotions) - จาก Sheet สีส้ม
+export const dailyPromotions = pgTable("daily_promotions", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull().unique(),
+  
+  // Item Counts (จำนวนชิ้นที่ขายได้)
+  whopperQty: integer("whopper_qty").default(0),
+  valueMealQty: integer("value_meal_qty").default(0),
+  upSizeQty: integer("upsize_qty").default(0),
+  addCheeseQty: integer("add_cheese_qty").default(0),
+  
+  // New Promo (สินค้าใหม่ที่ต้องการ Track)
+  otherPromoQty: integer("other_promo_qty").default(0),
+  otherPromoName: text("other_promo_name"), // ชื่อโปรโมชั่น เช่น "Black Pink Burger"
+});
+
+// 4. ตารางคะแนนความพึงพอใจ (GSI & Ratings) - จากไฟล์ GSI
+export const dailyRatings = pgTable("daily_ratings", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull().unique(),
+  
+  gsiScore: real("gsi_score").default(0),         // คะแนน GSI
+  osatScore: real("osat_score").default(0),       // ความพึงพอใจโดยรวม
+  googleRating: real("google_rating").default(0), // Google Maps Review
+  deliveryRating: real("delivery_rating").default(0), // คะแนน Delivery App
+  
+  checkBy: text("check_by"), // ชื่อคนกรอกข้อมูล
+});
+
+// Zod Schemas สำหรับใช้ใน API (Validation)
+export const insertDailySalesSchema = createInsertSchema(dailySales);
+export const insertDailyLaborSchema = createInsertSchema(dailyLabor);
+export const insertDailyPromotionsSchema = createInsertSchema(dailyPromotions);
+export const insertDailyRatingsSchema = createInsertSchema(dailyRatings);

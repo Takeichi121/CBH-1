@@ -1,0 +1,30 @@
+10/05/2026 -- 8:34 AM,Audit Report,Date of Business: 09/05/2026
+Time,Type,Transaction
+12:18 AM,CLOCK IN,Clock In Emp: 999 Kiosk
+,,Job Code: BK-MANAGER  Time: 00:18
+12:19 AM,CLOCK IN,Clock In Emp: 519916 Chanon  Jaimool
+,,Job Code: BK-MANAGER  Time: 00:19
+01:44 AM,CLOCK IN,Clock In Emp: 554371 Washiraphan  Na Songkhla
+,,Job Code: BK-MANAGER  Time: 01:44
+05:23 AM,CLOCK OUT,Clock Out Emp: 554371 Washiraphan  Na Songkhla
+,,Job Code: BK-MANAGER  Time: 05:23
+07:23 AM,CLOCK IN,Clock In Emp: 414888 Nuttarika  Kaewkham
+,,Job Code: BK-MANAGER  Time: 07:23
+07:47 AM,CLOCK IN,Clock In Emp: 554371 Washiraphan  Na Songkhla
+,,Job Code: BK-MANAGER  Time: 07:47
+08:00 AM,CLOCK OUT,Clock Out Emp: 554371 Washiraphan  Na Songkhla
+,,Job Code: BK-MANAGER  Time: 08:00
+09:39 AM,CLOCK OUT,Clock Out Emp: 519916 Chanon  Jaimool
+,,Job Code: BK-MANAGER  Time: 09:39
+12:44 PM,CLOCK IN,Clock In Emp: 347760 Phongsathon  Phoreung
+,,Job Code: BK-MANAGER  Time: 12:44
+12:48 PM,CLOCK IN,Clock In Emp: 571887 Boonyisa  Khongboon
+,,Job Code: BK-MANAGER  Time: 12:48
+05:14 PM,CLOCK OUT,Clock Out Emp: 414888 Nuttarika  Kaewkham
+,,Job Code: BK-MANAGER  Time: 17:14
+09:55 PM,CLOCK IN,Clock In Emp: 519916 Chanon  Jaimool
+,,Job Code: BK-MANAGER  Time: 21:55
+10:23 PM,CLOCK OUT,Clock Out Emp: 571887 Boonyisa  Khongboon
+,,Job Code: BK-MANAGER  Time: 22:23
+10:36 PM,CLOCK OUT,Clock Out Emp: 347760 Phongsathon  Phoreung
+,,Job Code: BK-MANAGER  Time: 22:36

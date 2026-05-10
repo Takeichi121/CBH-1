@@ -1,104 +1,64 @@
-# BK Work Schedule - Grand Diamond
+# Chann Back House — BK Work Schedule
 
-A staff roster and shift scheduling management application for the Grand Diamond branch, enabling employees to book shifts and managers to oversee schedules and settings.
+Thai-language back-of-house management PWA for Burger King Grand Diamond store, built by Chan J. (Chanon Jaimool).
 
 ## Run & Operate
 
-```bash
-# Install dependencies
-npm install
-
-# Build frontend
-npm run build:client
-
-# Build backend
-npm run build:server
-
-# Typecheck all code
-npm run typecheck
-
-# Generate Drizzle ORM migrations
-npm run db:generate
-
-# Apply Drizzle ORM migrations
-npm run db:push
-
-# Run development server
-npm run dev
-```
-
-**Environment Variables:**
-- `DATABASE_URL`: PostgreSQL connection string (required)
-- `SALT`: Password hashing salt
-- `MANAGER_VERIFY_CODE`: Code for manager registration
-- `BRANCH_NAME`: Display name for the branch
-- `SESSION_TTL_SECONDS`: Token expiration time
-- `VAPID_PUBLIC_KEY`: Web Push VAPID public key
-- `VAPID_PRIVATE_KEY`: Web Push VAPID private key
-- `VAPID_EMAIL`: Contact email for VAPID
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, served at `/api`)
+- `pnpm --filter @workspace/bk-work-schedule run dev` — run the frontend (port 23101, served at `/`)
+- `pnpm run typecheck` — full typecheck across all packages
+- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
-- **Frontend**: React 18, TypeScript, Wouter, TanStack React Query, Tailwind CSS, shadcn/ui
-- **Backend**: Node.js, Express, TypeScript, Socket.IO
-- **Database**: PostgreSQL, Drizzle ORM
-- **Build Tools**: Vite (frontend), esbuild (backend), TypeScript (type checking)
-- **Validation**: Zod
-- **Internationalization**: Custom `use-i18n` hook
+- pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite + Tailwind CSS v3 + Wouter (routing) + TanStack Query
+- API: Express 5 + Socket.io
+- DB: PostgreSQL + Drizzle ORM (`lib/db`)
+- Auth: Passport.js (local strategy + session)
+- Build: esbuild (ESM bundle)
+- PWA: Vite PWA plugin + service worker
 
 ## Where things live
 
-- **Frontend Source**: `client/src/`
-- **Backend Source**: `server/src/`
-- **Shared Code (types, routes)**: `shared/`
-- **DB Schema**: `db/schema.ts`
-- **API Contracts**: `shared/routes.ts` (Zod schemas)
-- **UI Components**: `client/src/components/ui/` (shadcn/ui)
-- **Core Logic/Hooks**: `client/src/lib/` and `client/src/hooks/`
-- **Version and Changelog**: `shared/version.ts` (single source of truth)
-- **Excel Workbook VBA Modules**: `vba/`
-- **Excel Workbook Design Docs**: `docs/EXCEL_WORKBOOK_DESIGN.md`
-- **Excel User Manual**: `EXCEL_USER_MANUAL.md`
+- `artifacts/bk-work-schedule/` — React/Vite frontend (Thai-language PWA)
+- `artifacts/api-server/` — Express backend with all routes
+- `artifacts/api-server/src/routes/routes.ts` — all API route handlers (~11k lines)
+- `artifacts/api-server/src/services/` — AI agents, push notifications, LINE integration
+- `lib/db/src/schema/` — Drizzle ORM schema (source of truth)
+- `artifacts/bk-work-schedule/src/lib/shared-routes.ts` — API contract (client-side)
+- `artifacts/bk-work-schedule/src/lib/shared-schema.ts` — shared type stubs (frontend)
 
 ## Architecture decisions
 
-- **Token-based Authentication**: Custom implementation, token stored in localStorage and passed in POST request body.
-- **API Design**: All API endpoints use POST requests with JSON bodies for consistency and token passing.
-- **Mobile-First UI**: Responsive design with distinct mobile (bottom nav) and desktop (sidebar nav) layouts.
-- **Timezone Management**: All server-side dates and times are handled in `Asia/Bangkok` (UTC+7).
-- **Chann AI Tools**: Extensive tool-use for Chann AI, including role-based permissions and direct SQL execution for Admin.
-- **Offline Excel Workbook**: A macro-enabled Excel workbook (`BK_Work_Schedule.xlsm`) replicates core web app functionality for offline use, built from the PostgreSQL database.
+- Routes moved from legacy `server/routes.ts` → `artifacts/api-server/src/routes/routes.ts`; all dynamic imports within routes.ts use `../` relative paths to reach sibling server files.
+- Frontend uses Vite `@shared/*` aliases pointing to `src/lib/shared-{schema,routes,version}.ts` stubs — no Drizzle in the browser.
+- `WouterRouter` wraps the app with `base={import.meta.env.BASE_URL}` so routing works under both `/` (dev) and any subpath (production proxy).
+- `pg` is externalized from the esbuild bundle (native bindings); `socket.io` and other large packages are bundled.
+- Sessions are stored server-side; VAPID push keys are read from env vars at runtime.
 
 ## Product
 
-- **Staff Shift Management**: Employees can view, book, and manage their weekly shifts within capacity limits.
-- **Manager Roster & Configuration**: Managers can view full staff rosters, adjust shift capacities, and manage system settings.
-- **Authentication & Roles**: Token-based authentication with distinct staff, manager, and admin roles.
-- **Real-time Staff Chat**: Integrated Socket.IO-based chat for staff communication (group and 1-on-1).
-- **Borrow Tracker System**: Comprehensive system for managing equipment borrowing between branches, including item catalog, transactions, and history.
-- **Labor Cost Management**: Tools for configuring labor cost constants and calculating daily labor metrics (COL%, TCMH).
-- **Chann AI Assistant**: AI-powered assistant for drafting daily sales, anomaly detection, long-term memory (RAG), and extensive tool interaction for various tasks.
-- **Notifications**: System-wide notifications for various events (manager requests, borrow transactions, daily reports, version updates).
-- **Multi-language Support**: Bilingual interface (English/Thai).
+- Employee shift scheduling and roster management (Thai locale)
+- Sales tracking (weekly/daily), borrow tracking, KPI dashboards
+- "Chann" AI assistant (GPT-backed) for back-of-house queries
+- LINE / push notification alerts for schedule anomalies
+- PWA installable on mobile devices
 
 ## User preferences
 
-Preferred communication style: Simple, everyday language.
+- Thai language throughout the UI
+- Dark theme by default
+- Font: Architects Daughter (handwritten-style headings)
 
 ## Gotchas
 
-- **Changelog Updates**: `shared/version.ts` MUST be updated with every code change to ensure auto-synced changelogs.
-- **Database Migrations**: Always run `npm run db:push` after schema changes.
-- **Timezone Consistency**: Be mindful of timezone handling, especially for shift booking and daily reports, as the system operates on `Asia/Bangkok` time.
-- **Chann AI Permissions**: Chann AI's capabilities are strictly governed by user roles; not all tools are available to all users.
-- **Excel Workbook Build**: Building the offline Excel workbook requires specific steps, including running a VBScript on Windows and enabling "Trust access to the VBA project object model" in Excel.
+- Dynamic imports in `routes.ts` must use `../` (not `./`) since the file lives in `src/routes/` subdirectory.
+- `pnpm run build` at workspace root requires `PORT` and `BASE_PATH` env vars — use `typecheck` for CI-safe checks.
+- `zod/v4` is used in some legacy files; the api-server has `zod` in its own dependencies.
+- Run `pnpm --filter @workspace/db run push` after schema changes before restarting the API server.
 
 ## Pointers
 
-- **Drizzle ORM Docs**: [https://orm.drizzle.team/docs/overview](https://orm.drizzle.team/docs/overview)
-- **Tailwind CSS Docs**: [https://tailwindcss.com/docs](https://tailwindcss.com/docs)
-- **React Query Docs**: [https://tanstack.com/query/latest/docs/react/overview](https://tanstack.com/query/latest/docs/react/overview)
-- **Socket.IO Docs**: [https://socket.io/docs/v4/](https://socket.io/docs/v4/)
-- **Zod Docs**: [https://zod.dev/](https://zod.dev/)
-- **Shadcn/ui Docs**: [https://ui.shadcn.com/docs](https://ui.shadcn.com/docs)
-- **Recharts Docs**: [https://recharts.org/en-US/api](https://recharts.org/en-US/api)
+- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

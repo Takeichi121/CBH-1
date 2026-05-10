@@ -1,0 +1,1589 @@
+import { useState, useRef, useEffect, memo, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, BellOff, Download, ChevronDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import ExcelJS from "exceljs";
+import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+
+// Small draggable wrapper for floating UI (mouse + touch)
+type DragAxis = "both" | "x" | "y";
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function useDraggableFloating(options?: {
+  axis?: DragAxis;
+  enabled?: boolean;
+  initial?: { x: number; y: number };
+}) {
+  const axis = options?.axis ?? "both";
+  const enabled = options?.enabled ?? true;
+  const initial = options?.initial ?? { x: 0, y: 0 };
+
+  const [pos, setPos] = useState(initial);
+  const draggingRef = useRef(false);
+  const startRef = useRef({
+    pointerX: 0,
+    pointerY: 0,
+    startX: 0,
+    startY: 0,
+  });
+
+  const DRAG_THRESHOLD = 6; // px — must move this far before drag starts
+  const hasDraggedRef = useRef(false);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((e as any).button != null && (e as any).button !== 0) return;
+
+      draggingRef.current = true;
+      hasDraggedRef.current = false;
+      startRef.current = {
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        startX: pos.x,
+        startY: pos.y,
+      };
+      // Do NOT preventDefault here — we only capture after threshold is exceeded
+    },
+    [enabled, pos.x, pos.y]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled) return;
+      if (!draggingRef.current) return;
+
+      const dx = e.clientX - startRef.current.pointerX;
+      const dy = e.clientY - startRef.current.pointerY;
+
+      // Only start real drag after threshold to preserve clicks
+      if (!hasDraggedRef.current) {
+        if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+        hasDraggedRef.current = true;
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        } catch { /* ignore */ }
+      }
+
+      setPos(prev => {
+        let nextX = startRef.current.startX + dx;
+        let nextY = startRef.current.startY + dy;
+
+        if (axis === "x") nextY = prev.y;
+        if (axis === "y") nextX = prev.x;
+
+        // clamp to viewport (keep a small margin)
+        const margin = 8;
+        const maxX = window.innerWidth - margin;
+        const maxY = window.innerHeight - margin;
+        nextX = clamp(nextX, -maxX, maxX);
+        nextY = clamp(nextY, -maxY, maxY);
+
+        return { x: nextX, y: nextY };
+      });
+    },
+    [enabled, axis]
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled) return;
+      draggingRef.current = false;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      } catch {
+        // ignore
+      }
+    },
+    [enabled]
+  );
+
+  return {
+    pos,
+    setPos,
+    bind: enabled
+      ? {
+          onPointerDown,
+          onPointerMove,
+          onPointerUp,
+          onPointerCancel: onPointerUp,
+        }
+      : {},
+  };
+}
+
+interface ToolProgressStep {
+  step: number;
+  maxSteps: number;
+  toolNames: string[];
+  writeActions: string[];
+}
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  imageUrl?: string;
+  toolActions?: string[];
+  thinking?: string;
+  suggestedReplies?: string[];
+  progressSteps?: ToolProgressStep[];
+}
+
+
+interface MessageBubbleProps {
+  msg: ChatMessage;
+  index: number;
+  isLastMsg: boolean;
+  isLoading: boolean;
+  isStreaming: boolean;
+  onSuggestionClick: (text: string) => void;
+}
+
+const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoading, isStreaming, onSuggestionClick }: MessageBubbleProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const text = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  if (msg.toolActions && msg.toolActions.length > 0) {
+    return (
+      <div className="flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-action-${index}`}>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 max-w-[90%]">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-300">Chann ดำเนินการแล้ว</span>
+          </div>
+          {msg.toolActions.map((action, i) => (
+            <p key={i} className="text-xs text-emerald-400/80 pl-5">{action}</p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const displayContent = msg.content?.replace(/\[SUGGESTIONS:.*?\]\s*$/s, "").trimEnd() || "";
+  const showSuggestions = msg.role === "assistant" && isLastMsg && !isLoading && !isStreaming && msg.suggestedReplies && msg.suggestedReplies.length > 0;
+
+  const extractActiveToolName = (thinking: string): string | null => {
+    const match = thinking.match(/ใช้เครื่องมือ\s+(.+)$/);
+    if (match) return match[1].trim();
+    return null;
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid={`message-chann-${msg.role}-${index}`}>
+      <div className={cn("flex gap-2.5 group", msg.role === "user" ? "justify-end" : "justify-start")}>
+        {msg.role === "assistant" && (
+          <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+            <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
+              <Bot className="w-3.5 h-3.5" />
+            </AvatarFallback>
+          </Avatar>
+        )}
+        <div className="flex flex-col gap-1 max-w-[80%]">
+          <div
+            className={cn(
+              "px-3.5 py-2.5 text-sm",
+              msg.role === "user"
+                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-violet-500/10"
+                : "bg-slate-800/80 text-slate-200 rounded-2xl rounded-bl-md border border-white/5"
+            )}
+          >
+            {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
+              <img
+                src={msg.imageUrl}
+                alt="sent"
+                className="max-w-full max-h-40 rounded-lg mb-1.5 cursor-pointer"
+                onClick={() => window.open(msg.imageUrl, "_blank")}
+                data-testid={`img-chann-${index}`}
+              />
+            )}
+            {msg.thinking && !msg.content && (
+              <div className="space-y-2" data-testid={`thinking-chann-${index}`}>
+                <div className="flex items-center gap-2 text-xs text-violet-300/80 italic">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                  <span>{msg.thinking}</span>
+                </div>
+                {extractActiveToolName(msg.thinking) && (
+                  <div className="flex items-center gap-1.5 pl-0">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25 text-[10px] font-mono text-violet-300 animate-pulse">
+                      <Zap className="w-2.5 h-2.5" />
+                      {extractActiveToolName(msg.thinking)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            {displayContent && displayContent !== "ส่งรูปภาพ" && (
+              msg.role === "assistant" ? (
+                <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 prose-p:text-slate-200 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-slate-700/50 prose-code:px-1 prose-code:rounded">
+                  <ReactMarkdown>{displayContent}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{displayContent}</p>
+              )
+            )}
+            {msg.progressSteps && msg.progressSteps.length > 0 && (
+              <div className={cn("space-y-0.5", msg.content ? "mt-2 pt-2 border-t border-white/5" : "")} data-testid={`progress-steps-chann-${index}`}>
+                {msg.progressSteps.map((ps, pi) => {
+                  const displayTotal = msg.content ? msg.progressSteps!.length : ps.maxSteps;
+                  return (
+                    <div key={pi} className="flex items-start gap-1.5 text-[10px]">
+                      <span className="text-violet-400/60 font-mono shrink-0 font-semibold">ขั้นตอน {ps.step}/{displayTotal}:</span>
+                      <span className="font-mono text-slate-500">{ps.toolNames.join(", ")}</span>
+                      {ps.writeActions.length > 0 && (
+                        <span className="text-emerald-400/70">✓ {ps.writeActions.join(", ")}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {msg.role === "assistant" && displayContent && displayContent !== "ส่งรูปภาพ" && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all"
+                data-testid={`button-copy-message-${index}`}
+                title="คัดลอกข้อความ"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? "คัดลอกแล้ว" : "คัดลอก"}</span>
+              </button>
+            </div>
+          )}
+        </div>
+        {msg.role === "user" && (
+          <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+            <AvatarFallback className="bg-slate-700 text-slate-300 text-xs">
+              <User className="w-3.5 h-3.5" />
+            </AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+      {showSuggestions && (
+        <div className="flex flex-wrap gap-1.5 pl-10 animate-in fade-in duration-300" data-testid={`suggestions-chann-${index}`}>
+          {msg.suggestedReplies!.map((suggestion, si) => (
+            <button
+              key={si}
+              onClick={() => onSuggestionClick(suggestion)}
+              className="text-xs px-2.5 py-1 rounded-full border border-violet-500/20 bg-violet-500/5 text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/40 transition-all"
+              data-testid={`suggestion-chip-${index}-${si}`}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+type ChannModel = "replit" | "claude";
+
+export function FloatingChannChat() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(true);
+  const [isTogglingNotif, setIsTogglingNotif] = useState(false);
+  const [notifLoaded, setNotifLoaded] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [channModel, setChannModel] = useState<ChannModel>("replit");
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const greetingInitiated = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+  const pendingContentRef = useRef("");
+  const rafIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return;
+    const token = localStorage.getItem("bk_token");
+    if (!token) return;
+    fetch("/api/settings/get-proactive-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.ok) { setNotifEnabled(d.allEnabled); } })
+      .catch(() => {})
+      .finally(() => setNotifLoaded(true));
+  }, [user]);
+
+  const toggleNotif = async () => {
+    if (isTogglingNotif) return;
+    setIsTogglingNotif(true);
+    const token = localStorage.getItem("bk_token");
+    const newState = !notifEnabled;
+    try {
+      const res = await fetch("/api/settings/toggle-proactive-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, enabled: newState }),
+      });
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        console.error("[toggleNotif] non-JSON response:", res.status, await res.text().catch(() => ""));
+        toast({ title: "ไม่สำเร็จ", description: "Server ตอบกลับผิดรูปแบบ", variant: "destructive" });
+        return;
+      }
+      const data = await res.json();
+      if (data.ok) {
+        setNotifEnabled(newState);
+        toast({
+          title: newState ? "เปิดการแจ้งเตือนอัตโนมัติแล้ว" : "ปิดการแจ้งเตือนอัตโนมัติแล้ว",
+          description: newState ? "Chann จะส่งแจ้งเตือนตามปกติครับ" : "Chann จะหยุดส่งทุกประเภทชั่วคราวครับ",
+        });
+      } else {
+        toast({ title: "ไม่สำเร็จ", description: data.message ?? "ไม่สามารถเปลี่ยนค่าได้", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error("[toggleNotif] fetch error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: "เกิดข้อผิดพลาด", description: msg || "ไม่สามารถเชื่อมต่อ server ได้", variant: "destructive" });
+    } finally {
+      setIsTogglingNotif(false);
+    }
+  };
+
+  const flushPendingContent = () => {
+    rafIdRef.current = null;
+    const chunk = pendingContentRef.current;
+    if (!chunk) return;
+    pendingContentRef.current = "";
+    setMessages(prev => {
+      const n = [...prev];
+      n[n.length - 1] = { ...n[n.length - 1], content: n[n.length - 1].content + chunk, thinking: undefined };
+      return n;
+    });
+  };
+
+  const scheduleFlush = () => {
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(flushPendingContent);
+    }
+  };
+
+  const handleSSEStream = async (
+    res: Response,
+    opts?: { onStarted?: () => void }
+  ) => {
+    if (!res.ok) {
+      let errorMsg = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+      try {
+        const errData = await res.json();
+        if (errData.message) errorMsg = errData.message;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+    if (!res.body) throw new Error("No body");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let done = false;
+    let started = false;
+    let buf = "";
+    while (!done) {
+      const { value, done: readerDone } = await reader.read();
+      done = readerDone;
+      if (value) {
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const dataStr = line.slice(6);
+          if (dataStr.trim() === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.thinking) {
+              setMessages(prev => {
+                const n = [...prev];
+                if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], thinking: parsed.thinking };
+                return n;
+              });
+            }
+            if (parsed.toolProgress) {
+              setMessages(prev => {
+                const n = [...prev];
+                const last = n[n.length - 1];
+                if (last?.role === "assistant") {
+                  const existing = last.progressSteps || [];
+                  n[n.length - 1] = { ...last, progressSteps: [...existing, parsed.toolProgress] };
+                }
+                return n;
+              });
+            }
+            if (parsed.toolActions && Array.isArray(parsed.toolActions)) {
+              setMessages(prev => {
+                const n = [...prev];
+                n.splice(n.length - 1, 0, { role: "assistant", content: "", timestamp: new Date().toISOString(), toolActions: parsed.toolActions });
+                return n;
+              });
+            }
+            if (parsed.content) {
+              if (!started) {
+                setIsLoading(false);
+                setIsStreaming(true);
+                started = true;
+                opts?.onStarted?.();
+              }
+              pendingContentRef.current += parsed.content;
+              scheduleFlush();
+            }
+            if (parsed.suggestedReplies && Array.isArray(parsed.suggestedReplies)) {
+              if (rafIdRef.current !== null) {
+                cancelAnimationFrame(rafIdRef.current);
+                flushPendingContent();
+              }
+              setMessages(prev => {
+                const n = [...prev];
+                n[n.length - 1] = { ...n[n.length - 1], suggestedReplies: parsed.suggestedReplies };
+                return n;
+              });
+            }
+          } catch {}
+        }
+      }
+    }
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      flushPendingContent();
+    }
+  };
+
+  const sendGreeting = (token: string) => {
+    if (greetingInitiated.current) return;
+    greetingInitiated.current = true;
+    const displayName = user?.nickName || user?.fullName?.split(" ")[0] || "นาย";
+    const greetPrompt = `ทักทาย${displayName} ตามเวลาปัจจุบัน และแนะนำตัวเองสั้นๆ ว่าช่วยอะไรได้บ้างในระบบนี้ พร้อมสรุปกะวันนี้หรือข้อมูลที่น่าสนใจ 1-2 รายการ`;
+    setMessages([{ role: "assistant", content: "", timestamp: new Date().toISOString() }]);
+    setIsLoading(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/chann", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, message: greetPrompt, silentMessage: true, provider: "replit", model: "replit" }),
+        });
+        await handleSSEStream(res);
+      } catch (err) {
+        console.error("Greeting error:", err);
+        setMessages([{ role: "assistant", content: "สวัสดีครับ! ผม Chann มีอะไรให้ช่วยไหมครับ?", timestamp: new Date().toISOString() }]);
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+      }
+    })();
+  };
+
+  useEffect(() => {
+    if (isOpen && !historyLoaded) {
+      const fetchHistory = async () => {
+        try {
+          const token = localStorage.getItem("bk_token");
+          if (!token) return;
+          const res = await fetch("/api/chann/history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+          const data = await res.json();
+          if (data.ok && data.messages && data.messages.length > 0) {
+            setMessages(data.messages.map((m: any) => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.createdAt || new Date().toISOString(),
+              imageUrl: m.imageUrl || undefined,
+            })));
+          } else {
+            sendGreeting(token);
+          }
+          setHistoryLoaded(true);
+        } catch (error) {
+          console.error("Failed to load history:", error);
+          setHistoryLoaded(true);
+        }
+      };
+      fetchHistory();
+    }
+  }, [isOpen, historyLoaded]);
+
+  const processImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 20 * 1024 * 1024) {
+      alert("ไฟล์ใหญ่เกินไป (สูงสุด 20MB)");
+      return;
+    }
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      setImagePreview(`data:${file.type};base64,${btoa(binary)}`);
+    } catch {
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processImageFile(file);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) processImageFile(file);
+        return;
+      }
+    }
+  };
+
+  const removeImagePreview = () => {
+    setImagePreview(null);
+  };
+
+  const removeFile = () => {
+    setFileContent(null);
+    setFileName(null);
+    setFileSize(0);
+    setFileMimeType("");
+    setFileUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const [fileSize, setFileSize] = useState<number>(0);
+  const [fileMimeType, setFileMimeType] = useState<string>("");
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [isFileUploading, setIsFileUploading] = useState(false);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2GB)");
+      removeFile();
+      return;
+    }
+    setFileName(file.name);
+    setFileSize(file.size);
+    setFileMimeType(file.type);
+    setFileContent(null);
+    setFileUrl(null);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    if (ext === "txt" || ext === "csv") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setFileContent(event.target?.result as string);
+        };
+        reader.readAsText(file);
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+    
+    if (ext === "xlsx" || ext === "xls") {
+      if (file.size <= 50 * 1024 * 1024) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(arrayBuffer);
+          let allText = "";
+          workbook.eachSheet((worksheet) => {
+            allText += `\n--- Sheet: ${worksheet.name} ---\n`;
+            const rows: string[] = [];
+            worksheet.eachRow((row) => {
+              const values = (row.values as any[]).slice(1).map((v: any) => {
+                if (v === null || v === undefined) return "";
+                if (typeof v === "object" && v.text) return v.text;
+                if (v instanceof Date) return v.toISOString().split("T")[0];
+                return String(v);
+              });
+              rows.push(values.join(","));
+            });
+            allText += rows.join("\n") + "\n";
+          });
+          setFileContent(allText);
+        } catch {
+          setFileContent(null);
+        }
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+
+    if (ext === "pdf" || ext === "docx") {
+      if (file.size <= 50 * 1024 * 1024) {
+        setIsFileUploading(true);
+        try {
+          const token = localStorage.getItem("bk_token");
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("token", token || "");
+          const response = await fetch("/api/chat/upload-file", {
+            method: "POST",
+            body: formData,
+          });
+          const result = await response.json();
+          if (result.ok) {
+            setFileUrl(result.fileUrl);
+            setFileContent(result.extractedText ?? null);
+          } else {
+            setFileContent(null);
+            setFileUrl(null);
+          }
+        } catch (err) {
+          console.error("File upload error:", err);
+          setFileContent(null);
+          setFileUrl(null);
+        } finally {
+          setIsFileUploading(false);
+        }
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+
+    if (ext === "config" || ext === "log4net" || ext === "xml" || ext === "json" || ext === "ini") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setFileContent(event.target?.result as string);
+        };
+        reader.readAsText(file);
+      } else {
+        setFileContent(null);
+      }
+      return;
+    }
+
+    setIsFileUploading(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token || "");
+      const response = await fetch("/api/chat/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.ok) {
+        setFileUrl(result.fileUrl);
+        setFileContent(result.extractedText ?? null);
+      } else {
+        setFileContent(null);
+        setFileUrl(null);
+      }
+    } catch (err) {
+      console.error("File upload error:", err);
+      setFileContent(null);
+      setFileUrl(null);
+    } finally {
+      setIsFileUploading(false);
+    }
+  };
+
+  const processFile = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      alert("ขนาดไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 2GB)");
+      removeFile();
+      return;
+    }
+    setFileName(file.name);
+    setFileSize(file.size);
+    setFileMimeType(file.type);
+    setFileContent(null);
+    setFileUrl(null);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    if (ext === "txt" || ext === "csv") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (ev) => setFileContent(ev.target?.result as string);
+        reader.readAsText(file);
+      }
+      return;
+    }
+    if (ext === "xlsx" || ext === "xls") {
+      if (file.size <= 50 * 1024 * 1024) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(arrayBuffer);
+          let allText = "";
+          workbook.eachSheet((worksheet) => {
+            allText += `\n--- Sheet: ${worksheet.name} ---\n`;
+            const rows: string[] = [];
+            worksheet.eachRow((row) => {
+              const values = (row.values as any[]).slice(1).map((v: any) => {
+                if (v === null || v === undefined) return "";
+                if (typeof v === "object" && v.text) return v.text;
+                if (v instanceof Date) return v.toISOString().split("T")[0];
+                return String(v);
+              });
+              rows.push(values.join(","));
+            });
+            allText += rows.join("\n") + "\n";
+          });
+          setFileContent(allText);
+        } catch {
+          setFileContent(null);
+        }
+      }
+      return;
+    }
+    if (ext === "pdf" || ext === "docx") {
+      if (file.size <= 50 * 1024 * 1024) {
+        setIsFileUploading(true);
+        try {
+          const token = localStorage.getItem("bk_token");
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("token", token || "");
+          const response = await fetch("/api/chat/upload-file", { method: "POST", body: formData });
+          const result = await response.json();
+          if (result.ok) { setFileUrl(result.fileUrl); setFileContent(result.extractedText ?? null); }
+        } catch (err) { console.error("File upload error:", err); }
+        finally { setIsFileUploading(false); }
+      }
+      return;
+    }
+    if (ext === "config" || ext === "log4net" || ext === "xml" || ext === "json" || ext === "ini") {
+      if (file.size <= 50 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (ev) => setFileContent(ev.target?.result as string);
+        reader.readAsText(file);
+      }
+      return;
+    }
+    setIsFileUploading(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("token", token || "");
+      const response = await fetch("/api/chat/upload-file", { method: "POST", body: formData });
+      const result = await response.json();
+      if (result.ok) { setFileUrl(result.fileUrl); setFileContent(result.extractedText ?? null); }
+    } catch (err) { console.error("File upload error:", err); }
+    finally { setIsFileUploading(false); }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.type.startsWith("image/")) {
+      processImageFile(file);
+    } else {
+      processFile(file);
+    }
+  };
+
+  const buildPageContext = (): string => {
+    const path = window.location.pathname;
+    const pageDate = localStorage.getItem("chann_page_date");
+    const pageMonth = localStorage.getItem("chann_page_month");
+    const lines = [`- Path: ${path}`];
+    if (pageDate) lines.push(`- วันที่ที่เลือก: ${pageDate}`);
+    if (pageMonth) lines.push(`- เดือนที่ดูอยู่: ${pageMonth}`);
+    return lines.join("\n");
+  };
+
+  const sendMessage = async () => {
+    if ((!message.trim() && !imagePreview && !fileContent && !fileName) || isLoading || isStreaming) return;
+
+    const token = localStorage.getItem("bk_token");
+    if (!token) return;
+
+    const currentImage = imagePreview;
+    const currentFile = fileContent;
+    const currentFileName = fileName;
+    const currentFileSize = fileSize;
+    const currentInput = message.trim() || (currentImage ? "ส่งรูปภาพ" : currentFileName ? "โปรดวิเคราะห์ไฟล์นี้" : "");
+
+    const displayContent = currentFileName
+      ? `📎 ${currentFileName} (${formatFileSize(currentFileSize)})${message.trim() ? " — " + message.trim() : ""}`
+      : currentInput;
+
+    let contextMessage: string;
+    if (currentFile && currentFileName) {
+      contextMessage = `[ไฟล์แนบ: ${currentFileName} (${formatFileSize(currentFileSize)})]\n\`\`\`\n${currentFile.slice(0, 12000)}\n\`\`\`\n\nคำถามจากผู้ใช้: ${currentInput}`;
+    } else if (currentFileName) {
+      contextMessage = `[ไฟล์แนบ: ${currentFileName} (${formatFileSize(currentFileSize)}) — ไม่สามารถอ่านเนื้อหาได้]\n\nคำถามจากผู้ใช้: ${currentInput}`;
+    } else {
+      contextMessage = currentInput;
+    }
+
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: displayContent,
+      timestamp: new Date().toISOString(),
+      imageUrl: currentImage || undefined,
+    };
+
+    setMessages(prev => [
+      ...prev,
+      userMessage,
+      { role: "assistant", content: "", timestamp: new Date().toISOString() }
+    ]);
+    setMessage("");
+    if (inputRef.current) inputRef.current.style.height = "36px";
+    setImagePreview(null);
+    removeFile();
+    setIsLoading(true);
+
+    try {
+      const body: any = { token, message: contextMessage, pageContext: buildPageContext(), provider: channModel, model: channModel };
+      if (currentImage) {
+        body.imageBase64 = currentImage;
+      }
+
+      const res = await fetch("/api/chann", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      await handleSSEStream(res);
+      setIsLoading(false);
+      setIsStreaming(false);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages((prev) => {
+        const newMsgs = [...prev];
+        const lastIndex = newMsgs.length - 1;
+        if (newMsgs[lastIndex]?.role === "assistant" && !newMsgs[lastIndex].content) {
+          newMsgs[lastIndex] = {
+            ...newMsgs[lastIndex],
+            content: "ไม่สามารถเชื่อมต่อกับ Chann ได้ กรุณาลองใหม่",
+          };
+        }
+        return newMsgs;
+      });
+      setIsLoading(false);
+      setIsStreaming(false);
+    }
+  };
+
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+
+  const isManagerOrAdmin = user?.role === "manager" || user?.role === "admin";
+  const isAdmin = user?.role === "admin";
+
+  const quickActionCategories = [
+    {
+      label: "ภาพรวม",
+      icon: Sparkles,
+      show: true,
+      actions: [
+        { label: "ภาพรวมวันนี้", prompt: "สรุปภาพรวมทุกระบบวันนี้ให้หน่อย", icon: Sparkles, show: true },
+        { label: "ตารางกะวันนี้", prompt: "ดูว่าวันนี้ใครทำกะอะไรบ้าง", icon: Calendar, show: true },
+        { label: "ตารางกะสัปดาห์นี้", prompt: "สรุปตารางกะของสัปดาห์นี้", icon: ClipboardList, show: true },
+        { label: "รายชื่อพนักงาน", prompt: "แสดงรายชื่อพนักงานทั้งหมดพร้อมตำแหน่ง", icon: Users, show: true },
+        { label: "ค้นหาเว็บ", prompt: "ค้นหาข้อมูลจากอินเตอร์เน็ต", icon: Zap, show: true },
+      ],
+    },
+    {
+      label: "ยอดขาย",
+      icon: BarChart3,
+      show: isManagerOrAdmin,
+      actions: [
+        { label: "ยอดขายเดือนนี้", prompt: "สรุปยอดขายเดือนนี้ (MTD) ทั้ง actual, TC, เป้า, Waste", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "COL% วันนี้", prompt: "คำนวณ COL% ของวันนี้ให้หน่อย พร้อมอธิบายว่าสูง/ต่ำกว่าเป้าแค่ไหน", icon: Zap, show: isManagerOrAdmin },
+        { label: "Waste เดือนนี้", prompt: "ดูเป้า Waste ของเดือนนี้", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "ความผิดปกติล่าสุด", prompt: "ตรวจสอบ anomaly ที่ยังไม่ได้รับทราบทั้งหมดใน 7 วันที่ผ่านมา", icon: Zap, show: isManagerOrAdmin },
+        { label: "ส่งออก Excel", prompt: "ส่งออกรายงานยอดขายเดือนนี้เป็นไฟล์ Excel", icon: Download, show: isManagerOrAdmin },
+        { label: "รายการยืม-คืน", prompt: "สรุปรายการยืมคืนล่าสุด", icon: Database, show: isManagerOrAdmin },
+      ],
+    },
+    {
+      label: "พนักงาน",
+      icon: Users,
+      show: isManagerOrAdmin,
+      actions: [
+        { label: "คำขอพนักงาน", prompt: "ดูคำขอของพนักงานทั้งหมดที่ยังรอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
+        { label: "คำขอสลับกะ", prompt: "ดูคำขอสลับกะที่รอดำเนินการ", icon: ClipboardList, show: isManagerOrAdmin },
+        { label: "จองกะ", prompt: "จองกะให้พนักงาน", icon: Calendar, show: isManagerOrAdmin },
+        { label: "ตั้งเป้ายอดขาย", prompt: "ตั้งเป้ายอดขายวันนี้", icon: BarChart3, show: isManagerOrAdmin },
+        { label: "โน้ตของฉัน", prompt: "เรียกดู notes ทั้งหมดที่เคยบันทึกไว้", icon: FileText, show: isManagerOrAdmin },
+        { label: "Memory ของ Chann", prompt: "ค้นหา memory ระยะยาวของ Chann ที่บันทึกไว้จากรายงานและ anomaly ในอดีต", icon: Sparkles, show: isManagerOrAdmin },
+        { label: "ตรวจ Anomaly วันนี้", prompt: `รัน anomaly detection สำหรับเมื่อวาน แล้วแสดงผลลัพธ์`, icon: Zap, show: isManagerOrAdmin },
+      ],
+    },
+    {
+      label: "ระบบ",
+      icon: Database,
+      show: isManagerOrAdmin,
+      actions: [
+        { label: "ส่งแจ้งเตือน LINE", prompt: "ส่งแจ้งเตือนพร้อมรายงานวันนี้ไปยัง LINE group", icon: Bell, show: isManagerOrAdmin },
+        { label: "ตั้งค่าร้าน", prompt: "แสดงการตั้งค่าร้านปัจจุบัน", icon: Database, show: isAdmin },
+        { label: "ดู Audit Log", prompt: "แสดง audit log 20 รายการล่าสุด", icon: ClipboardList, show: isAdmin },
+        { label: "สร้างผู้ใช้ใหม่", prompt: "สร้างบัญชีผู้ใช้ใหม่", icon: Users, show: isAdmin },
+        { label: "Labor Settings", prompt: "แสดงค่า Labor settings ปัจจุบัน", icon: BarChart3, show: isAdmin },
+      ],
+    },
+  ].filter(c => c.show).map(c => ({ ...c, actions: c.actions.filter(a => a.show) })).filter(c => c.actions.length > 0);
+
+  const quickActions = quickActionCategories.flatMap(c => c.actions);
+
+  const sendQuickActionRef = useRef<(prompt: string) => void>(() => {});
+
+  const sendQuickAction = (prompt: string) => {
+    setShowQuickActions(false);
+    setMessage("");
+    if (inputRef.current) inputRef.current.style.height = "36px";
+    const token = localStorage.getItem("bk_token");
+    if (!token || isLoading || isStreaming) return;
+
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: prompt,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg, { role: "assistant", content: "", timestamp: new Date().toISOString() }]);
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/chann", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, message: prompt, pageContext: buildPageContext(), provider: channModel, model: channModel }),
+        });
+        await handleSSEStream(res);
+      } catch (err) {
+        console.error("Quick action error:", err);
+        setMessages(prev => {
+          const n = [...prev];
+          if (n[n.length - 1]?.role === "assistant" && !n[n.length - 1].content) {
+            n[n.length - 1] = { ...n[n.length - 1], content: "ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่" };
+          }
+          return n;
+        });
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+      }
+    })();
+  };
+
+  sendQuickActionRef.current = sendQuickAction;
+
+  const stableSendQuickAction = useCallback((prompt: string) => {
+    sendQuickActionRef.current(prompt);
+  }, []);
+
+  const summarizeChat = async () => {
+    if (messages.length === 0 || isSummarizing || isLoading || isStreaming) return;
+
+    setIsSummarizing(true);
+    try {
+      const token = localStorage.getItem("bk_token");
+      if (!token) return;
+
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย", timestamp: new Date().toISOString() },
+        { role: "assistant", content: "", timestamp: new Date().toISOString() }
+      ]);
+      setIsLoading(true);
+
+      const res = await fetch("/api/chann", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          message: "ช่วยสรุปบทสนทนาทั้งหมดที่เราคุยกันมาให้ทีครับนาย",
+          provider: channModel,
+          model: channModel,
+        }),
+      });
+
+      await handleSSEStream(res);
+    } catch (error) {
+      console.error("Summary error:", error);
+    } finally {
+      setIsSummarizing(false);
+      setIsLoading(false);
+      setIsStreaming(false);
+    }
+  };
+
+  const clearHistory = async () => {
+    setMessages([]);
+    try {
+      const token = localStorage.getItem("bk_token");
+      if (!token) return;
+      await fetch("/api/chann/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+    } catch (error) {
+      console.error("Failed to clear history:", error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // Draggable floating position (drag by header)
+  const { pos, setPos, bind } = useDraggableFloating({
+    enabled: true,
+    axis: "both",
+    initial: { x: 0, y: 0 },
+  });
+
+  // persist position per user/device — clamp to viewport on restore
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("chann_floating_pos");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+          // If position is out of a safe range, reset to 0,0 (button returns to default corner)
+          const safeX = window.innerWidth  * 0.5;
+          const safeY = window.innerHeight * 0.5;
+          if (Math.abs(parsed.x) > safeX || Math.abs(parsed.y) > safeY) {
+            localStorage.removeItem("chann_floating_pos");
+            setPos({ x: 0, y: 0 });
+          } else {
+            setPos({ x: parsed.x, y: parsed.y });
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [setPos]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chann_floating_pos", JSON.stringify(pos));
+    } catch {
+      // ignore
+    }
+  }, [pos]);
+
+  if (!user || user.role === "viewer") return null;
+  // Chann is available to all non-viewer roles regardless of allowedFeatures
+  // (it is an AI assistant tool, not a page/feature that should be restricted)
+
+  return (
+    <div
+      className="fixed bottom-36 md:bottom-20 right-4 z-[51] touch-none"
+      style={{ transform: `translate3d(${pos.x}px, ${pos.y}px, 0)` }}
+      {...bind}
+    >
+      {isOpen ? (
+        <div
+          className="w-[min(calc(100vw-2rem),420px)] h-[500px] md:w-[420px] md:h-[640px] md:max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/20 border border-white/10 relative"
+          data-testid="container-chann-chat"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDragging && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm rounded-2xl border-2 border-dashed border-violet-500/60 pointer-events-none" data-testid="overlay-chann-dropzone">
+              <UploadCloud className="w-14 h-14 text-violet-400 mb-3" />
+              <p className="text-white font-semibold text-base">วางไฟล์ที่นี่</p>
+              <p className="text-violet-300/70 text-sm mt-1">รองรับทุกชนิดไฟล์</p>
+            </div>
+          )}
+          <div
+            className="bg-gradient-to-r from-slate-900 via-violet-950 to-slate-900 px-4 py-3 cursor-grab active:cursor-grabbing select-none"
+            title="ลากเพื่อย้ายตำแหน่ง"
+            {...bind}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300",
+                    channModel === "claude"
+                      ? "bg-gradient-to-br from-orange-500 to-amber-600 shadow-orange-500/30"
+                      : "bg-gradient-to-br from-violet-500 to-indigo-600 shadow-violet-500/30"
+                  )}>
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm" data-testid="text-chann-title">Chann AI</h3>
+                  <p className={cn("text-[11px] transition-colors duration-300", channModel === "claude" ? "text-orange-300/90" : "text-violet-300/80")} data-testid="text-chann-subtitle">
+                    {isStreaming
+                      ? "กำลังพิมพ์..."
+                      : isLoading
+                        ? "กำลังวิเคราะห์..."
+                        : channModel === "claude"
+                          ? "Claude Opus · Anthropic"
+                          : "Replit AI · GPT-4.1"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <div className="relative mr-0.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowModelPicker(v => !v); }}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border transition-all duration-200 select-none",
+                      channModel === "claude"
+                        ? "border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
+                        : "border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20"
+                    )}
+                    data-testid="button-chann-model-picker"
+                    title="เปลี่ยน AI Model"
+                  >
+                    <span>{channModel === "claude" ? "⬡ Claude" : "⚡ Replit"}</span>
+                    <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                  </button>
+                  {showModelPicker && (
+                    <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowModelPicker(false)} />
+                    <div
+                      className="absolute top-full right-0 mt-1.5 z-50 bg-slate-800 border border-white/10 rounded-xl shadow-2xl shadow-black/40 overflow-hidden min-w-[170px]"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="px-3 py-2 border-b border-white/5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">เลือก AI Model</span>
+                      </div>
+                      <button
+                        onClick={() => { setChannModel("replit"); setShowModelPicker(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all hover:bg-white/5",
+                          channModel === "replit" && "bg-violet-500/10"
+                        )}
+                        data-testid="button-model-replit"
+                      >
+                        <span className="text-violet-400 text-base leading-none">⚡</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-semibold text-white">Replit AI</div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">GPT-4.1 · เครื่องมือครบ 30+</div>
+                        </div>
+                        {channModel === "replit" && <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />}
+                      </button>
+                      <button
+                        onClick={() => { setChannModel("claude"); setShowModelPicker(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all hover:bg-white/5 border-t border-white/5",
+                          channModel === "claude" && "bg-orange-500/10"
+                        )}
+                        data-testid="button-model-claude"
+                      >
+                        <span className="text-orange-400 text-base leading-none">⬡</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-semibold text-white">Claude Opus</div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">Anthropic · วิเคราะห์ลึก ตอบยาว</div>
+                        </div>
+                        {channModel === "claude" && <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />}
+                      </button>
+                    </div>
+                    </>
+                  )}
+                </div>
+                {(user?.role === "admin" || user?.role === "manager") && notifLoaded && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-7 w-7 hover:bg-white/10 transition-colors",
+                      notifEnabled
+                        ? "text-emerald-400 hover:text-emerald-300"
+                        : "text-slate-500 hover:text-slate-300"
+                    )}
+                    onClick={(e) => { e.stopPropagation(); toggleNotif(); }}
+                    disabled={isTogglingNotif}
+                    title={notifEnabled ? "แจ้งเตือนอัตโนมัติ: เปิด (คลิกเพื่อปิด)" : "แจ้งเตือนอัตโนมัติ: ปิด (คลิกเพื่อเปิด)"}
+                    data-testid="button-toggle-notifications"
+                  >
+                    {isTogglingNotif
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : notifEnabled
+                        ? <Bell className="w-3.5 h-3.5" />
+                        : <BellOff className="w-3.5 h-3.5" />
+                    }
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-violet-300 hover:text-white hover:bg-white/10"
+                  onClick={summarizeChat}
+                  disabled={messages.length === 0 || isSummarizing || isLoading || isStreaming}
+                  title="สรุปบทสนทนา"
+                  data-testid="button-summarize-chann"
+                >
+                  {isSummarizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-violet-300 hover:text-white hover:bg-white/10"
+                  onClick={clearHistory}
+                  disabled={isLoading || isStreaming}
+                  title="ล้างประวัติ"
+                  data-testid="button-clear-chann-history"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-violet-300 hover:text-white hover:bg-white/10"
+                  onClick={() => setIsOpen(false)}
+                  data-testid="button-close-chann-chat"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div ref={scrollRef} className="flex-1 overflow-y-auto bg-slate-950 p-4 space-y-3" data-testid="container-chann-messages">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-center" data-testid="container-chann-empty">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center mb-4">
+                  <Bot className="w-8 h-8 text-violet-400" />
+                </div>
+                <p className="font-bold text-white text-lg">สวัสดีครับ!</p>
+                <p className="text-sm text-slate-400 mt-1 mb-5">ผมชื่อ Chann — มีอะไรให้ช่วยครับ?</p>
+                <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
+                  {quickActions.slice(0, 4).map((action) => (
+                    <button
+                      key={action.label}
+                      onClick={() => sendQuickAction(action.prompt)}
+                      disabled={isLoading || isStreaming}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-violet-500/10 hover:border-violet-500/20 transition-all text-left group"
+                      data-testid={`button-quick-${action.label}`}
+                    >
+                      <action.icon className="w-4 h-4 text-violet-400/60 group-hover:text-violet-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-slate-400 group-hover:text-slate-200">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((msg, index) => (
+              <MessageBubble
+                key={index}
+                msg={msg}
+                index={index}
+                isLastMsg={index === messages.length - 1}
+                isLoading={isLoading}
+                isStreaming={isStreaming}
+                onSuggestionClick={stableSendQuickAction}
+              />
+            ))}
+
+            {isLoading && !isStreaming && (
+              <div className="flex gap-2.5 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300" data-testid="container-chann-loading">
+                <Avatar className="w-7 h-7 flex-shrink-0">
+                  <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs">
+                    <Bot className="w-3.5 h-3.5" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-slate-800/80 rounded-2xl rounded-bl-md px-4 py-3 border border-white/5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-violet-400/70 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-violet-400/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    <span className="text-xs text-slate-400">Chann กำลังคิด...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-white/5 bg-slate-900">
+            {showQuickActions && (
+              <div className="border-b border-white/5 bg-slate-900/80 max-h-64 overflow-y-auto">
+                <div className="p-2.5 space-y-3">
+                  {quickActionCategories.map((cat) => (
+                    <div key={cat.label}>
+                      <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
+                        <cat.icon className="w-3 h-3 text-violet-400" />
+                        <span className="text-[10px] font-semibold tracking-wider uppercase text-violet-400/70">{cat.label}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {cat.actions.map((action) => (
+                          <button
+                            key={action.label}
+                            onClick={() => sendQuickAction(action.prompt)}
+                            disabled={isLoading || isStreaming}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md border border-white/5 bg-white/5 hover:bg-violet-500/10 hover:border-violet-500/20 transition-all text-[11px] font-medium text-slate-400 hover:text-slate-200 whitespace-nowrap"
+                            data-testid={`button-quickbar-${action.label}`}
+                          >
+                            <action.icon className="w-2.5 h-2.5 flex-shrink-0" />
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="p-3">
+              {imagePreview && (
+                <div className="mb-2 relative inline-block">
+                  <img src={imagePreview} alt="preview" className="max-h-20 rounded-lg border border-white/10" />
+                  <button
+                    onClick={removeImagePreview}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow-lg"
+                    data-testid="button-remove-image-preview"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              {fileName && (
+                <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-slate-800 border border-white/10 rounded-lg text-sm w-fit max-w-[80%]">
+                  {isFileUploading ? (
+                    <Loader2 className="w-4 h-4 text-violet-400 shrink-0 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate text-xs font-medium text-slate-300">{fileName}</span>
+                    <span className="text-[10px] text-slate-500">{formatFileSize(fileSize)}{fileContent ? " · อ่านได้" : " · ไม่สามารถอ่านเนื้อหาได้"}</span>
+                  </div>
+                  <button
+                    onClick={removeFile}
+                    className="ml-1 hover:bg-slate-700 p-0.5 rounded-full transition-colors"
+                    title="ลบไฟล์"
+                    data-testid="button-remove-file-preview"
+                  >
+                    <X className="w-3 h-3 text-slate-400" />
+                  </button>
+                </div>
+              )}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageSelect}
+                data-testid="input-chann-image"
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="*/*"
+                className="hidden"
+                onChange={handleFileSelect}
+                data-testid="input-chann-file"
+              />
+              <div className="flex items-end gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-9 w-9 rounded-full text-slate-400 hover:text-violet-300 hover:bg-white/5 transition-colors", showQuickActions && "bg-violet-500/10 text-violet-400")}
+                  onClick={() => setShowQuickActions(!showQuickActions)}
+                  disabled={isLoading || isStreaming}
+                  title="คำสั่งด่วน"
+                  data-testid="button-chann-quick-actions"
+                >
+                  <Zap className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full text-slate-400 hover:text-violet-300 hover:bg-white/5"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isLoading || isStreaming}
+                  data-testid="button-chann-image-upload"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-9 w-9 rounded-full text-slate-400 hover:text-violet-300 hover:bg-white/5", fileName && "text-violet-400")}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || isStreaming}
+                  title="แนบไฟล์ (.txt, .csv, .xlsx)"
+                  data-testid="button-chann-file-upload"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+                <Textarea
+                  ref={inputRef}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    const el = e.target;
+                    el.style.height = "0px";
+                    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                  }}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder="พิมพ์ข้อความ..."
+                  disabled={isLoading || isStreaming}
+                  className="flex-1 min-h-[36px] max-h-[120px] resize-none text-sm overflow-y-auto bg-slate-800/50 border-white/10 text-slate-200 placeholder:text-slate-500 focus-visible:ring-violet-500/30"
+                  rows={1}
+                  data-testid="input-chann-message"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={(!message.trim() && !imagePreview && !fileContent && !fileName) || isLoading || isStreaming || isFileUploading}
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/20 disabled:opacity-30"
+                  data-testid="button-send-chann-message"
+                >
+                  {isLoading || isStreaming ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-end gap-2">
+          {(user?.role === "admin" || user?.role === "manager") && notifLoaded && (
+            <button
+              onClick={toggleNotif}
+              disabled={isTogglingNotif}
+              title={notifEnabled ? "แจ้งเตือนอัตโนมัติ: เปิด — คลิกเพื่อปิด" : "แจ้งเตือนอัตโนมัติ: ปิดอยู่ — คลิกเพื่อเปิด"}
+              data-testid="button-toggle-notifications-fab"
+              className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 transition-all duration-200 hover:scale-110",
+                notifEnabled
+                  ? "bg-emerald-500 border-emerald-400 text-white shadow-emerald-500/30"
+                  : "bg-slate-700 border-slate-500 text-slate-400 shadow-black/20"
+              )}
+            >
+              {isTogglingNotif
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : notifEnabled
+                  ? <Bell className="w-4 h-4" />
+                  : <BellOff className="w-4 h-4" />
+              }
+            </button>
+          )}
+          <button
+            onClick={() => setIsOpen(true)}
+            className="group"
+            data-testid="button-open-chann-chat"
+          >
+            <div className="relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200">
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                <Bot className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-semibold">Chann</span>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

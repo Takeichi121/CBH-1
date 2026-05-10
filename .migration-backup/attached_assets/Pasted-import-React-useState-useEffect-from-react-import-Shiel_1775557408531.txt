@@ -1,0 +1,294 @@
+import React, { useState, useEffect } from 'react';
+import { Shield, User, Settings, Save, CheckCircle2, ChevronRight, LayoutDashboard, FileText, Package, Users, Bell } from 'lucide-react';
+
+// --- Mock Data (ข้อมูลจำลอง) ---
+const INITIAL_USERS = [
+  { id: 'u1', name: 'สมชาย ใจดี', role: 'Staff', department: 'ฝ่ายขาย' },
+  { id: 'u2', name: 'สมศรี มีสุข', role: 'Manager', department: 'ฝ่ายการตลาด' },
+  { id: 'u3', name: 'ชานนท์ (เอก)', role: 'Admin', department: 'IT Support' },
+  { id: 'u4', name: 'จอห์น โด', role: 'Staff', department: 'คลังสินค้า' },
+];
+
+const SYSTEM_TOOLS = [
+  { id: 'tool_dashboard', name: 'หน้าหลัก (Dashboard)', description: 'ดูภาพรวมของระบบ', icon: LayoutDashboard, category: 'ทั่วไป' },
+  { id: 'tool_reports', name: 'รายงานสรุปผล (Reports)', description: 'ดูและดาวน์โหลดรายงานต่างๆ', icon: FileText, category: 'รายงาน' },
+  { id: 'tool_inventory', name: 'จัดการคลังสินค้า', description: 'เพิ่ม ลด หรือแก้ไขจำนวนสินค้า', icon: Package, category: 'ปฏิบัติการ' },
+  { id: 'tool_users', name: 'จัดการผู้ใช้งาน', description: 'เพิ่มหรือลบผู้ใช้งานในระบบ', icon: Users, category: 'ผู้ดูแลระบบ' },
+  { id: 'tool_roles', name: 'กำหนดสิทธิ์ (Roles)', description: 'กำหนดการเข้าถึงเครื่องมือ', icon: Shield, category: 'ผู้ดูแลระบบ' },
+  { id: 'tool_notif', name: 'ส่งการแจ้งเตือน', description: 'ส่งประกาศให้ผู้ใช้งานทุกคน', icon: Bell, category: 'ทั่วไป' },
+];
+
+// ข้อมูลการเข้าถึงเริ่มต้นของผู้ใช้แต่ละคน
+const INITIAL_PERMISSIONS = {
+  'u1': ['tool_dashboard'],
+  'u2': ['tool_dashboard', 'tool_reports', 'tool_notif'],
+  'u3': ['tool_dashboard', 'tool_reports', 'tool_inventory', 'tool_users', 'tool_roles', 'tool_notif'],
+  'u4': ['tool_dashboard', 'tool_inventory'],
+};
+
+export default function App() {
+  const [users] = useState(INITIAL_USERS);
+  const [permissions, setPermissions] = useState(INITIAL_PERMISSIONS);
+  const [selectedUserId, setSelectedUserId] = useState(users[0].id);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // สถานะสำหรับการบันทึก
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // ผู้ใช้ที่กำลังเลือกอยู่
+  const selectedUser = users.find(u => u.id === selectedUserId);
+  
+  // สิทธิ์ของผู้ใช้ที่กำลังเลือก
+  const currentUserPermissions = permissions[selectedUserId] || [];
+
+  // ฟังก์ชันสลับสถานะเปิด/ปิดเครื่องมือ
+  const togglePermission = (toolId) => {
+    setPermissions(prev => {
+      const userPerms = prev[selectedUserId] || [];
+      let newPerms;
+      
+      if (userPerms.includes(toolId)) {
+        // ถ้ามีอยู่แล้ว ให้ลบออก (ปิด)
+        newPerms = userPerms.filter(id => id !== toolId);
+      } else {
+        // ถ้ายังไม่มี ให้เพิ่มเข้าไป (เปิด)
+        newPerms = [...userPerms, toolId];
+      }
+      
+      return {
+        ...prev,
+        [selectedUserId]: newPerms
+      };
+    });
+    setSaveSuccess(false); // รีเซ็ตข้อความสำเร็จเมื่อมีการแก้ไข
+  };
+
+  // ฟังก์ชันจำลองการบันทึกข้อมูล
+  const handleSave = () => {
+    setIsSaving(true);
+    // จำลองการโหลด API 1 วินาที
+    setTimeout(() => {
+      setIsSaving(false);
+      setSaveSuccess(true);
+      
+      // ซ่อนข้อความสำเร็จหลังจาก 3 วินาที
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }, 800);
+  };
+
+  // จัดกลุ่มเครื่องมือตามหมวดหมู่
+  const toolsByCategory = SYSTEM_TOOLS.reduce((acc, tool) => {
+    if (!acc[tool.category]) acc[tool.category] = [];
+    acc[tool.category].push(tool);
+    return acc;
+  }, {});
+
+  // กรองผู้ใช้ตามคำค้นหา
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.department.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-600 p-2 rounded-lg">
+            <Settings className="text-white w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Admin Control Panel</h1>
+            <p className="text-sm text-slate-500">กำหนดการเครื่องมือ และ ฟังก์ชันของผู้ใช้งาน</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-medium text-slate-900">ชานนท์ (เอก)</p>
+            <p className="text-xs text-slate-500">Super Admin</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+            อ
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col md:flex-row gap-6">
+        
+        {/* Left Sidebar - User List */}
+        <div className="w-full md:w-1/3 lg:w-1/4 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="font-semibold text-slate-800 flex items-center gap-2 mb-3">
+              <Users className="w-4 h-4 text-indigo-600" />
+              รายชื่อผู้ใช้งาน
+            </h2>
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อ, แผนก..."
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="overflow-y-auto flex-1 p-2">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map(user => (
+                <button
+                  key={user.id}
+                  onClick={() => {
+                    setSelectedUserId(user.id);
+                    setSaveSuccess(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center justify-between transition-all ${
+                    selectedUserId === user.id 
+                      ? 'bg-indigo-50 border-indigo-200 border text-indigo-900' 
+                      : 'hover:bg-slate-50 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedUserId === user.id ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {user.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{user.name}</p>
+                      <p className={`text-xs ${selectedUserId === user.id ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        {user.department}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedUserId === user.id && <ChevronRight className="w-4 h-4 text-indigo-600" />}
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500 text-sm">
+                ไม่พบผู้ใช้งานที่ค้นหา
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Content - Permissions Panel */}
+        <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {selectedUser ? (
+            <>
+              {/* User Info Header */}
+              <div className="p-6 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    จัดการสิทธิ์: {selectedUser.name}
+                  </h2>
+                  <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                      {selectedUser.role}
+                    </span>
+                    <span>•</span>
+                    <span>แผนก {selectedUser.department}</span>
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {saveSuccess && (
+                    <span className="text-sm text-green-600 flex items-center gap-1 animate-fade-in">
+                      <CheckCircle2 className="w-4 h-4" /> บันทึกสำเร็จ
+                    </span>
+                  )}
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      isSaving 
+                        ? 'bg-indigo-400 text-white cursor-not-allowed' 
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow'
+                    }`}
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSaving ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Tools List */}
+              <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+                <div className="max-w-3xl space-y-8">
+                  {Object.entries(toolsByCategory).map(([category, tools]) => (
+                    <div key={category} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                        หมวดหมู่: {category}
+                      </h3>
+                      <div className="space-y-1">
+                        {tools.map(tool => {
+                          const Icon = tool.icon;
+                          const hasAccess = currentUserPermissions.includes(tool.id);
+                          
+                          return (
+                            <div 
+                              key={tool.id} 
+                              className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                                hasAccess ? 'bg-indigo-50/50' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`p-2 rounded-lg ${hasAccess ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
+                                  <Icon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <h4 className={`text-sm font-semibold ${hasAccess ? 'text-slate-900' : 'text-slate-700'}`}>
+                                    {tool.name}
+                                  </h4>
+                                  <p className="text-xs text-slate-500 mt-0.5">{tool.description}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Custom Toggle Switch */}
+                              <button
+                                onClick={() => togglePermission(tool.id)}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                                  hasAccess ? 'bg-green-500' : 'bg-slate-300'
+                                }`}
+                                role="switch"
+                                aria-checked={hasAccess}
+                              >
+                                <span className="sr-only">Toggle {tool.name}</span>
+                                <span
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    hasAccess ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
+              <Shield className="w-16 h-16 mb-4 text-slate-300" />
+              <p className="text-lg font-medium text-slate-600">โปรดเลือกผู้ใช้งานจากเมนูด้านซ้าย</p>
+              <p className="text-sm mt-1">เพื่อเริ่มกำหนดสิทธิ์และเครื่องมือ</p>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Global styles for animations if needed */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}} />
+    </div>
+  );
+}

@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+  /* Midnight Core Theme — ดำ-เขียว */
+  --primary: 160 84% 39%;     /* #10b981 Emerald */
+  --primary-foreground: 0 0% 100%;
+  
+  --background: 210 40% 98%;  /* #F8FAFC Cool white */
+  --foreground: 224 20% 16%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 224 20% 16%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 20% 16%;
+  
+  --secondary: 210 20% 93%;
+  --secondary-foreground: 224 20% 20%;
+  
+  --muted: 210 20% 95%;
+  --muted-foreground: 220 10% 45%;
+  
+  --accent: 160 60% 92%;      /* Light emerald tint */
+  --accent-foreground: 160 84% 25%;
+  
+  --destructive: 0 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 210 20% 88%;
+  --input: 210 20% 88%;
+  --ring: 160 84% 39%;
+  
+  --radius: 0.5rem;
+  
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+}
+
+.dark {
+  --background: 222 20% 9%;
+  --foreground: 0 0% 100%;
+
+  --card: 222 18% 13%;
+  --card-foreground: 0 0% 100%;
+
+  --popover: 222 18% 13%;
+  --popover-foreground: 0 0% 100%;
+
+  --primary: 160 84% 39%;       /* Emerald #10b981 */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 222 16% 18%;
+  --secondary-foreground: 0 0% 95%;
+
+  --muted: 222 14% 16%;
+  --muted-foreground: 0 0% 65%;
+
+  --accent: 160 50% 15%;        /* dark emerald tint */
+  --accent-foreground: 160 84% 75%;
+
+  --destructive: 0 60% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 222 14% 20%;
+  --input: 222 14% 20%;
+  --ring: 160 84% 39%;          /* Emerald */
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased font-sans transition-colors duration-300;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight;
+  }
+}
+
+/* Hide caret globally except in actual input fields */
+* {
+  caret-color: transparent;
+}
+
+input:not([readonly]),
+textarea:not([readonly]),
+[contenteditable="true"] {
+  caret-color: auto;
+}
+
+/* Glassmorphism utilities */
+@layer utilities {
+  .glass {
+    @apply bg-white/80 dark:bg-black/80 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .logo-glow {
+    filter: drop-shadow(0 0 15px hsla(30, 60%, 35%, 0.3));
+  }
+}
+
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/20 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/40;
+}
+
+/* Visible Scrollbar for Tables */
+.scrollbar-visible::-webkit-scrollbar {
+  height: 12px;
+}
+.scrollbar-visible::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 6px;
+}
+.scrollbar-visible::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 6px;
+  border: 2px solid hsl(var(--muted));
+}
+.scrollbar-visible::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav-safe {
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 768px) {
+  button, a, [role="button"], input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  body.printing-roster * {
+    visibility: hidden;
+  }
+
+  body.printing-roster #roster-print-area,
+  body.printing-roster #roster-print-area * {
+    visibility: visible;
+  }
+
+  body.printing-roster #roster-print-area {
+    position: fixed;
+    inset: 0;
+    overflow: visible;
+  }
+
+  body.printing-roster #roster-print-area .rounded-lg {
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.printing-roster #roster-print-area .flex {
+    flex-wrap: nowrap;
+  }
+
+  body.printing-roster #roster-print-area input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+}

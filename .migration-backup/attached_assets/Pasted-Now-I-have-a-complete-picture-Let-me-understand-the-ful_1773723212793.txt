@@ -1,0 +1,38 @@
+Now I have a complete picture. Let me understand the full scope of changes needed:
+
+Current state:
+
+floating-chat.tsx: Only accepts images (accept="image/*"), uploads to /api/chat/upload-image
+Backend: multer config with 5MB limit, image-only filter
+Express body limit: 10MB for JSON
+Requested changes:
+
+Accept all file types (not just images)
+Accept files larger than 1GB
+Technical plan:
+
+Backend changes:
+Create a new multer config for all file types with large size limit (the user said >1GB, which is very large for Replit's environment - a more practical limit would be 100MB or 500MB as Replit has disk space limits. Actually, 1GB might work since Replit gives some disk space. I'll set it to 2GB to cover "more than 1 GiB")
+
+Set up a new /api/chat/upload-file endpoint that accepts any file type, stores it in uploads/chat/files/, and returns the file URL along with metadata like name, type, and size
+
+For text-based formats like PDFs, CSVs, TXT, XLSX, and DOCX files, I'll need to extract the text content so it can be sent to the AI - this means installing pdf-parse, xlsx, and mammoth packages
+
+Frontend changes:
+Remove the image-only restriction by changing accept="image/*" to accept all files
+Build a unified upload handler that works seamlessly for both images and other file types
+Update the UI to reflect the new file upload capability - images will still show previews, while other files display with a filename, icon, size, and download link
+Adjust how messages render to properly display file attachments
+AI integration:
+Vision API continues handling images as before
+For text-extractable files, pull out the content and pass it as context to the AI
+For binary or non-extractable files, send just the filename and basic metadata
+This is a pretty substantial shift. Let me think through the implementation carefully.
+
+Actually, there's a real constraint I need to consider: 1GB files are pushing the limits on Replit's disk space, which is typically only a few gigabytes total. Multer's disk storage approach can handle this through streaming rather than buffering everything into memory, so that should work, but I need to be mindful of the storage implications.
+
+I'll set the file limit to 2GB to meet the "more than 1 GiB" requirement, though I should note that Replit's disk quotas might be a practical constraint for a store management app handling files this large. For text extraction, I'll be pragmatic—if a file exceeds 50MB, I'll skip extraction and just pass the file info to the AI instead of trying to process something that large.
+
+Here's what I'm building: a new upload endpoint that accepts any file type up to 2GB with disk-based storage, text extraction for common formats like PDFs and spreadsheets (with that 50MB threshold), and an updated frontend that removes the image-only restriction.
+
+On the UI side, I need a unified upload component that previews images inline but displays other files as downloadable cards in the chat, plus I'll need to install pdf-parse, xlsx, and mammoth for handling different document types. This is a solid amount of work but manageable—let me put together the implementation.

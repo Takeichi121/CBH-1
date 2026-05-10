@@ -1,0 +1,273 @@
+import { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useI18n } from "@/hooks/use-i18n";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { queryClient as qc } from "@/lib/queryClient";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, LayoutGrid, UserCircle } from "lucide-react";
+import { ClockRecord, DOW_TH } from "./types";
+import { getLateStatus, isValidTimeInput, TIME_ERR_MSG, moveRowFocus } from "./utils";
+
+export function AppMatrixView({ year, month, storeId }: { year: number; month: number; storeId: string }) {
+  const { language } = useI18n();
+  const { toast } = useToast();
+  const t = (en: string, th: string) => language === "th" ? th : en;
+
+  const [localEdits, setLocalEdits] = useState<Record<string, Record<string, string>>>({});
+  const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [selectedEmp, setSelectedEmp] = useState<string>("");
+  const escapingRef = useRef(false);
+
+  const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({
+    queryKey: ["/api/attendance/records", year, month, storeId],
+    queryFn: async () => {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await fetch(`/api/attendance/records?token=${token}&year=${year}&month=${month}&storeId=${storeId}`);
+      return res.json();
+    },
+  });
+
+  const records = data?.records || [];
+
+  const employeeMap = new Map<string, { fullName: string; nickName: string | null; position: string | null }>();
+  records.forEach(r => {
+    if (!employeeMap.has(r.employeeFullName))
+      employeeMap.set(r.employeeFullName, { fullName: r.employeeFullName, nickName: r.employeeNickName, position: r.position });
+  });
+  
+  const employees = Array.from(employeeMap.values()).sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+  useEffect(() => {
+    if (employees.length > 0 && !selectedEmp) {
+      setSelectedEmp(employees[0].fullName);
+    } else if (employees.length > 0 && !employees.some(e => e.fullName === selectedEmp)) {
+      setSelectedEmp(employees[0].fullName);
+    }
+  }, [employees, selectedEmp]);
+
+  const currentEmp = employees.find(e => e.fullName === selectedEmp);
+
+  const recordIndex: Record<string, ClockRecord> = {};
+  records.forEach(r => { recordIndex[`${r.date}:${r.employeeFullName}`] = r; });
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dowIdx = new Date(dateStr + "T00:00:00").getDay();
+    return { date: dateStr, day: d, dowIdx };
+  });
+
+  const getEdit = (date: string, empName: string, field: string) => localEdits[`${date}:${empName}`]?.[field];
+
+  const setEdit = (date: string, empName: string, field: string, value: string) => {
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => ({ ...prev, [k]: { ...(prev[k] || {}), [field]: value } }));
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
+  const revertField = (date: string, empName: string, field: string) => {
+    escapingRef.current = true;
+    const k = `${date}:${empName}`;
+    setLocalEdits(prev => {
+      const n = { ...prev };
+      if (n[k]) { const row = { ...n[k] }; delete row[field]; if (Object.keys(row).length === 0) delete n[k]; else n[k] = row; }
+      return n;
+    });
+    setFieldErrors(prev => { const n = { ...prev }; delete n[`${k}:${field}`]; return n; });
+  };
+
+  const saveRow = async (date: string, emp: { fullName: string; nickName: string | null; position: string | null }) => {
+    if (escapingRef.current) { escapingRef.current = false; return; }
+    const k = `${date}:${emp.fullName}`;
+    const edits = localEdits[k];
+    if (!edits || Object.keys(edits).length === 0) return;
+
+    const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
+    const newErrors: Record<string, string> = {};
+    for (const field of timeFields) {
+      const val = edits[field] ?? "";
+      if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
+    }
+    if (Object.keys(newErrors).length > 0) { setFieldErrors(prev => ({ ...prev, ...newErrors })); return; }
+    setFieldErrors(prev => { const n = { ...prev }; timeFields.forEach(f => delete n[`${k}:${f}`]); return n; });
+
+    const existing = recordIndex[k];
+    const payload = {
+      token: localStorage.getItem("bk_token"), date, storeId,
+      employeeFullName: emp.fullName, employeeNickName: edits.employeeNickName ?? emp.nickName ?? "",
+      position: edits.position ?? emp.position ?? "",
+      rosterTime: edits.rosterTime ?? existing?.rosterTime ?? "",
+      clockInTime: edits.clockInTime ?? existing?.clockInTime ?? "",
+      clockOutTime: edits.clockOutTime ?? existing?.clockOutTime ?? "",
+      notes: edits.notes ?? existing?.notes ?? "",
+    };
+    setSavingRows(prev => new Set(prev).add(k));
+    try {
+      const url = existing?.id ? `/api/attendance/record/${existing.id}` : "/api/attendance/record";
+      const method = existing?.id ? "PUT" : "POST";
+      const res = await apiRequest(method, url, payload);
+      const json = await res.json();
+      if (json.ok) { setLocalEdits(prev => { const n = { ...prev }; delete n[k]; return n; }); qc.invalidateQueries({ queryKey: ["/api/attendance/records"] }); }
+      else { toast({ variant: "destructive", title: "Error", description: json.message }); }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally { setSavingRows(prev => { const n = new Set(prev); n.delete(k); return n; }); }
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+  if (employees.length === 0) return (
+    <Card className="border-dashed shadow-sm">
+      <CardContent className="flex flex-col items-center gap-3 py-16">
+        <LayoutGrid className="h-16 w-16 text-muted-foreground/30" />
+        <p className="text-muted-foreground text-center font-medium">{t("No records yet — Import Excel or add records first.", "ยังไม่มีข้อมูล — กรุณา Import Excel หรือเพิ่มรายการก่อน")}</p>
+      </CardContent>
+    </Card>
+  );
+
+  const inputCls = "w-full text-sm bg-transparent border border-border rounded p-1.5 focus:ring-2 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/40";
+
+  return (
+    <div className="space-y-4 max-w-4xl mx-auto">
+      <div className="bg-card p-4 rounded-lg border shadow-sm">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">เลือกพนักงาน (Employee)</label>
+        <select 
+          className="w-full sm:w-1/2 p-2 border border-border rounded-md bg-muted/50 text-foreground font-medium focus:ring-2 focus:ring-primary focus:border-primary"
+          value={selectedEmp}
+          onChange={(e) => setSelectedEmp(e.target.value)}
+        >
+          {employees.map(emp => (
+            <option key={emp.fullName} value={emp.fullName}>
+              {emp.fullName} {emp.nickName ? `(${emp.nickName})` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {!currentEmp ? (
+        <Card className="border-dashed"><CardContent className="py-16 text-center text-muted-foreground">กรุณาเลือกพนักงาน</CardContent></Card>
+      ) : (
+        <div className="space-y-4">
+          <Card className="bg-blue-500/10 border-blue-500/20 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="h-14 w-14 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+                {currentEmp.nickName?.[0] || currentEmp.fullName[0]}
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-2 text-sm w-full">
+                <div><span className="text-muted-foreground">ชื่อ-นามสกุล:</span> <strong className="text-foreground">{currentEmp.fullName}</strong></div>
+                <div><span className="text-muted-foreground">ชื่อเล่น:</span> <strong className="text-foreground">{currentEmp.nickName || "-"}</strong></div>
+                <div><span className="text-muted-foreground">ตำแหน่ง:</span> <strong className="text-foreground">{currentEmp.position || "-"}</strong></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-wrap gap-4 text-xs font-medium text-muted-foreground bg-card p-3 rounded-lg border">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />{t("On time","ตรงเวลา")}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />{t("Late","สาย")}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" />{t("Early","เร็ว")}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500/30 border border-amber-500/40" />{t("Weekend","เสาร์/อา")}</span>
+            <span className="ml-auto text-muted-foreground/50 font-normal hidden sm:inline-block">คลิกเซลล์เพื่อแก้ไข • กด Esc เพื่อยกเลิก • กด Enter เพื่อลงบรรทัดใหม่</span>
+          </div>
+
+          <Card className="shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold w-24">วันที่</th>
+                    <th className="px-4 py-3 font-semibold text-center w-32">Roster</th>
+                    <th className="px-4 py-3 font-semibold text-center w-32">{t("In", "เข้า")}</th>
+                    <th className="px-4 py-3 font-semibold text-center w-32">{t("Out", "ออก")}</th>
+                    <th className="px-4 py-3 font-semibold">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {days.map(({ date, day, dowIdx }) => {
+                    const isWeekend = dowIdx === 0 || dowIdx === 6;
+                    const dowLabel = DOW_TH[dowIdx];
+                    
+                    const k = `${date}:${currentEmp.fullName}`;
+                    const rec = recordIndex[k];
+                    const isSaving = savingRows.has(k);
+                    
+                    const roster = getEdit(date, currentEmp.fullName, "rosterTime") ?? rec?.rosterTime ?? "";
+                    const clockIn = getEdit(date, currentEmp.fullName, "clockInTime") ?? rec?.clockInTime ?? "";
+                    const clockOut = getEdit(date, currentEmp.fullName, "clockOutTime") ?? rec?.clockOutTime ?? "";
+                    const notes = getEdit(date, currentEmp.fullName, "notes") ?? rec?.notes ?? "";
+                    
+                    const status = getLateStatus(roster, clockIn);
+                    const inColor = status === "late" ? "text-red-500 font-bold" : status === "early" ? "text-blue-500 font-medium" : status === "on-time" ? "text-green-500 font-medium" : "text-foreground";
+                    
+                    const errR = fieldErrors[`${k}:rosterTime`];
+                    const errI = fieldErrors[`${k}:clockInTime`];
+                    const errO = fieldErrors[`${k}:clockOutTime`];
+
+                    return (
+                      <tr key={date} className={`hover:bg-muted/30 transition-colors ${isWeekend ? "bg-amber-500/5" : ""}`}>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`font-semibold ${isWeekend ? "text-amber-500" : "text-foreground/80"}`}>{dowLabel}</span>
+                          <span className="text-muted-foreground ml-1.5">{day}</span>
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="relative">
+                            <input 
+                              className={`${inputCls} text-center ${errR ? "ring-2 ring-red-500" : ""}`} 
+                              value={roster} placeholder="05:00" 
+                              onChange={e => setEdit(date, currentEmp.fullName, "rosterTime", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "rosterTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                            {errR && <span className="absolute -bottom-3 left-0 w-full text-center text-[10px] text-red-500">{errR}</span>}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="relative">
+                            <input 
+                              className={`${inputCls} text-center ${inColor} ${errI ? "ring-2 ring-red-500" : ""}`} 
+                              value={clockIn} placeholder="05:02" 
+                              onChange={e => setEdit(date, currentEmp.fullName, "clockInTime", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "clockInTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                            {errI && <span className="absolute -bottom-3 left-0 w-full text-center text-[10px] text-red-500">{errI}</span>}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="relative">
+                            <input 
+                              className={`${inputCls} text-center ${errO ? "ring-2 ring-red-500" : ""}`} 
+                              value={clockOut} placeholder="14:00" 
+                              onChange={e => setEdit(date, currentEmp.fullName, "clockOutTime", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "clockOutTime"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                            {errO && <span className="absolute -bottom-3 left-0 w-full text-center text-[10px] text-red-500">{errO}</span>}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 pr-4">
+                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2" /> : (
+                            <input 
+                              className={inputCls} 
+                              placeholder="เพิ่มหมายเหตุ..."
+                              value={notes} 
+                              onChange={e => setEdit(date, currentEmp.fullName, "notes", e.target.value)} 
+                              onBlur={() => saveRow(date, currentEmp)} 
+                              onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); revertField(date, currentEmp.fullName, "notes"); (e.target as HTMLInputElement).blur(); return; } if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); moveRowFocus(e, e.shiftKey ? -1 : 1); } }} 
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

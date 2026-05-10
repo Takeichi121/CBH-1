@@ -1,0 +1,36 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Lightbulb } from "lucide-react";
+
+const TIPS = [
+  "แนะนำลูกค้าเพิ่มชีสใน Whopper เพื่อเพิ่มยอดขาย",
+  "อย่าลืมถามลูกค้าเรื่องบัตรสมาชิกทุกครั้ง",
+  "เช็คอุณหภูมิตู้แช่ทุก 4 ชั่วโมงเพื่อความสดใหม่",
+  "ยิ้มและทักทายลูกค้าด้วยเสียงที่สดใสเสมอ",
+  "โปรโมชั่น 99 บาท ควรอัพเซลล์เป็น Go Large",
+  "ทำความสะอาดบริเวณ Station ทันทีที่ว่าง"
+];
+
+export function DailyTip() {
+  // ใช้ timestamp หารด้วยจำนวนมิลลิวินาทีใน 1 วัน เพื่อให้ได้ index เดิมตลอดทั้งวัน
+  const todayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)); 
+  const tipOfTheDay = TIPS[todayIndex % TIPS.length];
+
+  return (
+    <Card className="bg-yellow-50 border-yellow-200">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-yellow-800">
+          Tip of the Day
+        </CardTitle>
+        <Lightbulb className="h-4 w-4 text-yellow-600" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-yellow-900 mt-2">
+            "{tipOfTheDay}"
+        </div>
+        <p className="text-xs text-yellow-600 mt-2">
+          เทคนิคประจำวันสำหรับทีม Grand Diamond
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

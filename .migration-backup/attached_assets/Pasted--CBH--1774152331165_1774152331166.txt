@@ -1,0 +1,106 @@
+🚀 คู่มือการติดตั้งโลโก้ CBH สำหรับทุกแพลตฟอร์ม
+
+เพื่อให้โลโก้แสดงผลได้อย่างสมบูรณ์แบบบนทุกอุปกรณ์ (Web, iOS, Android, Windows) ให้ทำตาม 3 ขั้นตอนนี้ครับ
+
+📂 ขั้นตอนที่ 1: สร้างไฟล์รูปภาพ SVG (เซฟไว้ในโฟลเดอร์โปรเจกต์)
+
+คุณเอกจะต้องสร้างไฟล์ 2 ไฟล์นี้ไว้ในโฟลเดอร์เว็บไซต์ (เช่น โฟลเดอร์ /assets/ หรือวางไว้หน้าสุด)
+
+1. cbh-icon-square.svg (แบบสี่เหลี่ยมเต็ม - สำหรับ iOS/Android ให้ระบบตัดขอบเอง)
+
+สร้างไฟล์ใหม่ชื่อ cbh-icon-square.svg แล้วก๊อปปี้โค้ดนี้ไปใส่:
+
+<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="cbh-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#021008" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" fill="url(#cbh-gradient)" />
+  <g fill="white">
+    <path d="M 22 56 L 60 28 L 98 56" fill="none" stroke="white" stroke-width="7.5" stroke-linecap="butt" stroke-linejoin="round" />
+    <rect x="34" y="62" width="12" height="18" rx="1.5" />
+    <rect x="54" y="50" width="12" height="30" rx="1.5" />
+    <rect x="74" y="34" width="12" height="46" rx="1.5" />
+    <text x="60" y="105" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="28" font-weight="900" text-anchor="middle" letter-spacing="1">CBH</text>
+  </g>
+</svg>
+
+
+2. cbh-icon-rounded.svg (แบบขอบมน - สำหรับแสดงผลบนเว็บไซต์ทั่วไป)
+
+สร้างไฟล์ใหม่ชื่อ cbh-icon-rounded.svg แล้วก๊อปปี้โค้ดนี้ไปใส่:
+
+<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="cbh-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#021008" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#cbh-gradient)" />
+  <g fill="white">
+    <path d="M 22 56 L 60 28 L 98 56" fill="none" stroke="white" stroke-width="7.5" stroke-linecap="butt" stroke-linejoin="round" />
+    <rect x="34" y="62" width="12" height="18" rx="1.5" />
+    <rect x="54" y="50" width="12" height="30" rx="1.5" />
+    <rect x="74" y="34" width="12" height="46" rx="1.5" />
+    <text x="60" y="105" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="28" font-weight="900" text-anchor="middle" letter-spacing="1">CBH</text>
+  </g>
+</svg>
+
+
+🌐 ขั้นตอนที่ 2: โค้ด HTML สำหรับใส่ใน <head>
+
+นำโค้ดด้านล่างนี้ไปวางไว้ในแท็ก <head> ... </head> ของทุกหน้าเว็บ (หน้า index.html เป็นต้น) โค้ดชุดนี้ครอบคลุมการแสดงผลบน Browser, iOS Home Screen และ Windows Tile แล้วครับ
+
+<!-- แนะนำให้ดึง Font มาเผื่อไว้ด้วย (เพื่อความชัวร์ว่า SVG บนเว็บจะแสดงผลตัวอักษรเป๊ะๆ) -->
+<link href="[https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap](https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap)" rel="stylesheet">
+
+<!-- 1. Favicon สำหรับ Browser ทั่วไป (ใช้แบบขอบมน) -->
+<link rel="icon" href="cbh-icon-rounded.svg" type="image/svg+xml">
+<link rel="icon" href="cbh-icon-rounded.svg" sizes="any">
+
+<!-- 2. Apple Touch Icon สำหรับ iOS / iPadOS (ใช้แบบสี่เหลี่ยมเต็ม ให้ Apple ตัดขอบมนเอง) -->
+<link rel="apple-touch-icon" href="cbh-icon-square.svg">
+
+<!-- 3. Web Manifest สำหรับ Android / PWA -->
+<link rel="manifest" href="site.webmanifest">
+
+<!-- 4. Theme Color (เปลี่ยนสีแถบด้านบนของ Browser ให้เป็นสีเขียว CBH) -->
+<meta name="theme-color" content="#10b981">
+
+<!-- 5. Windows 8/10/11 Tile Color -->
+<meta name="msapplication-TileColor" content="#021008">
+
+
+📱 ขั้นตอนที่ 3: ไฟล์ Manifest สำหรับ Android / PWA
+
+สร้างไฟล์ชื่อ site.webmanifest ไว้ที่หน้าสุดของเว็บไซต์ (Root Directory) ไฟล์นี้จะบอกให้ Android และ Browser รู้จักแอปของคุณเวลาผู้ใช้กด "Add to Home Screen" (เพิ่มลงในหน้าจอหลัก)
+
+{
+  "name": "CBH Platform",
+  "short_name": "CBH",
+  "description": "ระบบจัดการข้อมูลของ CBH",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#021008",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "cbh-icon-square.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "cbh-icon-square.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
+
+
+💡 หมายเหตุ: โค้ดบรรทัดที่เขียนว่า "purpose": "maskable" จะเป็นตัวอนุญาตให้ระบบ Android นำโลโก้แบบจัตุรัสของเรา ไปยัดใส่กรอบวงกลม หรือรูปทรงหยดน้ำ ตามการตั้งค่าเครื่องของผู้ใช้อย่างสวยงาม โดยไม่โดนตัดขอบครับ

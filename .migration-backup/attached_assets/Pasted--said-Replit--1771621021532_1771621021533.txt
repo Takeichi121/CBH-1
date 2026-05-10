@@ -1,0 +1,285 @@
+คู่หูเขียนโค้ด
+คู่หูเขียนโค้ด said
+ยอดเยี่ยมเลยครับ! สำหรับการทำงานบน Replit โครงสร้างที่เราคุยกันมักจะตรงกับเทมเพลต Full-stack (React + Express + Drizzle ORM) ผมได้เตรียมโค้ดแบบสมบูรณ์ให้คุณสามารถคัดลอกไปวางในไฟล์ต่างๆ บนโปรเจกต์ Replit ของคุณได้เลยครับ
+
+เรามาลุยกันทีละขั้นตอนเลยนะครับ!
+
+1. ติดตั้ง xlsx บน Replit
+ไปที่แท็บ Shell (คอนโซลสีดำด้านล่างหรือด้านขวา) แล้วพิมพ์คำสั่งนี้:
+
+Bash
+npm install xlsx
+(เคล็ดลับ: หรือจะใช้เครื่องมือ Packages ด้านซ้ายมือ ค้นหาคำว่า xlsx แล้วกด Install ก็ได้ครับ)
+
+2. อัปเดต Schema (shared/schema.ts)
+คัดลอกโค้ดนี้ไปเพิ่มในตาราง dailySalesReports ของคุณ:
+
+TypeScript
+import { pgTable, serial, text, integer, numeric } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+
+export const dailySalesReports = pgTable("daily_sales_reports", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull(),
+  actualSales: numeric("actual_sales"),
+  actualTc: integer("actual_tc"),
+  targetMtd: numeric("target_mtd"),
+  
+  // --- 5 คอลัมน์ใหม่ที่เพิ่มเข้ามา ---
+  lastYearSales: numeric("last_year_sales"), 
+  forecastSales: numeric("forecast_sales"),  
+  lastYearTc: integer("last_year_tc"),       
+  targetTc: integer("target_tc"),            
+  targetTa: numeric("target_ta"),            
+});
+
+export const insertDailySalesSchema = createInsertSchema(dailySalesReports);
+export type DailySalesReport = typeof dailySalesReports.$inferSelect;
+export type InsertDailySalesReport = typeof dailySalesReports.$inferInsert;
+สำคัญบน Replit: หลังจากแก้ไฟล์นี้ อย่าลืมไปที่แท็บ Shell แล้วรัน npm run db:push (หรือคำสั่ง migrate ที่คุณใช้) เพื่ออัปเดตฐานข้อมูลด้วยนะครับ
+
+3. อัปเดต Storage (server/storage.ts)
+อัปเดต Interface และ Class ที่จัดการฐานข้อมูลให้รองรับการอัปเดตข้อมูลใหม่:
+
+TypeScript
+import { dailySalesReports, type DailySalesReport, type InsertDailySalesReport } from "../shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+
+export interface IStorage {
+  // ฟังก์ชันอื่นๆ ของคุณ...
+  updateDailySalesReport(id: number, data: Partial<InsertDailySalesReport>): Promise<DailySalesReport>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // ฟังก์ชันอื่นๆ ของคุณ...
+
+  async updateDailySalesReport(id: number, data: Partial<InsertDailySalesReport>): Promise<DailySalesReport> {
+    const [updatedReport] = await db.update(dailySalesReports)
+      .set({
+        lastYearSales: data.lastYearSales ? data.lastYearSales.toString() : null,
+        forecastSales: data.forecastSales ? data.forecastSales.toString() : null,
+        lastYearTc: data.lastYearTc,
+        targetTc: data.targetTc,
+        targetTa: data.targetTa ? data.targetTa.toString() : null,
+      })
+      .where(eq(dailySalesReports.id, id))
+      .returning();
+    return updatedReport;
+  }
+}
+
+export const storage = new DatabaseStorage();
+4. อัปเดต Routes (server/routes.ts)
+เพิ่มหรือแก้ไข Endpoint สำหรับบันทึกข้อมูลที่แก้ไขจากหน้า Settings:
+
+TypeScript
+import { Express } from "express";
+import { storage } from "./storage";
+import { insertDailySalesSchema } from "../shared/schema";
+
+export function registerRoutes(app: Express) {
+  // Endpoint สำหรับอัปเดตยอดขายรายวัน
+  app.patch("/api/sales/daily/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // คุณสามารถใช้ Zod validate ข้อมูลที่เข้ามาได้
+      const updatedData = await storage.updateDailySalesReport(id, req.body);
+      res.json(updatedData);
+    } catch (error) {
+      console.error("Error updating sales report:", error);
+      res.status(500).json({ message: "Failed to update sales report" });
+    }
+  });
+  
+  // Routes อื่นๆ...
+}
+5. สร้างหน้า Settings และปุ่ม Export (client/src/pages/sales/settings-page.tsx)
+นี่คือโค้ดส่วนของ UI ที่จัดการตาราง การคำนวณอัตโนมัติ และการ Export เป็น Excel ผมเขียนให้อยู่ในรูปแบบ React Component ที่คัดลอกไปใช้ได้เลยครับ:
+
+TypeScript
+import React, { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
+
+// สมมติฐานโครงสร้างข้อมูล
+type SalesData = {
+  id: number;
+  date: string;
+  actualSales: number;
+  actualTc: number;
+  targetMtd: number;
+  lastYearSales: number;
+  forecastSales: number;
+  lastYearTc: number;
+  targetTc: number;
+  targetTa: number;
+};
+
+export default function SettingsPage() {
+  // จำลองข้อมูล State (คุณสามารถเปลี่ยนเป็น fetch มาจาก API ได้)
+  const [editableSalesData, setEditableSalesData] = useState<SalesData[]>([
+    { id: 1, date: "01/01/2026", actualSales: 50000, actualTc: 100, targetMtd: 60000, lastYearSales: 45000, forecastSales: 55000, lastYearTc: 90, targetTc: 110, targetTa: 500 },
+    // เพิ่มข้อมูลวันอื่นๆ...
+  ]);
+
+  // ฟังก์ชันคำนวณข้อมูลตารางอัตโนมัติ
+  const tableData = useMemo(() => {
+    let accLastYearSales = 0;
+    let accForecast = 0;
+    let accLastYearTc = 0;
+    let accTargetTc = 0;
+    let accActualSalesMtd = 0;
+
+    return editableSalesData.map((row) => {
+      accLastYearSales += Number(row.lastYearSales || 0);
+      accForecast += Number(row.forecastSales || 0);
+      accLastYearTc += Number(row.lastYearTc || 0);
+      accTargetTc += Number(row.targetTc || 0);
+      accActualSalesMtd += Number(row.actualSales || 0);
+
+      const achievePercent = row.targetMtd > 0 ? (accActualSalesMtd / row.targetMtd) * 100 : 0;
+      const compSalesPercent = row.lastYearSales > 0 ? (row.actualSales / row.lastYearSales - 1) * 100 : 0;
+      const compTcPercent = row.lastYearTc > 0 ? (row.actualTc / row.lastYearTc - 1) * 100 : 0;
+      const lastYearTa = row.lastYearTc > 0 ? row.lastYearSales / row.lastYearTc : 0;
+      const actualTa = row.actualTc > 0 ? row.actualSales / row.actualTc : 0;
+      const varianceTa = actualTa - row.targetTa;
+
+      return {
+        ...row,
+        lastYearSalesMtd: accLastYearSales,
+        forecastMtd: accForecast,
+        achievePercent,
+        compSalesPercent,
+        lastYearTcMtd: accLastYearTc,
+        targetTcMtd: accTargetTc,
+        compTcPercent,
+        lastYearTa,
+        actualTa,
+        varianceTa,
+        actualSalesMtd: accActualSalesMtd
+      };
+    });
+  }, [editableSalesData]);
+
+  // จัดการเมื่อมีการพิมพ์แก้ข้อมูล
+  const handleInputChange = (id: number, field: keyof SalesData, value: string) => {
+    setEditableSalesData(prev => 
+      prev.map(row => row.id === id ? { ...row, [field]: Number(value) } : row)
+    );
+  };
+
+  // ฟังก์ชัน Export Excel
+  const handleExportExcel = () => {
+    const dataForExcel = tableData.map(row => ({
+      "Date": row.date,
+      "Actual Sales": row.actualSales,
+      "Last Year Sales": row.lastYearSales,
+      "Forecast Sales": row.forecastSales,
+      "Last Year Sales MTD": row.lastYearSalesMtd,
+      "Forecast MTD": row.forecastMtd,
+      "Achieve %": row.achievePercent.toFixed(2) + "%",
+      "Comp Sales %": row.compSalesPercent.toFixed(2) + "%",
+      "Actual TC": row.actualTc,
+      "Last Year TC": row.lastYearTc,
+      "Target TC": row.targetTc,
+      "Last Year TC MTD": row.lastYearTcMtd,
+      "Target TC MTD": row.targetTcMtd,
+      "Comp TC %": row.compTcPercent.toFixed(2) + "%",
+      "Target TA": row.targetTa,
+      "Last Year TA": row.lastYearTa.toFixed(2),
+      "Actual TA": row.actualTa.toFixed(2),
+      "Variance TA": row.varianceTa.toFixed(2),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Report");
+
+    // ตั้งความกว้างคอลัมน์คร่าวๆ
+    worksheet['!cols'] = Array(18).fill({ wch: 15 });
+
+    const fileName = `Sales_GrandDiamond_Jan2026.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Daily Sales Settings</h1>
+        <button 
+          onClick={handleExportExcel}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold"
+        >
+          Export Excel
+        </button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border border-gray-300 text-sm">
+          <thead className="bg-gray-800 text-white">
+            <tr>
+              <th className="border border-gray-300 p-2">Date</th>
+              <th className="border border-gray-300 p-2">Actual Sales</th>
+              {/* คอลัมน์ที่กรอกได้ (สีขาวใน tbody) */}
+              <th className="border border-gray-300 p-2 text-yellow-300">Last Year Sales</th>
+              <th className="border border-gray-300 p-2 text-yellow-300">Forecast Sales</th>
+              <th className="border border-gray-300 p-2 text-yellow-300">Last Year TC</th>
+              <th className="border border-gray-300 p-2 text-yellow-300">Target TC</th>
+              <th className="border border-gray-300 p-2 text-yellow-300">Target TA</th>
+              {/* คอลัมน์คำนวณอัตโนมัติ (สีเทาใน tbody) */}
+              <th className="border border-gray-300 p-2">LY Sales MTD</th>
+              <th className="border border-gray-300 p-2">Forecast MTD</th>
+              <th className="border border-gray-300 p-2">Achieve %</th>
+              <th className="border border-gray-300 p-2">Comp Sales %</th>
+              <th className="border border-gray-300 p-2">LY TC MTD</th>
+              <th className="border border-gray-300 p-2">Target TC MTD</th>
+              <th className="border border-gray-300 p-2">Comp TC %</th>
+              <th className="border border-gray-300 p-2">LY TA</th>
+              <th className="border border-gray-300 p-2">Actual TA</th>
+              <th className="border border-gray-300 p-2">Variance TA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableData.map((row) => (
+              <tr key={row.id}>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.date}</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.actualSales.toLocaleString()}</td>
+                
+                {/* Inputs แบบแก้ไขได้ พื้นหลังสีขาว */}
+                <td className="border border-gray-300 p-0 bg-white">
+                  <input type="number" className="w-full p-2 outline-none" value={row.lastYearSales} onChange={(e) => handleInputChange(row.id, "lastYearSales", e.target.value)} />
+                </td>
+                <td className="border border-gray-300 p-0 bg-white">
+                  <input type="number" className="w-full p-2 outline-none" value={row.forecastSales} onChange={(e) => handleInputChange(row.id, "forecastSales", e.target.value)} />
+                </td>
+                <td className="border border-gray-300 p-0 bg-white">
+                  <input type="number" className="w-full p-2 outline-none" value={row.lastYearTc} onChange={(e) => handleInputChange(row.id, "lastYearTc", e.target.value)} />
+                </td>
+                <td className="border border-gray-300 p-0 bg-white">
+                  <input type="number" className="w-full p-2 outline-none" value={row.targetTc} onChange={(e) => handleInputChange(row.id, "targetTc", e.target.value)} />
+                </td>
+                <td className="border border-gray-300 p-0 bg-white">
+                  <input type="number" className="w-full p-2 outline-none" value={row.targetTa} onChange={(e) => handleInputChange(row.id, "targetTa", e.target.value)} />
+                </td>
+
+                {/* Read-only ข้อมูลที่คำนวณอัตโนมัติ พื้นหลังสีเทา */}
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.lastYearSalesMtd.toLocaleString()}</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.forecastMtd.toLocaleString()}</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.achievePercent.toFixed(1)}%</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.compSalesPercent.toFixed(1)}%</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.lastYearTcMtd.toLocaleString()}</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.targetTcMtd.toLocaleString()}</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.compTcPercent.toFixed(1)}%</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.lastYearTa.toFixed(1)}</td>
+                <td className="border border-gray-300 p-2 bg-gray-100">{row.actualTa.toFixed(1)}</td>
+                <td className={`border border-gray-300 p-2 ${row.varianceTa >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                  {row.varianceTa.toFixed(1)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

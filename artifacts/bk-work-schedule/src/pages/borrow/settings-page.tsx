@@ -1,0 +1,542 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Building, Package, Trash2, RefreshCw, Check, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { BorrowLayout } from "./borrow-layout";
+import ImportExcelButton from "./components/ImportExcelButton"; // ✅ Use shared component
+import type { BorrowBranch, BorrowItem } from "@shared/schema";
+
+export default function BorrowSettingsPage() {
+  const { user, token } = useAuth();
+  const { language } = useI18n();
+  const { toast } = useToast();
+
+  const [branches, setBranches] = useState<BorrowBranch[]>([]);
+  const [items, setItems] = useState<BorrowItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showBranchDialog, setShowBranchDialog] = useState(false);
+  const [showItemDialog, setShowItemDialog] = useState(false);
+  const [newBranch, setNewBranch] = useState({ name: "", code: "" });
+  const [newItem, setNewItem] = useState({ name: "", code: "", units: "" });
+
+  // Inline editing state for Item Units
+  const [editingUnits, setEditingUnits] = useState<{ id: string; units: string } | null>(null);
+
+  const [showDeleteAllItemsDialog, setShowDeleteAllItemsDialog] = useState(false);
+
+  const isManager = user?.role === "manager" || user?.role === "admin";
+
+  const labels = {
+    title: language === "th" ? "ตั้งค่าระบบยืม-คืน" : "Borrow Settings",
+    branches: language === "th" ? "สาขา" : "Branches",
+    items: language === "th" ? "รายการอุปกรณ์" : "Items",
+    addBranch: language === "th" ? "เพิ่มสาขา" : "Add Branch",
+    addItem: language === "th" ? "เพิ่มรายการ" : "Add Item",
+    name: language === "th" ? "ชื่อ" : "Name",
+    code: language === "th" ? "รหัส" : "Code",
+    unit: language === "th" ? "หน่วย" : "Unit",
+    actions: language === "th" ? "จัดการ" : "Actions",
+    save: language === "th" ? "บันทึก" : "Save",
+    cancel: language === "th" ? "ยกเลิก" : "Cancel",
+    delete: language === "th" ? "ลบ" : "Delete",
+    noBranches: language === "th" ? "ยังไม่มีสาขา" : "No branches yet",
+    noItems: language === "th" ? "ยังไม่มีรายการ" : "No items yet",
+    refresh: language === "th" ? "รีเฟรช" : "Refresh",
+    importBranches: language === "th" ? "นำเข้าสาขา (Excel/CSV)" : "Import Branches",
+    importItems: language === "th" ? "นำเข้ารายการ (Excel/CSV)" : "Import Items",
+    deleteAll: language === "th" ? "ลบทั้งหมด" : "Delete All",
+    deleteAllConfirm: language === "th" ? "ลบรายการทั้งหมด?" : "Delete All Items?",
+    deleteAllWarning: language === "th" 
+      ? "การลบนี้จะลบรายการทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้" 
+      : "This will permanently delete all items. This action cannot be undone.",
+  };
+
+  const fetchData = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const [branchesRes, itemsRes] = await Promise.all([
+        fetch("/api/borrow/branches", { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify({ token }) 
+        }),
+        fetch("/api/borrow/items", { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify({ token }) 
+        }),
+      ]);
+      const branchesData = await branchesRes.json();
+      const itemsData = await itemsRes.json();
+      if (branchesData.ok) setBranches(branchesData.branches);
+      if (itemsData.ok) setItems(itemsData.items);
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Failed to load data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token && isManager) fetchData();
+  }, [token, isManager]);
+
+  const handleAddBranch = async () => {
+    if (!token || !newBranch.name) return;
+    try {
+      const res = await fetch("/api/borrow/branches/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, name: newBranch.name, code: newBranch.code }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "เพิ่มสาขาสำเร็จ" : "Branch added" });
+        setShowBranchDialog(false);
+        setNewBranch({ name: "", code: "" });
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Network error", variant: "destructive" });
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!token || !newItem.name) return;
+    try {
+      const unitsArray = newItem.units.split(",").map(u => u.trim()).filter(u => u.length > 0);
+      const res = await fetch("/api/borrow/items/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, name: newItem.name, code: newItem.code, units: unitsArray }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "เพิ่มรายการสำเร็จ" : "Item added" });
+        setShowItemDialog(false);
+        setNewItem({ name: "", code: "", units: "" });
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Network error", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteBranch = async (branchId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/borrow/branches/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: branchId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "ลบสาขาสำเร็จ" : "Branch deleted" });
+        fetchData();
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/borrow/items/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: itemId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "ลบรายการสำเร็จ" : "Item deleted" });
+        fetchData();
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAllItems = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/borrow/items/delete-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "ลบรายการทั้งหมดสำเร็จ" : "All items deleted" });
+        setShowDeleteAllItemsDialog(false);
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateUnits = async (itemId: string, unitsStr: string) => {
+    if (!token) return;
+    try {
+      const unitsArray = unitsStr.split(",").map(u => u.trim()).filter(u => u.length > 0);
+      const res = await fetch("/api/borrow/items/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, id: itemId, units: unitsArray }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: language === "th" ? "บันทึกสำเร็จ" : "Saved" });
+        setEditingUnits(null);
+        fetchData();
+      } else {
+        toast({ title: data.message || "Error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  if (!isManager) {
+    return (
+      <BorrowLayout>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            {language === "th" ? "เฉพาะผู้จัดการเท่านั้นที่สามารถเข้าถึงหน้านี้" : "Only managers can access this page"}
+          </CardContent>
+        </Card>
+      </BorrowLayout>
+    );
+  }
+
+  return (
+    <BorrowLayout>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">{labels.title}</h2>
+          <Button variant="outline" size="sm" onClick={fetchData} data-testid="button-refresh-settings">
+            <RefreshCw className="w-4 h-4 mr-1" />
+            {labels.refresh}
+          </Button>
+        </div>
+
+        <Tabs defaultValue="branches">
+          <TabsList>
+            <TabsTrigger value="branches" data-testid="tab-branches">
+              <Building className="w-4 h-4 mr-1" />
+              {labels.branches}
+            </TabsTrigger>
+            <TabsTrigger value="items" data-testid="tab-items">
+              <Package className="w-4 h-4 mr-1" />
+              {labels.items}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* === BRANCHES TAB === */}
+          <TabsContent value="branches" className="space-y-4">
+            <div className="flex justify-end gap-2">
+              {/* ✅ Use ImportExcelButton */}
+              <ImportExcelButton 
+                endpoint="/api/borrow/branches/import"
+                label={labels.importBranches}
+                accept=".csv,.xlsx,.xls"
+                onDone={(res) => {
+                  toast({ title: `Imported ${res.imported} branches` });
+                  fetchData();
+                }}
+              />
+              <Dialog open={showBranchDialog} onOpenChange={setShowBranchDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm" data-testid="button-add-branch">
+                    <Plus className="w-4 h-4 mr-1" />
+                    {labels.addBranch}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{labels.addBranch}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>{labels.name}</Label>
+                      <Input
+                        value={newBranch.name}
+                        onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
+                        placeholder="Grand Diamond"
+                        data-testid="input-branch-name"
+                      />
+                    </div>
+                    <div>
+                      <Label>{labels.code}</Label>
+                      <Input
+                        value={newBranch.code}
+                        onChange={(e) => setNewBranch({ ...newBranch, code: e.target.value })}
+                        placeholder="BK001"
+                        data-testid="input-branch-code"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowBranchDialog(false)} data-testid="button-cancel-branch">
+                      {labels.cancel}
+                    </Button>
+                    <Button onClick={handleAddBranch} data-testid="button-save-branch">
+                      {labels.save}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="p-8 text-center text-muted-foreground">Loading...</div>
+                ) : branches.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">{labels.noBranches}</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{labels.code}</TableHead>
+                        <TableHead>{labels.name}</TableHead>
+                        <TableHead>{labels.actions}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {branches.map((branch) => (
+                        <TableRow key={branch.id} data-testid={`row-branch-${branch.id}`}>
+                          <TableCell>
+                            <Badge variant="outline">{branch.code}</Badge>
+                          </TableCell>
+                          <TableCell>{branch.name}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteBranch(branch.id)}
+                              data-testid={`button-delete-branch-${branch.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* === ITEMS TAB === */}
+          <TabsContent value="items" className="space-y-4">
+            <div className="flex justify-end gap-2">
+              {/* ✅ Use ImportExcelButton */}
+              <ImportExcelButton 
+                endpoint="/api/borrow/items/import"
+                label={labels.importItems}
+                accept=".csv,.xlsx,.xls"
+                onDone={(res) => {
+                  toast({ title: `Imported ${res.imported} items` });
+                  fetchData();
+                }}
+              />
+              <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm" data-testid="button-add-item">
+                    <Plus className="w-4 h-4 mr-1" />
+                    {labels.addItem}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{labels.addItem}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>{labels.name}</Label>
+                      <Input
+                        value={newItem.name}
+                        onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                        placeholder="Sauce Container"
+                        data-testid="input-item-name"
+                      />
+                    </div>
+                    <div>
+                      <Label>{labels.code}</Label>
+                      <Input
+                        value={newItem.code}
+                        onChange={(e) => setNewItem({ ...newItem, code: e.target.value })}
+                        placeholder="SC001"
+                        data-testid="input-item-code"
+                      />
+                    </div>
+                    <div>
+                      <Label>{labels.unit} (comma-separated)</Label>
+                      <Input
+                        value={newItem.units}
+                        onChange={(e) => setNewItem({ ...newItem, units: e.target.value })}
+                        placeholder="BOX, CASE, PACK"
+                        data-testid="input-item-units"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowItemDialog(false)} data-testid="button-cancel-item">
+                      {labels.cancel}
+                    </Button>
+                    <Button onClick={handleAddItem} data-testid="button-save-item">
+                      {labels.save}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setShowDeleteAllItemsDialog(true)}
+                disabled={items.length === 0}
+                data-testid="button-delete-all-items"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {labels.deleteAll}
+              </Button>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="p-8 text-center text-muted-foreground">Loading...</div>
+                ) : items.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">{labels.noItems}</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{labels.code}</TableHead>
+                        <TableHead>{labels.name}</TableHead>
+                        <TableHead>{labels.unit}</TableHead>
+                        <TableHead>{labels.actions}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item) => (
+                        <TableRow key={item.id} data-testid={`row-item-${item.id}`}>
+                          <TableCell>
+                            <Badge variant="outline">{item.code}</Badge>
+                          </TableCell>
+                          <TableCell>{item.name}</TableCell>
+                          <TableCell>
+                            {editingUnits?.id === item.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  className="h-8 w-40"
+                                  value={editingUnits.units}
+                                  onChange={(e) => setEditingUnits({ ...editingUnits, units: e.target.value })}
+                                  placeholder="BOX, CASE, PACK"
+                                  data-testid={`input-units-${item.id}`}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleUpdateUnits(item.id, editingUnits.units)}
+                                  data-testid={`button-save-units-${item.id}`}
+                                >
+                                  <Check className="w-4 h-4 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setEditingUnits(null)}
+                                  data-testid={`button-cancel-units-${item.id}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span 
+                                className="cursor-pointer hover:underline decoration-dashed decoration-muted-foreground/50 underline-offset-4"
+                                onClick={() => setEditingUnits({ id: item.id, units: item.units?.join(", ") || "" })}
+                                data-testid={`text-units-${item.id}`}
+                                title="Click to edit"
+                              >
+                                {item.units && item.units.length > 0 ? item.units.join(", ") : "-"}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteItem(item.id)}
+                              data-testid={`button-delete-item-${item.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Delete All Items Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllItemsDialog} onOpenChange={setShowDeleteAllItemsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.deleteAllConfirm}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {labels.deleteAllWarning} ({items.length} {language === "th" ? "รายการ" : "items"})
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllItems}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {labels.deleteAll}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </BorrowLayout>
+  );
+}

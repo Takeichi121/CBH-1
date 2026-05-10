@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BK Work Schedule"
+version = "1.0.0"
+id = "artifacts/bk-work-schedule"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23101
+
+[services.development]
+run = "pnpm --filter @workspace/bk-work-schedule run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bk-work-schedule", "run", "build" ]
+publicDir = "artifacts/bk-work-schedule/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23101"
+BASE_PATH = "/"

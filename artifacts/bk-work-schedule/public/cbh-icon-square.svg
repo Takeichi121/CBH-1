@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="cbh-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#021008" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" fill="url(#cbh-gradient)" />
+  <g fill="white">
+    <path d="M 22 56 L 60 28 L 98 56" fill="none" stroke="white" stroke-width="7.5" stroke-linecap="butt" stroke-linejoin="round" />
+    <rect x="34" y="62" width="12" height="18" rx="1.5" />
+    <rect x="54" y="50" width="12" height="30" rx="1.5" />
+    <rect x="74" y="34" width="12" height="46" rx="1.5" />
+    <text x="60" y="105" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="28" font-weight="900" text-anchor="middle" letter-spacing="1">CBH</text>
+  </g>
+</svg>

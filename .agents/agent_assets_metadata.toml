@@ -23,3 +23,9 @@ id = "GPYjJ1u_F2QpI39d57CoZ"
 uri = "file://.local/outputs/BK-Work-Schedule-Grand-Diamond.pptx"
 type = "slides"
 title = "BK Work Schedule — Grand Diamond (PPTX)"
+
+[[outputs]]
+id = "Q-Gij2szfEEuQQJzgddJj"
+uri = "file://.local/outputs/CBH.pdf"
+type = "pdf"
+title = "CBH.pdf"

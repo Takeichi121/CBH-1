@@ -1,0 +1,510 @@
+{
+  "exportedAt": "2026-04-22T08:30:29.856Z",
+  "excel_password_salt": "bk1040-salt-v1",
+  "tables": [
+    {
+      "name": "agent_requests",
+      "rows": 12,
+      "columns": [
+        "id",
+        "username",
+        "type",
+        "title",
+        "description",
+        "status",
+        "created_at",
+        "updated_at",
+        "response"
+      ]
+    },
+    {
+      "name": "announcements",
+      "rows": 0,
+      "columns": [
+        "id",
+        "title",
+        "title_th",
+        "content",
+        "content_th",
+        "priority",
+        "target_audience",
+        "is_pinned",
+        "expires_at",
+        "created_at",
+        "created_by",
+        "updated_at",
+        "store_id"
+      ]
+    },
+    {
+      "name": "borrow_branches",
+      "rows": 75,
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "is_active"
+      ]
+    },
+    {
+      "name": "borrow_items",
+      "rows": 105,
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "unit",
+        "is_active",
+        "units",
+        "category"
+      ]
+    },
+    {
+      "name": "borrow_transactions",
+      "rows": 9,
+      "columns": [
+        "id",
+        "tx_date",
+        "due_date",
+        "tx_type",
+        "branch",
+        "item",
+        "qty",
+        "unit",
+        "borrower",
+        "lender",
+        "note",
+        "status",
+        "created_at"
+      ]
+    },
+    {
+      "name": "chann_conversations",
+      "rows": 231,
+      "columns": [
+        "id",
+        "username",
+        "role",
+        "content",
+        "image_url",
+        "created_at"
+      ]
+    },
+    {
+      "name": "chann_notes",
+      "rows": 2,
+      "columns": [
+        "id",
+        "username",
+        "title",
+        "content",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "name": "code_proposals",
+      "rows": 0,
+      "columns": [
+        "id",
+        "file_path",
+        "description",
+        "old_content",
+        "new_content",
+        "reason",
+        "status",
+        "proposed_by",
+        "reviewed_by",
+        "review_note",
+        "created_at",
+        "reviewed_at"
+      ]
+    },
+    {
+      "name": "config",
+      "rows": 24,
+      "columns": [
+        "key",
+        "value",
+        "updated_at"
+      ]
+    },
+    {
+      "name": "conversations",
+      "rows": 0,
+      "columns": [
+        "id",
+        "title",
+        "created_at"
+      ]
+    },
+    {
+      "name": "daily_labor",
+      "rows": 0,
+      "columns": [
+        "id",
+        "date",
+        "actual_hours",
+        "ot_hours",
+        "summary_hours",
+        "variance_hours",
+        "labor_cost_total",
+        "col_percent",
+        "tcmh",
+        "updated_at",
+        "store_id"
+      ]
+    },
+    {
+      "name": "daily_sales_reports",
+      "rows": 120,
+      "columns": [
+        "id",
+        "report_date",
+        "report_by",
+        "work_shift",
+        "daily_target",
+        "actual_sales",
+        "transaction_count",
+        "mtd_target",
+        "mtd_actual",
+        "mtd_tc",
+        "dine_in",
+        "dine_in_tc",
+        "take_away",
+        "take_away_tc",
+        "grabfood",
+        "lineman",
+        "shopee",
+        "bkapp",
+        "osat",
+        "survey_count",
+        "void_amount",
+        "void_count",
+        "add_cheese_count",
+        "add_cheese_percent",
+        "v_meal_count",
+        "v_meal_percent",
+        "up_size_count",
+        "up_size_percent",
+        "waste_raw_daily",
+        "waste_raw_daily_percent",
+        "waste_meal_daily",
+        "waste_meal_daily_percent",
+        "waste_raw_mtd",
+        "waste_raw_mtd_percent",
+        "waste_meal_mtd",
+        "waste_meal_mtd_percent",
+        "col_percent",
+        "labor_hour",
+        "tcmh",
+        "manager_roster_date",
+        "manager_roster_text",
+        "staff_roster_text",
+        "created_at",
+        "updated_at",
+        "sos_daily",
+        "sos_mtd",
+        "labor_cost",
+        "actual_hours",
+        "ot_hours",
+        "ot_mtd",
+        "recommend_hours",
+        "roster_commit",
+        "summary_hours",
+        "variance_hours",
+        "robin",
+        "gokoo",
+        "last_year_sales",
+        "forecast_sales",
+        "last_year_tc",
+        "target_tc",
+        "target_ta",
+        "close_shift_count",
+        "cash_deposit",
+        "sales_delivery",
+        "promotion_other1_qty",
+        "promotion_other2_qty",
+        "note_daily",
+        "note_mtd",
+        "note_in_store",
+        "note_delivery",
+        "note_performance",
+        "note_addons",
+        "store_id"
+      ]
+    },
+    {
+      "name": "daily_targets",
+      "rows": 151,
+      "columns": [
+        "id",
+        "target_date",
+        "target_sales",
+        "created_at",
+        "updated_at",
+        "target_tc",
+        "waste_raw_daily",
+        "waste_meal_daily",
+        "store_id"
+      ]
+    },
+    {
+      "name": "dropdown_options",
+      "rows": 31,
+      "columns": [
+        "id",
+        "category",
+        "value",
+        "label",
+        "sort_order",
+        "is_active"
+      ]
+    },
+    {
+      "name": "labor_settings",
+      "rows": 1,
+      "columns": [
+        "id",
+        "roster_hours",
+        "duty_daily_hours",
+        "fixed_cost_daily",
+        "close_shift_daily_cost",
+        "pt_wage_rate",
+        "updated_at",
+        "store_id"
+      ]
+    },
+    {
+      "name": "manager_requests",
+      "rows": 0,
+      "columns": [
+        "id",
+        "request_type",
+        "request_date",
+        "requested_by",
+        "start_time",
+        "end_time",
+        "day_off_reason",
+        "note",
+        "status",
+        "approved_by",
+        "approved_at",
+        "rejection_reason",
+        "created_at",
+        "updated_at",
+        "store_id"
+      ]
+    },
+    {
+      "name": "messages",
+      "rows": 0,
+      "columns": [
+        "id",
+        "conversation_id",
+        "role",
+        "content",
+        "created_at"
+      ]
+    },
+    {
+      "name": "notifications",
+      "rows": 152,
+      "columns": [
+        "id",
+        "recipient_username",
+        "type",
+        "title",
+        "title_th",
+        "message",
+        "message_th",
+        "related_id",
+        "is_read",
+        "created_at",
+        "created_by"
+      ]
+    },
+    {
+      "name": "password_reset_otps",
+      "rows": 13,
+      "columns": [
+        "id",
+        "email",
+        "username",
+        "otp",
+        "expires_at",
+        "used",
+        "created_at",
+        "reset_token",
+        "attempts",
+        "otp_salt"
+      ]
+    },
+    {
+      "name": "sessions",
+      "rows": 224,
+      "columns": [
+        "token",
+        "username",
+        "expires_at"
+      ]
+    },
+    {
+      "name": "shifts",
+      "rows": 565,
+      "columns": [
+        "id",
+        "date",
+        "username",
+        "full_name",
+        "role",
+        "shift_group",
+        "start_time",
+        "end_time",
+        "note",
+        "created_at",
+        "updated_at",
+        "updated_by",
+        "nick_name",
+        "store_id"
+      ]
+    },
+    {
+      "name": "staff_chat_messages",
+      "rows": 12,
+      "columns": [
+        "id",
+        "sender_username",
+        "sender_display_name",
+        "recipient_username",
+        "text",
+        "is_read",
+        "created_at",
+        "message_type",
+        "image_url",
+        "file_attachment"
+      ]
+    },
+    {
+      "name": "store_settings",
+      "rows": 1,
+      "columns": [
+        "id",
+        "store_name",
+        "store_code",
+        "daily_target",
+        "mtd_target",
+        "created_at",
+        "updated_at",
+        "store_id"
+      ]
+    },
+    {
+      "name": "stores",
+      "rows": 2,
+      "columns": [
+        "id",
+        "name",
+        "name_th",
+        "code",
+        "address",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "name": "swap_requests",
+      "rows": 0,
+      "columns": [
+        "id",
+        "requester_username",
+        "requester_date",
+        "target_username",
+        "target_date",
+        "status",
+        "created_at",
+        "updated_at",
+        "approved_by",
+        "note",
+        "store_id"
+      ]
+    },
+    {
+      "name": "systemlog",
+      "rows": 1642,
+      "columns": [
+        "id",
+        "ts",
+        "action",
+        "by_user",
+        "detail"
+      ]
+    },
+    {
+      "name": "users",
+      "rows": 31,
+      "columns": [
+        "username",
+        "passhash",
+        "role",
+        "full_name",
+        "nick_name",
+        "phone",
+        "email",
+        "position",
+        "active",
+        "created_at",
+        "full_name_th",
+        "must_change_password",
+        "profile_picture",
+        "allowed_features",
+        "store_id"
+      ]
+    },
+    {
+      "name": "waste_targets",
+      "rows": 1,
+      "columns": [
+        "id",
+        "target_month",
+        "mtd_amount",
+        "mtd_percent",
+        "meal_amount",
+        "meal_percent",
+        "raw_amount",
+        "raw_percent",
+        "created_at",
+        "updated_at",
+        "store_id"
+      ]
+    },
+    {
+      "name": "weekly_sales_reports",
+      "rows": 6,
+      "columns": [
+        "id",
+        "week_start_date",
+        "week_end_date",
+        "report_by",
+        "sale",
+        "tc",
+        "ta",
+        "cog",
+        "waste",
+        "unac",
+        "sos",
+        "gsi",
+        "osat",
+        "delivery",
+        "google_review",
+        "col_mtd",
+        "waste_top3",
+        "unaccounted_top3",
+        "created_at",
+        "updated_at",
+        "store_id"
+      ]
+    }
+  ]
+}

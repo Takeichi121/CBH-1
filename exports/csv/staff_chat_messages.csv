@@ -1,0 +1,13 @@
+id,sender_username,sender_display_name,recipient_username,text,is_read,created_at,message_type,image_url,file_attachment
+1,chajai003,Ake,phusanisa.k,คนสวย,0,2026-01-17T12:21:44.529Z,text,,
+2,chajai003,Ake,wasson001,อิอิ,0,2026-01-18T19:53:07.470Z,text,,
+3,chajai003,Ake,,Sparkles,0,2026-01-18T23:04:51.395Z,sticker,,
+4,chajai003,Ake,,โย,0,2026-01-23T20:44:35.119Z,text,,
+5,bookon001,Yo,,เหงาติ,0,2026-01-23T20:44:51.743Z,text,,
+6,chajai003,Ake,bookon001,โน,1,2026-01-23T20:44:52.435Z,text,,
+7,chajai003,Ake,bookon001,โยโย่,0,2026-01-23T20:45:08.597Z,text,,
+8,chajai003,Ake,bookon001,พาาเสเเว,0,2026-01-23T20:45:12.213Z,text,,
+9,chajai003,Ake,,https://replit.com/join/noglgqtpyp-mk66996969,0,2026-01-25T00:37:34.002Z,text,,
+10,chajai003,Ake,kitti01,พี่ลองเข้ามาแล้วหรอครัล,0,2026-02-27T14:54:28+07:00,text,,
+11,chajai003,Ake,wasson001,กด edit บน มุมขวา,0,2026-04-05T02:07:16+07:00,text,,
+12,chajai003,Ake,wasson001,ข้าง ๆ เรากรอกชื่อ ส่งรายงานอะ,0,2026-04-05T02:07:51+07:00,text,,

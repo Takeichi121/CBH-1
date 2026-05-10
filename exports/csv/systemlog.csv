@@ -1,0 +1,1659 @@
+id,ts,action,by_user,detail
+1,2025-12-27T07:40:27.234Z,setup_create_admin,system,admin created
+2,2025-12-27T07:40:27.250Z,setup_create_manager,system,manager created
+3,2025-12-27T07:40:27.255Z,setup_ok,system,setup completed
+4,2025-12-27T07:41:48.737Z,register_manager,chajai001,fullName=Chanon Jaimool
+5,2025-12-27T07:43:43.833Z,login_ok,chajai001,role=manager
+6,2025-12-27T08:43:24.081Z,login_ok,chajai001,role=manager
+7,2025-12-27T08:43:38.474Z,update_settings,chajai001,"{""open"":3,""lunch"":4,""dinner"":3,""late"":3}"
+8,2025-12-27T08:43:40.902Z,update_settings,chajai001,"{""open"":3,""lunch"":4,""dinner"":3,""late"":3}"
+9,2025-12-27T08:50:21.205Z,login_ok,chajai001,role=manager
+10,2025-12-27T08:55:45.325Z,register_staff,monkum001,fullName=Montilalai kumwung 
+11,2025-12-27T08:56:53.490Z,register_staff,monkum002,fullName=Montilalai kumwung 
+12,2025-12-27T08:57:31.499Z,login_ok,monkum001,role=staff
+13,2025-12-27T08:59:03.674Z,register_staff,chajai002,fullName=Chanon Jaimool
+14,2025-12-27T08:59:30.061Z,login_ok,chajai002,role=staff
+15,2025-12-27T09:03:50.193Z,login_ok,chajai002,role=staff
+16,2025-12-27T09:05:01.377Z,login_ok,chajai001,role=manager
+48,2025-12-27T09:19:39.222Z,book_shift,chajai002,2025-12-27 open
+49,2025-12-27T09:20:54.242Z,manager_set_shift,chajai001,for chajai002 on 2025-12-22
+50,2025-12-27T09:21:00.298Z,manager_delete_shift,chajai001,for chajai002 on 2025-12-22
+51,2025-12-27T09:21:36.191Z,book_shift,chajai002,2025-12-23 dinner
+52,2025-12-27T12:36:08.945Z,login_ok,admin,role=admin
+53,2025-12-27T12:36:29.546Z,login_ok,manager,role=manager
+54,2025-12-27T12:36:48.877Z,login_ok,admin,role=admin
+55,2025-12-27T12:41:57.724Z,login_ok,admin,role=admin
+56,2025-12-27T12:42:09.669Z,login_ok,admin,role=admin
+57,2025-12-27T12:49:49.377Z,login_ok,admin,role=admin
+58,2025-12-27T12:50:09.252Z,login_ok,admin,role=admin
+59,2025-12-27T12:51:37.302Z,login_ok,admin,role=admin
+60,2025-12-27T12:52:48.154Z,login_ok,admin,role=admin
+61,2025-12-27T13:02:31.201Z,login_ok,manager,role=manager
+62,2025-12-27T13:02:31.204Z,login_ok,manager,role=manager
+63,2025-12-27T13:02:31.204Z,login_ok,manager,role=manager
+64,2025-12-27T13:02:31.205Z,login_ok,manager,role=manager
+65,2025-12-27T13:02:31.205Z,login_ok,manager,role=manager
+66,2025-12-27T13:02:31.206Z,login_ok,manager,role=manager
+67,2025-12-27T13:02:31.390Z,login_ok,manager,role=manager
+68,2025-12-27T13:02:31.413Z,login_ok,manager,role=manager
+69,2025-12-27T13:02:31.420Z,login_ok,manager,role=manager
+70,2025-12-27T13:02:31.427Z,login_ok,manager,role=manager
+71,2025-12-27T13:02:31.430Z,login_ok,manager,role=manager
+72,2025-12-27T13:02:31.436Z,login_ok,manager,role=manager
+73,2025-12-27T13:02:31.580Z,login_ok,manager,role=manager
+74,2025-12-27T13:02:31.609Z,login_ok,manager,role=manager
+75,2025-12-27T13:02:31.619Z,login_ok,manager,role=manager
+76,2025-12-27T13:02:31.641Z,login_ok,manager,role=manager
+77,2025-12-27T13:02:31.643Z,login_ok,manager,role=manager
+78,2025-12-27T13:02:31.662Z,login_ok,manager,role=manager
+79,2025-12-27T13:02:31.754Z,login_ok,manager,role=manager
+80,2025-12-27T13:02:31.789Z,login_ok,manager,role=manager
+81,2025-12-27T13:02:31.791Z,login_ok,manager,role=manager
+82,2025-12-27T13:02:31.810Z,login_ok,manager,role=manager
+83,2025-12-27T13:02:31.832Z,login_ok,manager,role=manager
+84,2025-12-27T13:02:31.901Z,login_ok,manager,role=manager
+85,2025-12-27T13:02:31.928Z,login_ok,manager,role=manager
+86,2025-12-27T13:02:31.980Z,login_ok,manager,role=manager
+87,2025-12-27T13:02:31.984Z,login_ok,manager,role=manager
+88,2025-12-27T13:02:31.994Z,login_ok,manager,role=manager
+89,2025-12-27T13:02:32.014Z,login_ok,manager,role=manager
+90,2025-12-27T13:02:32.091Z,login_ok,manager,role=manager
+91,2025-12-27T13:02:32.109Z,login_ok,manager,role=manager
+92,2025-12-27T13:02:32.160Z,login_ok,manager,role=manager
+93,2025-12-27T13:02:32.190Z,login_ok,manager,role=manager
+94,2025-12-27T13:02:32.197Z,login_ok,manager,role=manager
+95,2025-12-27T13:02:32.201Z,login_ok,manager,role=manager
+96,2025-12-27T13:02:32.255Z,login_ok,manager,role=manager
+97,2025-12-27T13:02:32.313Z,login_ok,manager,role=manager
+98,2025-12-27T13:02:32.333Z,login_ok,manager,role=manager
+99,2025-12-27T13:02:32.370Z,login_ok,manager,role=manager
+100,2025-12-27T13:02:32.372Z,login_ok,manager,role=manager
+101,2025-12-27T13:02:32.395Z,login_ok,manager,role=manager
+102,2025-12-27T13:02:32.427Z,login_ok,manager,role=manager
+103,2025-12-27T13:02:32.500Z,login_ok,manager,role=manager
+104,2025-12-27T13:02:32.523Z,login_ok,manager,role=manager
+105,2025-12-27T13:02:32.545Z,login_ok,manager,role=manager
+106,2025-12-27T13:02:32.548Z,login_ok,manager,role=manager
+107,2025-12-27T13:02:32.562Z,login_ok,manager,role=manager
+108,2025-12-27T13:02:32.596Z,login_ok,manager,role=manager
+109,2025-12-27T13:02:32.669Z,login_ok,manager,role=manager
+110,2025-12-27T13:02:32.710Z,login_ok,manager,role=manager
+111,2025-12-27T13:02:32.737Z,login_ok,manager,role=manager
+112,2025-12-27T13:02:32.741Z,login_ok,manager,role=manager
+113,2025-12-27T13:02:32.755Z,login_ok,manager,role=manager
+114,2025-12-27T18:27:34.394Z,login_ok,admin,role=admin
+115,2025-12-27T18:48:58.372Z,setup_create_staff,system,staff created
+116,2025-12-27T18:48:58.388Z,setup_ok,system,setup completed
+117,2025-12-27T18:49:18.058Z,login_ok,staff,role=staff
+118,2025-12-27T18:49:27.324Z,login_ok,manager,role=manager
+119,2025-12-27T18:50:55.775Z,login_ok,staff,role=staff
+120,2025-12-27T18:58:16.482Z,book_shift,staff,2025-12-22 open
+121,2025-12-27T18:58:21.923Z,book_shift,staff,2025-12-23 open
+122,2025-12-27T18:58:27.810Z,book_shift,staff,2025-12-24 open
+123,2025-12-27T19:06:09.985Z,login_ok,staff,role=staff
+124,2025-12-27T19:06:36.799Z,login_ok,manager,role=manager
+125,2025-12-27T20:01:54.471Z,login_ok,staff,role=staff
+126,2025-12-27T20:08:05.394Z,register_staff,kanmun001,fullName=Kanapat Munngmatcha
+127,2025-12-27T20:09:02.470Z,login_ok,chajai001,role=manager
+128,2025-12-27T20:14:46.173Z,book_shift,staff,2025-12-22 dinner
+129,2025-12-27T20:47:37.149Z,login_ok,kanmun001,role=staff
+130,2025-12-27T20:49:39.250Z,book_shift,kanmun001,2025-12-29 late
+131,2025-12-27T20:49:50.055Z,book_shift,kanmun001,2025-12-30 late
+132,2025-12-27T21:28:56.758Z,login_ok,admin,role=admin
+133,2025-12-27T21:29:38.352Z,login_ok,chajai001,role=manager
+134,2025-12-27T21:32:14.700Z,manager_delete_shift,admin,for chajai002 on 2025-12-23
+135,2025-12-27T21:32:18.245Z,manager_delete_shift,admin,for chajai002 on 2025-12-27
+136,2025-12-27T21:32:24.916Z,manager_delete_shift,admin,for staff on 2025-12-22
+137,2025-12-27T21:32:27.970Z,manager_delete_shift,admin,for staff on 2025-12-23
+138,2025-12-27T23:34:46.859Z,login_ok,staff,role=staff
+139,2025-12-27T23:40:28.677Z,login_ok,staff,role=staff
+140,2025-12-28T00:59:05.781Z,login_ok,manager,role=manager
+141,2025-12-28T00:59:14.064Z,update_settings,manager,"{""capacity"":{""capacity"":{""open"":3,""lunch"":4,""dinner"":3,""late"":3},""lockTimePeriod"":true}}"
+142,2025-12-28T00:59:50.032Z,update_settings,manager,"{""capacity"":{""capacity"":{""open"":3,""lunch"":4,""dinner"":3,""late"":3},""lockTimePeriod"":true}}"
+143,2025-12-28T01:00:06.669Z,login_ok,chajai001,role=manager
+144,2025-12-28T01:53:11.634Z,login_ok,manager,role=manager
+145,2025-12-28T01:53:36.170Z,update_user_status,manager,set monkum001 active=0
+146,2025-12-28T01:54:04.426Z,login_ok,chajai001,role=manager
+147,2025-12-28T01:54:26.561Z,update_user_status,chajai001,set staff active=0
+148,2025-12-28T10:07:25.498Z,login_ok,chajai001,role=manager
+149,2025-12-28T10:07:59.347Z,update_user_status,chajai001,set chajai002 active=0
+150,2025-12-28T10:55:07.778Z,login_ok,manager,role=manager
+151,2025-12-28T10:59:18.153Z,login_ok,admin,role=admin
+152,2025-12-28T11:05:32.239Z,login_ok,admin,role=admin
+153,2025-12-28T11:07:11.648Z,login_ok,admin,role=admin
+154,2025-12-28T11:51:09.888Z,login_ok,admin,role=admin
+155,2025-12-28T13:23:28.973Z,login_ok,chajai001,role=manager
+156,2025-12-28T17:47:30.299Z,login_ok,chajai001,role=manager
+157,2025-12-28T18:29:44.245Z,login_ok,manager,role=manager
+158,2025-12-28T18:30:11.848Z,complete_profile,manager,"nickName=Developer, phone=0946389318, email=bk1040@minorfood.com"
+159,2025-12-28T18:40:47.959Z,login_ok,manager,role=manager
+192,2025-12-28T19:45:11.061Z,login_ok,admin,role=admin
+193,2025-12-28T19:45:48.651Z,complete_profile,admin,"nickName=Admin, phone=0946389318, email=bk1040@minor.com"
+194,2025-12-28T20:35:20.639Z,update_user_role,admin,set chajai001 role=manager position=shift_manager
+195,2025-12-28T22:34:58.799Z,update_user_status,admin,set kanmun001 active=0
+196,2025-12-28T22:34:59.827Z,update_user_status,admin,set chajai001 active=0
+197,2025-12-29T02:17:24.967Z,login_ok,manager,role=manager
+198,2025-12-29T05:05:35.259Z,login_ok,phusanisa.k,role=staff
+199,2025-12-29T05:05:36.197Z,login_ok,pitak.k,role=staff
+200,2025-12-29T05:06:26.615Z,complete_profile,phusanisa.k,"nickName=น้องหมีพูคนสวย, phone=0877204459, email=phu.10march@gmail.com"
+201,2025-12-29T05:07:18.577Z,force_change_password,phusanisa.k,first-time password updated
+202,2025-12-29T05:07:49.694Z,login_ok,manager,role=manager
+203,2025-12-29T05:08:25.531Z,login_ok,manager,role=manager
+204,2025-12-29T05:08:34.425Z,update_user_status,manager,set staff active=1
+205,2025-12-29T05:09:00.376Z,book_shift,phusanisa.k,2025-12-23 open
+206,2025-12-29T05:09:55.935Z,book_shift,phusanisa.k,2025-12-30 open
+207,2025-12-29T05:10:06.199Z,login_ok,admin,role=admin
+208,2025-12-29T05:10:51.325Z,update_user_status,admin,set chajai002 active=1
+209,2025-12-29T05:10:57.440Z,update_user_status,admin,set monkum001 active=1
+210,2025-12-29T09:20:41.148Z,login_ok,admin,role=admin
+211,2025-12-29T12:53:36.218Z,login_ok,staff,role=staff
+212,2025-12-29T12:53:49.760Z,complete_profile,staff,"nickName=Ake, phone=0946389318, email=chanonjaimool@gmail.com"
+213,2025-12-29T12:54:07.567Z,login_ok,manager,role=manager
+214,2025-12-29T20:44:30.001Z,register_manager,chajai003,"fullName=Chanon Jaimool, position=store_manager"
+215,2025-12-29T20:44:43.184Z,login_ok,chajai003,role=manager
+216,2025-12-29T20:44:57.601Z,complete_profile,chajai003,"nickName=Ake, phone=0946389318, email=meta0012@gmail.com"
+217,2025-12-29T22:52:24.673Z,login_ok,admin,role=admin
+218,2025-12-30T09:16:30.424Z,login_ok,chajai003,role=manager
+219,2025-12-30T09:18:30.920Z,login_ok,staff,role=staff
+220,2025-12-30T09:27:46.552Z,manager_set_shift,chajai003,for arthit.s on 2025-12-31
+221,2025-12-30T09:28:02.824Z,manager_set_shift,chajai003,for adisorn.n on 2025-12-31
+222,2025-12-30T09:32:47.114Z,login_ok,chajai003,role=manager
+223,2025-12-30T09:34:11.021Z,manager_set_shift,chajai003,for sunaree.m on 2025-12-31
+224,2025-12-30T09:34:23.122Z,manager_set_shift,chajai003,for sarawut.k on 2025-12-31
+225,2025-12-30T09:38:05.234Z,manager_set_shift,chajai003,for pitak.k on 2025-12-31
+226,2025-12-30T09:42:36.841Z,manager_set_shift,chajai003,for paisit.k on 2025-12-31
+227,2025-12-30T09:44:17.461Z,manager_set_shift,chajai003,for phongphat.s on 2025-12-31
+228,2025-12-30T09:44:17.490Z,manager_set_shift,chajai003,for phongphat.s on 2025-12-31
+229,2025-12-30T09:44:33.133Z,manager_set_shift,chajai003,for thepthakun.s on 2025-12-31
+230,2025-12-30T09:44:40.370Z,manager_set_shift,chajai003,for nattarika.j on 2025-12-31
+231,2025-12-30T09:44:54.158Z,manager_set_shift,chajai003,for kanapat.m on 2025-12-31
+232,2025-12-30T09:50:11.341Z,manager_update_shift,chajai003,shiftId=13
+233,2025-12-30T09:50:42.204Z,manager_delete_shift_by_id,chajai003,shiftId=10
+234,2025-12-30T09:51:08.391Z,manager_update_shift,chajai003,shiftId=13
+235,2025-12-30T09:51:09.334Z,manager_update_shift,chajai003,shiftId=13
+236,2025-12-30T09:58:49.011Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-01
+237,2025-12-30T09:58:49.705Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-01
+238,2025-12-30T10:00:35.889Z,login_ok,chajai003,role=manager
+239,2025-12-30T10:01:15.892Z,manager_set_shift,chajai003,for thepthakun.s on 2026-01-01
+240,2025-12-30T10:01:28.937Z,manager_set_shift,chajai003,for phongphat.s on 2026-01-01
+241,2025-12-30T10:01:52.160Z,manager_set_shift,chajai003,for pitak.k on 2026-01-01
+242,2025-12-30T10:02:03.389Z,manager_set_shift,chajai003,for sarawut.k on 2026-01-01
+243,2025-12-30T10:02:26.027Z,manager_set_shift,chajai003,for arthit.s on 2026-01-01
+244,2025-12-30T10:02:36.846Z,manager_set_shift,chajai003,for nattarika.j on 2026-01-01
+245,2025-12-30T10:03:04.488Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-01
+246,2025-12-30T10:03:20.745Z,manager_set_shift,chajai003,for paisit.k on 2026-01-01
+247,2025-12-30T10:05:15.827Z,manager_update_shift,chajai003,shiftId=11
+248,2025-12-30T15:38:20.019Z,login_ok,chajai003,role=manager
+249,2025-12-30T15:42:31.496Z,login_ok,chajai003,role=manager
+250,2025-12-30T15:44:53.137Z,login_ok,chajai003,role=manager
+251,2025-12-30T15:56:51.108Z,login_ok,paisit.k,role=staff
+252,2025-12-30T15:57:42.049Z,complete_profile,paisit.k,"nickName=M, phone=0614050827, email=mslazkung51@gmail.com"
+253,2025-12-30T15:57:57.152Z,force_change_password,paisit.k,first-time password updated
+254,2025-12-30T16:00:41.591Z,manager_delete_shift_by_id,chajai003,shiftId=29
+255,2025-12-30T19:47:42.881Z,login_ok,chajai003,role=manager
+256,2025-12-30T20:32:15.075Z,login_ok,chajai003,role=manager
+257,2025-12-30T20:36:15.707Z,login_ok,chajai003,role=manager
+258,2025-12-30T21:23:11.057Z,register_manager,wasson001,"fullName=Washiraphan Na Songkhla, position=store_manager"
+259,2025-12-30T22:06:28.071Z,register_staff,phopho001,fullName=Phongsathon Phoreung
+260,2025-12-30T22:08:01.999Z,register_manager,bookon001,"fullName=Boonyisa Kongboon, position=store_manager"
+261,2025-12-30T22:08:36.507Z,register_manager,phopho002,"fullName=Phongsathon Phoreung, position=store_manager"
+262,2025-12-30T22:13:17.060Z,login_ok,chajai003,role=manager
+263,2025-12-30T22:51:19.649Z,login_ok,thepthakun.s,role=staff
+264,2025-12-30T22:52:56.962Z,login_ok,sunaree.m,role=staff
+265,2025-12-30T22:52:58.759Z,complete_profile,thepthakun.s,"nickName=เทพ, phone=0935920947, email=thethakur@gmail.com"
+266,2025-12-30T22:53:24.429Z,force_change_password,thepthakun.s,first-time password updated
+267,2025-12-30T22:54:54.925Z,complete_profile,sunaree.m,"nickName=Na, phone=0927839639, email=sriphasunari7@gmail.com"
+268,2025-12-30T22:56:01.973Z,force_change_password,sunaree.m,first-time password updated
+269,2025-12-30T23:22:47.135Z,login_ok,chajai003,role=manager
+270,2025-12-30T23:24:00.045Z,login_ok,thepthakun.s,role=staff
+271,2025-12-30T23:26:47.245Z,login_ok,thepthakun.s,role=staff
+272,2025-12-30T23:35:35.638Z,update_store_settings,chajai003,settings updated
+273,2025-12-31T00:27:51.508Z,login_ok,chajai003,role=manager
+274,2025-12-31T01:40:46.727Z,login_ok,kanapat.m,role=staff
+275,2025-12-31T01:41:11.390Z,complete_profile,kanapat.m,"nickName=khunphathn37@gmail.com, phone=0845076738, email=khunphathn37@gmail.com"
+276,2025-12-31T01:41:26.470Z,force_change_password,kanapat.m,first-time password updated
+277,2025-12-31T02:54:43.226Z,manager_set_shift,chajai003,for arthit.s on 2026-01-02
+278,2025-12-31T03:10:27.315Z,manager_update_shift,chajai003,shiftId=27
+279,2025-12-31T03:11:07.141Z,delete_user,chajai003,deleted chajai002
+280,2025-12-31T03:11:18.958Z,resign_user,chajai003,marked monkum001 as resigned
+281,2025-12-31T03:12:11.597Z,delete_user,chajai003,deleted akkapol.k
+282,2025-12-31T03:12:22.467Z,update_user_status,chajai003,set kanmun001 active=1
+283,2025-12-31T03:12:30.112Z,delete_user,chajai003,deleted kanmun001
+284,2025-12-31T03:12:43.245Z,delete_user,chajai003,deleted monkum001
+285,2025-12-31T03:13:01.875Z,update_user_role,chajai003,set bookon001 role=manager position=shift_manager
+286,2025-12-31T03:13:07.837Z,update_user_role,chajai003,set wasson001 role=manager position=management_trainee
+287,2025-12-31T03:14:11.297Z,delete_user,chajai003,deleted staff
+288,2025-12-31T03:15:20.132Z,delete_user,chajai003,deleted phopho001
+289,2025-12-31T03:15:58.437Z,manager_delete_shift_by_id,chajai003,shiftId=8
+290,2025-12-31T03:16:35.435Z,manager_update_shift,chajai003,shiftId=26
+291,2025-12-31T03:17:14.239Z,manager_update_shift,chajai003,shiftId=13
+292,2025-12-31T03:24:44.310Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-02
+293,2025-12-31T03:32:39.029Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-03
+294,2025-12-31T03:32:39.247Z,manager_delete_shift_by_id,chajai003,shiftId=31
+295,2025-12-31T03:32:42.323Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-02
+296,2025-12-31T03:32:42.538Z,manager_delete_shift_by_id,chajai003,shiftId=32
+297,2025-12-31T03:32:45.363Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-03
+298,2025-12-31T03:32:47.720Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-04
+299,2025-12-31T03:32:49.413Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-05
+300,2025-12-31T03:34:50.265Z,manager_set_shift,chajai003,for adisorn.n on 2025-12-30
+301,2025-12-31T03:35:06.660Z,manager_set_shift,chajai003,for pitak.k on 2026-01-02
+302,2025-12-31T03:35:27.965Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-02
+303,2025-12-31T03:35:29.513Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-03
+304,2025-12-31T03:35:31.190Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-04
+305,2025-12-31T03:35:32.941Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-05
+306,2025-12-31T03:35:38.007Z,manager_set_shift,chajai003,for phongphat.s on 2026-01-02
+307,2025-12-31T06:03:51.670Z,login_ok,chajai003,role=manager
+308,2025-12-31T06:07:28.156Z,login_ok,kidsada.b,role=staff
+309,2025-12-31T06:08:38.229Z,complete_profile,kidsada.b,"nickName=Dew, phone=0939246093, email=yusonanii@gmail.com"
+310,2025-12-31T06:08:55.315Z,force_change_password,kidsada.b,first-time password updated
+311,2025-12-31T06:16:54.376Z,setup_create_staff,system,staff created
+312,2025-12-31T06:16:54.384Z,setup_create_devstaff,system,developer staff created
+313,2025-12-31T06:16:54.387Z,setup_ok,system,setup completed
+314,2025-12-31T06:18:00.489Z,login_ok,staff,role=staff
+315,2025-12-31T06:18:47.096Z,complete_profile,staff,"nickName=Staff Devloper, phone=-, email=meta0012@gmail.com"
+316,2025-12-31T14:23:55.069Z,login_ok,chajai003,role=manager
+317,2025-12-31T14:43:26.148Z,save_daily_targets,chajai003,count=31
+318,2025-12-31T14:47:18.166Z,save_daily_targets,chajai003,count=31
+319,2025-12-31T16:06:10.183Z,login_ok,pitak.k,role=staff
+320,2025-12-31T16:06:44.554Z,complete_profile,pitak.k,"nickName=Typoon, phone=0807061905, email=pituk.kongsin2549@gmail.comp"
+321,2025-12-31T16:12:11.201Z,force_change_password,pitak.k,first-time password updated
+322,2025-12-31T16:13:13.758Z,book_shift,pitak.k,2026-01-02 open
+323,2025-12-31T16:13:23.587Z,book_shift,pitak.k,2026-01-03 open
+324,2025-12-31T16:13:32.205Z,book_shift,pitak.k,2026-01-04 open
+325,2025-12-31T16:13:44.757Z,login_ok,chajai003,role=manager
+326,2025-12-31T16:14:25.371Z,book_shift,pitak.k,2026-01-04 dinner
+327,2025-12-31T16:15:12.193Z,book_shift,pitak.k,2026-01-05 open
+328,2025-12-31T17:08:46.827Z,manager_update_shift,chajai003,shiftId=45
+329,2025-12-31T18:16:27.753Z,login_ok,chajai003,role=manager
+330,2025-12-31T18:25:41.967Z,login_ok,phopho002,role=manager
+331,2025-12-31T18:25:53.030Z,login_ok,phopho002,role=manager
+332,2025-12-31T21:36:25.255Z,complete_profile,phopho002,"nickName=Night , phone=0909048080, email=bk1040@minorfood.com"
+333,2025-12-31T21:41:05.183Z,save_daily_targets,chajai003,count=31
+334,2025-12-31T21:41:11.429Z,save_daily_targets,chajai003,count=31
+335,2025-12-31T21:41:32.684Z,login_ok,chajai003,role=manager
+336,2025-12-31T21:47:52.052Z,login_ok,chajai003,role=manager
+337,2025-12-31T21:48:32.350Z,login_ok,chajai003,role=manager
+338,2025-12-31T21:49:29.967Z,login_ok,staff,role=staff
+339,2025-12-31T21:54:49.905Z,login_ok,staff,role=staff
+340,2025-12-31T22:27:35.377Z,login_ok,staff,role=staff
+341,2025-12-31T22:30:11.027Z,login_ok,staff,role=staff
+342,2025-12-31T22:30:30.177Z,login_ok,staff,role=staff
+343,2025-12-31T22:52:02.672Z,login_ok,chajai003,role=manager
+344,2025-12-31T23:16:05.984Z,login_ok,staff,role=staff
+345,2025-12-31T23:45:48.631Z,login_ok,chajai003,role=manager
+346,2026-01-01T00:37:50.130Z,login_ok,chajai003,role=manager
+347,2026-01-01T00:55:59.145Z,login_ok,chajai003,role=manager
+348,2026-01-01T01:55:04.049Z,login_ok,chajai003,role=manager
+349,2026-01-01T01:59:36.485Z,login_ok,chajai003,role=manager
+350,2026-01-01T02:02:15.436Z,manager_set_shift,chajai003,for thepthakun.s on 2026-01-02
+351,2026-01-01T02:02:29.729Z,manager_delete_shift_by_id,chajai003,shiftId=47
+352,2026-01-01T02:02:59.986Z,manager_delete_shift_by_id,chajai003,shiftId=30
+353,2026-01-01T02:03:03.241Z,manager_set_shift,chajai003,for arthit.s on 2026-01-02
+354,2026-01-01T02:03:05.423Z,manager_set_shift,chajai003,for arthit.s on 2026-01-03
+355,2026-01-01T02:03:44.000Z,manager_update_shift,chajai003,shiftId=19
+356,2026-01-01T02:03:51.239Z,manager_set_shift,chajai003,for nattarika.j on 2026-01-02
+357,2026-01-01T02:07:26.385Z,manager_delete_shift_by_id,chajai003,shiftId=25
+358,2026-01-01T02:09:30.837Z,manager_set_shift,chajai003,for paisit.k on 2026-01-02
+359,2026-01-01T02:09:43.792Z,manager_update_shift,chajai003,shiftId=24
+360,2026-01-01T02:09:55.856Z,manager_delete_shift_by_id,chajai003,shiftId=51
+361,2026-01-01T02:10:02.860Z,manager_set_shift,chajai003,for sunaree.m on 2026-01-02
+362,2026-01-01T02:10:46.122Z,manager_set_shift,chajai003,for kidsada.b on 2026-01-02
+363,2026-01-01T02:10:52.984Z,manager_set_shift,chajai003,for kidsada.b on 2026-01-03
+364,2026-01-01T02:10:55.250Z,manager_set_shift,chajai003,for kidsada.b on 2026-01-04
+365,2026-01-01T02:10:57.346Z,manager_set_shift,chajai003,for kidsada.b on 2026-01-05
+366,2026-01-01T02:13:35.166Z,manager_set_shift,chajai003,for phusanisa.k on 2026-01-03
+367,2026-01-01T02:13:48.852Z,manager_update_shift,chajai003,shiftId=49
+368,2026-01-01T02:13:55.951Z,manager_set_shift,chajai003,for phusanisa.k on 2026-01-04
+369,2026-01-01T02:14:20.931Z,manager_set_shift,chajai003,for thepthakun.s on 2026-01-02
+370,2026-01-01T02:14:22.071Z,manager_set_shift,chajai003,for phongphat.s on 2026-01-03
+371,2026-01-01T02:33:00.486Z,complete_profile,chajai003,"nickName=Chan.J, phone=0946389318, email=meta0012@gmail.com"
+372,2026-01-01T02:34:00.816Z,login_ok,chajai003,role=manager
+373,2026-01-01T02:38:13.220Z,login_ok,nattarika.j,role=staff
+374,2026-01-01T02:43:06.216Z,complete_profile,nattarika.j,"nickName=Jane, phone=0895096757, email=pakdee.jen11@gmail.com"
+375,2026-01-01T02:43:25.848Z,force_change_password,nattarika.j,first-time password updated
+376,2026-01-01T03:27:03.415Z,complete_profile,chajai003,"nickName=Chan.J, phone=0946389318, email=meta0012@gmail.com"
+377,2026-01-01T03:58:15.959Z,login_ok,chajai003,role=manager
+378,2026-01-01T04:02:06.483Z,update_store_settings,chajai003,settings updated
+379,2026-01-01T04:04:09.067Z,login_ok,chajai003,role=manager
+380,2026-01-01T04:55:10.208Z,login_ok,chajai003,role=manager
+381,2026-01-01T18:39:47.250Z,login_ok,chajai003,role=manager
+382,2026-01-01T21:00:47.843Z,login_ok,chajai003,role=manager
+383,2026-01-01T21:02:13.949Z,save_daily_targets,chajai003,count=31
+384,2026-01-01T21:29:39.968Z,manager_set_shift,chajai003,for thepthakun.s on 2026-01-03
+385,2026-01-01T21:29:48.094Z,manager_set_shift,chajai003,for phongphat.s on 2026-01-04
+386,2026-01-01T21:30:22.831Z,manager_update_shift,chajai003,shiftId=40
+387,2026-01-01T21:30:23.262Z,manager_update_shift,chajai003,shiftId=40
+388,2026-01-01T21:30:56.054Z,manager_update_shift,chajai003,shiftId=49
+389,2026-01-01T21:30:56.525Z,manager_update_shift,chajai003,shiftId=49
+390,2026-01-01T21:31:11.269Z,manager_update_shift,chajai003,shiftId=40
+391,2026-01-01T21:31:42.342Z,manager_update_shift,chajai003,shiftId=39
+392,2026-01-01T21:33:16.852Z,manager_delete_shift_by_id,chajai003,shiftId=53
+393,2026-01-02T00:28:25.379Z,login_ok,manager,role=manager
+394,2026-01-02T00:28:55.044Z,manager_update_shift,manager,shiftId=44
+395,2026-01-02T00:30:57.197Z,dev_reset_password,manager,user=pitak.k
+396,2026-01-02T00:32:09.917Z,update_user_role,manager,set pitak.k role=staff position=service_staff
+397,2026-01-02T00:32:17.755Z,delete_user,manager,deleted pitak.k
+398,2026-01-02T02:39:59.259Z,login_ok,manager,role=manager
+399,2026-01-02T04:10:34.907Z,register_staff,pitkon001,fullName=Pitak Kongsin
+400,2026-01-02T04:12:26.778Z,login_ok,chajai003,role=manager
+401,2026-01-02T04:14:10.494Z,login_ok,chajai003,role=manager
+402,2026-01-02T10:56:08.049Z,login_ok,chajai003,role=manager
+403,2026-01-02T11:20:51.235Z,login_ok,chajai003,role=manager
+404,2026-01-02T11:21:15.998Z,login_ok,chajai003,role=manager
+405,2026-01-02T11:28:02.029Z,dev_execute_query,chajai003,SELECT * FROM users LIMIT 10
+406,2026-01-02T11:28:16.036Z,dev_execute_query,chajai003,SELECT * FROM users LIMIT 20
+407,2026-01-02T14:54:42.921Z,login_ok,athat.n,role=staff
+408,2026-01-02T14:56:46.943Z,complete_profile,athat.n,"nickName=ต้า, phone=0641644816, email=a.tuch4816@gmail.conm"
+409,2026-01-02T14:58:16.680Z,force_change_password,athat.n,first-time password updated
+410,2026-01-02T15:03:08.135Z,book_shift,athat.n,2026-01-04 open
+411,2026-01-02T15:06:34.419Z,manager_delete_shift,chajai003,for athat.n on 2026-01-04
+412,2026-01-02T15:15:21.802Z,save_daily_targets,chajai003,count=31
+413,2026-01-02T15:34:51.604Z,update_user_status,chajai003,set chajai001 active=1
+414,2026-01-02T15:34:55.636Z,update_user_status,chajai003,set chajai001 active=0
+415,2026-01-02T15:36:32.689Z,login_ok,athat.n,role=staff
+416,2026-01-02T16:19:25.746Z,login_ok,pitkon001,role=staff
+417,2026-01-02T16:19:41.808Z,complete_profile,pitkon001,"nickName=Typoon, phone=0807061908, email=Pituk.kongsin2549@gmail.com"
+418,2026-01-02T16:20:26.457Z,book_shift,pitkon001,2026-01-04 lunch
+419,2026-01-02T16:21:39.743Z,book_shift,pitkon001,2026-01-05 swing
+420,2026-01-02T16:24:39.154Z,book_shift,pitkon001,2026-01-08 dinner
+421,2026-01-02T16:24:46.848Z,book_shift,pitkon001,2026-01-09 open
+422,2026-01-02T16:24:54.820Z,book_shift,pitkon001,2026-01-10 open
+423,2026-01-02T16:25:30.031Z,book_shift,pitkon001,2026-01-11 dinner
+424,2026-01-02T16:25:39.874Z,book_shift,pitkon001,2026-01-12 open
+425,2026-01-02T16:26:48.653Z,book_shift,pitkon001,2026-01-05 open
+426,2026-01-02T16:27:56.139Z,book_shift,pitkon001,2026-01-08 dinner
+427,2026-01-02T16:28:06.598Z,book_shift,pitkon001,2026-01-09 open
+428,2026-01-02T16:28:13.918Z,book_shift,pitkon001,2026-01-10 open
+429,2026-01-02T16:28:31.702Z,book_shift,pitkon001,2026-01-11 dinner
+430,2026-01-02T16:28:38.378Z,book_shift,pitkon001,2026-01-12 open
+431,2026-01-03T18:28:47.023Z,login_ok,manager,role=manager
+432,2026-01-03T18:34:27.797Z,login_ok,staff,role=staff
+433,2026-01-03T19:44:21.866Z,login_ok,chajai003,role=manager
+434,2026-01-03T19:45:45.187Z,save_daily_targets,chajai003,count=31
+435,2026-01-03T20:02:19.895Z,login_ok,chajai003,role=manager
+436,2026-01-03T20:09:12.955Z,save_daily_targets,chajai003,count=31
+437,2026-01-03T20:10:05.552Z,create_sales_report,chajai003,date=2026-01-01
+438,2026-01-03T20:11:35.771Z,create_sales_report,chajai003,date=2026-01-02
+439,2026-01-03T20:11:50.953Z,save_daily_targets,chajai003,count=31
+440,2026-01-03T20:41:17.992Z,login_ok,chajai003,role=manager
+441,2026-01-03T20:46:34.632Z,update_settings,chajai003,"{""maintenance"":{""enabled"":true,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+442,2026-01-03T20:51:26.354Z,dev_update_profile,chajai003,"user=arthit.s updates={""fullName"":""Arthit Satimai"",""fullNameTh"":""อาทิตย์ สาทิไหม"",""nickName"":""Sun"",""phone"":"""",""email"":"""",""active"":1}"
+443,2026-01-03T20:51:38.781Z,dev_update_profile,chajai003,"user=arthit.s updates={""fullName"":""Arthit Satimai"",""fullNameTh"":""อาทิตย์ สติใหม่"",""nickName"":""Sun"",""phone"":"""",""email"":"""",""active"":1}"
+444,2026-01-03T20:51:46.634Z,login_ok,chajai003,role=manager
+445,2026-01-03T20:52:15.065Z,dev_update_profile,chajai003,"user=adisorn.n updates={""fullName"":""Adisorn Nasa"",""fullNameTh"":""อดิศร นาสา"",""nickName"":""Tan"",""phone"":"""",""email"":"""",""active"":1}"
+446,2026-01-03T20:52:28.447Z,dev_update_profile,chajai003,"user=sarawut.k updates={""fullName"":""Sarawut Kengkaj"",""fullNameTh"":""สราวุฒ เก่งกาจ"",""nickName"":""Nat"",""phone"":"""",""email"":"""",""active"":1}"
+447,2026-01-03T20:52:39.418Z,dev_update_profile,chajai003,"user=wafah.p updates={""fullName"":""Wafah Promchuai"",""fullNameTh"":""วาฟะห์ พรหมช่วย"",""nickName"":""Wawa"",""phone"":"""",""email"":"""",""active"":1}"
+448,2026-01-03T20:52:47.492Z,dev_update_profile,chajai003,"user=bookon001 updates={""fullName"":""Boonyisa Kongboon"",""fullNameTh"":"""",""nickName"":""Yo"",""phone"":"""",""email"":"""",""active"":1}"
+508,2026-01-06T06:42:55.185Z,delete_sales_report,chajai003,id=13
+449,2026-01-03T20:52:57.416Z,dev_update_profile,chajai003,"user=chajai003 updates={""fullName"":""Chanon Jaimool"",""fullNameTh"":"""",""nickName"":""Ake"",""phone"":""0946389318"",""email"":""meta0012@gmail.com"",""active"":1}"
+450,2026-01-03T20:54:09.779Z,dev_update_profile,chajai003,"user=athat.n updates={""fullName"":""Athat Naknava"",""fullNameTh"":""เอธัส นาคนาวา"",""nickName"":""ต้า"",""phone"":""0641644816"",""email"":""a.tuch4816@gmail.conm"",""active"":1}"
+451,2026-01-03T20:54:16.220Z,dev_update_profile,chajai003,"user=pornnipa.n updates={""fullName"":""Pornnipa Nonsila"",""fullNameTh"":""พรนิภา โนนศิลา"",""nickName"":""อาย"",""phone"":"""",""email"":"""",""active"":1}"
+452,2026-01-03T20:54:22.654Z,dev_update_profile,chajai003,"user=sunaree.m updates={""fullName"":""Sunaree Moungkroun"",""fullNameTh"":""สุนารี ม่วงครวญ"",""nickName"":""ป้านา"",""phone"":""0927839639"",""email"":""sriphasunari7@gmail.com"",""active"":1}"
+453,2026-01-03T20:54:27.645Z,dev_update_profile,chajai003,"user=sunaree.m updates={""fullName"":""Sunaree Moungkroun"",""fullNameTh"":""สุนารี ม่วงครวญ"",""nickName"":""นา"",""phone"":""0927839639"",""email"":""sriphasunari7@gmail.com"",""active"":1}"
+454,2026-01-03T20:54:44.014Z,dev_update_profile,chajai003,"user=pornnipa.n updates={""fullName"":""Pornnipa Nonsila"",""fullNameTh"":""พรนิภา โนนศิลา"",""nickName"":""Aye"",""phone"":"""",""email"":"""",""active"":1}"
+455,2026-01-03T20:55:16.284Z,dev_update_profile,chajai003,"user=athat.n updates={""fullName"":""Athat Naknava"",""fullNameTh"":""เอธัส นาคนาวา"",""nickName"":""Guitar"",""phone"":""0641644816"",""email"":""a.tuch4816@gmail.conm"",""active"":1}"
+456,2026-01-03T20:56:18.581Z,dev_update_profile,chajai003,"user=yossanan.t updates={""fullName"":""Yossanan Tiyasuksawad"",""fullNameTh"":""ยศนันท์ ดียะสุขศวัสดิ์"",""nickName"":""Leo"",""phone"":"""",""email"":"""",""active"":1}"
+457,2026-01-03T20:56:28.473Z,dev_update_profile,chajai003,"user=phusanisa.k updates={""fullName"":""Phusanisa Khonghom"",""fullNameTh"":""ภูษณิศา คงหอม"",""nickName"":""Winnie"",""phone"":""0877204459"",""email"":""phu.10march@gmail.com"",""active"":1}"
+458,2026-01-03T20:56:35.970Z,dev_update_profile,chajai003,"user=thepthakun.s updates={""fullName"":""Thepthakun Saesong"",""fullNameTh"":""เทพฐากูร แซ่ซ้ง"",""nickName"":""Thep"",""phone"":""0935920947"",""email"":""thethakur@gmail.com"",""active"":1}"
+459,2026-01-03T20:56:48.218Z,dev_update_profile,chajai003,"user=sunaree.m updates={""fullName"":""Sunaree Moungkroun"",""fullNameTh"":""สุนารี ม่วงครวญ"",""nickName"":""Na"",""phone"":""0927839639"",""email"":""sriphasunari7@gmail.com"",""active"":1}"
+460,2026-01-03T20:57:29.415Z,dev_update_profile,chajai003,"user=phongphat.s updates={""fullName"":""Phongphat Saengrakkhrongsiri"",""fullNameTh"":""พงศ์พัทธ์ แสงจักรจงศิริ"",""nickName"":""Gang"",""phone"":"""",""email"":"""",""active"":1}"
+461,2026-01-03T21:01:49.447Z,save_daily_targets,chajai003,count=31
+462,2026-01-03T21:02:30.497Z,create_sales_report,chajai003,date=2026-01-03
+463,2026-01-03T21:03:42.233Z,create_sales_report,chajai003,date=2026-01-03
+464,2026-01-03T21:04:11.844Z,login_ok,chajai003,role=manager
+465,2026-01-03T21:08:54.714Z,create_sales_report,chajai003,date=2026-01-03
+466,2026-01-03T21:23:10.203Z,delete_sales_report,chajai003,id=4
+467,2026-01-03T21:23:13.153Z,delete_sales_report,chajai003,id=5
+468,2026-01-03T21:23:17.204Z,delete_sales_report,chajai003,id=7
+469,2026-01-03T21:23:19.012Z,delete_sales_report,chajai003,id=8
+470,2026-01-03T21:23:21.843Z,delete_sales_report,chajai003,id=1
+471,2026-01-04T00:25:06.183Z,login_ok,chajai003,role=manager
+472,2026-01-04T00:26:32.319Z,login_ok,chajai003,role=manager
+473,2026-01-04T01:01:24.714Z,update_user_role,chajai003,set bookon001 role=manager position=assistant_store_manager
+474,2026-01-04T02:15:34.483Z,login_ok,chajai003,role=manager
+475,2026-01-04T03:17:01.331Z,login_ok,chajai003,role=manager
+476,2026-01-04T03:51:07.828Z,dev_reset_password,chajai003,user=bookon001
+477,2026-01-04T03:51:46.458Z,login_ok,manager,role=manager
+478,2026-01-04T03:52:07.657Z,delete_user,manager,deleted bookon001
+479,2026-01-04T03:52:44.144Z,register_manager,bookon001,"fullName=Booyisa Kongboon, position=store_manager"
+480,2026-01-04T03:52:58.293Z,login_ok,bookon001,role=manager
+481,2026-01-04T03:53:39.420Z,complete_profile,bookon001,"nickName=Yo, phone=0942514948, email=bunyisak70@gmail.com"
+482,2026-01-04T18:21:13.901Z,login_ok,chajai003,role=manager
+483,2026-01-04T18:23:05.535Z,login_ok,chajai003,role=manager
+484,2026-01-04T18:26:12.268Z,save_daily_targets,chajai003,count=31
+485,2026-01-04T18:32:11.999Z,update_store_settings,chajai003,settings updated
+486,2026-01-04T18:32:16.289Z,save_daily_targets,chajai003,count=31
+487,2026-01-04T18:35:18.707Z,save_daily_targets,chajai003,count=31
+488,2026-01-04T18:53:24.539Z,login_ok,chajai003,role=manager
+489,2026-01-04T18:53:38.719Z,save_daily_targets,chajai003,count=31
+490,2026-01-04T18:53:58.412Z,create_sales_report,chajai003,date=2026-01-03
+491,2026-01-04T18:54:12.066Z,delete_sales_report,chajai003,id=9
+492,2026-01-04T20:38:59.730Z,dev_execute_query,chajai003,SELECT * FROM users LIMIT 10
+493,2026-01-04T20:51:21.399Z,create_sales_report,chajai003,date=2026-01-04
+494,2026-01-04T20:51:43.663Z,delete_sales_report,chajai003,id=11
+495,2026-01-04T21:25:56.331Z,save_daily_targets,chajai003,count=31
+496,2026-01-04T21:26:03.061Z,save_daily_targets,chajai003,count=31
+497,2026-01-05T18:32:04.746Z,login_ok,chajai003,role=manager
+498,2026-01-05T18:32:16.242Z,login_ok,chajai003,role=manager
+499,2026-01-05T19:00:57.087Z,save_daily_targets,chajai003,count=31
+500,2026-01-05T19:01:14.860Z,save_daily_targets,chajai003,count=31
+501,2026-01-05T19:09:33.222Z,login_ok,chajai003,role=manager
+502,2026-01-05T21:52:05.773Z,login_ok,chajai003,role=manager
+503,2026-01-05T22:14:18.023Z,create_sales_report,chajai003,date=2026-01-05
+504,2026-01-06T02:12:31.473Z,login_ok,chajai003,role=manager
+505,2026-01-06T02:13:05.452Z,login_ok,chajai003,role=manager
+506,2026-01-06T03:33:43.500Z,login_ok,chajai003,role=manager
+507,2026-01-06T03:37:46.776Z,login_ok,chajai003,role=manager
+509,2026-01-06T06:43:26.418Z,save_daily_targets,chajai003,count=31
+510,2026-01-06T18:54:09.593Z,login_ok,chajai003,role=manager
+511,2026-01-06T18:59:53.500Z,save_daily_targets,chajai003,count=31
+512,2026-01-06T19:04:55.564Z,create_sales_report,chajai003,date=2026-01-06
+513,2026-01-06T19:06:03.141Z,create_sales_report,chajai003,date=2026-01-06
+514,2026-01-07T00:45:09.278Z,login_ok,chajai003,role=manager
+515,2026-01-07T00:45:22.726Z,delete_sales_report,chajai003,id=16
+516,2026-01-07T00:45:33.017Z,delete_sales_report,chajai003,id=15
+517,2026-01-07T04:25:37.984Z,login_ok,chajai003,role=manager
+518,2026-01-07T18:06:52.765Z,login_ok,chajai003,role=manager
+519,2026-01-07T18:17:21.822Z,login_ok,chajai003,role=manager
+520,2026-01-07T18:25:46.165Z,update_store_settings,chajai003,settings updated
+521,2026-01-07T18:26:15.961Z,save_daily_targets,chajai003,count=31
+522,2026-01-07T20:58:20.072Z,login_ok,chajai003,role=manager
+523,2026-01-07T21:07:57.205Z,save_daily_targets,chajai003,count=31
+524,2026-01-07T21:29:01.164Z,create_sales_report,chajai003,date=2026-01-07
+525,2026-01-07T21:38:44.062Z,login_ok,chajai003,role=manager
+526,2026-01-07T22:20:56.376Z,login_ok,chajai003,role=manager
+527,2026-01-07T22:21:17.304Z,delete_sales_report,chajai003,id=18
+528,2026-01-07T22:21:52.218Z,delete_sales_report,chajai003,id=19
+529,2026-01-08T00:59:42.802Z,login_ok,chajai003,role=manager
+530,2026-01-08T01:01:01.309Z,manager_set_shift,chajai003,for yossanan.t on 2026-01-08
+531,2026-01-08T01:01:13.219Z,manager_set_shift,chajai003,for arthit.s on 2026-01-08
+532,2026-01-08T01:01:47.139Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-08
+533,2026-01-08T01:01:47.161Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-08
+534,2026-01-08T01:02:08.056Z,manager_set_shift,chajai003,for kidsada.b on 2026-01-08
+535,2026-01-08T01:02:08.095Z,manager_set_shift,chajai003,for kidsada.b on 2026-01-08
+536,2026-01-08T01:02:19.126Z,manager_set_shift,chajai003,for adisorn.n on 2026-01-08
+537,2026-01-08T01:05:30.105Z,update_user_role,chajai003,set bookon001 role=manager position=assistant_store_manager
+538,2026-01-08T01:05:30.139Z,update_user_role,chajai003,set bookon001 role=manager position=assistant_store_manager
+539,2026-01-08T01:05:41.790Z,update_user_role,chajai003,set chajai003 role=manager position=shift_manager
+540,2026-01-08T18:19:16.176Z,login_ok,chajai003,role=manager
+541,2026-01-08T18:31:51.627Z,login_ok,chajai003,role=manager
+542,2026-01-08T18:45:03.072Z,create_sales_report,chajai003,date=2026-01-08
+543,2026-01-08T18:45:03.073Z,create_sales_report,chajai003,date=2026-01-08
+544,2026-01-08T18:45:13.095Z,delete_sales_report,chajai003,id=21
+545,2026-01-08T18:45:17.500Z,delete_sales_report,chajai003,id=23
+546,2026-01-08T18:47:33.338Z,login_ok,chajai003,role=manager
+547,2026-01-09T18:55:50.893Z,login_ok,chajai003,role=manager
+548,2026-01-09T18:56:04.321Z,login_ok,chajai003,role=manager
+549,2026-01-09T19:51:09.624Z,login_ok,chajai003,role=manager
+550,2026-01-09T20:14:37.138Z,login_ok,manager,role=manager
+551,2026-01-09T20:15:10.162Z,dev_reset_password,manager,user=wasson001
+552,2026-01-09T20:15:37.992Z,login_ok,chajai003,role=manager
+553,2026-01-09T20:16:40.232Z,dev_update_role,chajai003,user=chajai003 role=admin position=
+554,2026-01-09T20:53:27.591Z,save_daily_targets,chajai003,count=31
+555,2026-01-09T20:59:32.165Z,save_daily_targets,chajai003,count=31
+556,2026-01-09T21:19:44.179Z,create_sales_report,chajai003,date=2026-01-09
+557,2026-01-09T21:19:55.183Z,delete_sales_report,chajai003,id=25
+558,2026-01-09T21:51:04.905Z,update_user_status,chajai003,set chajai001 active=1
+559,2026-01-09T21:57:26.139Z,save_daily_sales_data,chajai003,count=9
+560,2026-01-09T21:57:37.601Z,save_daily_sales_data,chajai003,count=9
+561,2026-01-09T21:58:09.522Z,save_daily_sales_data,chajai003,count=9
+562,2026-01-09T22:12:00.821Z,login_ok,chajai003,role=admin
+563,2026-01-09T23:59:30.654Z,delete_sales_report,chajai003,id=26
+564,2026-01-10T00:40:44.726Z,save_daily_sales_data,chajai003,count=9
+565,2026-01-10T00:42:13.277Z,login_ok,chajai003,role=admin
+566,2026-01-10T00:47:57.085Z,update_profile_picture,chajai003,profile picture updated
+567,2026-01-10T00:54:53.275Z,login_ok,chajai003,role=admin
+568,2026-01-10T00:59:42.228Z,login_ok,phusanisa.k,role=staff
+569,2026-01-10T00:59:58.727Z,force_change_password,phusanisa.k,first-time password updated
+570,2026-01-10T01:00:39.016Z,book_shift,phusanisa.k,2026-01-10 open
+571,2026-01-10T03:45:10.934Z,login_ok,chajai003,role=admin
+572,2026-01-10T18:04:49.421Z,login_ok,chajai003,role=admin
+573,2026-01-10T18:39:07.892Z,login_ok,chajai003,role=admin
+574,2026-01-10T20:14:46.213Z,login_ok,chajai003,role=admin
+575,2026-01-10T20:16:25.630Z,login_ok,chajai003,role=admin
+576,2026-01-10T20:16:41.741Z,login_ok,chajai003,role=admin
+577,2026-01-10T20:19:36.118Z,login_ok,staff,role=staff
+578,2026-01-10T20:19:51.487Z,login_ok,manager,role=manager
+579,2026-01-10T20:26:31.320Z,login_ok,chajai003,role=admin
+580,2026-01-10T20:29:45.185Z,login_ok,chajai001,role=manager
+581,2026-01-10T20:32:14.922Z,save_daily_targets,chajai001,count=31
+582,2026-01-10T20:43:59.504Z,create_sales_report,chajai003,date=2026-01-10
+583,2026-01-10T20:45:27.117Z,login_ok,chajai003,role=admin
+615,2026-01-11T01:32:26.423Z,login_ok,chajai003,role=admin
+616,2026-01-11T07:33:59.061Z,login_ok,chajai003,role=admin
+617,2026-01-11T07:34:11.591Z,login_ok,chajai003,role=admin
+618,2026-01-11T15:49:34.449Z,login_ok,chajai003,role=admin
+619,2026-01-11T15:50:23.836Z,delete_user,chajai003,deleted wasson001
+620,2026-01-11T15:51:03.513Z,register_manager,wasson001,"fullName=Washiraphan Na Songkhla, position=store_manager"
+621,2026-01-11T15:51:11.787Z,login_ok,wasson001,role=manager
+622,2026-01-11T15:51:53.684Z,complete_profile,wasson001,"nickName=World, phone=0811575838, email=Washiraphan.sk@gmail.com"
+623,2026-01-11T15:56:14.567Z,save_daily_targets,wasson001,count=31
+624,2026-01-11T16:02:29.341Z,login_ok,chajai003,role=admin
+625,2026-01-11T16:02:37.545Z,login_ok,chajai003,role=admin
+626,2026-01-11T16:57:10.429Z,save_daily_sales_data,chajai003,count=11
+627,2026-01-11T17:01:40.332Z,login_ok,wasson001,role=manager
+628,2026-01-11T23:37:59.524Z,login_ok,chajai003,role=admin
+629,2026-01-12T00:39:48.279Z,save_daily_targets,chajai003,count=31
+662,2026-01-12T00:53:15.192Z,save_daily_sales_data,chajai003,count=11
+663,2026-01-12T01:02:25.388Z,update_user_role,chajai003,set wasson001 role=manager position=management_trainee
+664,2026-01-12T01:03:17.308Z,update_settings,chajai003,"{""maintenance"":{""enabled"":true,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+665,2026-01-12T02:20:56.692Z,import_items,chajai003,imported=105 skipped=0
+666,2026-01-12T02:38:40.424Z,login_ok,manager,role=manager
+667,2026-01-12T02:38:48.942Z,login_ok,chajai003,role=admin
+668,2026-01-12T05:08:38.378Z,import_items,chajai003,imported=105 skipped=0
+669,2026-01-12T05:17:09.459Z,import_items,chajai003,imported=105 skipped=0
+670,2026-01-12T05:17:24.668Z,import_items,chajai003,imported=105 skipped=0
+671,2026-01-12T10:23:09.532Z,login_ok,chajai003,role=admin
+672,2026-01-12T11:59:28.820Z,login_ok,chajai003,role=admin
+673,2026-01-12T12:35:47.875Z,login_ok,chajai003,role=admin
+674,2026-01-12T12:36:14.999Z,login_ok,chajai003,role=admin
+675,2026-01-12T17:33:28.629Z,login_ok,chajai003,role=admin
+676,2026-01-13T09:08:14.935Z,login_ok,chajai003,role=admin
+677,2026-01-13T10:10:18.373Z,update_settings,chajai003,"{""maintenance"":{""enabled"":true,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+678,2026-01-13T10:10:49.556Z,update_settings,chajai003,"{""capacity"":{""open"":2,""swing"":2,""lunch"":2,""dinner"":3,""close"":2,""late"":2},""lockTimePeriod"":false}"
+679,2026-01-13T10:11:32.721Z,save_daily_sales_data,chajai003,count=12
+680,2026-01-13T10:11:56.764Z,save_daily_sales_data,chajai003,count=12
+681,2026-01-13T10:16:16.132Z,delete_user,chajai003,deleted phongphat.s
+682,2026-01-13T10:19:14.084Z,register_staff,ponsae001,fullName=Pongphat Saengrakkrongsiri
+683,2026-01-13T10:21:20.565Z,login_ok,ponsae001,role=staff
+684,2026-01-13T10:21:34.918Z,complete_profile,ponsae001,"nickName=เก๊ง, phone=0985012382, email=skrobinson2382@gmail.com"
+685,2026-01-13T10:21:59.419Z,book_shift,ponsae001,2026-01-13 open
+686,2026-01-13T10:22:17.716Z,manager_set_shift,chajai003,for wafah.p on 2026-01-14
+687,2026-01-13T10:22:18.338Z,book_shift,ponsae001,2026-01-14 open
+688,2026-01-13T10:22:22.668Z,book_shift,ponsae001,2026-01-15 open
+689,2026-01-13T10:22:27.642Z,manager_set_shift,chajai003,for wafah.p on 2026-01-13
+690,2026-01-13T10:22:31.325Z,cancel_shift,ponsae001,2026-01-15
+691,2026-01-13T10:22:35.797Z,manager_set_shift,chajai003,for athat.n on 2026-01-14
+692,2026-01-13T10:22:40.756Z,manager_set_shift,chajai003,for athat.n on 2026-01-14
+693,2026-01-13T10:22:40.889Z,manager_delete_shift_by_id,chajai003,shiftId=79
+694,2026-01-13T10:22:44.700Z,book_shift,ponsae001,2026-01-15 close
+695,2026-01-13T10:23:00.496Z,cancel_shift,ponsae001,2026-01-15
+696,2026-01-13T10:23:08.636Z,manager_set_shift,chajai003,for ponsae001 on 2026-01-14
+697,2026-01-13T10:23:12.030Z,book_shift,ponsae001,2026-01-16 open
+698,2026-01-13T10:23:24.815Z,update_settings,chajai003,"{""capacity"":{""open"":2,""swing"":2,""lunch"":2,""dinner"":3,""close"":2,""late"":2},""lockTimePeriod"":true}"
+699,2026-01-13T10:23:39.060Z,book_shift,ponsae001,2026-01-17 open
+700,2026-01-13T10:23:41.678Z,manager_set_shift,chajai003,for arthit.s on 2026-01-14
+701,2026-01-13T10:23:42.366Z,book_shift,ponsae001,2026-01-18 open
+702,2026-01-13T10:23:52.802Z,manager_delete_shift_by_id,chajai003,shiftId=87
+703,2026-01-13T10:23:54.927Z,manager_delete_shift_by_id,chajai003,shiftId=82
+704,2026-01-13T10:24:04.355Z,manager_delete_shift_by_id,chajai003,shiftId=78
+705,2026-01-13T10:24:07.571Z,manager_delete_shift_by_id,chajai003,shiftId=81
+706,2026-01-14T05:30:27.834Z,login_ok,chajai003,role=admin
+707,2026-01-14T07:06:44.929Z,login_ok,chajai003,role=admin
+708,2026-01-14T07:10:41.421Z,save_daily_targets,chajai003,count=31
+709,2026-01-14T07:11:09.625Z,save_daily_sales_data,chajai003,count=13
+710,2026-01-14T07:13:03.945Z,save_daily_sales_data,chajai003,count=13
+711,2026-01-14T07:36:19.582Z,update_settings,chajai003,"{""maintenance"":{""enabled"":false,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+712,2026-01-14T07:36:36.606Z,login_ok,sarawut.k,role=staff
+713,2026-01-14T07:37:21.847Z,update_settings,chajai003,"{""maintenance"":{""enabled"":true,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+714,2026-01-14T09:19:01.758Z,update_sales_report,chajai003,id=62
+715,2026-01-15T18:00:47.763Z,login_ok,chajai003,role=admin
+716,2026-01-15T19:29:15.920Z,login_ok,chajai003,role=admin
+717,2026-01-15T19:52:53.829Z,create_sales_report,chajai003,date=2026-01-10
+718,2026-01-15T19:54:30.612Z,create_sales_report,chajai003,date=2026-01-11
+719,2026-01-15T19:59:23.165Z,create_sales_report,chajai003,date=2026-01-12
+720,2026-01-15T19:59:49.486Z,delete_sales_report,chajai003,id=66
+721,2026-01-15T19:59:52.150Z,delete_sales_report,chajai003,id=27
+722,2026-01-15T19:59:55.527Z,delete_sales_report,chajai003,id=61
+723,2026-01-15T19:59:58.461Z,delete_sales_report,chajai003,id=62
+724,2026-01-15T20:44:22.743Z,login_ok,chajai003,role=admin
+725,2026-01-15T20:53:21.580Z,create_sales_report,chajai003,date=2026-01-13
+726,2026-01-15T21:05:47.993Z,create_sales_report,chajai003,date=2026-01-14
+727,2026-01-15T21:05:59.671Z,delete_sales_report,chajai003,id=63
+728,2026-01-15T21:06:05.275Z,delete_sales_report,chajai003,id=64
+729,2026-01-15T21:07:44.347Z,save_daily_sales_data,chajai003,count=15
+730,2026-01-15T21:08:01.494Z,save_daily_sales_data,chajai003,count=15
+731,2026-01-15T21:08:02.559Z,save_daily_targets,chajai003,count=31
+732,2026-01-15T21:42:05.949Z,create_sales_report,chajai003,date=2026-01-15
+733,2026-01-15T21:42:17.889Z,delete_sales_report,chajai003,id=65
+734,2026-01-15T21:57:19.275Z,save_daily_sales_data,chajai003,count=15
+735,2026-01-15T21:57:35.618Z,save_daily_sales_data,chajai003,count=15
+736,2026-01-15T21:57:38.559Z,save_daily_targets,chajai003,count=31
+737,2026-01-15T22:57:40.224Z,login_ok,chajai003,role=admin
+738,2026-01-16T02:00:26.390Z,login_ok,chajai003,role=admin
+739,2026-01-16T13:21:45.576Z,login_ok,chajai003,role=admin
+740,2026-01-16T13:34:20.701Z,update_settings,chajai003,"{""maintenance"":{""enabled"":false,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+741,2026-01-16T13:34:23.418Z,update_settings,chajai003,"{""maintenance"":{""enabled"":false,""startDay"":2,""startTime"":""23:00"",""endDay"":4,""endTime"":""00:00""}}"
+742,2026-01-16T13:38:00.753Z,login_ok,chajai003,role=admin
+743,2026-01-16T14:26:27.645Z,login_ok,chajai003,role=admin
+744,2026-01-16T14:28:00.023Z,login_ok,chajai003,role=admin
+745,2026-01-16T14:29:38.522Z,login_ok,chajai003,role=admin
+746,2026-01-16T15:54:32.799Z,password_reset_request,chajai001,otp sent to meta0012@gmail.com
+747,2026-01-16T19:10:59.907Z,login_ok,chajai003,role=admin
+748,2026-01-16T19:13:02.486Z,password_reset_request,ponsae001,otp sent to skrobinson2382@gmail.com
+749,2026-01-16T19:14:33.033Z,password_reset_request,ponsae001,otp sent to skrobinson2382@gmail.com
+750,2026-01-16T19:20:59.429Z,login_ok,wasson001,role=manager
+751,2026-01-16T19:41:39.787Z,create_sales_report,wasson001,date=2026-01-16
+752,2026-01-16T19:58:44.424Z,save_daily_targets,wasson001,count=31
+753,2026-01-16T19:58:45.707Z,save_daily_sales_data,wasson001,count=16
+754,2026-01-16T19:59:06.652Z,delete_sales_report,wasson001,id=72
+755,2026-01-16T20:00:19.510Z,create_sales_report,wasson001,date=2026-01-16
+756,2026-01-16T20:40:04.441Z,login_ok,chajai003,role=admin
+757,2026-01-16T20:41:13.299Z,login_ok,wasson001,role=manager
+758,2026-01-16T21:28:46.498Z,login_ok,chajai003,role=admin
+759,2026-01-16T21:31:31.609Z,create_sales_report,wasson001,date=2026-01-16
+760,2026-01-16T21:31:53.701Z,delete_sales_report,wasson001,id=74
+761,2026-01-16T21:31:56.440Z,delete_sales_report,wasson001,id=75
+762,2026-01-16T21:33:49.871Z,password_reset_request,chajai003,otp sent to meta0012@gmail.com
+763,2026-01-16T22:53:36.161Z,login_ok,chajai003,role=admin
+764,2026-01-16T22:54:12.034Z,login_ok,chajai003,role=admin
+765,2026-01-17T12:18:51.685Z,login_ok,chajai003,role=admin
+766,2026-01-17T12:21:04.198Z,login_ok,chajai003,role=admin
+767,2026-01-17T12:26:48.441Z,update_user_status,chajai003,set athat.n active=0
+768,2026-01-17T12:26:50.211Z,update_user_status,chajai003,set chajai001 active=0
+769,2026-01-17T12:26:54.499Z,update_user_status,chajai003,set athat.n active=1
+770,2026-01-17T12:26:56.086Z,update_user_status,chajai003,set chajai001 active=1
+771,2026-01-17T13:02:20.516Z,admin_update_profile,chajai003,"updated sarawut.k: {""nickName"":""Nat"",""phone"":"""",""email"":""netkung168@gmail.com"",""position"":""service_staff""}"
+772,2026-01-17T19:49:10.677Z,login_ok,wasson001,role=manager
+773,2026-01-17T20:17:19.332Z,create_sales_report,wasson001,date=2026-01-17
+774,2026-01-17T20:17:32.556Z,delete_sales_report,wasson001,id=77
+775,2026-01-17T20:17:40.353Z,update_sales_report,wasson001,id=73
+776,2026-01-17T20:19:54.027Z,create_sales_report,wasson001,date=2026-01-17
+777,2026-01-17T20:20:02.828Z,delete_sales_report,wasson001,id=78
+778,2026-01-18T07:37:47.855Z,login_ok,chajai003,role=admin
+779,2026-01-18T07:38:57.804Z,login_ok,chajai003,role=admin
+780,2026-01-18T07:39:28.805Z,admin_update_profile,chajai003,"updated athat.n: {""nickName"":""Guitar"",""phone"":""0641644816"",""email"":""a.tuch4816@gmail.com"",""position"":""service_staff""}"
+781,2026-01-18T07:44:27.287Z,password_reset_request,chajai003,otp sent to meta0012@gmail.com
+782,2026-01-18T07:45:31.749Z,login_ok,chajai003,role=admin
+783,2026-01-18T07:46:17.227Z,admin_update_profile,chajai003,"updated thepthakun.s: {""nickName"":""Thep"",""phone"":""0935920947"",""email"":""thethakur@gmail.com"",""position"":""service_staff""}"
+784,2026-01-18T07:48:41.803Z,login_ok,chajai003,role=admin
+785,2026-01-18T19:52:50.683Z,login_ok,chajai003,role=admin
+786,2026-01-18T20:02:27.947Z,login_ok,wasson001,role=manager
+787,2026-01-18T20:30:42.611Z,login_ok,wasson001,role=manager
+788,2026-01-18T20:31:43.821Z,save_daily_targets,wasson001,count=31
+789,2026-01-18T23:04:37.629Z,login_ok,chajai003,role=admin
+790,2026-01-18T23:06:06.300Z,login_ok,chajai003,role=admin
+791,2026-01-18T23:11:26.477Z,create_sales_report,chajai003,date=2026-01-18
+792,2026-01-18T23:11:38.914Z,delete_sales_report,chajai003,id=80
+793,2026-01-19T02:58:56.946Z,login_ok,wasson001,role=manager
+794,2026-01-19T03:50:01.307Z,delete_sales_report,chajai003,id=79
+795,2026-01-19T18:41:12.613Z,login_ok,chajai003,role=admin
+796,2026-01-19T18:45:52.059Z,login_ok,chajai003,role=admin
+797,2026-01-19T19:15:56.443Z,save_daily_targets,chajai003,count=31
+798,2026-01-19T21:25:56.099Z,login_ok,chajai003,role=admin
+799,2026-01-19T21:28:36.997Z,save_daily_sales_data,chajai003,count=20
+800,2026-01-19T21:30:55.778Z,save_daily_sales_data,chajai003,count=20
+801,2026-01-19T21:34:43.251Z,create_sales_report,chajai003,date=2026-01-19
+802,2026-01-19T21:37:15.657Z,login_ok,wasson001,role=manager
+803,2026-01-19T21:39:15.261Z,login_ok,chajai003,role=admin
+804,2026-01-19T21:39:40.069Z,delete_sales_report,chajai003,id=83
+805,2026-01-19T21:40:18.314Z,save_daily_targets,chajai003,count=31
+806,2026-01-19T21:40:19.222Z,save_daily_sales_data,chajai003,count=19
+807,2026-01-19T21:40:43.348Z,delete_sales_report,chajai003,id=82
+808,2026-01-19T22:53:28.146Z,login_ok,chajai003,role=admin
+809,2026-01-19T23:48:59.424Z,login_ok,chajai003,role=admin
+810,2026-01-20T17:44:32.727Z,login_ok,chajai003,role=admin
+811,2026-01-20T19:34:20.623Z,save_daily_targets,chajai003,count=31
+812,2026-01-20T19:34:23.264Z,save_daily_sales_data,chajai003,count=20
+813,2026-01-20T19:45:07.518Z,login_ok,chajai003,role=admin
+814,2026-01-20T20:37:32.988Z,create_sales_report,chajai003,date=2026-01-20
+815,2026-01-20T20:37:33.103Z,create_sales_report,chajai003,date=2026-01-20
+816,2026-01-20T20:37:41.887Z,delete_sales_report,chajai003,id=86
+817,2026-01-20T20:37:47.537Z,delete_sales_report,chajai003,id=85
+818,2026-01-20T20:39:09.372Z,create_sales_report,chajai003,date=2026-01-20
+819,2026-01-20T20:39:09.426Z,create_sales_report,chajai003,date=2026-01-20
+820,2026-01-20T21:00:37.663Z,login_ok,chajai003,role=admin
+821,2026-01-20T22:31:22.849Z,login_ok,chajai003,role=admin
+822,2026-01-20T22:54:55.449Z,login_ok,chajai003,role=admin
+823,2026-01-20T23:05:52.768Z,login_ok,chajai003,role=admin
+824,2026-01-21T08:53:41.885Z,login_ok,chajai003,role=admin
+825,2026-01-21T08:54:41.182Z,login_ok,chajai003,role=admin
+826,2026-01-21T18:06:40.128Z,login_ok,chajai003,role=admin
+827,2026-01-21T18:08:07.872Z,dev_update_role,chajai003,user=athat.n role=manager position=
+828,2026-01-21T18:45:34.857Z,login_ok,chajai003,role=admin
+829,2026-01-21T20:49:41.261Z,update_store_settings,chajai003,settings updated
+830,2026-01-21T20:49:43.488Z,update_store_settings,chajai003,settings updated
+831,2026-01-21T20:49:49.863Z,save_daily_targets,chajai003,count=31
+832,2026-01-21T22:45:44.972Z,login_ok,chajai003,role=admin
+833,2026-01-21T23:17:51.705Z,login_ok,chajai003,role=admin
+834,2026-01-22T00:29:31.408Z,login_ok,chajai003,role=admin
+835,2026-01-22T02:16:47.800Z,register_manager,nutkae001,"fullName=Nuttarika Kaewkham, position=store_manager"
+836,2026-01-22T02:17:31.791Z,admin_update_profile,chajai003,"updated nutkae001: {""nickName"":""Jeew"",""phone"":""0646894165"",""email"":""kks22044@gmail.com"",""position"":""store_manager""}"
+837,2026-01-22T04:08:44.038Z,login_ok,chajai003,role=admin
+838,2026-01-22T04:10:38.143Z,login_ok,chajai003,role=admin
+839,2026-01-22T09:22:24.971Z,login_ok,chajai003,role=admin
+840,2026-01-22T17:26:45.232Z,login_ok,chajai003,role=admin
+873,2026-01-22T17:43:20.468Z,login_ok,chajai003,role=admin
+874,2026-01-22T18:20:18.857Z,save_daily_sales_data,chajai003,count=22
+875,2026-01-22T19:01:58.824Z,update_store_settings,chajai003,settings updated
+876,2026-01-22T19:28:17.513Z,login_ok,bookon001,role=manager
+877,2026-01-22T19:32:26.851Z,manager_set_shift,bookon001,for phopho002 on 2026-01-23
+878,2026-01-22T19:32:44.116Z,manager_update_shift,bookon001,shiftId=224
+879,2026-01-22T19:32:44.156Z,manager_update_shift,bookon001,shiftId=224
+880,2026-01-22T19:32:44.635Z,manager_update_shift,bookon001,shiftId=224
+881,2026-01-22T19:32:44.640Z,manager_update_shift,bookon001,shiftId=224
+882,2026-01-22T19:33:01.095Z,manager_update_shift,bookon001,shiftId=211
+883,2026-01-22T19:34:46.822Z,login_ok,chajai003,role=admin
+884,2026-01-22T21:53:47.302Z,admin_update_profile,chajai003,"updated phopho002: {""nickName"":""Nigth"",""phone"":""0909048080"",""email"":""bk1040@minorfood.com"",""position"":""store_manager""}"
+885,2026-01-22T21:56:18.844Z,update_user_status,chajai003,set manager active=0
+886,2026-01-22T21:56:21.808Z,update_user_status,chajai003,set admin active=0
+887,2026-01-22T21:56:24.613Z,update_user_status,chajai003,set chajai001 active=0
+888,2026-01-22T21:56:27.193Z,update_user_status,chajai003,set athat.n active=0
+889,2026-01-23T00:49:21.632Z,login_ok,nutkae001,role=manager
+890,2026-01-23T00:52:30.792Z,login_ok,chajai003,role=admin
+891,2026-01-23T00:55:41.737Z,login_ok,chajai003,role=admin
+892,2026-01-23T01:16:31.560Z,login_ok,chajai003,role=admin
+893,2026-01-23T01:21:32.694Z,delete_sales_report,chajai003,id=92
+894,2026-01-23T03:32:29.395Z,login_ok,wasson001,role=manager
+895,2026-01-23T04:47:35.742Z,login_ok,chajai003,role=admin
+896,2026-01-23T08:10:20.584Z,login_ok,chajai003,role=admin
+897,2026-01-23T18:04:12.234Z,login_ok,chajai003,role=admin
+898,2026-01-23T19:37:55.674Z,save_daily_sales_data,chajai003,count=23
+899,2026-01-23T20:27:41.316Z,login_ok,chajai003,role=admin
+900,2026-01-23T20:28:16.945Z,login_ok,bookon001,role=manager
+901,2026-01-23T20:30:42.752Z,manager_update_shift,bookon001,shiftId=151
+902,2026-01-23T20:30:50.402Z,manager_update_shift,bookon001,shiftId=152
+903,2026-01-23T20:30:56.302Z,manager_update_shift,bookon001,shiftId=249
+904,2026-01-23T20:31:02.219Z,manager_update_shift,bookon001,shiftId=250
+905,2026-01-23T20:33:17.055Z,manager_update_shift,bookon001,shiftId=168
+906,2026-01-23T20:33:25.796Z,manager_update_shift,bookon001,shiftId=168
+907,2026-01-23T20:33:25.852Z,manager_update_shift,bookon001,shiftId=168
+908,2026-01-23T20:33:30.480Z,manager_update_shift,bookon001,shiftId=168
+909,2026-01-23T20:33:35.211Z,manager_update_shift,bookon001,shiftId=168
+910,2026-01-23T20:33:40.269Z,manager_update_shift,bookon001,shiftId=168
+911,2026-01-23T20:33:40.321Z,manager_update_shift,bookon001,shiftId=168
+912,2026-01-23T20:33:45.752Z,manager_update_shift,bookon001,shiftId=168
+913,2026-01-23T20:33:46.005Z,manager_update_shift,bookon001,shiftId=168
+914,2026-01-23T20:33:58.620Z,manager_delete_shift_by_id,bookon001,shiftId=168
+915,2026-01-23T20:34:44.588Z,manager_set_shift,bookon001,for wasson001 on 2026-01-30
+916,2026-01-23T20:36:17.487Z,login_ok,chajai003,role=admin
+917,2026-01-23T20:43:49.406Z,login_ok,chajai003,role=admin
+918,2026-01-23T20:44:22.572Z,login_ok,bookon001,role=manager
+919,2026-01-23T20:47:50.636Z,manager_set_shift,bookon001,for arthit.s on 2026-01-20
+920,2026-01-23T20:48:22.922Z,login_ok,chajai003,role=admin
+921,2026-01-23T20:48:38.057Z,manager_set_shift,chajai003,for arthit.s on 2026-01-20
+922,2026-01-23T21:19:12.654Z,manager_set_shift,chajai003,for kanapat.m on 2026-01-24
+923,2026-01-23T21:19:25.259Z,manager_set_shift,chajai003,for pitkon001 on 2026-01-24
+924,2026-01-23T21:20:00.442Z,manager_set_shift,chajai003,for arthit.s on 2026-01-21
+925,2026-01-23T21:20:06.199Z,manager_set_shift,chajai003,for arthit.s on 2026-01-22
+926,2026-01-23T21:24:35.061Z,dev_update_role,chajai003,user=chajai003 role=admin position=Shift Manager
+927,2026-01-23T22:34:45.057Z,login_ok,chajai003,role=admin
+928,2026-01-23T22:54:08.704Z,manager_set_shift,chajai003,for chajai003 on 2026-01-04
+929,2026-01-23T23:33:54.156Z,update_sales_report,chajai003,id=71
+930,2026-01-23T23:34:17.502Z,update_sales_report,chajai003,id=81
+931,2026-01-24T04:52:07.309Z,login_ok,chajai003,role=admin
+932,2026-01-24T04:53:35.268Z,update_user_status,chajai003,set admin active=1
+933,2026-01-24T18:13:32.667Z,login_ok,chajai003,role=admin
+934,2026-01-24T19:40:54.232Z,save_daily_sales_data,chajai003,count=24
+935,2026-01-24T20:07:26.666Z,login_ok,wasson001,role=manager
+936,2026-01-24T23:22:46.635Z,login_ok,chajai003,role=admin
+937,2026-01-24T23:23:45.838Z,update_user_status,chajai003,set admin active=0
+938,2026-01-24T23:55:35.069Z,login_ok,chajai003,role=admin
+939,2026-01-25T01:15:10.148Z,login_ok,chajai003,role=admin
+940,2026-01-25T06:32:40.482Z,login_ok,chajai003,role=admin
+941,2026-01-27T18:03:11.936Z,login_ok,chajai003,role=admin
+942,2026-01-27T18:37:25.230Z,login_ok,chajai003,role=admin
+943,2026-01-27T18:40:49.252Z,delete_sales_report,chajai003,id=98
+944,2026-01-27T18:41:08.050Z,save_daily_sales_data,chajai003,count=27
+945,2026-01-28T23:26:21.934Z,login_ok,chajai003,role=admin
+946,2026-01-28T23:48:08.583Z,login_ok,chajai003,role=admin
+947,2026-01-30T01:19:53.412Z,login_ok,chajai003,role=admin
+948,2026-01-30T02:59:08.722Z,login_ok,chajai003,role=admin
+949,2026-01-30T03:14:27.324Z,save_daily_sales_data,chajai003,count=29
+950,2026-01-30T03:14:57.639Z,delete_sales_report,chajai003,id=101
+951,2026-01-30T03:15:16.434Z,delete_sales_report,chajai003,id=102
+952,2026-01-30T18:47:52.390Z,login_ok,chajai003,role=admin
+953,2026-01-30T19:57:14.543Z,login_ok,chajai003,role=admin
+954,2026-01-31T21:39:28.799Z,login_ok,chajai003,role=admin
+955,2026-01-31T21:40:18.913Z,login_ok,chajai003,role=admin
+956,2026-01-31T21:42:33.968Z,login_ok,chajai003,role=admin
+957,2026-01-31T23:24:01.505Z,save_daily_sales_data,chajai003,count=31
+958,2026-02-01T22:49:05.265Z,login_ok,chajai003,role=admin
+959,2026-02-01T22:49:58.415Z,save_daily_sales_data,chajai003,count=0
+960,2026-02-01T22:50:29.700Z,update_sales_report,chajai003,id=105
+961,2026-02-01T22:50:46.340Z,delete_sales_report,chajai003,id=105
+962,2026-02-01T22:50:56.273Z,save_daily_sales_data,chajai003,count=0
+963,2026-02-02T20:10:33.885Z,login_ok,chajai003,role=admin
+964,2026-02-02T20:10:41.257Z,login_ok,chajai003,role=admin
+965,2026-02-02T20:11:22.314Z,save_daily_targets,chajai003,count=28
+966,2026-02-02T20:19:02.531Z,login_ok,chajai003,role=admin
+967,2026-02-02T23:50:32.355Z,login_ok,chajai003,role=admin
+968,2026-02-03T19:23:20.361Z,login_ok,chajai003,role=admin
+969,2026-02-03T19:23:50.467Z,save_daily_sales_data,chajai003,count=2
+970,2026-02-03T19:23:51.528Z,save_daily_targets,chajai003,count=28
+971,2026-02-03T19:54:54.687Z,login_ok,chajai003,role=admin
+972,2026-02-03T23:41:01.336Z,update_user_role,chajai003,set athat.n role=staff position=service_staff
+973,2026-02-03T23:41:04.090Z,update_user_status,chajai003,set athat.n active=1
+974,2026-02-04T00:43:13.259Z,login_ok,chajai003,role=admin
+975,2026-02-04T00:56:53.305Z,register_staff,bank2550,fullName=คณพัฒน์ เมืองมัจฉา
+976,2026-02-04T00:58:56.493Z,register_staff,kanapat003,fullName=Kanapat Mungmacha
+977,2026-02-04T00:59:14.453Z,login_ok,kanapat003,role=staff
+978,2026-02-05T03:48:55.197Z,login_ok,chajai003,role=admin
+979,2026-02-06T15:57:41.214Z,login_ok,chajai003,role=admin
+980,2026-02-06T15:58:20.283Z,login_ok,chajai003,role=admin
+981,2026-02-06T15:58:46.407Z,delete_sales_report,chajai003,id=109
+982,2026-02-07T10:17:59.404Z,login_ok,chajai003,role=admin
+983,2026-02-12T15:10:28.707Z,login_ok,chajai003,role=admin
+984,2026-02-12T15:32:41.382Z,login_ok,chajai003,role=admin
+985,2026-02-12T15:37:19.600Z,login_ok,chajai003,role=admin
+986,2026-02-12T19:22:22.429Z,update_sales_report,chajai003,id=110
+987,2026-02-14T19:08:23.716Z,login_ok,chajai003,role=admin
+988,2026-02-14T19:08:53.719Z,login_ok,chajai003,role=admin
+989,2026-02-14T19:21:04.577Z,save_daily_sales_data,chajai003,count=13
+990,2026-02-14T19:21:07.025Z,save_daily_targets,chajai003,count=28
+991,2026-02-14T19:22:03.380Z,update_sales_report,chajai003,id=120
+992,2026-02-15T18:16:37.623Z,login_ok,chajai003,role=admin
+993,2026-02-15T19:07:29.571Z,login_ok,chajai003,role=admin
+994,2026-02-16T18:28:19.142Z,login_ok,chajai003,role=admin
+995,2026-02-16T20:05:13.301Z,login_ok,chajai003,role=admin
+996,2026-02-16T20:32:48.157Z,save_daily_sales_data,chajai003,count=16
+997,2026-02-16T20:56:09.802Z,login_ok,chajai003,role=admin
+998,2026-02-16T22:49:12.625Z,login_ok,chajai003,role=admin
+999,2026-02-16T22:49:47.894Z,login_ok,chajai003,role=admin
+1000,2026-02-17T17:48:57.502Z,login_ok,chajai003,role=admin
+1001,2026-02-17T18:17:26.615Z,login_ok,chajai003,role=admin
+1034,2026-02-17T18:22:57.789Z,save_daily_targets,chajai003,count=28
+1035,2026-02-17T18:23:06.943Z,save_daily_sales_data,chajai003,count=17
+1036,2026-02-17T18:26:18.291Z,save_daily_sales_data,chajai003,count=17
+1037,2026-02-17T18:26:19.522Z,save_daily_targets,chajai003,count=28
+1038,2026-02-17T18:26:31.426Z,save_daily_sales_data,chajai003,count=17
+1039,2026-02-17T18:40:57.640Z,login_ok,chajai003,role=admin
+1040,2026-02-18T18:38:40.999Z,login_ok,chajai003,role=admin
+1041,2026-02-18T19:56:15.317Z,login_ok,chajai003,role=admin
+1042,2026-02-18T19:59:27.508Z,login_ok,chajai003,role=admin
+1043,2026-02-19T00:04:06.607Z,login_ok,chajai003,role=admin
+1044,2026-02-19T00:49:14.344Z,login_ok,chajai003,role=admin
+1045,2026-02-20T04:51:27.110Z,login_ok,chajai003,role=admin
+1046,2026-02-20T04:54:03.723Z,login_ok,chajai003,role=admin
+1047,2026-02-20T04:59:25.068Z,login_ok,chajai003,role=admin
+1048,2026-02-20T05:13:16.187Z,login_ok,chajai003,role=admin
+1049,2026-02-20T05:19:25.085Z,login_ok,chajai003,role=admin
+1050,2026-02-20T14:18:47.498Z,login_ok,chajai003,role=admin
+1051,2026-02-20T17:24:29.246Z,save_daily_sales_data,chajai003,count=18
+1052,2026-02-20T17:40:00.413Z,login_ok,chajai003,role=admin
+1053,2026-02-20T17:49:32.738Z,login_ok,chajai003,role=admin
+1054,2026-02-20T17:59:10.482Z,delete_sales_report,chajai003,id=127
+1055,2026-02-20T18:12:44.505Z,login_ok,chajai003,role=admin
+1056,2026-02-20T18:23:12.250Z,save_daily_sales_data,chajai003,count=20
+1057,2026-02-20T20:36:19.807Z,login_ok,chajai003,role=admin
+1058,2026-02-21T07:01:34.604Z,login_ok,chajai003,role=admin
+1059,2026-02-21T14:18:06.708Z,login_ok,chajai003,role=admin
+1060,2026-02-21T14:20:34.805Z,save_daily_sales_data,chajai003,count=20
+1061,2026-02-21T14:24:38.916Z,chann_save_daily_sales,chajai003,date=2026-02-01 sales=0
+1062,2026-02-21T14:24:38.933Z,chann_save_daily_sales,chajai003,date=2026-02-02 sales=0
+1063,2026-02-21T14:24:38.941Z,chann_save_daily_sales,chajai003,date=2026-02-03 sales=0
+1064,2026-02-21T14:24:38.950Z,chann_save_daily_sales,chajai003,date=2026-02-04 sales=0
+1065,2026-02-21T14:24:38.958Z,chann_save_daily_sales,chajai003,date=2026-02-05 sales=0
+1066,2026-02-21T14:24:38.966Z,chann_save_daily_sales,chajai003,date=2026-02-06 sales=0
+1067,2026-02-21T14:24:38.974Z,chann_save_daily_sales,chajai003,date=2026-02-07 sales=0
+1068,2026-02-21T14:24:38.984Z,chann_save_daily_sales,chajai003,date=2026-02-08 sales=0
+1069,2026-02-21T14:24:38.991Z,chann_save_daily_sales,chajai003,date=2026-02-09 sales=0
+1070,2026-02-21T14:24:38.999Z,chann_save_daily_sales,chajai003,date=2026-02-10 sales=0
+1071,2026-02-21T14:24:39.007Z,chann_save_daily_sales,chajai003,date=2026-02-11 sales=0
+1072,2026-02-21T14:24:39.016Z,chann_save_daily_sales,chajai003,date=2026-02-12 sales=0
+1073,2026-02-21T14:24:39.024Z,chann_save_daily_sales,chajai003,date=2026-02-13 sales=0
+1074,2026-02-21T14:24:39.032Z,chann_save_daily_sales,chajai003,date=2026-02-14 sales=0
+1075,2026-02-21T14:24:39.039Z,chann_save_daily_sales,chajai003,date=2026-02-15 sales=0
+1076,2026-02-21T14:24:39.046Z,chann_save_daily_sales,chajai003,date=2026-02-16 sales=0
+1077,2026-02-21T14:24:39.054Z,chann_save_daily_sales,chajai003,date=2026-02-17 sales=0
+1078,2026-02-21T14:24:39.062Z,chann_save_daily_sales,chajai003,date=2026-02-18 sales=0
+1079,2026-02-21T14:24:39.068Z,chann_save_daily_sales,chajai003,date=2026-02-19 sales=0
+1080,2026-02-21T14:24:39.076Z,chann_save_daily_sales,chajai003,date=2026-02-20 sales=0
+1081,2026-02-21T14:24:39.082Z,chann_save_daily_sales,chajai003,date=2026-02-21 sales=0
+1082,2026-02-21T14:24:39.089Z,chann_save_daily_sales,chajai003,date=2026-02-22 sales=0
+1083,2026-02-21T14:24:39.096Z,chann_save_daily_sales,chajai003,date=2026-02-23 sales=0
+1084,2026-02-21T14:24:39.104Z,chann_save_daily_sales,chajai003,date=2026-02-24 sales=0
+1085,2026-02-21T14:24:39.112Z,chann_save_daily_sales,chajai003,date=2026-02-25 sales=0
+1086,2026-02-21T14:24:39.118Z,chann_save_daily_sales,chajai003,date=2026-02-26 sales=0
+1087,2026-02-21T14:24:39.125Z,chann_save_daily_sales,chajai003,date=2026-02-27 sales=0
+1088,2026-02-21T14:24:39.133Z,chann_save_daily_sales,chajai003,date=2026-02-28 sales=0
+1089,2026-02-21T14:32:28.081Z,admin_update_profile,chajai003,"updated ponsae001: {""nickName"":""เก๊ง"",""phone"":""0985012382"",""email"":""skrobinson2382@gmail.com"",""position"":""service_staff""}"
+1090,2026-02-21T14:36:03.324Z,login_ok,ponsae001,role=staff
+1091,2026-02-21T14:37:43.161Z,login_ok,ponsae001,role=staff
+1092,2026-02-21T14:38:51.201Z,login_ok,ponsae001,role=staff
+1093,2026-02-21T14:39:10.769Z,login_ok,chajai003,role=admin
+1094,2026-02-21T14:41:05.841Z,login_ok,ponsae001,role=staff
+1095,2026-02-21T14:42:24.570Z,login_ok,chajai003,role=admin
+1096,2026-02-21T14:43:43.647Z,password_change_forced,ponsae001,success
+1097,2026-02-21T18:42:52.621Z,login_ok,wasson001,role=manager
+1098,2026-02-21T18:46:51.592Z,delete_sales_report,wasson001,id=135
+1099,2026-02-21T18:46:53.395Z,delete_sales_report,wasson001,id=134
+1100,2026-02-21T18:46:55.430Z,delete_sales_report,wasson001,id=133
+1101,2026-02-21T18:46:57.900Z,delete_sales_report,wasson001,id=132
+1102,2026-02-21T18:47:00.623Z,delete_sales_report,wasson001,id=131
+1103,2026-02-21T18:47:02.314Z,delete_sales_report,wasson001,id=130
+1104,2026-02-21T18:47:05.071Z,delete_sales_report,wasson001,id=129
+1105,2026-02-21T18:48:13.509Z,update_sales_report,wasson001,id=126
+1106,2026-02-21T18:48:51.322Z,login_ok,chajai003,role=admin
+1107,2026-02-21T18:52:13.099Z,chann_save_daily_sales,chajai003,date=2026-02-01 fields=targetTc
+1108,2026-02-21T18:52:13.105Z,chann_save_daily_sales,chajai003,date=2026-02-02 fields=targetTc
+1109,2026-02-21T18:52:13.113Z,chann_save_daily_sales,chajai003,date=2026-02-03 fields=targetTc
+1110,2026-02-21T18:52:13.118Z,chann_save_daily_sales,chajai003,date=2026-02-04 fields=targetTc
+1111,2026-02-21T18:52:13.125Z,chann_save_daily_sales,chajai003,date=2026-02-05 fields=targetTc
+1112,2026-02-21T18:52:13.130Z,chann_save_daily_sales,chajai003,date=2026-02-06 fields=targetTc
+1113,2026-02-21T18:52:13.137Z,chann_save_daily_sales,chajai003,date=2026-02-07 fields=targetTc
+1114,2026-02-21T18:52:13.144Z,chann_save_daily_sales,chajai003,date=2026-02-08 fields=targetTc
+1115,2026-02-21T18:52:13.151Z,chann_save_daily_sales,chajai003,date=2026-02-09 fields=targetTc
+1116,2026-02-21T18:52:13.160Z,chann_save_daily_sales,chajai003,date=2026-02-10 fields=targetTc
+1117,2026-02-21T18:52:13.167Z,chann_save_daily_sales,chajai003,date=2026-02-11 fields=targetTc
+1118,2026-02-21T18:52:13.173Z,chann_save_daily_sales,chajai003,date=2026-02-12 fields=targetTc
+1119,2026-02-21T18:52:13.180Z,chann_save_daily_sales,chajai003,date=2026-02-13 fields=targetTc
+1120,2026-02-21T18:52:13.187Z,chann_save_daily_sales,chajai003,date=2026-02-14 fields=targetTc
+1121,2026-02-21T18:52:13.192Z,chann_save_daily_sales,chajai003,date=2026-02-15 fields=targetTc
+1122,2026-02-21T18:52:13.198Z,chann_save_daily_sales,chajai003,date=2026-02-16 fields=targetTc
+1123,2026-02-21T18:52:13.204Z,chann_save_daily_sales,chajai003,date=2026-02-17 fields=targetTc
+1124,2026-02-21T18:52:13.210Z,chann_save_daily_sales,chajai003,date=2026-02-18 fields=targetTc
+1125,2026-02-21T18:52:13.215Z,chann_save_daily_sales,chajai003,date=2026-02-19 fields=targetTc
+1126,2026-02-21T18:52:13.224Z,chann_save_daily_sales,chajai003,date=2026-02-20 fields=targetTc
+1127,2026-02-21T18:52:13.229Z,chann_save_daily_sales,chajai003,date=2026-02-21 fields=targetTc
+1128,2026-02-21T18:52:13.244Z,chann_save_daily_sales,chajai003,date=2026-02-22 fields=targetTc
+1129,2026-02-21T18:52:13.251Z,chann_save_daily_sales,chajai003,date=2026-02-23 fields=targetTc
+1130,2026-02-21T18:52:13.258Z,chann_save_daily_sales,chajai003,date=2026-02-24 fields=targetTc
+1131,2026-02-21T18:52:13.267Z,chann_save_daily_sales,chajai003,date=2026-02-25 fields=targetTc
+1132,2026-02-21T18:52:13.276Z,chann_save_daily_sales,chajai003,date=2026-02-26 fields=targetTc
+1133,2026-02-21T18:52:13.287Z,chann_save_daily_sales,chajai003,date=2026-02-27 fields=targetTc
+1134,2026-02-21T18:52:13.296Z,chann_save_daily_sales,chajai003,date=2026-02-28 fields=targetTc
+1135,2026-02-21T19:20:36.255Z,login_ok,wasson001,role=manager
+1136,2026-02-22T05:28:19.589Z,login_ok,chajai003,role=admin
+1137,2026-02-22T05:29:02.145Z,login_ok,chajai003,role=admin
+1138,2026-02-23T15:00:04.859Z,login_ok,chajai003,role=admin
+1139,2026-02-23T18:04:15.963Z,login_ok,chajai003,role=admin
+1140,2026-02-23T19:55:41.661Z,login_ok,wasson001,role=manager
+1141,2026-02-23T21:47:33.003Z,login_ok,wasson001,role=manager
+1142,2026-02-24T07:38:17.562Z,login_ok,chajai003,role=admin
+1143,2026-02-25T13:07:56.761Z,login_ok,chajai003,role=admin
+1144,2026-02-25T13:10:04.401Z,login_ok,chajai003,role=admin
+1145,2026-02-25T18:32:37.661Z,login_ok,chajai003,role=admin
+1146,2026-02-25T20:03:49.667Z,chann_save_daily_sales,chajai003,"date=2026-02-24 fields=actualSales,transactionCount,recommendHours,wasteDaily,forecastSales,targetTc,targetTa"
+1147,2026-02-25T20:05:00.354Z,chann_save_daily_sales,chajai003,"date=2026-02-24 fields=actualSales,transactionCount,actualHours,wasteDaily,targetTc,targetTa"
+1148,2026-02-25T20:05:00.360Z,chann_save_daily_target,chajai003,date=2026-02-24 target=100000
+1149,2026-02-25T20:06:13.726Z,chann_save_daily_sales,chajai003,"date=2026-02-24 fields=actualSales,transactionCount,actualHours,wasteDaily,forecastSales,targetTa"
+1150,2026-02-25T20:06:13.734Z,chann_save_daily_target,chajai003,date=2026-02-24 target=100000
+1151,2026-02-25T20:09:17.878Z,chann_save_daily_sales,chajai003,"date=2026-02-24 fields=actualSales,transactionCount,actualHours,wasteDaily,forecastSales"
+1152,2026-02-25T20:09:17.885Z,chann_save_daily_target,chajai003,date=2026-02-24 target=100000
+1153,2026-02-25T20:09:18.031Z,chann_bulk_shifts,chajai003,count=16
+1154,2026-02-25T20:09:44.522Z,chann_save_daily_sales,chajai003,"date=2026-02-24 fields=actualSales,transactionCount,actualHours,wasteDaily,forecastSales,targetTc,targetTa"
+1155,2026-02-25T20:10:42.099Z,chann_bulk_shifts,chajai003,count=16
+1156,2026-02-25T20:11:12.647Z,chann_bulk_shifts,chajai003,count=5
+1157,2026-02-25T20:11:12.755Z,chann_bulk_shifts,chajai003,count=11
+1158,2026-02-25T20:42:00.271Z,login_ok,chajai003,role=admin
+1159,2026-02-25T21:16:26.379Z,chann_save_daily_sales,chajai003,date=2026-02-25 fields=recommendHours
+1160,2026-02-25T21:19:41.330Z,chann_save_daily_sales,chajai003,date=2026-02-01 fields=lastYearSales
+1161,2026-02-25T21:19:41.337Z,chann_save_daily_sales,chajai003,date=2026-02-02 fields=lastYearSales
+1162,2026-02-25T21:19:41.448Z,chann_save_daily_sales,chajai003,date=2026-02-03 fields=lastYearSales
+1163,2026-02-25T21:19:41.455Z,chann_save_daily_sales,chajai003,date=2026-02-04 fields=lastYearSales
+1164,2026-02-25T21:19:41.463Z,chann_save_daily_sales,chajai003,date=2026-02-05 fields=lastYearSales
+1165,2026-02-25T21:19:41.480Z,chann_save_daily_sales,chajai003,date=2026-02-06 fields=lastYearSales
+1166,2026-02-25T21:19:41.488Z,chann_save_daily_sales,chajai003,date=2026-02-07 fields=lastYearSales
+1167,2026-02-25T21:19:41.495Z,chann_save_daily_sales,chajai003,date=2026-02-08 fields=lastYearSales
+1168,2026-02-25T21:19:41.506Z,chann_save_daily_sales,chajai003,date=2026-02-09 fields=lastYearSales
+1169,2026-02-25T21:19:41.514Z,chann_save_daily_sales,chajai003,date=2026-02-10 fields=lastYearSales
+1170,2026-02-25T21:19:41.523Z,chann_save_daily_sales,chajai003,date=2026-02-11 fields=lastYearSales
+1171,2026-02-25T21:19:41.538Z,chann_save_daily_sales,chajai003,date=2026-02-12 fields=lastYearSales
+1172,2026-02-25T21:19:41.547Z,chann_save_daily_sales,chajai003,date=2026-02-13 fields=lastYearSales
+1173,2026-02-25T21:19:41.555Z,chann_save_daily_sales,chajai003,date=2026-02-14 fields=lastYearSales
+1174,2026-02-25T21:19:41.645Z,chann_save_daily_sales,chajai003,date=2026-02-15 fields=lastYearSales
+1175,2026-02-25T21:19:41.654Z,chann_save_daily_sales,chajai003,date=2026-02-16 fields=lastYearSales
+1176,2026-02-25T21:19:41.662Z,chann_save_daily_sales,chajai003,date=2026-02-17 fields=lastYearSales
+1177,2026-02-25T21:19:41.670Z,chann_save_daily_sales,chajai003,date=2026-02-18 fields=lastYearSales
+1178,2026-02-25T21:19:41.677Z,chann_save_daily_sales,chajai003,date=2026-02-19 fields=lastYearSales
+1179,2026-02-25T21:19:41.683Z,chann_save_daily_sales,chajai003,date=2026-02-20 fields=lastYearSales
+1180,2026-02-25T21:19:41.693Z,chann_save_daily_sales,chajai003,date=2026-02-21 fields=lastYearSales
+1181,2026-02-25T21:19:41.701Z,chann_save_daily_sales,chajai003,date=2026-02-22 fields=lastYearSales
+1182,2026-02-25T21:19:41.710Z,chann_save_daily_sales,chajai003,date=2026-02-23 fields=lastYearSales
+1183,2026-02-25T21:19:41.718Z,chann_save_daily_sales,chajai003,date=2026-02-24 fields=lastYearSales
+1184,2026-02-25T21:19:41.726Z,chann_save_daily_sales,chajai003,date=2026-02-25 fields=lastYearSales
+1185,2026-02-25T21:19:41.735Z,chann_save_daily_sales,chajai003,date=2026-02-26 fields=lastYearSales
+1186,2026-02-25T21:19:41.741Z,chann_save_daily_sales,chajai003,date=2026-02-27 fields=lastYearSales
+1187,2026-02-25T21:19:41.749Z,chann_save_daily_sales,chajai003,date=2026-02-28 fields=lastYearSales
+1188,2026-02-25T21:40:38.625Z,chann_bulk_targets,chajai003,2026-02-01~2026-02-28 = 333
+1189,2026-02-25T21:43:17.508Z,chann_bulk_targets,chajai003,2026-02-01~2026-02-28 = 100000
+1190,2026-02-25T21:43:45.399Z,chann_bulk_targets,chajai003,2026-02-01~2026-02-28 = 100000
+1191,2026-02-25T21:46:15.371Z,save_daily_sales_data,chajai003,count=28
+1192,2026-02-25T23:38:00.797Z,login_ok,chajai003,role=admin
+1193,2026-02-26T00:53:11.578Z,login_ok,chajai003,role=admin
+1194,2026-02-26T18:23:56.016Z,login_ok,chajai003,role=admin
+1195,2026-02-26T18:25:01.241Z,login_ok,chajai003,role=admin
+1196,2026-02-26T18:27:19.604Z,login_ok,chajai003,role=admin
+1197,2026-02-26T19:00:08.577Z,delete_sales_report,chajai003,id=143
+1198,2026-02-26T19:02:22.240Z,save_daily_sales_data,chajai003,count=28
+1199,2026-02-26T19:03:31.295Z,save_daily_sales_data,chajai003,count=28
+1200,2026-02-26T19:03:32.661Z,save_daily_targets,chajai003,count=28
+1201,2026-02-26T19:03:38.687Z,save_daily_targets,chajai003,count=28
+1202,2026-02-26T19:03:39.859Z,save_daily_sales_data,chajai003,count=28
+1203,2026-02-26T19:06:27.027Z,chann_save_daily_sales,chajai003,date=2026-02-01 fields=lastYearTc
+1204,2026-02-26T19:06:27.043Z,chann_save_daily_sales,chajai003,date=2026-02-02 fields=lastYearTc
+1205,2026-02-26T19:06:27.050Z,chann_save_daily_sales,chajai003,date=2026-02-03 fields=lastYearTc
+1206,2026-02-26T19:06:27.065Z,chann_save_daily_sales,chajai003,date=2026-02-04 fields=lastYearTc
+1207,2026-02-26T19:06:27.072Z,chann_save_daily_sales,chajai003,date=2026-02-05 fields=lastYearTc
+1208,2026-02-26T19:06:27.078Z,chann_save_daily_sales,chajai003,date=2026-02-06 fields=lastYearTc
+1209,2026-02-26T19:06:27.085Z,chann_save_daily_sales,chajai003,date=2026-02-07 fields=lastYearTc
+1210,2026-02-26T19:06:27.092Z,chann_save_daily_sales,chajai003,date=2026-02-08 fields=lastYearTc
+1211,2026-02-26T19:06:27.099Z,chann_save_daily_sales,chajai003,date=2026-02-09 fields=lastYearTc
+1212,2026-02-26T19:06:27.106Z,chann_save_daily_sales,chajai003,date=2026-02-10 fields=lastYearTc
+1213,2026-02-26T19:06:27.113Z,chann_save_daily_sales,chajai003,date=2026-02-11 fields=lastYearTc
+1214,2026-02-26T19:06:27.120Z,chann_save_daily_sales,chajai003,date=2026-02-12 fields=lastYearTc
+1215,2026-02-26T19:06:27.127Z,chann_save_daily_sales,chajai003,date=2026-02-13 fields=lastYearTc
+1216,2026-02-26T19:06:27.134Z,chann_save_daily_sales,chajai003,date=2026-02-14 fields=lastYearTc
+1217,2026-02-26T19:06:27.141Z,chann_save_daily_sales,chajai003,date=2026-02-15 fields=lastYearTc
+1218,2026-02-26T19:06:27.148Z,chann_save_daily_sales,chajai003,date=2026-02-16 fields=lastYearTc
+1219,2026-02-26T19:06:27.155Z,chann_save_daily_sales,chajai003,date=2026-02-17 fields=lastYearTc
+1220,2026-02-26T19:06:27.163Z,chann_save_daily_sales,chajai003,date=2026-02-18 fields=lastYearTc
+1221,2026-02-26T19:06:27.169Z,chann_save_daily_sales,chajai003,date=2026-02-19 fields=lastYearTc
+1222,2026-02-26T19:06:27.261Z,chann_save_daily_sales,chajai003,date=2026-02-20 fields=lastYearTc
+1223,2026-02-26T19:06:27.268Z,chann_save_daily_sales,chajai003,date=2026-02-21 fields=lastYearTc
+1224,2026-02-26T19:06:27.274Z,chann_save_daily_sales,chajai003,date=2026-02-22 fields=lastYearTc
+1225,2026-02-26T19:06:27.280Z,chann_save_daily_sales,chajai003,date=2026-02-23 fields=lastYearTc
+1226,2026-02-26T19:06:27.286Z,chann_save_daily_sales,chajai003,date=2026-02-24 fields=lastYearTc
+1227,2026-02-26T19:06:27.292Z,chann_save_daily_sales,chajai003,date=2026-02-25 fields=lastYearTc
+1228,2026-02-26T19:06:27.298Z,chann_save_daily_sales,chajai003,date=2026-02-26 fields=lastYearTc
+1229,2026-02-26T19:06:27.303Z,chann_save_daily_sales,chajai003,date=2026-02-27 fields=lastYearTc
+1230,2026-02-26T19:06:27.308Z,chann_save_daily_sales,chajai003,date=2026-02-28 fields=lastYearTc
+1231,2026-02-26T19:53:38.953Z,login_ok,chajai003,role=admin
+1232,2026-02-26T20:01:57.824Z,chann_save_daily_sales,chajai003,date=2026-02-01 fields=recommendHours
+1233,2026-02-26T20:01:57.838Z,chann_save_daily_sales,chajai003,date=2026-02-02 fields=recommendHours
+1234,2026-02-26T20:01:57.845Z,chann_save_daily_sales,chajai003,date=2026-02-03 fields=recommendHours
+1235,2026-02-26T20:01:57.852Z,chann_save_daily_sales,chajai003,date=2026-02-04 fields=recommendHours
+1236,2026-02-26T20:01:57.867Z,chann_save_daily_sales,chajai003,date=2026-02-05 fields=recommendHours
+1237,2026-02-26T20:01:57.873Z,chann_save_daily_sales,chajai003,date=2026-02-06 fields=recommendHours
+1238,2026-02-26T20:01:57.880Z,chann_save_daily_sales,chajai003,date=2026-02-07 fields=recommendHours
+1239,2026-02-26T20:01:57.886Z,chann_save_daily_sales,chajai003,date=2026-02-08 fields=recommendHours
+1240,2026-02-26T20:01:57.894Z,chann_save_daily_sales,chajai003,date=2026-02-09 fields=recommendHours
+1241,2026-02-26T20:01:57.900Z,chann_save_daily_sales,chajai003,date=2026-02-10 fields=recommendHours
+1242,2026-02-26T20:01:57.907Z,chann_save_daily_sales,chajai003,date=2026-02-11 fields=recommendHours
+1243,2026-02-26T20:01:57.914Z,chann_save_daily_sales,chajai003,date=2026-02-12 fields=recommendHours
+1244,2026-02-26T20:01:57.921Z,chann_save_daily_sales,chajai003,date=2026-02-13 fields=recommendHours
+1245,2026-02-26T20:01:57.928Z,chann_save_daily_sales,chajai003,date=2026-02-14 fields=recommendHours
+1246,2026-02-26T20:01:57.934Z,chann_save_daily_sales,chajai003,date=2026-02-15 fields=recommendHours
+1247,2026-02-26T20:01:57.941Z,chann_save_daily_sales,chajai003,date=2026-02-16 fields=recommendHours
+1248,2026-02-26T20:01:57.947Z,chann_save_daily_sales,chajai003,date=2026-02-17 fields=recommendHours
+1249,2026-02-26T20:01:57.952Z,chann_save_daily_sales,chajai003,date=2026-02-18 fields=recommendHours
+1250,2026-02-26T20:01:57.958Z,chann_save_daily_sales,chajai003,date=2026-02-19 fields=recommendHours
+1251,2026-02-26T20:01:57.963Z,chann_save_daily_sales,chajai003,date=2026-02-20 fields=recommendHours
+1252,2026-02-26T20:01:57.969Z,chann_save_daily_sales,chajai003,date=2026-02-21 fields=recommendHours
+1253,2026-02-26T20:01:57.974Z,chann_save_daily_sales,chajai003,date=2026-02-22 fields=recommendHours
+1254,2026-02-26T20:01:57.979Z,chann_save_daily_sales,chajai003,date=2026-02-23 fields=recommendHours
+1255,2026-02-26T20:01:57.984Z,chann_save_daily_sales,chajai003,date=2026-02-24 fields=recommendHours
+1256,2026-02-26T20:01:57.990Z,chann_save_daily_sales,chajai003,date=2026-02-25 fields=recommendHours
+1257,2026-02-26T20:01:57.995Z,chann_save_daily_sales,chajai003,date=2026-02-26 fields=recommendHours
+1258,2026-02-26T20:01:58.002Z,chann_save_daily_sales,chajai003,date=2026-02-27 fields=recommendHours
+1259,2026-02-26T20:01:58.008Z,chann_save_daily_sales,chajai003,date=2026-02-28 fields=recommendHours
+1260,2026-02-26T20:06:32.966Z,chann_save_daily_sales,chajai003,date=2026-02-01 fields=lastYearTc
+1261,2026-02-26T20:06:32.972Z,chann_save_daily_sales,chajai003,date=2026-02-02 fields=lastYearTc
+1262,2026-02-26T20:06:33.054Z,chann_save_daily_sales,chajai003,date=2026-02-03 fields=lastYearTc
+1263,2026-02-26T20:06:33.068Z,chann_save_daily_sales,chajai003,date=2026-02-04 fields=lastYearTc
+1264,2026-02-26T20:06:33.075Z,chann_save_daily_sales,chajai003,date=2026-02-05 fields=lastYearTc
+1265,2026-02-26T20:06:33.083Z,chann_save_daily_sales,chajai003,date=2026-02-06 fields=lastYearTc
+1266,2026-02-26T20:06:33.089Z,chann_save_daily_sales,chajai003,date=2026-02-07 fields=lastYearTc
+1267,2026-02-26T20:06:33.095Z,chann_save_daily_sales,chajai003,date=2026-02-08 fields=lastYearTc
+1268,2026-02-26T20:06:33.102Z,chann_save_daily_sales,chajai003,date=2026-02-09 fields=lastYearTc
+1269,2026-02-26T20:06:33.108Z,chann_save_daily_sales,chajai003,date=2026-02-10 fields=lastYearTc
+1270,2026-02-26T20:06:33.115Z,chann_save_daily_sales,chajai003,date=2026-02-11 fields=lastYearTc
+1271,2026-02-26T20:06:33.121Z,chann_save_daily_sales,chajai003,date=2026-02-12 fields=lastYearTc
+1272,2026-02-26T20:06:33.127Z,chann_save_daily_sales,chajai003,date=2026-02-13 fields=lastYearTc
+1273,2026-02-26T20:06:33.134Z,chann_save_daily_sales,chajai003,date=2026-02-14 fields=lastYearTc
+1274,2026-02-26T20:06:33.140Z,chann_save_daily_sales,chajai003,date=2026-02-15 fields=lastYearTc
+1275,2026-02-26T20:06:33.146Z,chann_save_daily_sales,chajai003,date=2026-02-16 fields=lastYearTc
+1276,2026-02-26T20:06:33.152Z,chann_save_daily_sales,chajai003,date=2026-02-17 fields=lastYearTc
+1277,2026-02-26T20:06:33.158Z,chann_save_daily_sales,chajai003,date=2026-02-18 fields=lastYearTc
+1278,2026-02-26T20:06:33.164Z,chann_save_daily_sales,chajai003,date=2026-02-19 fields=lastYearTc
+1279,2026-02-26T20:06:33.170Z,chann_save_daily_sales,chajai003,date=2026-02-20 fields=lastYearTc
+1280,2026-02-26T20:06:33.176Z,chann_save_daily_sales,chajai003,date=2026-02-21 fields=lastYearTc
+1281,2026-02-26T20:06:33.181Z,chann_save_daily_sales,chajai003,date=2026-02-22 fields=lastYearTc
+1282,2026-02-26T20:06:33.187Z,chann_save_daily_sales,chajai003,date=2026-02-23 fields=lastYearTc
+1283,2026-02-26T20:06:33.194Z,chann_save_daily_sales,chajai003,date=2026-02-24 fields=lastYearTc
+1284,2026-02-26T20:06:33.200Z,chann_save_daily_sales,chajai003,date=2026-02-25 fields=lastYearTc
+1285,2026-02-26T20:06:33.205Z,chann_save_daily_sales,chajai003,date=2026-02-26 fields=lastYearTc
+1286,2026-02-26T20:06:33.210Z,chann_save_daily_sales,chajai003,date=2026-02-27 fields=lastYearTc
+1287,2026-02-26T20:06:33.215Z,chann_save_daily_sales,chajai003,date=2026-02-28 fields=lastYearTc
+1288,2026-02-26T22:03:22.584Z,delete_sales_report,chajai003,id=142
+1289,2026-02-26T22:03:25.407Z,delete_sales_report,chajai003,id=141
+1290,2026-02-26T22:32:35.412Z,login_ok,chajai003,role=admin
+1291,2026-02-26T22:50:45.964Z,save_daily_sales_data,chajai003,count=26
+1292,2026-02-26T22:50:47.789Z,save_daily_targets,chajai003,count=28
+1293,2026-02-27T00:30:11.264Z,login_ok,chajai003,role=admin
+1294,2026-02-27T07:28:19.416Z,login_ok,kitti01,role=area
+1295,2026-02-27T07:28:24.970Z,login_ok,kitti01,role=area
+1296,2026-02-27T07:36:35.831Z,login_ok,chajai003,role=admin
+1297,2026-02-27T07:36:57.160Z,login_ok,chajai003,role=admin
+1298,2026-02-27T07:38:05.881Z,dev_update_role,chajai003,user=kitti03 role=manager position=
+1299,2026-02-27T07:38:12.505Z,dev_update_role,chajai003,user=kitti01 role=manager position=
+1300,2026-02-27T07:39:30.094Z,login_ok,chajai003,role=admin
+1301,2026-02-27T07:43:14.960Z,login_ok,kitti01,role=manager
+1302,2026-02-27T07:43:44.453Z,complete_profile,kitti01,"nickName=Champ, phone=0918484760, email=kitti_ph@minor.com"
+1303,2026-02-27T07:43:55.342Z,password_change_forced,kitti01,success
+1304,2026-02-27T07:53:36.778Z,update_user_status,chajai003,set manager active=1
+1305,2026-02-27T07:53:44.585Z,update_user_status,chajai003,set admin active=1
+1306,2026-02-27T07:59:12.048Z,login_ok,kitti01,role=area
+1307,2026-02-27T07:59:44.018Z,chann_update_user_role,chajai003,user=kitti01 role=manager position=Area Manager
+1308,2026-02-27T17:59:32.266Z,login_ok,chajai003,role=admin
+1309,2026-02-27T18:17:30.478Z,save_daily_sales_data,chajai003,count=28
+1310,2026-02-27T18:19:24.836Z,login_ok,chajai003,role=admin
+1311,2026-02-27T18:21:13.048Z,delete_sales_report,chajai003,id=145
+1312,2026-02-27T18:26:33.566Z,save_daily_sales_data,chajai003,count=28
+1313,2026-02-27T18:36:16.886Z,login_ok,chajai003,role=admin
+1314,2026-02-28T00:42:10.618Z,login_ok,chajai003,role=admin
+1315,2026-02-28T18:32:53.206Z,login_ok,chajai003,role=admin
+1316,2026-02-28T18:49:56.541Z,login_ok,chajai003,role=admin
+1317,2026-02-28T20:12:31.817Z,save_daily_sales_data,chajai003,count=0
+1318,2026-02-28T20:51:16.825Z,login_ok,chajai003,role=admin
+1319,2026-02-28T21:15:35.034Z,chann_bulk_targets,chajai003,2026-03-01~2026-03-31 = 104000
+1320,2026-02-28T21:23:20.785Z,save_daily_sales_data,chajai003,count=2
+1321,2026-02-28T23:14:39.670Z,delete_sales_report,chajai003,id=148
+1322,2026-02-28T23:14:42.535Z,delete_sales_report,chajai003,id=147
+1323,2026-03-01T01:34:03.034Z,login_ok,chajai003,role=admin
+1324,2026-03-01T13:44:30.726Z,login_ok,chajai003,role=admin
+1325,2026-03-01T18:43:50.793Z,login_ok,chajai003,role=admin
+1326,2026-03-01T18:46:55.021Z,login_ok,chajai003,role=admin
+1327,2026-03-01T20:01:31.921Z,login_ok,chajai003,role=admin
+1328,2026-03-01T21:08:09.195Z,login_ok,chajai003,role=admin
+1329,2026-03-02T18:50:56.647Z,login_ok,chajai003,role=admin
+1330,2026-03-02T19:40:16.116Z,login_ok,chajai003,role=admin
+1331,2026-03-02T21:01:52.997Z,delete_sales_report,chajai003,id=151
+1332,2026-03-02T21:04:05.025Z,update_sales_report,chajai003,id=146
+1333,2026-03-02T21:33:01.004Z,login_ok,chajai003,role=admin
+1334,2026-03-03T10:34:06.375Z,login_ok,chajai003,role=admin
+1335,2026-03-03T10:39:02.076Z,login_ok,chajai003,role=admin
+1336,2026-03-03T10:40:04.513Z,update_store_settings,chajai003,settings updated
+1337,2026-03-03T19:24:20.365Z,login_ok,chajai003,role=admin
+1338,2026-03-03T19:57:44.030Z,login_ok,chajai003,role=admin
+1339,2026-03-04T02:21:21.892Z,login_ok,chajai003,role=admin
+1340,2026-03-04T03:26:12.942Z,login_ok,chajai003,role=admin
+1341,2026-03-04T10:35:16.647Z,login_ok,chajai003,role=admin
+1342,2026-03-04T10:37:20.156Z,login_ok,chajai003,role=admin
+1343,2026-03-04T11:37:33.507Z,login_ok,chajai003,role=admin
+1344,2026-03-04T12:08:15.268Z,login_ok,chajai003,role=admin
+1345,2026-03-04T12:35:47.644Z,login_ok,chajai003,role=admin
+1346,2026-03-04T12:36:00.640Z,login_ok,chajai003,role=admin
+1347,2026-03-04T13:17:38.245Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1348,2026-03-04T18:39:22.293Z,login_ok,chajai003,role=admin
+1349,2026-03-04T20:01:11.916Z,login_ok,chajai003,role=admin
+1350,2026-03-04T20:44:55.025Z,delete_sales_report,chajai003,id=155
+1351,2026-03-04T20:45:01.632Z,delete_sales_report,chajai003,id=156
+1352,2026-03-04T20:45:06.161Z,delete_sales_report,chajai003,id=154
+1353,2026-03-04T22:57:35.935Z,chann_bulk_targets,chajai003,2026-03-01~2026-03-31 = 88
+1354,2026-03-04T23:29:20.701Z,chann_bulk_targets,chajai003,2026-03-01~2026-03-03 = 104000
+1355,2026-03-04T23:29:20.896Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1356,2026-03-04T23:30:55.316Z,chann_bulk_targets,chajai003,2026-03-01~2026-03-03 = 104000
+1357,2026-03-04T23:30:55.420Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1358,2026-03-05T13:09:34.486Z,login_ok,chajai003,role=admin
+1359,2026-03-05T20:16:29.510Z,login_ok,chajai003,role=admin
+1360,2026-03-05T20:59:47.813Z,login_ok,chajai003,role=admin
+1361,2026-03-06T00:04:45.377Z,chann_bulk_targets,chajai003,2026-03-01~2026-03-03 = 104000
+1362,2026-03-06T00:04:45.483Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1363,2026-03-06T00:04:45.486Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 350
+1364,2026-03-06T00:11:46.513Z,delete_sales_report,chajai003,id=158
+1397,2026-03-06T14:26:10.420Z,login_ok,chajai003,role=admin
+1398,2026-03-06T15:23:22.654Z,login_ok,chajai003,role=admin
+1399,2026-03-06T15:25:14.474Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1400,2026-03-06T15:25:14.476Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 350
+1401,2026-03-06T15:25:44.752Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1402,2026-03-06T15:25:47.881Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 350
+1403,2026-03-06T16:22:08.282Z,login_ok,chajai003,role=admin
+1404,2026-03-06T16:24:02.154Z,chann_bulk_targets,chajai003,2026-03-04~2026-03-31 = 95000
+1405,2026-03-06T22:36:29.906Z,login_ok,chajai003,role=admin
+1406,2026-03-06T22:39:53.718Z,login_ok,chajai003,role=admin
+1407,2026-03-06T23:03:53.340Z,login_ok,chajai003,role=admin
+1408,2026-03-07T00:34:23.574Z,delete_sales_report,chajai003,id=160
+1409,2026-03-07T00:51:07.021Z,delete_sales_report,chajai003,id=161
+1410,2026-03-07T00:52:07.808Z,delete_sales_report,chajai003,id=162
+1411,2026-03-07T08:28:38.391Z,login_ok,chajai003,role=admin
+1412,2026-03-07T08:29:21.521Z,save_daily_sales_data,chajai003,count=6
+1413,2026-03-07T08:29:42.229Z,delete_sales_report,chajai003,id=163
+1414,2026-03-07T08:30:59.702Z,chann_save_daily_sales,chajai003,"date=2026-03-05 fields=actualSales,transactionCount,wasteDaily"
+1415,2026-03-07T08:31:30.380Z,chann_bulk_targets,chajai003,2026-03-01~2026-03-03 = 95000
+1416,2026-03-07T18:09:47.011Z,login_ok,chajai003,role=admin
+1417,2026-03-07T22:36:36.720Z,login_ok,chajai003,role=admin
+1418,2026-03-08T10:56:07.574Z,login_ok,chajai003,role=admin
+1419,2026-03-08T15:51:37.240Z,login_ok,chajai003,role=admin
+1420,2026-03-08T19:49:15.117Z,login_ok,chajai003,role=admin
+1421,2026-03-08T22:02:20.631Z,login_ok,chajai003,role=admin
+1422,2026-03-08T23:06:11.112Z,chann_bulk_shifts,chajai003,count=1
+1423,2026-03-08T23:16:15.402Z,chann_bulk_shifts,chajai003,count=6
+1424,2026-03-08T23:16:19.114Z,chann_bulk_shifts,chajai003,count=5
+1425,2026-03-09T18:13:13.810Z,login_ok,chajai003,role=admin
+1426,2026-03-09T21:01:32.659Z,login_ok,chajai003,role=admin
+1427,2026-03-10T00:17:28.538Z,chann_set_waste_target,chajai003,month=2026-03
+1428,2026-03-10T00:17:28.540Z,chann_save_daily_sales,chajai003,"date=2026-03-10 fields=actualSales,transactionCount,wasteDaily,targetTa"
+1429,2026-03-10T00:21:36.656Z,login_ok,chajai003,role=admin
+1430,2026-03-11T04:08:41.499Z,login_ok,chajai003,role=admin
+1431,2026-03-15T05:35:00.486Z,login_ok,chajai003,role=admin
+1432,2026-03-15T06:55:13.191Z,login_ok,chajai003,role=admin
+1433,2026-03-15T11:16:42.618Z,login_ok,chajai003,role=admin
+1434,2026-03-15T15:59:19.556Z,login_ok,chajai003,role=admin
+1435,2026-03-16T20:02:17.648Z,login_ok,chajai003,role=admin
+1436,2026-03-16T21:16:51.504Z,login_ok,chajai003,role=admin
+1437,2026-03-16T21:17:05.140Z,login_ok,chajai003,role=admin
+1438,2026-03-16T21:17:20.201Z,login_ok,chajai003,role=admin
+1439,2026-03-16T21:17:27.609Z,login_ok,chajai003,role=admin
+1440,2026-03-16T21:17:51.265Z,login_ok,chajai003,role=admin
+1441,2026-03-16T21:18:21.825Z,login_ok,chajai003,role=admin
+1442,2026-03-16T21:19:28.972Z,login_ok,nutkae001,role=manager
+1443,2026-03-16T21:38:00.696Z,login_ok,chajai003,role=admin
+1444,2026-03-17T04:35:11.237Z,login_ok,chajai003,role=admin
+1445,2026-03-17T04:37:02.491Z,login_ok,chajai003,role=admin
+1446,2026-03-17T11:06:38.982Z,login_ok,chajai003,role=admin
+1447,2026-03-17T11:07:02.479Z,login_ok,chajai003,role=admin
+1448,2026-03-17T11:43:27.926Z,login_ok,chajai003,role=admin
+1449,2026-03-17T12:01:18.706Z,login_ok,chajai003,role=admin
+1450,2026-03-17T17:30:37.378Z,login_ok,chajai003,role=admin
+1451,2026-03-17T17:41:58.710Z,login_ok,chajai003,role=admin
+1452,2026-03-17T17:44:51.395Z,chann_save_daily_sales,chajai003,"date=2026-03-10 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1453,2026-03-17T17:46:04.090Z,chann_execute_sql,chajai003,"SELECT id, report_date, actual_sales, transaction_count, actual_hours, waste_raw_daily, waste_meal_daily, last_year_sales, forecast_sales, target_ta, report_by, updated_at FROM daily_sales_reports WHE"
+1454,2026-03-17T17:46:06.304Z,chann_save_daily_sales,chajai003,"date=2026-03-10 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1455,2026-03-17T17:46:08.722Z,chann_execute_sql,chajai003,"SELECT id, report_date, actual_sales, transaction_count, actual_hours, waste_raw_daily, waste_meal_daily, last_year_sales, forecast_sales, target_ta, report_by, updated_at FROM daily_sales_reports WHE"
+1456,2026-03-17T17:50:27.984Z,chann_save_daily_sales,chajai003,"date=2026-03-10 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1457,2026-03-17T17:57:17.451Z,save_daily_sales_data,chajai003,count=17
+1458,2026-03-17T17:59:29.572Z,save_daily_sales_data,chajai003,count=17
+1459,2026-03-17T17:59:30.999Z,save_daily_sales_data,chajai003,count=17
+1460,2026-03-17T17:59:31.780Z,save_daily_targets,chajai003,count=31
+1461,2026-03-17T18:07:55.304Z,admin_update_profile,chajai003,"updated ponsae001: {""nickName"":""Gang"",""phone"":""0985012382"",""email"":""skrobinson2382@gmail.com"",""position"":""service_staff""}"
+1462,2026-03-18T17:09:53.542Z,login_ok,chajai003,role=admin
+1463,2026-03-18T17:52:15.702Z,login_ok,chajai003,role=admin
+1464,2026-03-19T02:10:03.318Z,login_ok,chajai003,role=admin
+1465,2026-03-19T04:15:15.669Z,login_ok,chajai003,role=admin
+1466,2026-03-19T16:40:10.984Z,login_ok,chajai003,role=admin
+1467,2026-03-19T19:07:03.520Z,login_ok,chajai003,role=admin
+1468,2026-03-19T22:42:57.667Z,manager_set_shift,chajai003,for ponsae001 on 2026-01-15
+1469,2026-03-19T22:42:57.786Z,manager_delete_shift_by_id,chajai003,shiftId=85
+1470,2026-03-19T22:49:59.206Z,login_ok,chajai003,role=admin
+1471,2026-03-20T01:02:14.307Z,manager_update_shift,chajai003,shiftId=558
+1472,2026-03-20T01:02:16.329Z,manager_update_shift,chajai003,shiftId=559
+1473,2026-03-20T01:03:30.114Z,manager_update_shift,chajai003,shiftId=581
+1474,2026-03-20T01:03:39.671Z,manager_delete_shift_by_id,chajai003,shiftId=580
+1475,2026-03-20T01:03:42.224Z,manager_set_shift,chajai003,for chajai003 on 2026-03-19
+1476,2026-03-20T01:03:42.432Z,manager_delete_shift_by_id,chajai003,shiftId=587
+1477,2026-03-20T01:03:45.198Z,manager_set_shift,chajai003,for wasson001 on 2026-03-19
+1478,2026-03-20T01:03:45.311Z,manager_delete_shift_by_id,chajai003,shiftId=758
+1479,2026-03-20T01:03:48.599Z,manager_set_shift,chajai003,for chajai003 on 2026-03-19
+1480,2026-03-20T01:04:12.585Z,manager_update_shift,chajai003,shiftId=759
+1481,2026-03-20T01:04:20.946Z,manager_update_shift,chajai003,shiftId=759
+1482,2026-03-20T14:14:09.036Z,login_ok,chajai003,role=admin
+1483,2026-03-20T14:14:17.985Z,manager_swap_shifts,chajai003,swapped shiftId=760 <-> shiftId=573
+1484,2026-03-20T14:14:21.261Z,manager_swap_shifts,chajai003,swapped shiftId=573 <-> shiftId=760
+1485,2026-03-20T23:55:05.144Z,login_ok,chajai003,role=admin
+1486,2026-03-21T16:37:40.997Z,login_ok,chajai003,role=admin
+1487,2026-03-21T16:37:59.533Z,manager_swap_shifts,chajai003,swapped shiftId=760 <-> shiftId=759
+1488,2026-03-21T16:38:02.399Z,manager_swap_shifts,chajai003,swapped shiftId=759 <-> shiftId=760
+1489,2026-03-21T16:38:04.690Z,manager_swap_shifts,chajai003,swapped shiftId=581 <-> shiftId=588
+1490,2026-03-21T16:38:12.882Z,manager_swap_shifts,chajai003,swapped shiftId=581 <-> shiftId=588
+1491,2026-03-21T16:47:49.043Z,login_ok,wasson001,role=manager
+1492,2026-03-21T17:03:02.040Z,login_ok,manager,role=manager
+1493,2026-03-21T18:44:26.379Z,login_ok,chajai003,role=admin
+1494,2026-03-22T03:49:28.002Z,login_ok,chajai003,role=admin
+1495,2026-03-22T04:35:15.319Z,login_ok,chajai003,role=admin
+1496,2026-03-22T08:50:59.712Z,login_ok,chajai003,role=admin
+1497,2026-03-22T08:55:03.773Z,update_sales_report,chajai003,id=179
+1498,2026-03-22T08:55:31.182Z,update_sales_report,chajai003,id=179
+1499,2026-03-22T11:46:28.663Z,login_ok,chajai003,role=admin
+1500,2026-03-22T12:00:51.374Z,login_ok,chajai003,role=admin
+1501,2026-03-22T12:02:32.435Z,chann_execute_sql,chajai003,"SELECT id, username, type, title, description, status, created_at, updated_at FROM agent_requests ORDER BY created_at DESC LIMIT 20;"
+1502,2026-03-22T12:02:34.822Z,chann_execute_sql,chajai003,"UPDATE agent_requests SET status='acknowledged', updated_at=NOW() WHERE id=6;"
+1503,2026-03-22T12:02:52.055Z,chann_execute_sql,chajai003,"SELECT id, report_date, report_by, daily_target, actual_sales, transaction_count, actual_hours, waste_raw_daily, last_year_sales, forecast_sales, target_ta, updated_at FROM daily_sales_reports WHERE r"
+1504,2026-03-22T12:05:31.790Z,chann_execute_sql,chajai003,"SELECT id, username, type, title, description, status, created_at, updated_at FROM agent_requests ORDER BY created_at DESC;"
+1505,2026-03-22T12:05:33.849Z,chann_execute_sql,chajai003,"UPDATE agent_requests SET status='acknowledged', updated_at=NOW() WHERE id IN (6,10);"
+1506,2026-03-22T12:05:37.709Z,chann_execute_sql,chajai003,"SELECT id, status, updated_at FROM agent_requests WHERE id IN (6,10) ORDER BY id;"
+1507,2026-03-22T14:08:27.276Z,manager_set_shift,chajai003,for ponsae001 on 2026-03-22
+1508,2026-03-22T14:09:00.907Z,manager_set_shift,chajai003,for ponsae001 on 2026-03-21
+1509,2026-03-22T14:09:08.574Z,manager_set_shift,chajai003,for ponsae001 on 2026-03-20
+1510,2026-03-22T14:09:20.160Z,manager_set_shift,chajai003,for ponsae001 on 2026-03-19
+1511,2026-03-22T14:14:58.892Z,chann_execute_sql,chajai003,"SELECT id, username, type, title, description, status, created_at, updated_at FROM agent_requests ORDER BY created_at DESC;"
+1512,2026-03-22T14:15:01.183Z,chann_execute_sql,chajai003,"UPDATE agent_requests SET status='acknowledged', updated_at=NOW() WHERE id IN (6,10);"
+1513,2026-03-22T14:15:04.199Z,chann_execute_sql,chajai003,"SELECT id, status, updated_at FROM agent_requests WHERE id IN (6,10) ORDER BY id;"
+1514,2026-03-22T15:15:07.139Z,login_ok,chajai003,role=admin
+1515,2026-03-22T15:39:28.746Z,manager_set_shift,chajai003,for yossanan.t on 2026-03-21
+1516,2026-03-22T15:39:38.101Z,manager_set_shift,chajai003,for yossanan.t on 2026-03-22
+1517,2026-03-22T15:39:47.746Z,manager_set_shift,chajai003,for ponsae001 on 2026-03-23
+1518,2026-03-22T15:40:53.205Z,manager_set_shift,chajai003,for nattarika.j on 2026-03-22
+1519,2026-03-22T15:40:53.270Z,manager_set_shift,chajai003,for nattarika.j on 2026-03-22
+1520,2026-03-23T07:01:26.187Z,login_ok,chajai003,role=admin
+1521,2026-03-23T08:05:40.805Z,login_ok,chajai003,role=admin
+1522,2026-03-23T12:02:48.823Z,login_ok,chajai003,role=admin
+1523,2026-03-23T12:43:48.613Z,login_ok,chajai003,role=admin
+1524,2026-03-23T12:48:42.115Z,chann_exec_shell,chajai003,cmd=ls -la
+1525,2026-03-23T12:48:48.896Z,chann_exec_shell,chajai003,cmd=find server -maxdepth 3 -type f
+1526,2026-03-23T12:48:56.246Z,chann_exec_shell,chajai003,cmd=grep -n borrow server/routes.ts
+1527,2026-03-23T12:49:04.710Z,chann_exec_shell,chajai003,cmd=find client/src -maxdepth 3 -type f
+1528,2026-03-23T12:49:11.412Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""TabsTrigger"" client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""TabsTrigger"" client/src/pages/borrow/borrow-tracker-page.tsx"
+1529,2026-03-23T12:49:18.801Z,chann_exec_shell,chajai003,cmd=grep -n Tabs client/src/pages/borrow/borrow-tracker-page.tsx
+1530,2026-03-23T12:49:24.526Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""tabs"" client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""tabs"" client/src/pages/borrow/borrow-tracker-page.tsx"
+1531,2026-03-23T12:50:08.406Z,chann_exec_shell,chajai003,cmd=grep -n transactions client/src/pages/borrow/borrow-tracker-page.tsx
+1532,2026-03-23T12:50:33.410Z,chann_apply_code_edit,chajai003,file=server/routes.ts desc=Add /api/borrow/outstanding endpoint to calculate net outstanding balances per branch+item+unit
+1533,2026-03-23T13:12:57.445Z,chann_exec_shell,chajai003,cmd=find client/src -maxdepth 4 -type f -iname '*borrow*' -print
+1534,2026-03-23T13:13:02.095Z,chann_exec_shell,chajai003,cmd=find client/src -maxdepth 6 -type f -iname '*borrow*' -print
+1535,2026-03-23T13:13:05.111Z,chann_exec_shell,chajai003,cmd=find server -maxdepth 6 -type f -iname '*borrow*' -print
+1536,2026-03-23T13:13:09.998Z,chann_exec_shell,chajai003,cmd=ls client
+1537,2026-03-23T13:13:12.532Z,chann_exec_shell,chajai003,cmd=ls client/src
+1538,2026-03-23T13:13:15.961Z,chann_exec_shell,chajai003,cmd=ls client/src/pages
+1539,2026-03-23T13:13:18.282Z,chann_exec_shell,chajai003,cmd=ls client/src/pages/borrow
+1540,2026-03-23T13:13:27.779Z,chann_exec_shell,chajai003,cmd=ls server
+1541,2026-03-23T13:13:30.006Z,chann_exec_shell,chajai003,cmd=ls server/services
+1542,2026-03-23T13:13:39.401Z,chann_exec_shell_error,chajai003,"cmd=grep -R ""Borrow"" -n server/routes.ts error=Command failed: grep -R ""Borrow"" -n server/routes.ts"
+1543,2026-03-23T13:14:04.964Z,chann_exec_shell,chajai003,cmd=grep -n borrow server/routes.ts
+1544,2026-03-23T13:14:12.977Z,chann_exec_shell_error,chajai003,cmd=grep -n outstanding client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n outstanding client/src/pages/borrow/borrow-tracker-page.tsx
+1545,2026-03-23T13:14:55.023Z,chann_exec_shell,chajai003,cmd=ls -la server
+1546,2026-03-23T13:14:57.744Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""outstanding"" -n server/routes.ts error=Command failed: grep -n ""outstanding"" -n server/routes.ts"
+1547,2026-03-23T13:15:00.294Z,chann_exec_shell,chajai003,cmd=grep -n outstanding server/routes.ts
+1548,2026-03-23T13:15:15.809Z,chann_exec_shell,chajai003,cmd=npm -v
+1549,2026-03-23T13:15:35.361Z,chann_apply_code_edit,chajai003,file=client/src/pages/borrow/borrow-tracker-page.tsx desc=Add OutstandingRow type for borrow outstanding API results
+1675,2026-04-02T21:48:13.265Z,chann_save_daily_sales,chajai003,date=2026-04-27 fields=lastYearSales
+1550,2026-03-23T13:15:44.352Z,chann_apply_code_edit,chajai003,file=client/src/pages/borrow/borrow-tracker-page.tsx desc=Add state for outstanding API + filters
+1551,2026-03-23T13:15:47.049Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""const fetchData"" -n client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""const fetchData"" -n client/src/pages/borrow/borrow-tracker-page.tsx
+grep: fetchData"": No such file or directory
+"
+1552,2026-03-23T13:15:49.316Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""fetchData"" client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""fetchData"" client/src/pages/borrow/borrow-tracker-page.tsx"
+1553,2026-03-23T13:15:52.071Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""fetch"" client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""fetch"" client/src/pages/borrow/borrow-tracker-page.tsx"
+1554,2026-03-23T13:16:20.303Z,chann_apply_code_edit,chajai003,file=client/src/pages/borrow/borrow-tracker-page.tsx desc=Add fetchOutstanding() and refresh it inside fetchData()
+1555,2026-03-23T13:16:31.133Z,chann_apply_code_edit,chajai003,file=client/src/pages/borrow/borrow-tracker-page.tsx desc=Add filteredOutstanding computed list
+1556,2026-03-23T13:16:35.381Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""<Tabs"" client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""<Tabs"" client/src/pages/borrow/borrow-tracker-page.tsx"
+1557,2026-03-23T13:16:38.459Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""Tabs defaultValue"" client/src/pages/borrow/borrow-tracker-page.tsx error=Command failed: grep -n ""Tabs defaultValue"" client/src/pages/borrow/borrow-tracker-page.tsx
+grep: defaultValue"": No such file or directory
+"
+1558,2026-03-23T13:28:05.027Z,chann_exec_shell,chajai003,"cmd=node -p ""1+1"""
+1559,2026-03-23T13:28:17.896Z,chann_exec_shell,chajai003,cmd=ls server
+1560,2026-03-23T13:28:24.698Z,chann_exec_shell,chajai003,cmd=ls server/services
+1561,2026-03-23T13:28:27.473Z,chann_exec_shell,chajai003,"cmd=find server -maxdepth 2 -type f -name ""*borrow*"""
+1562,2026-03-23T13:28:30.235Z,chann_exec_shell,chajai003,"cmd=find server -maxdepth 3 -type f -name ""*.ts"""
+1563,2026-03-23T13:29:36.473Z,chann_exec_shell,chajai003,cmd=ls
+1564,2026-03-23T13:29:53.303Z,chann_exec_shell_error,chajai003,"cmd=npm run dev error=Command failed: npm run dev
+Server error: Error: listen EADDRINUSE: address already in use 0.0.0.0:5000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:ne"
+1565,2026-03-23T13:30:09.736Z,chann_exec_shell,chajai003,cmd=npm run build
+1566,2026-03-23T13:30:47.905Z,chann_exec_shell_error,chajai003,"cmd=npm run dev error=Command failed: npm run dev
+Server error: Error: listen EADDRINUSE: address already in use 0.0.0.0:5000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:ne"
+1567,2026-03-23T13:46:57.326Z,login_ok,chajai003,role=admin
+1568,2026-03-23T14:09:39.143Z,login_ok,chajai003,role=admin
+1569,2026-03-23T15:06:49.814Z,login_ok,wasson001,role=manager
+1570,2026-03-23T15:13:46.069Z,chann_execute_sql,chajai003,SELECT * FROM daily_sales_reports LIMIT 1;
+1571,2026-03-23T15:13:49.397Z,chann_execute_sql,chajai003,"SELECT report_date, COUNT(*) AS cnt FROM daily_sales_reports WHERE report_date >= '2026-03-01' AND report_date <= '2026-03-31' GROUP BY report_date HAVING COUNT(*) > 1 ORDER BY report_date;"
+1572,2026-03-23T15:14:42.347Z,chann_exec_shell,chajai003,cmd=ls -la client/src
+1573,2026-03-23T15:14:44.456Z,chann_exec_shell,chajai003,cmd=ls -la server
+1574,2026-03-23T15:14:56.782Z,chann_exec_shell,chajai003,"cmd=find server -maxdepth 2 -type f -name ""*.ts"""
+1575,2026-03-23T15:15:01.983Z,chann_exec_shell,chajai003,cmd=ls server/services
+1576,2026-03-23T18:04:15.529Z,login_ok,wasson001,role=manager
+1577,2026-03-24T09:40:28.084Z,login_ok,chajai003,role=admin
+1578,2026-03-24T12:20:20.026Z,login_ok,chajai003,role=admin
+1579,2026-03-24T19:14:46.604Z,login_ok,wasson001,role=manager
+1580,2026-03-24T20:04:41.670Z,login_ok,wasson001,role=manager
+1581,2026-03-25T14:09:55.836Z,login_ok,chajai003,role=admin
+1582,2026-03-30T19:47:39.230Z,login_ok,chajai003,role=admin
+1583,2026-03-30T21:26:37.225Z,login_ok,chajai003,role=admin
+1584,2026-03-30T23:33:09.944Z,chann_exec_shell,chajai003,cmd=ls -la
+1585,2026-03-30T23:33:15.882Z,chann_exec_shell,chajai003,"cmd=find client/src -maxdepth 4 -type f -iname ""*daily*sales*"""
+1586,2026-03-30T23:33:20.881Z,chann_exec_shell,chajai003,"cmd=find client/src -maxdepth 6 -type f -iname ""*sales*"""
+1587,2026-03-30T23:33:23.401Z,chann_exec_shell,chajai003,cmd=find client/src -maxdepth 6 -type f
+1588,2026-03-30T23:33:28.069Z,chann_exec_shell,chajai003,cmd=find server -maxdepth 3 -type f
+1589,2026-03-30T23:34:17.360Z,chann_exec_shell,chajai003,cmd=ls client/src/pages/sales
+1590,2026-03-30T23:34:27.574Z,chann_exec_shell,chajai003,cmd=find client/src/pages/sales -maxdepth 1 -type f
+1591,2026-03-31T00:39:12.495Z,chann_save_daily_sales,chajai003,"date=2026-03-25 fields=actualSales,transactionCount,actualHours,wasteDaily"
+1592,2026-03-31T00:50:29.338Z,chann_save_daily_sales,chajai003,"date=2026-03-26 fields=actualSales,transactionCount,actualHours,wasteDaily,forecastSales,targetTa"
+1593,2026-03-31T00:50:56.510Z,chann_save_daily_sales,chajai003,"date=2026-03-27 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1594,2026-03-31T00:51:47.262Z,chann_save_daily_sales,chajai003,"date=2026-03-28 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1595,2026-03-31T00:52:28.794Z,chann_save_daily_sales,chajai003,"date=2026-03-29 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1596,2026-03-31T01:01:12.709Z,save_daily_sales_data,chajai003,count=30
+1597,2026-03-31T09:49:53.470Z,login_ok,chajai003,role=admin
+1598,2026-03-31T09:50:05.126Z,login_ok,chajai003,role=admin
+1599,2026-03-31T09:50:57.113Z,update_sales_report,chajai003,id=188
+1600,2026-03-31T09:51:02.739Z,update_sales_report,chajai003,id=187
+1601,2026-03-31T23:44:04.257Z,login_ok,chajai003,role=admin
+1602,2026-03-31T23:44:49.498Z,login_ok,chajai003,role=admin
+1603,2026-04-01T16:18:04.676Z,login_ok,chajai003,role=admin
+1604,2026-04-01T17:18:54.665Z,login_ok,chajai003,role=admin
+1835,2026-04-14T10:52:14.903Z,login_ok,chajai003,role=admin
+1605,2026-04-01T18:07:03.649Z,register_manager,supsup,"fullName=Supphawit Kuljarusmit, position=store_manager"
+1606,2026-04-01T18:07:26.225Z,login_ok,supsup,role=manager
+1607,2026-04-01T18:09:24.227Z,update_user_role,chajai003,set supsup role=manager position=assistant_store_manager
+1608,2026-04-01T18:09:46.736Z,admin_update_profile,chajai003,"updated supsup: {""nickName"":""Fluke"",""phone"":""0647159468"",""email"":""Donot9071@gmail.com"",""position"":""assistant_store_manager""}"
+1609,2026-04-01T18:53:56.554Z,login_ok,chajai003,role=admin
+1610,2026-04-01T19:28:31.493Z,save_daily_sales_data,chajai003,count=1
+1611,2026-04-01T19:35:19.673Z,update_store_settings,chajai003,settings updated
+1612,2026-04-01T19:36:15.483Z,save_daily_sales_data,chajai003,count=1
+1613,2026-04-01T19:50:07.572Z,chann_save_daily_sales,chajai003,"date=2026-03-29 fields=actualSales,transactionCount,actualHours,wasteDaily,lastYearSales,forecastSales,targetTa"
+1614,2026-04-01T19:50:12.117Z,chann_save_daily_target,chajai003,date=2026-03-29 target=95000
+1615,2026-04-01T20:12:03.457Z,excel_import,chajai003,"imported=31, errors=0"
+1616,2026-04-01T20:13:02.958Z,excel_import,chajai003,"imported=31, errors=0"
+1617,2026-04-01T20:13:55.826Z,chann_bulk_targets,chajai003,2026-04-01~2026-04-30 = 95000
+1618,2026-04-01T20:16:13.274Z,chann_save_daily_sales,chajai003,"date=2026-04-01 fields=actualSales,forecastSales"
+1619,2026-04-01T20:19:11.707Z,chann_bulk_targets,chajai003,2026-04-01~2026-04-30 = 95000
+1620,2026-04-01T20:20:57.118Z,delete_sales_report,chajai003,id=191
+1621,2026-04-01T20:20:59.496Z,delete_sales_report,chajai003,id=192
+1622,2026-04-01T20:23:05.634Z,delete_sales_report,chajai003,id=220
+1623,2026-04-01T20:23:07.679Z,delete_sales_report,chajai003,id=219
+1624,2026-04-01T20:23:32.088Z,update_store_settings,chajai003,settings updated
+1625,2026-04-01T21:40:17.745Z,delete_sales_report,chajai003,id=218
+1626,2026-04-01T21:40:19.075Z,delete_sales_report,chajai003,id=217
+1627,2026-04-01T21:40:20.611Z,delete_sales_report,chajai003,id=216
+1628,2026-04-01T21:40:21.963Z,delete_sales_report,chajai003,id=215
+1629,2026-04-01T21:40:23.829Z,delete_sales_report,chajai003,id=214
+1630,2026-04-01T21:45:44.769Z,delete_sales_report,chajai003,id=193
+1631,2026-04-01T21:45:52.994Z,delete_sales_report,chajai003,id=199
+1632,2026-04-01T21:45:55.077Z,delete_sales_report,chajai003,id=200
+1633,2026-04-01T21:45:56.922Z,delete_sales_report,chajai003,id=198
+1634,2026-04-01T21:45:59.304Z,delete_sales_report,chajai003,id=197
+1635,2026-04-01T21:46:06.154Z,delete_sales_report,chajai003,id=213
+1636,2026-04-01T21:46:08.511Z,delete_sales_report,chajai003,id=212
+1637,2026-04-01T21:46:11.120Z,delete_sales_report,chajai003,id=211
+1638,2026-04-01T21:46:18.340Z,delete_sales_report,chajai003,id=210
+1639,2026-04-01T21:46:20.437Z,delete_sales_report,chajai003,id=209
+1640,2026-04-01T21:46:22.453Z,delete_sales_report,chajai003,id=208
+1641,2026-04-01T21:46:24.566Z,delete_sales_report,chajai003,id=207
+1642,2026-04-01T21:46:26.372Z,delete_sales_report,chajai003,id=206
+1643,2026-04-01T21:46:42.309Z,delete_sales_report,chajai003,id=205
+1644,2026-04-01T21:46:44.580Z,delete_sales_report,chajai003,id=204
+1645,2026-04-01T21:46:49.392Z,delete_sales_report,chajai003,id=203
+1646,2026-04-01T21:46:51.629Z,delete_sales_report,chajai003,id=202
+1647,2026-04-01T21:46:53.823Z,delete_sales_report,chajai003,id=201
+1648,2026-04-01T21:46:55.932Z,delete_sales_report,chajai003,id=196
+1649,2026-04-01T21:46:57.844Z,delete_sales_report,chajai003,id=195
+1650,2026-04-01T21:47:01.326Z,delete_sales_report,chajai003,id=194
+1651,2026-04-02T16:47:06.323Z,login_ok,chajai003,role=admin
+1652,2026-04-02T17:29:36.681Z,login_ok,chajai003,role=admin
+1653,2026-04-02T18:11:36.230Z,update_store_settings,chajai003,settings updated
+1654,2026-04-02T21:48:13.199Z,chann_save_daily_sales,chajai003,date=2026-04-02 fields=lastYearSales
+1655,2026-04-02T21:48:13.204Z,chann_save_daily_sales,chajai003,date=2026-04-01 fields=lastYearSales
+1656,2026-04-02T21:48:13.216Z,chann_save_daily_sales,chajai003,date=2026-04-11 fields=lastYearSales
+1657,2026-04-02T21:48:13.217Z,chann_save_daily_sales,chajai003,date=2026-04-12 fields=lastYearSales
+1658,2026-04-02T21:48:13.218Z,chann_save_daily_sales,chajai003,date=2026-04-14 fields=lastYearSales
+1659,2026-04-02T21:48:13.218Z,chann_save_daily_sales,chajai003,date=2026-04-13 fields=lastYearSales
+1660,2026-04-02T21:48:13.252Z,chann_save_daily_sales,chajai003,date=2026-04-17 fields=lastYearSales
+1661,2026-04-02T21:48:13.252Z,chann_save_daily_sales,chajai003,date=2026-04-15 fields=lastYearSales
+1662,2026-04-02T21:48:13.255Z,chann_save_daily_sales,chajai003,date=2026-04-19 fields=lastYearSales
+1663,2026-04-02T21:48:13.255Z,chann_save_daily_sales,chajai003,date=2026-04-18 fields=lastYearSales
+1664,2026-04-02T21:48:13.255Z,chann_save_daily_sales,chajai003,date=2026-04-16 fields=lastYearSales
+1665,2026-04-02T21:48:13.258Z,chann_save_daily_sales,chajai003,date=2026-04-20 fields=lastYearSales
+1666,2026-04-02T21:48:13.258Z,chann_save_daily_sales,chajai003,date=2026-04-22 fields=lastYearSales
+1667,2026-04-02T21:48:13.258Z,chann_save_daily_sales,chajai003,date=2026-04-23 fields=lastYearSales
+1668,2026-04-02T21:48:13.259Z,chann_save_daily_sales,chajai003,date=2026-04-21 fields=lastYearSales
+1669,2026-04-02T21:48:13.261Z,chann_save_daily_sales,chajai003,date=2026-04-26 fields=lastYearSales
+1670,2026-04-02T21:48:13.262Z,chann_save_daily_sales,chajai003,date=2026-04-08 fields=lastYearSales
+1671,2026-04-02T21:48:13.262Z,chann_save_daily_sales,chajai003,date=2026-04-24 fields=lastYearSales
+1672,2026-04-02T21:48:13.263Z,chann_save_daily_sales,chajai003,date=2026-04-25 fields=lastYearSales
+1673,2026-04-02T21:48:13.263Z,chann_save_daily_sales,chajai003,date=2026-04-29 fields=lastYearSales
+1674,2026-04-02T21:48:13.265Z,chann_save_daily_sales,chajai003,date=2026-04-06 fields=lastYearSales
+1676,2026-04-02T21:48:13.266Z,chann_save_daily_sales,chajai003,date=2026-04-09 fields=lastYearSales
+1677,2026-04-02T21:48:13.266Z,chann_save_daily_sales,chajai003,date=2026-04-03 fields=lastYearSales
+1679,2026-04-02T21:48:13.270Z,chann_save_daily_sales,chajai003,date=2026-04-07 fields=lastYearSales
+1678,2026-04-02T21:48:13.266Z,chann_save_daily_sales,chajai003,date=2026-04-28 fields=lastYearSales
+1680,2026-04-02T21:48:13.269Z,chann_save_daily_sales,chajai003,date=2026-04-10 fields=lastYearSales
+1681,2026-04-02T21:48:13.270Z,chann_save_daily_sales,chajai003,date=2026-04-04 fields=lastYearSales
+1682,2026-04-02T21:48:13.271Z,chann_save_daily_sales,chajai003,date=2026-04-30 fields=lastYearSales
+1683,2026-04-02T21:48:13.277Z,chann_save_daily_sales,chajai003,date=2026-04-05 fields=lastYearSales
+1684,2026-04-02T21:49:31.822Z,chann_execute_sql,chajai003,"UPDATE daily_sales_reports
+SET ""forecast_sales"" = ""last_year_sales""
+WHERE ""report_date"" BETWEEN '2026-04-01' AND '2026-04-30';"
+1685,2026-04-02T21:50:13.837Z,chann_execute_sql,chajai003,SELECT column_name FROM information_schema.columns WHERE table_name='daily_sales_reports' ORDER BY ordinal_position;
+1686,2026-04-02T21:50:16.299Z,chann_execute_sql,chajai003,"UPDATE daily_sales_reports
+SET forecast_sales = last_year_sales
+WHERE report_date BETWEEN '2026-04-01' AND '2026-04-30';"
+1687,2026-04-02T21:50:57.961Z,chann_bulk_targets,chajai003,2026-04-01~2026-04-30 = 83967
+1688,2026-04-02T21:51:33.980Z,chann_save_daily_target,chajai003,date=2026-04-01 target=83967
+1689,2026-04-02T21:51:33.984Z,chann_save_daily_target,chajai003,date=2026-04-13 target=84722
+1690,2026-04-02T21:51:33.984Z,chann_save_daily_target,chajai003,date=2026-04-14 target=81857
+1691,2026-04-02T21:51:33.984Z,chann_save_daily_target,chajai003,date=2026-04-02 target=86741
+1692,2026-04-02T21:51:33.985Z,chann_save_daily_target,chajai003,date=2026-04-11 target=100705
+1693,2026-04-02T21:51:33.985Z,chann_save_daily_target,chajai003,date=2026-04-12 target=89463
+1694,2026-04-02T21:51:33.988Z,chann_save_daily_target,chajai003,date=2026-04-15 target=84739
+1695,2026-04-02T21:51:33.988Z,chann_save_daily_target,chajai003,date=2026-04-19 target=89463
+1696,2026-04-02T21:51:33.988Z,chann_save_daily_target,chajai003,date=2026-04-17 target=93274
+1697,2026-04-02T21:51:33.988Z,chann_save_daily_target,chajai003,date=2026-04-16 target=86892
+1698,2026-04-02T21:51:33.989Z,chann_save_daily_target,chajai003,date=2026-04-18 target=100705
+1699,2026-04-02T21:51:33.991Z,chann_save_daily_target,chajai003,date=2026-04-24 target=93274
+1700,2026-04-02T21:51:33.992Z,chann_save_daily_target,chajai003,date=2026-04-20 target=84722
+1701,2026-04-02T21:51:33.992Z,chann_save_daily_target,chajai003,date=2026-04-22 target=84739
+1702,2026-04-02T21:51:33.992Z,chann_save_daily_target,chajai003,date=2026-04-21 target=81857
+1703,2026-04-02T21:51:33.992Z,chann_save_daily_target,chajai003,date=2026-04-23 target=86892
+1704,2026-04-02T21:51:33.995Z,chann_save_daily_target,chajai003,date=2026-04-27 target=84722
+1705,2026-04-02T21:51:33.995Z,chann_save_daily_target,chajai003,date=2026-04-26 target=89463
+1706,2026-04-02T21:51:33.996Z,chann_save_daily_target,chajai003,date=2026-04-28 target=81857
+1707,2026-04-02T21:51:33.996Z,chann_save_daily_target,chajai003,date=2026-04-03 target=89991
+1708,2026-04-02T21:51:33.996Z,chann_save_daily_target,chajai003,date=2026-04-25 target=100705
+1709,2026-04-02T21:51:34.081Z,chann_save_daily_target,chajai003,date=2026-04-04 target=100705
+1710,2026-04-02T21:51:34.082Z,chann_save_daily_target,chajai003,date=2026-04-30 target=86892
+1711,2026-04-02T21:51:34.082Z,chann_save_daily_target,chajai003,date=2026-04-06 target=82694
+1712,2026-04-02T21:51:34.082Z,chann_save_daily_target,chajai003,date=2026-04-29 target=84739
+1713,2026-04-02T21:51:34.082Z,chann_save_daily_target,chajai003,date=2026-04-05 target=92559
+1714,2026-04-02T21:51:34.084Z,chann_save_daily_target,chajai003,date=2026-04-07 target=81857
+1715,2026-04-02T21:51:34.085Z,chann_save_daily_target,chajai003,date=2026-04-08 target=84739
+1716,2026-04-02T21:51:34.085Z,chann_save_daily_target,chajai003,date=2026-04-10 target=93274
+1717,2026-04-02T21:51:34.085Z,chann_save_daily_target,chajai003,date=2026-04-09 target=86892
+1718,2026-04-02T21:52:27.598Z,chann_bulk_targets,chajai003,2026-04-01~2026-04-30 = 95000
+1719,2026-04-02T23:13:45.523Z,login_ok,chajai003,role=admin
+1720,2026-04-03T18:24:12.600Z,login_ok,wasson001,role=manager
+1721,2026-04-03T18:36:09.661Z,login_ok,wasson001,role=manager
+1722,2026-04-04T18:58:52.828Z,login_ok,wasson001,role=manager
+1723,2026-04-04T19:01:05.149Z,login_ok,chajai003,role=admin
+1724,2026-04-04T19:37:59.766Z,login_ok,chajai003,role=admin
+1725,2026-04-04T19:41:01.399Z,login_ok,wasson001,role=manager
+1726,2026-04-05T19:49:25.870Z,login_ok,chajai003,role=admin
+1727,2026-04-05T19:59:23.750Z,setup_ok,system,setup completed
+1728,2026-04-05T20:04:48.369Z,setup_ok,system,setup completed
+1729,2026-04-05T20:05:19.379Z,login_ok,bk1040,role=viewer
+1730,2026-04-05T20:05:25.940Z,login_ok,bk1040,role=viewer
+1731,2026-04-05T20:10:18.931Z,login_ok,wasson001,role=manager
+1732,2026-04-05T20:11:31.769Z,login_ok,bk1040,role=viewer
+1733,2026-04-05T20:18:50.751Z,login_ok,chajai003,role=admin
+1734,2026-04-05T20:22:51.870Z,complete_profile,bk1040,"nickName=BK1040 Grand Diamond, phone=0614175132, email=bk1040@minorfood.com"
+1735,2026-04-05T20:23:10.246Z,login_ok,chajai003,role=admin
+1736,2026-04-05T20:23:34.700Z,update_user_role,chajai003,set bk1040 role=manager position=shift_manager
+1737,2026-04-05T20:23:56.345Z,login_ok,bk1040,role=manager
+1738,2026-04-05T20:28:40.385Z,login_ok,bk1040,role=manager
+1739,2026-04-05T20:29:44.589Z,login_ok,bk1040,role=viewer
+1740,2026-04-05T20:31:29.592Z,login_ok,bk1040,role=viewer
+1741,2026-04-05T20:33:07.499Z,login_ok,bk1040,role=manager
+1742,2026-04-05T21:11:27.810Z,login_ok,wasson001,role=manager
+1743,2026-04-06T07:16:53.858Z,login_ok,bk1040,role=manager
+1744,2026-04-06T07:17:13.914Z,login_ok,bk1040,role=manager
+1745,2026-04-06T07:18:02.920Z,login_ok,chajai003,role=admin
+1746,2026-04-06T17:08:56.341Z,login_ok,bk1040,role=manager
+1747,2026-04-06T19:48:34.455Z,login_ok,wasson001,role=manager
+1748,2026-04-06T19:50:44.573Z,login_ok,chajai003,role=admin
+1749,2026-04-06T19:50:52.830Z,login_ok,chajai003,role=admin
+1750,2026-04-06T20:22:41.908Z,login_ok,wasson001,role=manager
+1751,2026-04-06T21:07:15.490Z,save_daily_sales_data,wasson001,count=30
+1752,2026-04-06T22:19:02.634Z,update_store_settings,wasson001,settings updated
+1753,2026-04-06T22:20:04.916Z,save_daily_sales_data,wasson001,count=30
+1754,2026-04-07T18:58:59.551Z,login_ok,wasson001,role=manager
+1755,2026-04-07T19:30:48.517Z,login_ok,wasson001,role=manager
+1756,2026-04-07T23:24:36.349Z,login_ok,bk1040,role=manager
+1757,2026-04-07T23:24:52.902Z,login_ok,chajai003,role=admin
+1758,2026-04-07T23:32:16.967Z,update_user_role,chajai003,set chajai003 role=admin position=none
+1759,2026-04-07T23:47:32.643Z,update_user_role,chajai003,set supsup role=manager position=assistant_store_manager
+1760,2026-04-07T23:56:25.172Z,admin_set_permissions,chajai003,"set permissions for bk1040: [""dashboard"",""handbook"",""settings"",""sales"",""sales_settings""]"
+1761,2026-04-07T23:58:45.453Z,chann_exec_shell,chajai003,cmd=grep -R FloatingChannChat -n client/src
+1762,2026-04-07T23:59:02.896Z,chann_exec_shell,chajai003,cmd=grep -n bottom- client/src/components/floating-chann-chat.tsx
+1763,2026-04-07T23:59:12.500Z,chann_apply_code_edit,chajai003,"file=client/src/components/floating-chann-chat.tsx desc=Move Chann floating button/chat up slightly to avoid overlapping other floating UI (e.g., LINE button)"
+1764,2026-04-07T23:59:20.806Z,chann_exec_shell_error,chajai003,cmd=tsc -p client/tsconfig.json --noEmit error=Command failed: tsc -p client/tsconfig.json --noEmit
+1765,2026-04-07T23:59:24.318Z,chann_exec_shell,chajai003,cmd=ls client
+1766,2026-04-07T23:59:28.095Z,chann_exec_shell,chajai003,cmd=ls
+1767,2026-04-07T23:59:46.778Z,chann_exec_shell_error,chajai003,cmd=tsc -p tsconfig.json --noEmit error=Command failed: tsc -p tsconfig.json --noEmit
+1768,2026-04-08T00:05:33.965Z,chann_exec_shell,chajai003,cmd=grep -n bottom client/src/components/floating-chann-chat.tsx
+1769,2026-04-08T00:05:39.942Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=Move Chann AI floating widget to bottom-right to avoid overlapping top/side menus; use consistent bottom offset across breakpoints.
+1770,2026-04-08T00:06:55.515Z,chann_exec_shell,chajai003,cmd=grep -n fixed client/src/components/floating-chann-chat.tsx
+1771,2026-04-08T00:07:42.427Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=Undo: restore floating Chann position to bottom-36 / md:bottom-20 to avoid blocking menus
+1772,2026-04-08T00:09:19.836Z,chann_exec_shell_error,chajai003,"cmd=grep -R ""readStaffChat"" -n client/src error=Command failed: grep -R ""readStaffChat"" -n client/src"
+1773,2026-04-08T00:09:22.008Z,chann_exec_shell,chajai003,"cmd=find client/src -maxdepth 3 -type f -name ""*chat*"""
+1774,2026-04-08T00:10:28.637Z,chann_exec_shell,chajai003,cmd=ls -la client/src/components
+1775,2026-04-08T00:10:39.076Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=(prep) no-op edit placeholder
+1776,2026-04-08T00:10:51.339Z,chann_apply_code_edit,chajai003,"file=client/src/components/floating-chann-chat.tsx desc=Add reusable draggable hook for floating Chann UI (pointer events, mouse+touch)"
+1777,2026-04-08T00:10:56.049Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=Make floating container draggable by applying translate transform from draggable hook
+1778,2026-04-08T00:11:06.304Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=Enable dragging by header area (cursor + pointer handlers)
+1779,2026-04-08T00:11:11.183Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=Persist draggable position in localStorage
+1780,2026-04-08T00:11:13.855Z,chann_exec_shell_error,chajai003,cmd=npm -s test error=Command failed: npm -s test
+1781,2026-04-08T00:11:33.895Z,chann_exec_shell,chajai003,cmd=npm -s run build
+1805,2026-04-08T18:31:48.790Z,login_ok,wasson001,role=manager
+1806,2026-04-08T19:45:28.111Z,login_ok,chajai003,role=admin
+1807,2026-04-09T15:30:49.480Z,login_ok,chajai003,role=admin
+1808,2026-04-09T18:08:19.884Z,login_ok,chajai003,role=admin
+1809,2026-04-10T02:20:13.095Z,login_ok,chajai003,role=admin
+1810,2026-04-10T02:20:28.792Z,login_ok,bk1040,role=manager
+1811,2026-04-10T02:21:04.669Z,login_ok,chajai003,role=admin
+1812,2026-04-10T17:42:59.112Z,login_ok,bk1040,role=manager
+1813,2026-04-10T20:59:08.605Z,login_ok,chajai003,role=admin
+1814,2026-04-10T22:31:50.335Z,chann_exec_shell,chajai003,cmd=ls -la client/src/components
+1815,2026-04-10T22:33:05.300Z,chann_exec_shell_error,chajai003,"cmd=grep -n ""fixed bottom"" client/src/components/floating-chann-chat.tsx error=Command failed: grep -n ""fixed bottom"" client/src/components/floating-chann-chat.tsx
+grep: bottom"": No such file or directory
+"
+1816,2026-04-10T22:33:15.952Z,chann_apply_code_edit,chajai003,file=client/src/components/floating-chann-chat.tsx desc=Enable dragging for Chann floating UI: attach pointer handlers and prevent browser touch scrolling while dragging.
+1817,2026-04-10T22:34:05.919Z,chann_exec_shell_error,chajai003,cmd=tsc -p client/tsconfig.json --noEmit error=Command failed: tsc -p client/tsconfig.json --noEmit
+1818,2026-04-10T22:34:11.354Z,chann_exec_shell,chajai003,cmd=ls -la client
+1819,2026-04-10T22:34:18.012Z,chann_exec_shell,chajai003,cmd=ls -la
+1820,2026-04-10T22:34:33.768Z,chann_exec_shell_error,chajai003,cmd=tsc --noEmit error=Command failed: tsc --noEmit
+1821,2026-04-10T22:35:13.592Z,update_store_settings,chajai003,settings updated
+1822,2026-04-10T22:35:34.888Z,save_daily_sales_data,chajai003,count=30
+1823,2026-04-10T22:53:52.975Z,save_daily_sales_data,chajai003,count=30
+1824,2026-04-11T10:35:28.366Z,login_ok,bk1040,role=manager
+1825,2026-04-11T10:36:23.225Z,login_ok,chajai003,role=admin
+1826,2026-04-11T18:11:23.243Z,login_ok,bk1040,role=manager
+1827,2026-04-11T18:21:58.004Z,login_ok,bk1040,role=manager
+1828,2026-04-11T18:59:05.868Z,save_daily_sales_data,bk1040,count=30
+1829,2026-04-12T16:41:48.457Z,login_ok,bk1040,role=manager
+1830,2026-04-13T09:24:14.332Z,login_ok,bk1040,role=manager
+1831,2026-04-13T09:36:15.466Z,login_ok,chajai003,role=admin
+1832,2026-04-13T16:03:41.340Z,login_ok,bk1040,role=manager
+1833,2026-04-13T16:03:56.581Z,login_ok,chajai003,role=admin
+1834,2026-04-13T19:38:46.377Z,login_ok,wasson001,role=manager
+1836,2026-04-14T10:56:57.170Z,login_wrong_store_code,bk1040,mismatch
+1837,2026-04-14T10:57:09.953Z,login_ok,chajai003,role=admin
+1838,2026-04-14T10:58:28.258Z,login_ok,chajai003,role=admin
+1839,2026-04-14T11:32:10.664Z,login_ok,chajai003,role=admin
+1840,2026-04-14T11:34:23.696Z,create_store,chajai003,storeId=BK1226
+1841,2026-04-14T18:21:53.497Z,login_ok,chajai003,role=admin
+1842,2026-04-14T18:23:10.420Z,login_wrong_store_code,bk1040,mismatch
+1843,2026-04-14T18:23:36.529Z,login_ok,chajai003,role=admin
+1844,2026-04-14T18:23:52.480Z,update_store,chajai003,storeId=BK001GDP
+1845,2026-04-14T18:24:10.726Z,login_wrong_store_code,bk1040,mismatch
+1846,2026-04-14T18:24:15.445Z,login_wrong_store_code,bk1040,mismatch
+1847,2026-04-14T18:24:20.100Z,login_wrong_store_code,bk1040,mismatch
+1848,2026-04-14T18:24:28.407Z,login_ok,chajai003,role=admin
+1849,2026-04-14T18:47:00.227Z,login_ok,chajai003,role=admin
+1850,2026-04-14T19:05:57.706Z,login_ok,chajai003,role=admin
+1851,2026-04-14T19:06:53.197Z,update_user_role,chajai003,set supsup role=manager position=assistant_store_manager
+1852,2026-04-14T19:07:08.892Z,transfer_user,chajai003,transferred bk1040 to store BK001GDP
+1853,2026-04-14T19:08:54.485Z,login_ok,bk1040,role=manager
+1854,2026-04-14T19:23:19.738Z,login_ok,chajai003,role=admin
+1855,2026-04-14T19:40:50.820Z,login_ok,chajai003,role=admin
+1856,2026-04-14T19:42:08.717Z,save_daily_sales_data,chajai003,count=30
+1857,2026-04-14T19:47:53.972Z,save_daily_sales_data,chajai003,count=30
+1858,2026-04-14T19:48:14.036Z,save_daily_targets,chajai003,count=30
+1859,2026-04-15T17:48:53.179Z,login_ok,chajai003,role=admin
+1860,2026-04-15T17:51:59.715Z,login_ok,chajai003,role=admin
+1861,2026-04-17T07:08:36.571Z,login_ok,chajai003,role=admin
+1862,2026-04-17T07:10:06.967Z,login_ok,chajai003,role=admin
+1863,2026-04-17T10:02:35.282Z,login_ok,chajai003,role=admin
+1864,2026-04-17T17:19:58.777Z,login_ok,chajai003,role=admin
+1865,2026-04-17T17:22:00.977Z,dev_reset_password,chajai003,user=supsup
+1866,2026-04-17T17:22:21.277Z,dev_execute_query,chajai003,SELECT * FROM users LIMIT 10
+1867,2026-04-17T17:50:15.230Z,login_ok,chajai003,role=admin
+1868,2026-04-17T18:17:21.796Z,save_daily_sales_data,chajai003,count=30
+1869,2026-04-18T22:41:46.223Z,login_ok,chajai003,role=admin
+1870,2026-04-18T22:46:27.103Z,login_ok,chajai003,role=admin
+1871,2026-04-18T23:06:58.346Z,login_ok,chajai003,role=admin
+1872,2026-04-19T18:36:55.110Z,login_ok,chajai003,role=admin
+1873,2026-04-19T18:37:25.885Z,update_store_settings,chajai003,settings updated
+1874,2026-04-19T18:51:55.905Z,login_ok,chajai003,role=admin
+1875,2026-04-19T21:46:10.794Z,login_ok,chajai003,role=admin
+1876,2026-04-20T02:15:37.672Z,login_ok,chajai003,role=admin
+1877,2026-04-20T02:43:52.831Z,update_store_settings,chajai003,settings updated
+1878,2026-04-20T20:58:02.044Z,login_ok,chajai003,role=admin
+1879,2026-04-20T21:32:14.092Z,login_ok,chajai003,role=admin
+1880,2026-04-20T21:50:23.739Z,login_ok,chajai003,role=admin
+1881,2026-04-20T22:13:39.275Z,login_ok,chajai003,role=admin
+1882,2026-04-20T23:29:16.791Z,login_ok,chajai003,role=admin
+1883,2026-04-21T20:06:11.557Z,login_ok,chajai003,role=admin
+1884,2026-04-21T20:32:24.899Z,login_ok,chajai003,role=admin
+1885,2026-04-21T21:01:18.168Z,login_ok,chajai003,role=admin
+1886,2026-04-21T22:36:46.507Z,login_ok,chajai003,role=admin
+1887,2026-04-21T22:38:44.973Z,login_ok,chajai003,role=admin

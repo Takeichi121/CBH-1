@@ -413,6 +413,9 @@ export default function DailySalesPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showAutoSave, setShowAutoSave] = useState(false);
   const [isSendingLineReport, setIsSendingLineReport] = useState(false);
+  const [isSendingEmailReport, setIsSendingEmailReport] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("kitti_ph@minor.com");
   const [addonDialogOpen, setAddonDialogOpen] = useState(false);
   const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
   const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
@@ -1509,6 +1512,39 @@ export default function DailySalesPage() {
       return result.ok === true;
     } catch {
       return false;
+    }
+  };
+
+  const handleSendEmailReport = async () => {
+    const reportDate = form.getValues("reportDate");
+    if (!reportDate) {
+      toast({ title: "กรุณาเลือกวันที่ก่อน", variant: "destructive" });
+      return;
+    }
+    setIsSendingEmailReport(true);
+    setEmailDialogOpen(false);
+    const token = localStorage.getItem("bk_token");
+    try {
+      const saved = await saveFormToDb();
+      if (!saved) {
+        toast({ title: "บันทึกข้อมูลไม่สำเร็จ", description: "ไม่สามารถบันทึกก่อนส่งได้", variant: "destructive" });
+        return;
+      }
+      const res = await fetch("/api/sales/send-email-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, date: reportDate, recipientEmail })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "ส่งอีเมลรายงานสำเร็จ ✅", description: `ส่งถึง ${recipientEmail} แล้ว` });
+      } else {
+        toast({ title: "ส่งไม่สำเร็จ", description: data.message || "เกิดข้อผิดพลาด", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", description: "ไม่สามารถเชื่อมต่อได้", variant: "destructive" });
+    } finally {
+      setIsSendingEmailReport(false);
     }
   };
 
@@ -4827,6 +4863,53 @@ ${v.staffRosterText || ""}
                         : <MessageSquare className="w-4 h-4" />}
                       ส่ง Daily Report ไป LINE
                     </Button>
+                  )}
+                  {isManager && (
+                    <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isSendingEmailReport}
+                          className="gap-2 border-blue-400 text-blue-700 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400"
+                          data-testid="button-send-email-report"
+                        >
+                          {isSendingEmailReport
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <span className="w-4 h-4 flex items-center justify-center text-base leading-none">✉️</span>}
+                          ส่งรายงานทางอีเมล
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                          <DialogTitle>ส่งรายงานยอดขายทางอีเมล</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">ระบบจะส่งสรุปยอดขาย Net Sales, MTD, Transactions, Avg Ticket และ Delivery ไปยังอีเมลด้านล่าง</p>
+                            <label className="text-sm font-medium block mb-1">ส่งถึง (To)</label>
+                            <Input
+                              value={recipientEmail}
+                              onChange={e => setRecipientEmail(e.target.value)}
+                              placeholder="email@example.com"
+                              type="email"
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => setEmailDialogOpen(false)}>ยกเลิก</Button>
+                            <Button
+                              size="sm"
+                              onClick={handleSendEmailReport}
+                              disabled={!recipientEmail || isSendingEmailReport}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              {isSendingEmailReport ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                              ส่งอีเมล
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
 

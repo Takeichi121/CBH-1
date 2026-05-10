@@ -9264,6 +9264,139 @@ ${pageContext}` : ''}`;
     res.json({ ok: true });
   }));
 
+  // POST /api/sales/send-email-report — send daily sales summary email via Resend
+  app.post("/api/sales/send-email-report", safe(async (req, res) => {
+    const { token, date, recipientEmail } = req.body;
+    const session = await storage.getSession(token);
+    if (!session) return res.json({ ok: false, message: "Session expired" });
+    const user = await storage.getUser(session.username);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) return res.json({ ok: false, message: "Unauthorized" });
+    const targetDate = date || new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    const [yearStr, monthStr] = targetDate.split("-");
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr);
+    const reports = await storage.getDailySalesReportsForMonth(year, month);
+    const report = reports.find((r: any) => r.reportDate === targetDate);
+    if (!report) return res.json({ ok: false, message: `ไม่พบข้อมูลของวันที่ ${targetDate}` });
+    const storeCfg = await storage.getStoreSettings();
+    const storeName = storeCfg?.storeName || "Grand Diamond";
+
+    const toEmail = recipientEmail || "kitti_ph@minor.com";
+
+    // format helpers
+    const fmt = (n: any) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const pct = (n: any) => `${Number(n || 0).toFixed(1)}%`;
+    const parts = (targetDate || "").split("-");
+    const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+
+    const actual   = Number(report.actualSales) || 0;
+    const target   = Number(report.dailyTarget) || 0;
+    const variance = actual - target;
+    const varPct   = target > 0 ? ((variance / target) * 100).toFixed(1) : "0.0";
+    const mtdAct   = Number(report.mtdActual) || 0;
+    const mtdTgt   = Number(report.mtdTarget) || 0;
+    const mtdVar   = mtdAct - mtdTgt;
+    const mtdPct   = mtdTgt > 0 ? ((mtdAct / mtdTgt) * 100).toFixed(1) : "0.0";
+    const tc       = Number(report.transactionCount) || 0;
+    const ta       = tc > 0 ? Math.round(actual / tc) : 0;
+    const grab     = Number(report.grabfood) || 0;
+    const lineman  = Number(report.lineman) || 0;
+    const delivery = grab + lineman;
+    const delPct   = actual > 0 ? ((delivery / actual) * 100).toFixed(1) : "0.0";
+    const colPct   = Number(report.colPercent) || 0;
+    const varColor = variance >= 0 ? "#10b981" : "#ef4444";
+    const mtdColor = mtdVar >= 0 ? "#10b981" : "#ef4444";
+
+    const htmlBody = `
+<!DOCTYPE html>
+<html lang="th">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Tahoma,sans-serif;">
+  <div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0b1420,#0f2a3f);padding:28px 32px;">
+      <p style="margin:0 0 4px;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#10b981;">Chann Back House</p>
+      <h1 style="margin:0;font-size:22px;font-weight:800;color:#f1f5f9;">รายงานยอดขายประจำวัน</h1>
+      <p style="margin:6px 0 0;font-size:14px;color:#64748b;">📅 ${storeName} · ${dateStr}</p>
+    </div>
+    <!-- Net Sales -->
+    <div style="padding:24px 32px 0;">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;background:#f8fafc;border-radius:10px;padding:16px 20px;border-left:4px solid #10b981;">
+          <p style="margin:0 0 4px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Net Sales</p>
+          <p style="margin:0;font-size:26px;font-weight:800;color:#0f172a;">฿${fmt(actual)}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:${varColor};">${variance >= 0 ? "▲" : "▼"} ฿${fmt(Math.abs(variance))} (${varPct}% vs Target)</p>
+        </div>
+        <div style="flex:1;min-width:140px;background:#f8fafc;border-radius:10px;padding:16px 20px;border-left:4px solid #6366f1;">
+          <p style="margin:0 0 4px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;">MTD</p>
+          <p style="margin:0;font-size:26px;font-weight:800;color:#0f172a;">฿${fmt(mtdAct)}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:${mtdColor};">${mtdPct}% of Target · ${mtdVar >= 0 ? "▲" : "▼"} ฿${fmt(Math.abs(mtdVar))}</p>
+        </div>
+      </div>
+    </div>
+    <!-- KPIs -->
+    <div style="padding:16px 32px 0;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:100px;background:#f8fafc;border-radius:8px;padding:12px 16px;text-align:center;">
+          <p style="margin:0 0 2px;font-size:10px;color:#64748b;text-transform:uppercase;">Transactions</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:#0f172a;">${fmt(tc)}</p>
+        </div>
+        <div style="flex:1;min-width:100px;background:#f8fafc;border-radius:8px;padding:12px 16px;text-align:center;">
+          <p style="margin:0 0 2px;font-size:10px;color:#64748b;text-transform:uppercase;">Avg Ticket</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:#0f172a;">฿${fmt(ta)}</p>
+        </div>
+        <div style="flex:1;min-width:100px;background:#f8fafc;border-radius:8px;padding:12px 16px;text-align:center;">
+          <p style="margin:0 0 2px;font-size:10px;color:#64748b;text-transform:uppercase;">Delivery %</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:#0f172a;">${delPct}%</p>
+        </div>
+        <div style="flex:1;min-width:100px;background:#f8fafc;border-radius:8px;padding:12px 16px;text-align:center;">
+          <p style="margin:0 0 2px;font-size:10px;color:#64748b;text-transform:uppercase;">COL %</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:#0f172a;">${pct(colPct)}</p>
+        </div>
+      </div>
+    </div>
+    <!-- Delivery Breakdown -->
+    <div style="padding:16px 32px 0;">
+      <p style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Delivery Breakdown</p>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;background:#f0fdf4;border-radius:8px;padding:10px 14px;">
+          <p style="margin:0 0 2px;font-size:11px;color:#16a34a;">GrabFood</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">฿${fmt(grab)}</p>
+        </div>
+        <div style="flex:1;background:#fff7ed;border-radius:8px;padding:10px 14px;">
+          <p style="margin:0 0 2px;font-size:11px;color:#ea580c;">LINE MAN</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">฿${fmt(lineman)}</p>
+        </div>
+      </div>
+    </div>
+    <!-- Report by -->
+    <div style="padding:20px 32px 28px;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">📝 Reported by ${report.reportBy || user.fullName || user.username} · Sent via Chann Back House</p>
+    </div>
+    <!-- Footer -->
+    <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;">
+      <p style="margin:0;font-size:11px;color:#cbd5e1;text-align:center;">This is an automated report from Chann Back House · ${storeName} · Do not reply</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      const { getResendClient } = await import('../resend');
+      const { client, fromEmail } = await getResendClient();
+      const result = await client.emails.send({
+        from: `CBH ${storeName} <${fromEmail}>`,
+        to: [toEmail],
+        subject: `📊 Daily Sales Report · ${storeName} · ${dateStr}`,
+        html: htmlBody,
+      });
+      if (result.error) return res.json({ ok: false, message: result.error.message || "Resend error" });
+      res.json({ ok: true, emailId: result.data?.id });
+    } catch (err: any) {
+      res.json({ ok: false, message: err.message });
+    }
+  }));
+
   app.post("/api/line/send-daily-report", safe(async (req, res) => {
     const { token, date } = req.body;
     const session = await storage.getSession(token);

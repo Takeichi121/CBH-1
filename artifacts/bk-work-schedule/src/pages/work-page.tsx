@@ -3542,6 +3542,21 @@ function ManagerMonthlyView() {
     });
   }
 
+  // Combined group counts: booked shifts take priority; attendance fills the rest
+  const combinedGroupCounts: Record<string, number> = {};
+  if (viewMode === "my") {
+    (data?.shifts || []).forEach((s: any) => {
+      const g = (s.shiftGroup || "other").toLowerCase();
+      combinedGroupCounts[g] = (combinedGroupCounts[g] || 0) + 1;
+    });
+    Object.entries(clockEntriesByDate).forEach(([date, c]) => {
+      if (!shiftsByDate[date]) {
+        const g = (c.derivedShiftGroup || "other").toLowerCase();
+        combinedGroupCounts[g] = (combinedGroupCounts[g] || 0) + 1;
+      }
+    });
+  }
+
   function clockEntryToStyle(entry: any): { colorClass: string; label: string } {
     const group: string = (entry.derivedShiftGroup || "other").toLowerCase();
     const rosterRaw: string = (entry.rosterTime || "").trim();
@@ -3965,10 +3980,7 @@ function ManagerMonthlyView() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {Object.entries(groupColors).map(([key, colorClass]) => {
-                const count =
-                  data?.shifts?.filter(
-                    (s: any) => s.shiftGroup?.toLowerCase() === key,
-                  ).length || 0;
+                const count = combinedGroupCounts[key] || 0;
                 return (
                   <div
                     key={key}
@@ -3991,7 +4003,7 @@ function ManagerMonthlyView() {
                   {language === "th" ? "รวมทั้งหมด" : "Total Shifts"}
                 </span>
                 <span className="text-xl font-bold text-primary">
-                  {data?.shifts?.length || 0}
+                  {Object.values(combinedGroupCounts).reduce((a, b) => a + b, 0) || 0}
                 </span>
               </div>
             </div>

@@ -3535,6 +3535,26 @@ function ManagerMonthlyView() {
     });
   }
 
+  const clockEntriesByDate: Record<string, any> = {};
+  if (viewMode === "my") {
+    (myData?.clockEntries || []).forEach((c: any) => {
+      clockEntriesByDate[c.date] = c;
+    });
+  }
+
+  function rosterTimeToStyle(rosterTime: string): { colorClass: string; label: string } {
+    const rt = (rosterTime || "").trim().toUpperCase();
+    if (rt === "OFF") return { colorClass: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700", label: "OFF" };
+    if (rt === "SICK") return { colorClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800", label: "SICK" };
+    if (rt === "VACATION LEAVE") return { colorClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", label: "Leave" };
+    if (rt === "CUSTOM") return { colorClass: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800", label: "Custom" };
+    if (rosterTime.includes(" - ")) {
+      const start = rosterTime.split(" - ")[0]?.trim() || "";
+      return { colorClass: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800", label: start };
+    }
+    return { colorClass: "bg-muted/30 border-border/50 text-foreground/70", label: rosterTime };
+  }
+
   const teamShiftsByDateAndUser: Record<string, Record<string, any>> = {};
   if (viewMode === "team" && teamData?.shifts) {
     teamData.shifts.forEach((s: any) => {
@@ -3791,12 +3811,14 @@ function ManagerMonthlyView() {
 
             if (viewMode === "my") {
               const shift = shiftsByDate[dateStr];
+              const clockEntry = !shift ? clockEntriesByDate[dateStr] : null;
+              const clockStyle = clockEntry?.rosterTime ? rosterTimeToStyle(clockEntry.rosterTime) : null;
               return (
                 <div
                   key={dateStr}
                   className={`aspect-square rounded-xl border p-1 md:p-2 flex flex-col transition-all
                     ${isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}
-                    ${shift ? groupColors[shift.shiftGroup?.toLowerCase()] || "bg-muted/30 border-border/50" : "bg-muted/10 border-border/30"}
+                    ${shift ? groupColors[shift.shiftGroup?.toLowerCase()] || "bg-muted/30 border-border/50" : clockStyle ? clockStyle.colorClass : "bg-muted/10 border-border/30"}
                   `}
                   data-testid={`day-cell-${dateStr}`}
                 >
@@ -3815,6 +3837,19 @@ function ManagerMonthlyView() {
                         {shift.startTime}
                       </span>
                       )}
+                    </div>
+                  )}
+                  {!shift && clockEntry?.rosterTime && clockStyle && (
+                    <div className="flex-1 flex flex-col justify-center items-center gap-0.5">
+                      <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-center leading-tight">
+                        {clockStyle.label}
+                      </span>
+                      {clockEntry.clockInTime && (
+                        <span className="text-[6px] md:text-[8px] opacity-70 hidden md:block">
+                          ↓{clockEntry.clockInTime}{clockEntry.clockOutTime ? `–${clockEntry.clockOutTime}` : ""}
+                        </span>
+                      )}
+                      <span className="text-[5px] md:text-[7px] opacity-40 hidden md:block">att</span>
                     </div>
                   )}
                 </div>

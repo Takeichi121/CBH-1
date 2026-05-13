@@ -4162,7 +4162,16 @@ ${pageContext}` : ''}`;
     const shifts = await storage.getShiftsInRange(startDate, endDate);
     const myShifts = shifts.filter(s => s.username === u.username);
 
-    res.json({ ok: true, month, year, shifts: myShifts });
+    const storeId = u.storeId || "BK1040";
+    const allClockRecords = await storage.getClockRecords(year, month, storeId);
+    const myName = (u.fullName || "").trim();
+    const myNameTh = ((u as any).fullNameTh || "").trim();
+    const myClockEntries = allClockRecords.filter(r => {
+      const n = (r.employeeFullName || "").trim();
+      return n && (n === myName || (myNameTh && n === myNameTh));
+    });
+
+    res.json({ ok: true, month, year, shifts: myShifts, clockEntries: myClockEntries });
   }));
 
   app.post(api.shifts.getManagerTeamMonth.path, safe(async (req, res) => {

@@ -17,8 +17,14 @@ export function BottomNav() {
         return JSON.parse(saved);
       } catch { }
     }
-    return { x: window.innerWidth - 70, y: window.innerHeight - 180 };
+    return { x: -1, y: -1 };
   });
+
+  useEffect(() => {
+    if (position.x === -1 && position.y === -1) {
+      setPosition({ x: window.innerWidth - 70, y: window.innerHeight - 240 });
+    }
+  }, [position.x, position.y]);
 
   const isDragging = useRef(false);
   const hasMoved = useRef(false);
@@ -204,6 +210,8 @@ export function BottomNav() {
           top: position.y,
           width: BTN_SIZE,
           height: BTN_SIZE,
+          opacity: position.x === -1 ? 0 : 1,
+          pointerEvents: position.x === -1 ? 'none' : undefined,
           transition: isDragging.current ? "none" : "left 0.3s ease, top 0.3s ease",
         }}
         onPointerDown={handlePointerDown}

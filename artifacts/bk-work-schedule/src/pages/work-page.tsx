@@ -1680,63 +1680,69 @@ function ManagerDashboard() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-display font-bold text-foreground">
+        <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
           {labels.title}
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
         <Card
-          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          className="glass-card border-none shadow-xl p-5 md:p-8 cursor-pointer hover-elevate transition-all"
           onClick={() => setSelectedView("employee")}
           data-testid="card-employee-schedule"
         >
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Users className="w-12 h-12 text-primary" />
+          <div className="flex items-center md:flex-col md:items-center gap-4 md:gap-0 md:text-center md:space-y-4">
+            <div className="w-14 h-14 md:w-24 md:h-24 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Users className="w-7 h-7 md:w-12 md:h-12 text-primary" />
             </div>
-            <h3 className="text-xl font-bold text-foreground">
-              {labels.employeeSchedule}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {labels.employeeDesc}
-            </p>
+            <div className="md:text-center">
+              <h3 className="text-base md:text-xl font-bold text-foreground">
+                {labels.employeeSchedule}
+              </h3>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                {labels.employeeDesc}
+              </p>
+            </div>
           </div>
         </Card>
 
         <Card
-          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          className="glass-card border-none shadow-xl p-5 md:p-8 cursor-pointer hover-elevate transition-all"
           onClick={() => setSelectedView("managerTeam")}
           data-testid="card-manager-team-schedule"
         >
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <UserCog className="w-12 h-12 text-primary" />
+          <div className="flex items-center md:flex-col md:items-center gap-4 md:gap-0 md:text-center md:space-y-4">
+            <div className="w-14 h-14 md:w-24 md:h-24 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <UserCog className="w-7 h-7 md:w-12 md:h-12 text-primary" />
             </div>
-            <h3 className="text-xl font-bold text-foreground">
-              {labels.managerTeamSchedule}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {labels.managerTeamDesc}
-            </p>
+            <div className="md:text-center">
+              <h3 className="text-base md:text-xl font-bold text-foreground">
+                {labels.managerTeamSchedule}
+              </h3>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                {labels.managerTeamDesc}
+              </p>
+            </div>
           </div>
         </Card>
 
         <Card
-          className="glass-card border-none shadow-xl p-8 cursor-pointer hover-elevate transition-all"
+          className="glass-card border-none shadow-xl p-5 md:p-8 cursor-pointer hover-elevate transition-all"
           onClick={() => setSelectedView("manager")}
           data-testid="card-manager-schedule"
         >
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <CalendarIcon className="w-12 h-12 text-primary" />
+          <div className="flex items-center md:flex-col md:items-center gap-4 md:gap-0 md:text-center md:space-y-4">
+            <div className="w-14 h-14 md:w-24 md:h-24 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <CalendarIcon className="w-7 h-7 md:w-12 md:h-12 text-primary" />
             </div>
-            <h3 className="text-xl font-bold text-foreground">
-              {labels.managerSchedule}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {labels.managerDesc}
-            </p>
+            <div className="md:text-center">
+              <h3 className="text-base md:text-xl font-bold text-foreground">
+                {labels.managerSchedule}
+              </h3>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                {labels.managerDesc}
+              </p>
+            </div>
           </div>
         </Card>
       </div>

@@ -359,8 +359,11 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="flex flex-col min-h-screen md:hidden">
         {/* Mobile Header */}
         <header
-          className="flex items-center h-14 px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md shadow-md"
-          style={{ paddingTop: 'env(safe-area-inset-top, 12px)' }}
+          className="flex items-center px-3 gap-1.5 border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md shadow-md"
+          style={{
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
+          }}
         >
           <Button
             variant="ghost"
@@ -481,7 +484,10 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 container mx-auto px-4 py-6 pb-24">
+        <main
+          className="flex-1 container mx-auto px-4 py-6"
+          style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}
+        >
           {children}
         </main>
 

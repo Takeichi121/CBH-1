@@ -50,15 +50,16 @@ export function EmployeeAppView({ year, month, storeId, storeName = "Grand Diamo
     const edits = localEdits[k];
     if (!edits || Object.keys(edits).length === 0) return;
     
-    const timeFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
+    const clockFields = ["clockInTime", "clockOutTime"] as const;
+    const allValidatedFields = ["rosterTime", "clockInTime", "clockOutTime"] as const;
     const newErrors: Record<string, string> = {};
-    for (const field of timeFields) {
+    for (const field of clockFields) {
       const val = edits[field] ?? "";
       if (!isValidTimeInput(val)) newErrors[`${k}:${field}`] = TIME_ERR_MSG;
     }
     if (Object.keys(newErrors).length > 0) { setFieldErrors(prev => ({ ...prev, ...newErrors })); return; }
     
-    setFieldErrors(prev => { const n = { ...prev }; timeFields.forEach(f => delete n[`${k}:${f}`]); return n; });
+    setFieldErrors(prev => { const n = { ...prev }; allValidatedFields.forEach(f => delete n[`${k}:${f}`]); return n; });
     const existing = recIdx[k];
     const payload = {
       token: localStorage.getItem("bk_token"), date, storeId,

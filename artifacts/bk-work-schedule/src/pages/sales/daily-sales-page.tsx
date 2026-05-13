@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -63,6 +64,7 @@ import {
   RefreshCw,
   UserPlus,
   AlertTriangle,
+  CalendarDays,
 } from "lucide-react";
 import {
   Popover,
@@ -432,6 +434,11 @@ export default function DailySalesPage() {
   const [addonDialogOpen, setAddonDialogOpen] = useState(false);
   const [wasteDialogOpen, setWasteDialogOpen] = useState(false);
   const [customAddonDivisor, setCustomAddonDivisor] = useState<string>("");
+  const [nextDayRosterOpen, setNextDayRosterOpen] = useState(false);
+  const [nextDayRosterLoading, setNextDayRosterLoading] = useState(false);
+  const [nextDayRosterDate, setNextDayRosterDate] = useState("");
+  const [nextDayRosterData, setNextDayRosterData] = useState<Record<string, string>>({});
+
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem("chann_collapsed_sections") || "{}"); }
     catch { return {}; }
@@ -442,6 +449,71 @@ export default function DailySalesPage() {
       localStorage.setItem("chann_collapsed_sections", JSON.stringify(next));
       return next;
     });
+  };
+
+  const MANAGER_USERNAME_MAP: Record<string, string> = {
+    managerPhongsathon: "phongsathon",
+    managerNuttarika: "nuttarika",
+    managerBoonyisa: "boonyisa",
+    managerChanon: "chanon",
+    managerWashiraphan: "washiraphan",
+  };
+
+  const shiftToFormValue = (s: { shiftGroup: string; startTime?: string; endTime?: string }): string => {
+    const g = (s.shiftGroup || "").toLowerCase();
+    if (g === "off") return "OFF";
+    if (g === "sick") return "SICK";
+    if (g === "com") return "COM";
+    if (g === "vacation") return "Vacation";
+    if (s.startTime && s.endTime) return `${s.startTime}-${s.endTime}`;
+    return g.toUpperCase();
+  };
+
+  const fetchNextDayRoster = async () => {
+    const reportDate = form.getValues("reportDate");
+    if (!reportDate) return;
+    const d = new Date(reportDate);
+    d.setDate(d.getDate() + 1);
+    const nextDay = d.toISOString().slice(0, 10);
+    setNextDayRosterDate(nextDay);
+    setNextDayRosterLoading(true);
+    try {
+      const token = localStorage.getItem("bk_token") || "";
+      const res = await apiRequest("POST", "/api/getRosterWeek", { token, anyDate: nextDay });
+      const data = await res.json();
+      if (data.ok) {
+        const shiftsOnDate: any[] = (data.roster || []).filter((s: any) => s.date === nextDay);
+        const result: Record<string, string> = {};
+        for (const m of MANAGER_NAMES) {
+          const username = MANAGER_USERNAME_MAP[m.key];
+          const shift = shiftsOnDate.find((s: any) => s.username === username);
+          result[m.key] = shift ? shiftToFormValue(shift) : "OFF";
+        }
+        setNextDayRosterData(result);
+        setNextDayRosterOpen(true);
+      } else {
+        toast({ title: "ไม่สามารถดึงข้อมูลได้", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    } finally {
+      setNextDayRosterLoading(false);
+    }
+  };
+
+  const confirmNextDayRoster = () => {
+    const d = new Date(nextDayRosterDate);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    form.setValue("managerRosterDate", `${yyyy}-${mm}-${dd}`);
+    for (const m of MANAGER_NAMES) {
+      if (nextDayRosterData[m.key] !== undefined) {
+        form.setValue(m.key as keyof FormData, nextDayRosterData[m.key]);
+      }
+    }
+    setNextDayRosterOpen(false);
+    toast({ title: language === "th" ? "ดึงตารางวันถัดไปแล้ว" : "Next day roster applied" });
   };
 
   const isManager = user?.role === "manager" || user?.role === "admin" || user?.role === "area";
@@ -4366,14 +4438,30 @@ ${v.staffRosterText || ""}
                     <h3 className="text-sm md:text-base font-medium">
                       {sectionTitle("roster", t.roster)}
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => toggleSection("roster")}
-                      className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                      data-testid="button-toggle-roster"
-                    >
-                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["roster"] ? "-rotate-90" : ""}`} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1 border-teal-400 dark:border-teal-600 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/30"
+                        onClick={fetchNextDayRoster}
+                        disabled={nextDayRosterLoading}
+                        data-testid="button-fetch-next-day-roster"
+                      >
+                        {nextDayRosterLoading
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <CalendarDays className="w-3 h-3" />}
+                        {language === "th" ? "ดึงตารางวันถัดไป" : "Next Day Roster"}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection("roster")}
+                        className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                        data-testid="button-toggle-roster"
+                      >
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsedSections["roster"] ? "-rotate-90" : ""}`} />
+                      </button>
+                    </div>
                   </div>
                   <div className={`space-y-4 ${collapsedSections["roster"] ? "hidden" : ""}`}>
                     <FormField
@@ -5034,6 +5122,58 @@ ${v.staffRosterText || ""}
           </CardContent>
         </Card>
       </div>
+      <Dialog open={nextDayRosterOpen} onOpenChange={setNextDayRosterOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              {language === "th" ? "ตารางผู้จัดการวันที่" : "Manager Roster for"}{" "}
+              {nextDayRosterDate
+                ? (() => {
+                    const d = new Date(nextDayRosterDate);
+                    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+                  })()
+                : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-xs text-muted-foreground mb-3">
+              {language === "th"
+                ? "ตรวจสอบตารางก่อนนำเข้า — กดยืนยันเพื่อใช้ข้อมูลนี้"
+                : "Check the schedule before applying — press Confirm to use this data"}
+            </p>
+            {MANAGER_NAMES.map((m) => (
+              <div key={m.key} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                <span className="text-sm font-medium">{m.name}</span>
+                <span className={`text-sm font-mono px-2 py-0.5 rounded ${
+                  nextDayRosterData[m.key] === "OFF"
+                    ? "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                    : nextDayRosterData[m.key] === "SICK"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                    : nextDayRosterData[m.key] === "COM"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                    : "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300"
+                }`}>
+                  {nextDayRosterData[m.key] || "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setNextDayRosterOpen(false)}>
+              {language === "th" ? "ยกเลิก" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              className="bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-700 dark:hover:bg-teal-600"
+              onClick={confirmNextDayRoster}
+            >
+              <Check className="w-3 h-3 mr-1" />
+              {language === "th" ? "ยืนยัน ใช้ตารางนี้" : "Confirm & Apply"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SalesLayout>
   );
 }

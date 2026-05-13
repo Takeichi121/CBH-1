@@ -22,7 +22,7 @@ export function BottomNav() {
 
   useEffect(() => {
     if (position.x === -1 && position.y === -1) {
-      setPosition({ x: window.innerWidth - 70, y: window.innerHeight - 240 });
+      setPosition({ x: window.innerWidth - 70, y: window.innerHeight - 120 });
     }
   }, [position.x, position.y]);
 
@@ -47,7 +47,8 @@ export function BottomNav() {
     const centerX = x + BTN_SIZE / 2;
     const midScreen = window.innerWidth / 2;
     const snappedX = centerX < midScreen ? 8 : window.innerWidth - BTN_SIZE - 8;
-    const snappedY = Math.max(60, Math.min(y, window.innerHeight - BTN_SIZE - 20));
+    const minTop = 110;
+    const snappedY = Math.max(minTop, Math.min(y, window.innerHeight - BTN_SIZE - 20));
     return { x: snappedX, y: snappedY };
   }, []);
 
@@ -159,7 +160,7 @@ export function BottomNav() {
     <div className="md:hidden" data-testid="nav-bottom">
       {isOpen && (
         <div
-          className="fixed inset-0 z-[998] bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[41] bg-black/20 backdrop-blur-[2px]"
           onClick={() => setIsOpen(false)}
           data-testid="assist-touch-overlay"
         />
@@ -167,7 +168,7 @@ export function BottomNav() {
 
       {isOpen && (
         <div
-          className="fixed z-[1000] rounded-2xl bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl overflow-hidden"
+          className="fixed z-[42] rounded-2xl bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl overflow-hidden"
           style={{
             left: menuPos.left,
             top: menuPos.top,
@@ -204,7 +205,7 @@ export function BottomNav() {
 
       <div
         ref={btnRef}
-        className="fixed z-[999] select-none touch-none"
+        className="fixed z-[40] select-none touch-none"
         style={{
           left: position.x,
           top: position.y,

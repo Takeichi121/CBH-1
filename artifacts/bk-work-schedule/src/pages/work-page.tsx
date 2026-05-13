@@ -3563,7 +3563,7 @@ function ManagerMonthlyView() {
       off: "OFF", sick: "SICK", com: "Leave",
     };
     const colorClass = colorByGroup[group] ?? "bg-muted/30 border-border/50 text-foreground/70";
-    const label = labelByGroup[group] ?? rangeLabel || "—";
+    const label = labelByGroup[group] ?? (rangeLabel || "—");
     return { colorClass, label };
   }
 

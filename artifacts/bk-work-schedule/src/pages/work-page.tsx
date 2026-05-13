@@ -3542,17 +3542,22 @@ function ManagerMonthlyView() {
     });
   }
 
-  function rosterTimeToStyle(rosterTime: string): { colorClass: string; label: string } {
-    const rt = (rosterTime || "").trim().toUpperCase();
-    if (rt === "OFF") return { colorClass: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700", label: "OFF" };
-    if (rt === "SICK") return { colorClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800", label: "SICK" };
-    if (rt === "VACATION LEAVE") return { colorClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", label: "Leave" };
-    if (rt === "CUSTOM") return { colorClass: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800", label: "Custom" };
-    if (rosterTime.includes(" - ")) {
-      const start = rosterTime.split(" - ")[0]?.trim() || "";
-      return { colorClass: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800", label: start };
-    }
-    return { colorClass: "bg-muted/30 border-border/50 text-foreground/70", label: rosterTime };
+  function clockEntryToStyle(entry: any): { colorClass: string; label: string } {
+    const group: string = (entry.derivedShiftGroup || "other").toLowerCase();
+    const start: string = entry.derivedStartTime || "";
+    const groupColors2: Record<string, { colorClass: string; label: string }> = {
+      open:    { colorClass: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",    label: start || "Open" },
+      lunch:   { colorClass: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800", label: start || "Lunch" },
+      dinner:  { colorClass: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800", label: start || "Dinner" },
+      close:   { colorClass: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",    label: start || "Close" },
+      late:    { colorClass: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700", label: start || "Late" },
+      swing:   { colorClass: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",   label: start || "Swing" },
+      off:     { colorClass: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700",   label: "OFF" },
+      sick:    { colorClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",         label: "SICK" },
+      com:     { colorClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", label: "Leave" },
+      other:   { colorClass: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800", label: start || "Custom" },
+    };
+    return groupColors2[group] ?? { colorClass: "bg-muted/30 border-border/50 text-foreground/70", label: start || entry.rosterTime || "—" };
   }
 
   const teamShiftsByDateAndUser: Record<string, Record<string, any>> = {};
@@ -3812,7 +3817,7 @@ function ManagerMonthlyView() {
             if (viewMode === "my") {
               const shift = shiftsByDate[dateStr];
               const clockEntry = !shift ? clockEntriesByDate[dateStr] : null;
-              const clockStyle = clockEntry?.rosterTime ? rosterTimeToStyle(clockEntry.rosterTime) : null;
+              const clockStyle = clockEntry?.rosterTime ? clockEntryToStyle(clockEntry) : null;
               return (
                 <div
                   key={dateStr}

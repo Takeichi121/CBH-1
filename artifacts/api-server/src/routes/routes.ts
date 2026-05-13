@@ -4148,6 +4148,28 @@ ${pageContext}` : ''}`;
     res.json({ ok: true, weekRange: range, shifts: myShifts, items: myShifts, closed });
   }));
 
+  function rosterTimeToShiftInfo(rosterTime: string): { shiftGroup: string; startTime: string } {
+    const rt = rosterTime.trim();
+    const upper = rt.toUpperCase();
+    if (!rt || upper === "OFF")            return { shiftGroup: "off",    startTime: "" };
+    if (upper === "SICK")                  return { shiftGroup: "sick",   startTime: "" };
+    if (upper === "VACATION LEAVE")        return { shiftGroup: "com",    startTime: "" };
+    if (upper === "CUSTOM")                return { shiftGroup: "other",  startTime: "" };
+    const m = rt.match(/(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/);
+    if (m) {
+      const start = m[1];
+      const h = parseInt(start.split(":")[0], 10);
+      let group = "swing";
+      if (h >= 5  && h < 9)  group = "open";
+      else if (h >= 9  && h < 12) group = "lunch";
+      else if (h >= 12 && h < 16) group = "dinner";
+      else if (h >= 16 && h < 20) group = "close";
+      else                        group = "late";
+      return { shiftGroup: group, startTime: start };
+    }
+    return { shiftGroup: "other", startTime: rt };
+  }
+
   app.post(api.shifts.getMyMonth.path, safe(async (req, res) => {
     const { token, month, year } = req.body;
     const session = await storage.getSession(token);
@@ -4165,10 +4187,13 @@ ${pageContext}` : ''}`;
     const storeId = u.storeId || "BK1040";
     const allClockRecords = await storage.getClockRecords(year, month, storeId);
     const myName = (u.fullName || "").trim();
-    const myNameTh = ((u as any).fullNameTh || "").trim();
+    const myNameTh = (u.fullNameTh || "").trim();
     const myClockEntries = allClockRecords.filter(r => {
       const n = (r.employeeFullName || "").trim();
       return n && (n === myName || (myNameTh && n === myNameTh));
+    }).map(r => {
+      const { shiftGroup, startTime } = rosterTimeToShiftInfo(r.rosterTime || "");
+      return { ...r, derivedShiftGroup: shiftGroup, derivedStartTime: startTime };
     });
 
     res.json({ ok: true, month, year, shifts: myShifts, clockEntries: myClockEntries });

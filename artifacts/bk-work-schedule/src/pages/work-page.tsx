@@ -3544,20 +3544,27 @@ function ManagerMonthlyView() {
 
   function clockEntryToStyle(entry: any): { colorClass: string; label: string } {
     const group: string = (entry.derivedShiftGroup || "other").toLowerCase();
-    const start: string = entry.derivedStartTime || "";
-    const groupColors2: Record<string, { colorClass: string; label: string }> = {
-      open:    { colorClass: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",    label: start || "Open" },
-      lunch:   { colorClass: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800", label: start || "Lunch" },
-      dinner:  { colorClass: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800", label: start || "Dinner" },
-      close:   { colorClass: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",    label: start || "Close" },
-      late:    { colorClass: "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700", label: start || "Late" },
-      swing:   { colorClass: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",   label: start || "Swing" },
-      off:     { colorClass: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700",   label: "OFF" },
-      sick:    { colorClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",         label: "SICK" },
-      com:     { colorClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", label: "Leave" },
-      other:   { colorClass: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800", label: start || "Custom" },
+    const rosterRaw: string = (entry.rosterTime || "").trim();
+    const isRange = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/.test(rosterRaw);
+    const rangeLabel = isRange ? rosterRaw.replace(/\s*[-–]\s*/, "-") : rosterRaw;
+    const colorByGroup: Record<string, string> = {
+      open:   "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+      lunch:  "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+      dinner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+      close:  "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
+      late:   "bg-slate-700 text-slate-100 border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
+      swing:  "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",
+      off:    "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700",
+      sick:   "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+      com:    "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+      other:  "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
     };
-    return groupColors2[group] ?? { colorClass: "bg-muted/30 border-border/50 text-foreground/70", label: start || entry.rosterTime || "—" };
+    const labelByGroup: Record<string, string> = {
+      off: "OFF", sick: "SICK", com: "Leave",
+    };
+    const colorClass = colorByGroup[group] ?? "bg-muted/30 border-border/50 text-foreground/70";
+    const label = labelByGroup[group] ?? rangeLabel || "—";
+    return { colorClass, label };
   }
 
   const teamShiftsByDateAndUser: Record<string, Record<string, any>> = {};

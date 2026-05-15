@@ -8911,7 +8911,12 @@ ${pageContext}` : ''}`;
       };
     });
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const publicHost =
+      (req.get("x-forwarded-host") || "").split(",")[0].trim() ||
+      (process.env.REPLIT_DOMAINS || "").split(",")[0].trim() ||
+      req.get("host") || "localhost";
+    const publicProto = req.get("x-forwarded-proto") || req.protocol;
+    const baseUrl = `${publicProto}://${publicHost}`;
     res.setHeader("Content-Type", "application/json;odata.metadata=minimal");
     res.setHeader("OData-Version", "4.0");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -8924,7 +8929,12 @@ ${pageContext}` : ''}`;
 
   // OData $metadata endpoint — required by Excel Power Query
   app.get(/^\/api\/odata\/\$metadata$/, (req, res) => {
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const publicHost =
+      (req.get("x-forwarded-host") || "").split(",")[0].trim() ||
+      (process.env.REPLIT_DOMAINS || "").split(",")[0].trim() ||
+      req.get("host") || "localhost";
+    const publicProto = req.get("x-forwarded-proto") || req.protocol;
+    const baseUrl = `${publicProto}://${publicHost}`;
     const edmx = `<?xml version="1.0" encoding="utf-8"?>
 <edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
   <edmx:DataServices>

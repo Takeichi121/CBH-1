@@ -31,7 +31,11 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
                 callback(new Error(`CORS: origin '${origin}' not allowed`));
               }
             }
-          : true, // Dev fallback: allow all origins when no domain env vars are configured
+          : (origin, callback) => {
+              // No origins configured — allow same-origin (no Origin header) but block cross-origin
+              if (!origin) callback(null, true);
+              else callback(null, false);
+            },
       credentials: true,
     }),
   );
@@ -90,6 +94,18 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   app.use("/api/forgotPassword", registrationLimiter);
   app.use("/api/verifyOtp", registrationLimiter);
   app.use("/api/resetPassword", registrationLimiter);
+
+  // Token normalization middleware: inject cookie token into req.body so that all
+  // existing route handlers that read req.body.token automatically get cookie-first auth.
+  // Cookie token always takes priority over any body-supplied token.
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    const cookieToken = (req as any).cookies?.bk_session as string | undefined;
+    if (cookieToken) {
+      if (!req.body) req.body = {};
+      req.body.token = cookieToken;
+    }
+    next();
+  });
 
   app.get("/api/healthz", (_req, res) => {
     res.json({ status: "ok" });

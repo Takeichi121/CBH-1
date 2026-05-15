@@ -3716,41 +3716,41 @@ ${pageContext}` : ''}`;
         return res.status(400).json({ ok: false, error: "Command blocked: contains dangerous pattern" });
       }
 
-      // Path restriction for file-reading commands: block access to system paths and secrets
+      // Path restriction for file-reading commands: constrain cat/grep/find to allowed workspace dirs.
+      // Uses path.resolve() so both relative and absolute args are canonicalized before checking.
       const PATH_RESTRICTED_BINS = new Set(["cat", "grep", "find"]);
       if (PATH_RESTRICTED_BINS.has(cmdBase)) {
-        const BLOCKED_ABS_PREFIXES = [
-          "/etc", "/root", "/home", "/var", "/proc", "/sys",
-          "/tmp", "/run", "/boot", "/dev", "/usr", "/bin",
-          "/sbin", "/lib", "/lib64", "/opt", "/mnt", "/media", "/srv",
-        ];
         const BLOCKED_FILENAME_PATTERNS = [
           ".env", ".passwd", ".pem", ".key", ".pfx",
           "shadow", "id_rsa", "id_ecdsa", "credentials",
         ];
-        // Skip flag arguments (e.g. -r, -l, --include) when checking paths
+        const cwd = process.cwd();
+        const allowedRoots = [
+          cwd + "/artifacts",
+          cwd + "/lib",
+          cwd + "/scripts",
+        ];
+        // Skip flag-style arguments (e.g. -r, -l, --include=*.ts)
         const nonFlagArgs = cmdArgs.filter((a: string) => !a.startsWith("-") && a.length > 0);
         for (const arg of nonFlagArgs) {
+          // Block explicit traversal sequences before resolve (defence-in-depth)
           if (arg.includes("..")) {
             await storage.log("chann_exec_shell_denied", execUser.username, `reason=path_traversal arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);
             return res.status(400).json({ ok: false, error: "Path traversal (..) is not allowed in file-reading commands" });
           }
+          // Block sensitive file/directory name patterns
           if (BLOCKED_FILENAME_PATTERNS.some((p) => arg.includes(p))) {
             await storage.log("chann_exec_shell_denied", execUser.username, `reason=blocked_filename arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);
             return res.status(400).json({ ok: false, error: `Access to '${arg}' is not allowed` });
           }
-          if (arg.startsWith("/")) {
-            const isBlockedRoot = BLOCKED_ABS_PREFIXES.some((p) => arg === p || arg.startsWith(p + "/"));
-            const cwd = process.cwd();
-            const isAllowedCwd =
-              arg === cwd ||
-              arg.startsWith(cwd + "/artifacts/") ||
-              arg.startsWith(cwd + "/lib/") ||
-              arg.startsWith(cwd + "/scripts/");
-            if (isBlockedRoot || !isAllowedCwd) {
-              await storage.log("chann_exec_shell_denied", execUser.username, `reason=blocked_absolute_path arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);
-              return res.status(400).json({ ok: false, error: `Absolute path '${arg}' is not allowed. Use relative paths within artifacts/, lib/, or scripts/` });
-            }
+          // Resolve to absolute canonical path (handles both relative and absolute args)
+          const resolved = path.resolve(cwd, arg);
+          const isAllowed =
+            resolved === cwd ||
+            allowedRoots.some((r) => resolved === r || resolved.startsWith(r + "/"));
+          if (!isAllowed) {
+            await storage.log("chann_exec_shell_denied", execUser.username, `reason=path_outside_allowed_roots resolved=${resolved.slice(0, 200)} cmd=${cmd.slice(0, 200)}`);
+            return res.status(400).json({ ok: false, error: `Path '${arg}' is outside allowed directories (artifacts/, lib/, scripts/)` });
           }
         }
       }

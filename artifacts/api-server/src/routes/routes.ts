@@ -8612,7 +8612,7 @@ ${pageContext}` : ''}`;
         }
       };
 
-      const templatePath = path.join(process.cwd(), "attached_assets", "Sales_Management_Sheet_&_GSI_(Update)_1772056449386.xlsx");
+      const templatePath = path.resolve(process.cwd(), "../../attached_assets", "Sales_Management_Sheet_&_GSI_(Update)_1772056449386.xlsx");
       const templateBuf = fs.readFileSync(templatePath);
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(templateBuf);

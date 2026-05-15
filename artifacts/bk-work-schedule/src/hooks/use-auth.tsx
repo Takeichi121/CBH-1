@@ -281,13 +281,13 @@ function useLogoutMutation(
   return useMutation({
     mutationFn: async () => {
       const t = safeStorage.getItem(TOKEN_KEY);
-      if (!t) return { ok: true };
-
+      // Always call server logout — even without a localStorage token, the server
+      // must clear the bk_session cookie (cookie-only sessions exist after migration).
       const res = await fetch(api.auth.logout.path, {
         method: "POST",
         credentials: "include", // Send bk_session cookie so server can clear it
         headers: authHeaders(t),
-        body: JSON.stringify({ token: t }),
+        body: JSON.stringify({ token: t ?? undefined }),
       });
       return await res.json();
     },

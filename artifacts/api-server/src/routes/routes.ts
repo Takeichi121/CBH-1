@@ -3730,9 +3730,17 @@ ${pageContext}` : ''}`;
           cwd + "/lib",
           cwd + "/scripts",
         ];
-        // Skip flag-style arguments (e.g. -r, -l, --include=*.ts)
-        const nonFlagArgs = cmdArgs.filter((a: string) => !a.startsWith("-") && a.length > 0);
-        for (const arg of nonFlagArgs) {
+        // Command-specific path-argument extraction — only validate args that are truly file/dir paths:
+        //   cat  : all non-flag args are file paths
+        //   grep : first non-flag arg is the regex pattern (skip it); rest are file/dir paths
+        //   find : first non-flag arg is the start directory (check it); rest are predicates (-name, *.ts, etc.)
+        const allNonFlagArgs = cmdArgs.filter((a: string) => !a.startsWith("-") && a.length > 0);
+        const pathArgs: string[] =
+          cmdBase === "cat"  ? allNonFlagArgs :
+          cmdBase === "grep" ? allNonFlagArgs.slice(1) :   // skip pattern
+          cmdBase === "find" ? allNonFlagArgs.slice(0, 1) : // only start dir
+          allNonFlagArgs;
+        for (const arg of pathArgs) {
           // Block explicit traversal sequences before resolve (defence-in-depth)
           if (arg.includes("..")) {
             await storage.log("chann_exec_shell_denied", execUser.username, `reason=path_traversal arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);

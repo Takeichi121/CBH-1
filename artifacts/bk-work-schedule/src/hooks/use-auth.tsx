@@ -87,17 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function validateSession() {
       const storedToken = safeStorage.getItem(TOKEN_KEY);
-      if (!storedToken) {
-        if (!cancelled) setIsLoading(false);
-        return;
-      }
 
+      // Always call validate — server reads bk_session cookie first (cookie-primary auth).
+      // storedToken is sent as fallback if present; if absent the cookie alone is enough.
       try {
         const res = await fetch(api.auth.validate.path, {
           method: "POST",
+          credentials: "include", // Send bk_session cookie on cross-origin requests
           headers: authHeaders(storedToken),
-          // ส่งทั้ง header + body กัน backend เก่าที่อ่านจาก body อย่างเดียว
-          body: JSON.stringify({ token: storedToken }),
+          body: JSON.stringify({ token: storedToken ?? undefined }),
         });
 
         const data = await res.json();
@@ -105,7 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           if (data?.ok && data?.user) {
             setUser(data.user);
-            setToken(storedToken);
+            // Keep/restore stored token; cookie session is handled by browser automatically
+            if (storedToken) setToken(storedToken);
           } else {
             clearSession();
           }
@@ -236,6 +235,7 @@ function useLoginMutation(
     mutationFn: async (creds: z.infer<typeof api.auth.login.input>) => {
       const res = await fetch(api.auth.login.path, {
         method: "POST",
+        credentials: "include", // Receive Set-Cookie (bk_session) from server response
         headers: authHeaders(null),
         body: JSON.stringify(creds),
       });
@@ -285,8 +285,8 @@ function useLogoutMutation(
 
       const res = await fetch(api.auth.logout.path, {
         method: "POST",
+        credentials: "include", // Send bk_session cookie so server can clear it
         headers: authHeaders(t),
-        // ส่งทั้ง header + body กัน backend เก่าที่อ่านจาก body อย่างเดียว
         body: JSON.stringify({ token: t }),
       });
       return await res.json();

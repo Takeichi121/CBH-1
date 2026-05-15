@@ -440,14 +440,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   };
 
   // ==========================================
-  // 📁 Static file serving for uploads
+  // 📁 Authenticated file serving for uploads
   // ==========================================
-  const express = await import("express");
-  app.use("/uploads/chat-files", (req, res, next) => {
-    res.setHeader("Content-Disposition", "attachment");
-    next();
-  }, express.default.static(path.join(process.cwd(), "uploads", "chat-files")));
-  app.use("/uploads", express.default.static(path.join(process.cwd(), "uploads")));
+  app.get("/uploads/:folder/:filename", safe(async (req, res) => {
+    const token = (req.query.token as string | undefined) || req.headers.authorization?.replace(/^Bearer\s+/i, "");
+    if (!token) return res.status(401).json({ ok: false, message: "Token required" });
+
+    const session = await storage.getSession(token);
+    if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
+
+    const { folder, filename } = req.params;
+    if (folder.includes("..") || filename.includes("..") || folder.includes("/") || filename.includes("/")) {
+      return res.status(400).json({ ok: false, message: "Invalid path" });
+    }
+
+    const uploadsBase = path.resolve(process.cwd(), "uploads");
+    const filePath = path.resolve(uploadsBase, folder, filename);
+    if (!filePath.startsWith(uploadsBase + path.sep)) {
+      return res.status(400).json({ ok: false, message: "Invalid path" });
+    }
+
+    if (!fs.existsSync(filePath)) return res.status(404).json({ ok: false, message: "File not found" });
+
+    if (folder === "chat-files") res.setHeader("Content-Disposition", "attachment");
+    res.sendFile(filePath);
+  }));
 
   // ==========================================
   // 📸 Chat Image Upload

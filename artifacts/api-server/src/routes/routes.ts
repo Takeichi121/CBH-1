@@ -3730,6 +3730,13 @@ ${pageContext}` : ''}`;
           cwd + "/lib",
           cwd + "/scripts",
         ];
+        // Block recursive grep flags — recursive traversal from any start path would allow
+        // reading files outside allowed roots even if the start path itself is allowed
+        if (cmdBase === "grep" && cmdArgs.some((a: string) => a === "-r" || a === "-R" || a === "--recursive")) {
+          await storage.log("chann_exec_shell_denied", execUser.username, `reason=grep_recursive_blocked cmd=${cmd.slice(0, 200)}`);
+          return res.status(400).json({ ok: false, error: "Recursive grep (-r/-R) is not allowed in this context" });
+        }
+
         // Command-specific path-argument extraction — only validate args that are truly file/dir paths:
         //   cat  : all non-flag args are file paths
         //   grep : first non-flag arg is the regex pattern (skip it); rest are file/dir paths
@@ -3762,8 +3769,9 @@ ${pageContext}` : ''}`;
           }
           // Resolve to absolute canonical path (handles both relative and absolute args)
           const resolved = path.resolve(cwd, arg);
+          // Require path to be strictly under an allowed root — cwd itself is NOT allowed
+          // (e.g. "." resolves to cwd and would permit full workspace traversal via grep -r)
           const isAllowed =
-            resolved === cwd ||
             allowedRoots.some((r) => resolved === r || resolved.startsWith(r + "/"));
           if (!isAllowed) {
             await storage.log("chann_exec_shell_denied", execUser.username, `reason=path_outside_allowed_roots resolved=${resolved.slice(0, 200)} cmd=${cmd.slice(0, 200)}`);

@@ -212,7 +212,7 @@ const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 
 
 // ── AI write-tool access-control sets (static, evaluated once at module load) ──
 // managerWriteToolNames: tools that manager OR admin can invoke via Chann AI
-const MANAGER_WRITE_TOOL_NAMES = new Set([
+export const MANAGER_WRITE_TOOL_NAMES = new Set([
   "saveDailySales",         // Record daily sales figures (actual, TC, hours, waste, etc.)
   "saveDailyTarget",        // Set a daily sales target for a date
   "saveShift",              // Create or update a single shift assignment
@@ -233,7 +233,7 @@ const MANAGER_WRITE_TOOL_NAMES = new Set([
 ]);
 
 // adminOnlyWriteToolNames: tools that ONLY admin can invoke via Chann AI
-const ADMIN_ONLY_WRITE_TOOL_NAMES = new Set([
+export const ADMIN_ONLY_WRITE_TOOL_NAMES = new Set([
   // User management
   "saveLaborSettings",       // Update labor cost targets and thresholds
   "updateUserStatus",        // Activate or deactivate a user account
@@ -3733,12 +3733,21 @@ ${pageContext}` : ''}`;
         // Command-specific path-argument extraction — only validate args that are truly file/dir paths:
         //   cat  : all non-flag args are file paths
         //   grep : first non-flag arg is the regex pattern (skip it); rest are file/dir paths
-        //   find : first non-flag arg is the start directory (check it); rest are predicates (-name, *.ts, etc.)
+        //   find : ALL start-path args (before the first expression token: -flag, !, or ()
         const allNonFlagArgs = cmdArgs.filter((a: string) => !a.startsWith("-") && a.length > 0);
+        // For `find`, collect every start path in order until the first expression token
+        // to prevent multi-root bypass: `find artifacts /etc -maxdepth 1`
+        const findStartPaths: string[] = [];
+        if (cmdBase === "find") {
+          for (const a of cmdArgs) {
+            if (a.startsWith("-") || a === "!" || a === "(") break;
+            if (a.length > 0) findStartPaths.push(a);
+          }
+        }
         const pathArgs: string[] =
           cmdBase === "cat"  ? allNonFlagArgs :
-          cmdBase === "grep" ? allNonFlagArgs.slice(1) :   // skip pattern
-          cmdBase === "find" ? allNonFlagArgs.slice(0, 1) : // only start dir
+          cmdBase === "grep" ? allNonFlagArgs.slice(1) :  // skip pattern
+          cmdBase === "find" ? findStartPaths :            // all start paths
           allNonFlagArgs;
         for (const arg of pathArgs) {
           // Block explicit traversal sequences before resolve (defence-in-depth)

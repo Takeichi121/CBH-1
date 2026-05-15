@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { createServer } from "http";
-import { registerRoutes } from "./routes/routes";
+import { registerRoutes, ADMIN_ONLY_WRITE_TOOL_NAMES, MANAGER_WRITE_TOOL_NAMES } from "./routes/routes";
 import { initProactiveChann } from "./services/proactive-agent";
 import { logger } from "./lib/logger";
 
@@ -17,7 +17,7 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   const rawReplitDomains = process.env["REPLIT_DOMAINS"] ?? "";
   const allowedOrigins: string[] = rawAllowedOrigins.length > 0
     ? rawAllowedOrigins.split(",").map((o) => o.trim()).filter(Boolean)
-    : rawReplitDomains.split(",").map((d) => `https://${d.trim()}`).filter(Boolean);
+    : rawReplitDomains.split(",").map((d) => d.trim()).filter(Boolean).map((d) => `https://${d}`);
 
   app.use(
     cors({
@@ -142,11 +142,14 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
     );
   }
 
-  // Startup assertion: log AI write-tool access-control counts for audit visibility.
-  // If tools are added or removed in the /api/chann route, update these counts here.
+  // Startup assertion: log AI write-tool access-control counts derived from the actual
+  // constant sets — counts auto-update when tools are added or removed.
   logger.info(
-    { adminOnlyWriteToolCount: 23, managerWriteToolCount: 17 },
-    "AI write-tool access controls loaded — update counts if tools are added or removed",
+    {
+      adminOnlyWriteToolCount: ADMIN_ONLY_WRITE_TOOL_NAMES.size,
+      managerWriteToolCount: MANAGER_WRITE_TOOL_NAMES.size,
+    },
+    "AI write-tool access controls loaded",
   );
 
   initProactiveChann();

@@ -1541,7 +1541,7 @@ export default function DailySalesPage() {
     }
   };
 
-  const saveFormToDb = async (): Promise<boolean> => {
+  const saveFormToDb = async (): Promise<{ ok: boolean; message?: string }> => {
     try {
       const values = form.getValues();
       const token = localStorage.getItem("bk_token");
@@ -1596,9 +1596,9 @@ export default function DailySalesPage() {
       };
       const res = await apiRequest("POST", "/api/sales/upsertReportByDate", { token, report: reportToSave });
       const result = await res.json();
-      return result.ok === true;
-    } catch {
-      return false;
+      return { ok: result.ok === true, message: result.message };
+    } catch (err: any) {
+      return { ok: false, message: err.message };
     }
   };
 
@@ -1613,8 +1613,8 @@ export default function DailySalesPage() {
     const token = localStorage.getItem("bk_token");
     try {
       const saved = await saveFormToDb();
-      if (!saved) {
-        toast({ title: "บันทึกข้อมูลไม่สำเร็จ", description: "ไม่สามารถบันทึกก่อนส่งได้", variant: "destructive" });
+      if (!saved.ok) {
+        toast({ title: "บันทึกข้อมูลไม่สำเร็จ", description: saved.message || "ไม่สามารถบันทึกก่อนส่งได้", variant: "destructive" });
         return;
       }
       const res = await fetch("/api/sales/send-email-report", {
@@ -1645,8 +1645,8 @@ export default function DailySalesPage() {
     const token = localStorage.getItem("bk_token");
     try {
       const saved = await saveFormToDb();
-      if (!saved) {
-        toast({ title: "บันทึกข้อมูลไม่สำเร็จ", description: "ไม่สามารถบันทึกก่อนส่งได้", variant: "destructive" });
+      if (!saved.ok) {
+        toast({ title: "บันทึกข้อมูลไม่สำเร็จ", description: saved.message || "ไม่สามารถบันทึกก่อนส่งได้", variant: "destructive" });
         return;
       }
       const res = await fetch("/api/line/send-daily-report", {

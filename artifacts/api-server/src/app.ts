@@ -124,7 +124,7 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
 
   // Startup validation: warn loudly if verify codes are weak, missing, or default
   const INSECURE_CODES = new Set([
-    "1234", "admin", "password", "bk1040", "bkarea",
+    "1234", "admin", "password", "bkarea",
     "manager", "staff", "123456", "000000", "111111",
   ]);
   const mgCode = process.env["MANAGER_VERIFY_CODE"] ?? "";

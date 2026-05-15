@@ -52,7 +52,7 @@ export default function AdminPage() {
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK1040" });
+  const [newUser, setNewUser] = useState({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "" });
   const [transferUser, setTransferUser] = useState<any>(null);
   const [transferTargetStoreId, setTransferTargetStoreId] = useState<string>("");
   const [isTransferring, setIsTransferring] = useState(false);
@@ -271,7 +271,7 @@ export default function AdminPage() {
         toast({ title: `${labels.created}: @${result.username}` });
         refetch();
         setShowCreateDialog(false);
-        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "BK1040" });
+        setNewUser({ fullName: "", fullNameTh: "", password: "", role: "staff", position: "", nickName: "", phone: "", email: "", storeId: "" });
       } else {
         toast({ title: result.message || "Error", variant: "destructive" });
       }
@@ -1097,7 +1097,7 @@ export default function AdminPage() {
                 {language === "th" ? "สาขาปัจจุบัน:" : "Current store:"}
                 {" "}
                 <span className="font-medium text-foreground">
-                  {storesList.find(s => s.id === (transferUser.storeId || "BK1040"))?.name || transferUser.storeId || "BK1040"}
+                  {storesList.find(s => s.id === transferUser.storeId)?.name || transferUser.storeId || ""}
                 </span>
               </div>
               <div className="space-y-2">
@@ -1113,7 +1113,7 @@ export default function AdminPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {storesList
-                      .filter(s => s.isActive === 1 && s.id !== (transferUser.storeId || "BK1040"))
+                      .filter(s => s.isActive === 1 && s.id !== transferUser.storeId)
                       .map(s => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.nameTh || s.name} ({s.code})
@@ -1289,8 +1289,8 @@ export default function AdminPage() {
                               size="sm"
                               onClick={() => handleToggleStore(store.id)}
                               data-testid={`button-toggle-store-${store.id}`}
-                              disabled={store.id === 'BK1040'}
-                              title={store.id === 'BK1040' ? 'Default store cannot be deactivated' : ''}
+                              disabled={false}
+                              title=""
                             >
                               {store.isActive === 1 ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
                             </Button>

@@ -1,7 +1,5 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { getNBOSalesAuto } from "./nbo-service";
-import { getAlohaSalesRaw } from "./aloha-service";
 import { streamLLM } from "../replit_integrations/chat/services/llm-router";
 import { pushToBoss } from "../socket";
 
@@ -11,12 +9,10 @@ const ALLOWED_SHELL_PREFIXES = [
   "ls", "cat", "echo", "pwd", "date", "wc", "grep", "find", "head", "tail",
 ];
 
-// Patterns that indicate command chaining, redirection, or injection attempts
 const SHELL_INJECTION_PATTERN = /[;&|`$<>\n\\]|\$\(|\$\{/;
 
 function isSafeShellCommand(cmd: string): boolean {
   if (!cmd || typeof cmd !== "string") return false;
-  // Reject any command that contains shell injection characters
   if (SHELL_INJECTION_PATTERN.test(cmd)) return false;
   const trimmed = cmd.trim().toLowerCase();
   return ALLOWED_SHELL_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
@@ -36,12 +32,10 @@ export async function runChannTask(taskDescription: string) {
       mode: "code",
       message: `งานของนายคือ: ${taskDescription}
 เครื่องมือที่มี:
-1. nbo: ดึงยอดจาก SQL Server (รหัส bk1040)
-2. aloha: อ่านไฟล์ DBF (Path: ${process.env.ALOHA_DBF_PATH || "ไม่ได้ตั้งค่า"})
-3. shell: รันคำสั่ง terminal อ่านข้อมูลเท่านั้น (ls, cat, echo, grep, find, head, tail)
+1. shell: รันคำสั่ง terminal อ่านข้อมูลเท่านั้น (ls, cat, echo, grep, find, head, tail)
 ${lastError ? `รอบก่อนหน้าพลาด Error: ${lastError}` : ""}
 ตอบกลับเป็น JSON เท่านั้น ไม่มีคำอธิบายเพิ่มเติม:
-{ "tool": "nbo" | "aloha" | "shell", "command": "string (สำหรับ shell เท่านั้น)" }`,
+{ "tool": "shell", "command": "string" }`,
       history: [],
       onToken: (t) => { decision += t; },
     });
@@ -51,11 +45,7 @@ ${lastError ? `รอบก่อนหน้าพลาด Error: ${lastError}
       const plan = JSON.parse(cleaned) as { tool: string; command?: string };
       let result: any;
 
-      if (plan.tool === "nbo") {
-        result = await getNBOSalesAuto();
-      } else if (plan.tool === "aloha") {
-        result = await getAlohaSalesRaw();
-      } else if (plan.tool === "shell") {
+      if (plan.tool === "shell") {
         const cmd = plan.command || "";
         if (!isSafeShellCommand(cmd)) {
           throw new Error(`คำสั่ง shell ไม่ได้รับอนุญาต: "${cmd}"`);

@@ -214,8 +214,8 @@ export function AppRosterView({ year, month, storeId, storeName = "Grand Diamond
                     <th className="px-3 py-3 font-semibold text-center w-12">วัน</th>
                     <th className="px-3 py-3 font-semibold text-center w-16">วันที่</th>
                     <th className="px-3 py-3 font-semibold text-center w-36">เวลาเข้า (Roster AC)</th>
-                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาเข้า (Aloha)</th>
-                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาออก (Aloha)</th>
+                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาเข้างาน</th>
+                    <th className="px-3 py-3 font-semibold text-center w-36">เวลาออกงาน</th>
                     <th className="px-3 py-3 font-semibold text-left">หมายเหตุ</th>
                   </tr>
                 </thead>

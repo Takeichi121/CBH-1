@@ -53,7 +53,6 @@ import DailySalesPage from "@/pages/sales/daily-sales-page";
 import SalesReportsPage from "@/pages/sales/reports-page";
 import SalesSettingsPage from "@/pages/sales/settings-page";
 import SalesManualPage from "@/pages/sales/manual-page";
-import ImportDBFPage from "@/pages/sales/import-dbf-page";
 import WeeklySalesPage from "@/pages/sales/weekly-sales-page";
 import CustomizeReportPage from "@/pages/sales/customize-report-page";
 
@@ -101,7 +100,6 @@ const PATH_TO_FEATURE: Record<string, string> = {
   "/sales/reports": "sales",
   "/sales/manual": "sales",
   "/sales/settings": "sales_settings",
-  "/sales/import": "sales_import",
   "/borrow": "borrow",
   "/borrow/transactions": "borrow",
   "/borrow/history": "borrow",
@@ -211,10 +209,6 @@ function Router() {
           
           <Route path="/sales/manual">
             <ProtectedRoute component={SalesManualPage} path="/sales/manual" />
-          </Route>
-          
-          <Route path="/sales/import">
-            <ProtectedRoute component={ImportDBFPage} path="/sales/import" />
           </Route>
           
           <Route path="/sales/weekly">

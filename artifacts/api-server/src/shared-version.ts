@@ -215,7 +215,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-05-02",
     label: "feature",
     changes: [
-      "Chann AI — Auto-draft Daily Sales: ปุ่ม 'ดึง Draft จาก Chann' บนหน้ากรอกรายงาน ดึงค่าจาก Aloha+NBO+ประวัติ พร้อม confidence (high/medium/low) ต่อฟิลด์",
+      "Chann AI — Auto-draft Daily Sales: ปุ่ม 'ดึง Draft จาก Chann' บนหน้ากรอกรายงาน ดึงค่าจากประวัติ พร้อม confidence (high/medium/low) ต่อฟิลด์",
       "Chann AI — Anomaly Detection: ตรวจจับความผิดปกติด้วย z-score บน 6 ฟิลด์หลัก (ยอดขาย, TC, ชั่วโมง, Waste, เคสร้องเรียน, Refund) เทียบ same-DOW + 7 วันย้อนหลัง",
       "Chann AI — Long-term Memory (RAG): pgvector + HNSW cosine index, embed ด้วย text-embedding-3-small, ค้นหา top-3 memories ก่อนทุก chat",
       "Anomaly Banner: แบนเนอร์สีแดง/เหลืองบน Sales Layout แจ้งเตือนทันทีเมื่อพบความผิดปกติ พร้อมปุ่มรับทราบ",
@@ -230,7 +230,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-04-05",
     label: "feature",
     changes: [
-      "เพิ่ม 'viewer' role — user ที่ใช้ร่วมกัน bk1040 / bk1040",
+      "เพิ่ม 'viewer' role — user สำหรับดูรายงาน Sales",
       "Viewer เข้าได้เฉพาะ: Sales Report (Dashboard, Daily, Weekly, Reports, Manual) และ Handbook",
       "Navigation, dropdown, profile menu — ซ่อนเมนูที่ไม่ได้รับอนุญาตทั้งหมด",
       "Auto-redirect ไป /sales เมื่อ viewer พยายามเข้า route ที่ไม่อนุญาต",

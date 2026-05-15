@@ -18,7 +18,7 @@ import { OverviewTab } from "./attendance/overview-tab";
 const ATTENDANCE_TUTORIAL: TutorialStep[] = [
   {
     titleTh: "📋 หน้าบันทึกเวลาทำงาน",
-    descriptionTh: "หน้านี้ใช้สำหรับดูและจัดการข้อมูลการ clock-in/out ของพนักงาน นำเข้าจาก Aloha POS",
+    descriptionTh: "หน้านี้ใช้สำหรับดูและจัดการข้อมูลการ clock-in/out ของพนักงาน",
     icon: <Clock className="w-10 h-10 text-primary" />,
   },
   {
@@ -38,7 +38,7 @@ const ATTENDANCE_TUTORIAL: TutorialStep[] = [
   },
   {
     titleTh: "📥 Import Excel",
-    descriptionTh: "อัพโหลดไฟล์ Clock In/Out จาก Aloha (รูปแบบ .xlsx) ระบบจะอ่านข้อมูลพนักงาน 5 คนโดยอัตโนมัติ",
+    descriptionTh: "อัพโหลดไฟล์ Clock In/Out (รูปแบบ .xlsx) ระบบจะอ่านข้อมูลพนักงาน 5 คนโดยอัตโนมัติ",
     icon: <Upload className="w-10 h-10 text-orange-500" />,
   },
   {
@@ -56,7 +56,7 @@ export default function AttendancePage() {
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const storeId = (user as any)?.storeId || "BK1040";
+  const storeId = (user as any)?.storeId || "";
 
   const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
 
@@ -82,7 +82,7 @@ export default function AttendancePage() {
                 {t("Attendance / Clock In-Out","บันทึกเวลาทำงาน")}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {t("Track and manage employee clock-in/out records from Aloha POS","บันทึกและจัดการเวลาเข้า-ออกงานจาก Aloha POS")}
+                {t("Track and manage employee clock-in/out records","บันทึกและจัดการเวลาเข้า-ออกงานของพนักงาน")}
               </p>
             </div>
           </div>

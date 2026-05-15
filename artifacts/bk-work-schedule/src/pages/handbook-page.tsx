@@ -322,24 +322,7 @@ export default function HandbookPage() {
           </AccordionContent>
         </AccordionItem>
 
-        {/* ===== 9. Import DBF ===== */}
-        <AccordionItem value="import-dbf" className="border rounded-xl px-4">
-          <AccordionTrigger className="hover:no-underline py-4">
-            <SectionHeader icon={Database} title="9. นำเข้าข้อมูล DBF (Import จาก Aloha POS)" badges={[MANAGER_BADGE]} />
-          </AccordionTrigger>
-          <AccordionContent className="pb-4 space-y-3">
-            <p className="text-sm text-muted-foreground">ระบบรองรับการ Import ไฟล์ .DBF จาก Aloha POS เพื่อดึงยอดขายอัตโนมัติ ไม่ต้องกรอกมือ</p>
-            <div className="space-y-2">
-              <Step n={1}>ไปที่ <strong>Sales → Import DBF</strong></Step>
-              <Step n={2}>กด <strong>"เลือกไฟล์"</strong> และเลือกไฟล์ .DBF จาก Aloha</Step>
-              <Step n={3}>ระบบแสดง Preview ข้อมูลที่อ่านได้ (ยอดขาย, TC, Delivery)</Step>
-              <Step n={4}>กด <strong>"Import"</strong> เพื่อบันทึกข้อมูลลงใน Daily Sales ของวันนั้น</Step>
-            </div>
-            <Note>ระบบจะ overwrite ข้อมูลที่มีอยู่ในวันนั้น ตรวจสอบวันที่ให้ถูกต้องก่อน Import</Note>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* ===== 10. Borrow Tracker ===== */}
+        {/* ===== 9. Borrow Tracker ===== */}
         <AccordionItem value="borrow" className="border rounded-xl px-4">
           <AccordionTrigger className="hover:no-underline py-4">
             <SectionHeader icon={ArrowLeftRight} title="10. ระบบยืม-คืนวัตถุดิบ (Borrow Tracker)" badges={[STAFF_BADGE]} />

@@ -373,7 +373,7 @@ export default function SalesManualPage() {
               <AccordionTrigger>ข้อมูลร้าน</AccordionTrigger>
               <AccordionContent>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li><strong>รหัสร้าน:</strong> BK1040</li>
+                  <li><strong>รหัสร้าน:</strong> Grand Diamond</li>
                   <li><strong>ชื่อร้าน:</strong> Grand Diamond</li>
                 </ul>
               </AccordionContent>
@@ -451,7 +451,7 @@ export default function SalesManualPage() {
           <div className="space-y-2">
             <h4 className="font-semibold">Store Information</h4>
             <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Store Code: BK1040</li>
+              <li>Store Code: Grand Diamond</li>
               <li>Store Name: Grand Diamond</li>
             </ul>
           </div>

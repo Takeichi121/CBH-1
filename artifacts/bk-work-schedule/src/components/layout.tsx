@@ -72,7 +72,7 @@ export function Layout({ children }: { children: ReactNode }) {
   });
 
   const stores: Array<{ id: string; name: string; nameTh?: string | null; isActive: number }> = storesData?.stores || [];
-  const effectiveStoreId = selectedStoreId || stores[0]?.id || "BK1040";
+  const effectiveStoreId = selectedStoreId || stores[0]?.id || "";
   const currentStore = stores.find((s) => s.id === effectiveStoreId) || stores[0];
 
   const { data: announcementsData } = useQuery<{ ok: boolean; announcements: Array<{ id: number; createdAt: string }> }>({

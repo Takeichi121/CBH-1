@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useI18n } from "@/hooks/use-i18n";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, Database, CalendarRange, SlidersHorizontal } from "lucide-react";
+import { LayoutDashboard, FileEdit, FileText, Settings, BookOpen, CalendarRange, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnomalyBanner } from "@/components/anomaly-banner";
 
@@ -63,12 +63,6 @@ export function SalesLayout({ children }: SalesLayoutProps) {
       label: language === "th" ? "คู่มือ" : "Manual",
       icon: BookOpen,
       viewerAllowed: true,
-    },
-    {
-      href: "/sales/import",
-      label: language === "th" ? "Import DBF" : "Import DBF",
-      icon: Database,
-      viewerAllowed: false,
     },
   ];
 

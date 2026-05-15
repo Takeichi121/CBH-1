@@ -1,7 +1,5 @@
 import { storage } from "../storage";
 import { searchMemory } from "./chann-memory-service";
-import { getAlohaSalesRaw } from "./aloha-service";
-import { getNBOSalesAuto } from "./nbo-service";
 import { streamLLM } from "../replit_integrations/chat/services/llm-router";
 import type { DailySalesReport } from "@workspace/db";
 
@@ -18,8 +16,6 @@ export interface DailySalesDraft {
   notes: string;
   hints: string[];
   rawData: {
-    aloha: any;
-    nbo: any;
     history7d: { date: string; actualSales: string; transactionCount: string; actualHours: string }[];
   };
 }
@@ -34,19 +30,19 @@ function avg(xs: number[]): number {
   return xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
+const DEFAULT_STORE_ID = process.env.DEFAULT_STORE_ID || "";
+
 export async function generateDailySalesDraft(
   reportDate: string,
-  storeId: string = "BK1040",
+  storeId: string = DEFAULT_STORE_ID,
 ): Promise<DailySalesDraft> {
   const end = new Date(reportDate);
   const start = new Date(end);
   start.setDate(start.getDate() - 7);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  const [history, alohaResult, nboResult, memoryHints] = await Promise.all([
+  const [history, memoryHints] = await Promise.all([
     storage.getDailySalesReportsByDateRange(fmt(start), fmt(end), storeId),
-    safeCall(getAlohaSalesRaw),
-    safeCall(getNBOSalesAuto),
     safeCall(() => searchMemory(`รายงานยอดขายวันที่ ${reportDate} แนวโน้ม`, { k: 3, storeId })),
   ]);
 
@@ -55,19 +51,6 @@ export async function generateDailySalesDraft(
   const baseline = sameDow.length >= 2 ? sameDow : past;
 
   const fields: Record<string, DraftField> = {};
-
-  const alohaSales = num(alohaResult?.totalFromDbf);
-  const nboSales = num(nboResult?.TotalSales);
-  const nboTc = num(nboResult?.GuestCount);
-
-  if (nboSales !== null) {
-    fields.actualSales = { value: String(Math.round(nboSales)), confidence: "high", source: "NBO" };
-  } else if (alohaSales !== null) {
-    fields.actualSales = { value: String(Math.round(alohaSales)), confidence: "medium", source: "Aloha DBF" };
-  }
-  if (nboTc !== null) {
-    fields.transactionCount = { value: String(nboTc), confidence: "high", source: "NBO Guest Count" };
-  }
 
   const avgFromBaseline = (key: keyof DailySalesReport): number | null => {
     const xs = baseline.map((r) => num((r as any)[key])).filter((n): n is number => n !== null);
@@ -83,6 +66,8 @@ export async function generateDailySalesDraft(
   };
 
   const baselineLabel = sameDow.length >= 2 ? `เฉลี่ย ${baseline.length} วันเดียวกัน` : `เฉลี่ย ${baseline.length} วันล่าสุด`;
+  fillFromAvg("actualSales", "actualSales", baselineLabel);
+  fillFromAvg("transactionCount", "transactionCount", baselineLabel);
   fillFromAvg("dailyTarget", "dailyTarget", baselineLabel);
   fillFromAvg("actualHours", "actualHours", baselineLabel);
   fillFromAvg("recommendHours", "recommendHours", baselineLabel);
@@ -116,13 +101,6 @@ export async function generateDailySalesDraft(
   if (memoryHints && memoryHints.length > 0) {
     hints.push(...memoryHints.map((m: any) => `[${m.kind}] ${m.content.slice(0, 200)}`));
   }
-  if (alohaResult?.totalFromDbf && nboResult?.TotalSales) {
-    const diff = Math.abs(num(alohaResult.totalFromDbf)! - num(nboResult.TotalSales)!);
-    const diffPct = (diff / num(nboResult.TotalSales)!) * 100;
-    if (diffPct > 5) {
-      hints.push(`Aloha (${alohaResult.totalFromDbf}) กับ NBO (${nboResult.TotalSales}) ต่างกัน ${diffPct.toFixed(1)}% — ตรวจสอบก่อนเซฟ`);
-    }
-  }
 
   let notes = "";
   if (Object.keys(fields).length > 0) {
@@ -141,8 +119,6 @@ export async function generateDailySalesDraft(
     notes,
     hints,
     rawData: {
-      aloha: alohaResult,
-      nbo: nboResult,
       history7d: past.slice(0, 7).map((r) => ({
         date: r.reportDate,
         actualSales: r.actualSales,

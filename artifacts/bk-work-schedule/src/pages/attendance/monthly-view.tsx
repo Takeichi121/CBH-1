@@ -84,11 +84,11 @@ function EditRecordDialog({ record, onClose, storeId, employeeNamePreFill }: { r
             <div className="mt-1"><RosterTimeDropdown value={form.rosterTime} onChange={v => setForm({...form, rosterTime: v})} /></div>
           </div>
           <div>
-            <Label className="text-xs font-semibold text-muted-foreground">{t("Clock In (Aloha)","สแกนเข้า (Aloha)")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Clock In","สแกนเข้างาน")}</Label>
             <div className="mt-1"><TimeDropdown value={form.clockInTime} onChange={v => setForm({...form, clockInTime: v})} /></div>
           </div>
           <div>
-            <Label className="text-xs font-semibold text-muted-foreground">{t("Clock Out (Aloha)","สแกนออก (Aloha)")}</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">{t("Clock Out","สแกนออกงาน")}</Label>
             <div className="mt-1"><TimeDropdown value={form.clockOutTime} onChange={v => setForm({...form, clockOutTime: v})} /></div>
           </div>
           <div className="col-span-2">

@@ -178,7 +178,7 @@ export default function GamificationPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const storeId = (user as any)?.storeId || "BK1040";
+  const storeId = (user as any)?.storeId || "";
   const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
 
   const { data, isLoading } = useQuery<{ ok: boolean; records: ClockRecord[] }>({

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { channMemories, type ChannMemory, type InsertChannMemory } from "@workspace/db";
 
+const DEFAULT_STORE_ID = process.env.DEFAULT_STORE_ID || "";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMS = 1536;
 
@@ -162,7 +163,7 @@ export async function deleteMemory(id: number): Promise<void> {
   await db.execute(sql`DELETE FROM chann_memories WHERE id = ${id}`);
 }
 
-export async function backfillReportSummaries(daysBack: number = 90, storeId: string = "BK1040"): Promise<number> {
+export async function backfillReportSummaries(daysBack: number = 90, storeId: string = DEFAULT_STORE_ID): Promise<number> {
   const { storage } = await import("../storage");
   const end = new Date();
   const start = new Date();

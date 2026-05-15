@@ -3,6 +3,8 @@ import { db } from "../db";
 import { storage } from "../storage";
 import type { DailySalesReport, ChannAnomaly } from "@workspace/db";
 
+const DEFAULT_STORE_ID = process.env.DEFAULT_STORE_ID || "";
+
 const TRACKED_FIELDS: Array<{
   key: keyof DailySalesReport;
   label: string;
@@ -48,7 +50,7 @@ function stdev(xs: number[]): number {
 
 export async function detectAnomalies(
   reportDate: string,
-  storeId: string = "BK1040",
+  storeId: string = DEFAULT_STORE_ID,
 ): Promise<DetectedAnomaly[]> {
   const today = await storage.getDailySalesReportByDate(reportDate, storeId);
   if (!today) return [];
@@ -128,7 +130,7 @@ export async function persistAnomalies(
   return inserted;
 }
 
-export async function listActiveAnomalies(storeId: string = "BK1040", limit: number = 50): Promise<ChannAnomaly[]> {
+export async function listActiveAnomalies(storeId: string = DEFAULT_STORE_ID, limit: number = 50): Promise<ChannAnomaly[]> {
   const result = await db.execute(sql`
     SELECT * FROM chann_anomalies
     WHERE store_id = ${storeId} AND acknowledged = FALSE

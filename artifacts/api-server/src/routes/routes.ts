@@ -206,7 +206,10 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, isNull, isNotNull, or, inArray, gte } from "drizzle-orm";
 
-const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowerCase();
+const DEFAULT_STORE_ID = process.env.DEFAULT_STORE_ID || "";
+const MANAGER_VERIFY_CODE = process.env.MANAGER_VERIFY_CODE
+  ? process.env.MANAGER_VERIFY_CODE.toLowerCase()
+  : null;
 const AREA_VERIFY_CODE = (process.env.AREA_VERIFY_CODE || "bkarea").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
 
@@ -475,21 +478,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     // Admin/area can override storeId via request body; manager uses their own store
     const isAdminLike = user[0].role === 'admin' || user[0].role === 'area';
-    const storeId = (isAdminLike && storeIdOverride) ? storeIdOverride : (user[0].storeId || 'BK1040');
+    const storeId = (isAdminLike && storeIdOverride) ? storeIdOverride : (user[0].storeId || DEFAULT_STORE_ID);
     return { ok: true as const, user: user[0], storeId };
   };
 
   const getSessionStoreId = async (token: string, bodyStoreId?: string): Promise<string> => {
     try {
       const session = await storage.getSession(token);
-      if (!session) return 'BK1040';
+      if (!session) return DEFAULT_STORE_ID;
       const user = await storage.getUser(session.username);
-      if (!user) return 'BK1040';
+      if (!user) return DEFAULT_STORE_ID;
       const isAdminLike = user.role === 'admin' || user.role === 'area';
       // Only admin/area roles may override storeId via request body; others are locked to their assigned store
-      return (isAdminLike && bodyStoreId) ? bodyStoreId : (user.storeId || 'BK1040');
+      return (isAdminLike && bodyStoreId) ? bodyStoreId : (user.storeId || DEFAULT_STORE_ID);
     } catch {
-      return 'BK1040';
+      return DEFAULT_STORE_ID;
     }
   };
 
@@ -1395,7 +1398,7 @@ ${pageContext}` : ''}`;
             parameters: {
               type: "object",
               properties: {
-                storeId: { type: "string", description: "Store ID (default: BK1040)" },
+                storeId: { type: "string", description: "Store ID" },
                 daysBack: { type: "number", description: "How many days back to look (default: 7)" }
               },
               required: []
@@ -1426,7 +1429,7 @@ ${pageContext}` : ''}`;
               type: "object",
               properties: {
                 date: { type: "string", description: "Date to analyze in YYYY-MM-DD format (default: yesterday)" },
-                storeId: { type: "string", description: "Store ID (default: BK1040)" }
+                storeId: { type: "string", description: "Store ID" }
               },
               required: []
             }
@@ -1458,7 +1461,7 @@ ${pageContext}` : ''}`;
               properties: {
                 year: { type: "number", description: "Year (e.g. 2026)" },
                 month: { type: "number", description: "Month (1-12)" },
-                storeId: { type: "string", description: "Store ID (default: BK1040)" }
+                storeId: { type: "string", description: "Store ID" }
               },
               required: ["year", "month"]
             }
@@ -2703,7 +2706,7 @@ ${pageContext}` : ''}`;
 
           case "getSwapRequests": {
             const swapStatus = args.status === "all" ? undefined : args.status;
-            const swaps = await storage.getSwapRequests(swapStatus, user?.storeId || 'BK1040');
+            const swaps = await storage.getSwapRequests(swapStatus, user?.storeId || DEFAULT_STORE_ID);
             return JSON.stringify({ ok: true, swaps, count: swaps.length });
           }
 
@@ -3059,7 +3062,7 @@ ${pageContext}` : ''}`;
           }
 
           case "approveSwapRequest": {
-            const swapReq = await storage.getSwapRequestById(args.id, user?.storeId || 'BK1040');
+            const swapReq = await storage.getSwapRequestById(args.id, user?.storeId || DEFAULT_STORE_ID);
             if (!swapReq) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "approved", username, args.note || "อนุมัติโดย Chann");
             toolActions.push(`✅ อนุมัติ swap request #${args.id} (${swapReq.requesterUsername} ↔ ${swapReq.targetUsername || "?"})`);
@@ -3067,7 +3070,7 @@ ${pageContext}` : ''}`;
           }
 
           case "rejectSwapRequest": {
-            const swapReq2 = await storage.getSwapRequestById(args.id, user?.storeId || 'BK1040');
+            const swapReq2 = await storage.getSwapRequestById(args.id, user?.storeId || DEFAULT_STORE_ID);
             if (!swapReq2) return JSON.stringify({ error: `ไม่พบ swap request ID ${args.id}` });
             await storage.updateSwapRequestStatus(args.id, "rejected", username, args.note || "ปฏิเสธโดย Chann");
             toolActions.push(`❌ ปฏิเสธ swap request #${args.id}`);
@@ -3174,7 +3177,7 @@ ${pageContext}` : ''}`;
 
           case "getActiveAnomalies": {
             const { listActiveAnomalies } = await import("../services/chann-anomaly-service");
-            const storeId = args.storeId || "BK1040";
+            const storeId = args.storeId || DEFAULT_STORE_ID;
             const daysBack = Number(args.daysBack) || 7;
             const anomalies = await listActiveAnomalies(storeId, daysBack * 10);
             return JSON.stringify({
@@ -3190,7 +3193,7 @@ ${pageContext}` : ''}`;
 
           case "searchChannMemories": {
             const { searchMemory } = await import("../services/chann-memory-service");
-            const results = await searchMemory(args.query, { k: Number(args.k) || 5, storeId: "BK1040" });
+            const results = await searchMemory(args.query, { k: Number(args.k) || 5, storeId: DEFAULT_STORE_ID });
             return JSON.stringify({ ok: true, count: results.length, memories: results.map((m: any) => ({ id: m.id, kind: m.kind, content: m.content, sourceDate: m.sourceDate, distance: m.distance })) });
           }
 
@@ -3198,7 +3201,7 @@ ${pageContext}` : ''}`;
             const { detectAnomalies, persistAnomalies } = await import("../services/chann-anomaly-service");
             const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
             const dateStr = args.date || yesterday.toISOString().slice(0, 10);
-            const storeId = args.storeId || "BK1040";
+            const storeId = args.storeId || DEFAULT_STORE_ID;
             const detected = await detectAnomalies(dateStr, storeId);
             if (detected.length > 0) await persistAnomalies(dateStr, storeId, detected);
             toolActions.push(`🔍 ตรวจ anomaly ${dateStr}: พบ ${detected.length} รายการ`);
@@ -3208,7 +3211,7 @@ ${pageContext}` : ''}`;
           case "getClockRecords": {
             const crYear = Number(args.year) || new Date().getFullYear();
             const crMonth = Number(args.month) || (new Date().getMonth() + 1);
-            const crStoreId = args.storeId || user?.storeId || "BK1040";
+            const crStoreId = args.storeId || user?.storeId || DEFAULT_STORE_ID;
             try {
               const records = await storage.getClockRecords(crYear, crMonth, crStoreId);
               return JSON.stringify({ ok: true, year: crYear, month: crMonth, storeId: crStoreId, count: records.length, records });
@@ -3220,7 +3223,7 @@ ${pageContext}` : ''}`;
           case "summarizeDateRange": {
             const { startDate, endDate, includeShifts } = args;
             if (!startDate || !endDate) return JSON.stringify({ error: "startDate and endDate are required" });
-            const storeId = "BK1040";
+            const storeId = DEFAULT_STORE_ID;
             const { db } = await import("../db");
             const { sql } = await import("drizzle-orm");
             const reports: any[] = await db.execute(sql`
@@ -3856,11 +3859,12 @@ ${pageContext}` : ''}`;
     if (!await storage.getUser("kitti01")) {
       await storage.createUser({ username: "kitti01", passhash: await hashPassword("1234"), role: "area", fullName: "Kitti", nickName: "", phone: "", email: "", position: "area_manager", active: 1, mustChangePassword: 1, createdAt: nowIso() });
     }
-    const bk1040User = await storage.getUser("bk1040");
-    if (!bk1040User) {
-      await storage.createUser({ username: "bk1040", passhash: await hashPassword("bk1040"), role: "manager", fullName: "BK1040 Shared", nickName: "BK1040", phone: "", email: "", position: "Manager", active: 1, createdAt: nowIso() });
-    } else if (bk1040User.role !== "manager") {
-      await db.update(users).set({ role: "manager" }).where(eq(users.username, "bk1040"));
+    const sharedMgrUsername = (process.env.SHARED_MANAGER_USERNAME || "store_manager").toLowerCase();
+    const sharedMgrUser = await storage.getUser(sharedMgrUsername);
+    if (!sharedMgrUser) {
+      await storage.createUser({ username: sharedMgrUsername, passhash: await hashPassword("Change@me!"), role: "manager", fullName: "Store Manager (Shared)", nickName: "Shared", phone: "", email: "", position: "Manager", active: 1, mustChangePassword: 1, createdAt: nowIso() });
+    } else if (sharedMgrUser.role !== "manager") {
+      await db.update(users).set({ role: "manager" }).where(eq(users.username, sharedMgrUsername));
     }
 
     await storage.log("setup_ok", "system", "setup completed");
@@ -3991,6 +3995,7 @@ ${pageContext}` : ''}`;
     const cfg = await storage.getConfig();
     if (isSystemClosed(cfg)) return res.status(403).json({ ok: false, message: "ระบบปิดช่วงนี้ / System closed" });
     const { username, fullName, email, phone, password, confirmPassword, verifyCode } = req.body;
+    if (!MANAGER_VERIFY_CODE) return res.status(503).json({ ok: false, message: "การลงทะเบียนถูกปิดชั่วคราว / Registration temporarily disabled" });
     if (String(verifyCode || "").trim().toLowerCase() !== MANAGER_VERIFY_CODE) return res.status(403).json({ ok: false, message: "รหัสยืนยันไม่ถูก / Invalid code" });
     if (!username || !fullName || !email || !phone || !password) return res.status(400).json({ ok: false, message: "กรุณากรอกข้อมูลให้ครบ / Fill all fields" });
     if (password !== confirmPassword) return res.status(400).json({ ok: false, message: "รหัสผ่านไม่ตรงกัน / Passwords do not match" });
@@ -4373,7 +4378,7 @@ ${pageContext}` : ''}`;
     const shifts = await storage.getShiftsInRange(startDate, endDate);
     const myShifts = shifts.filter(s => s.username === u.username);
 
-    const storeId = u.storeId || "BK1040";
+    const storeId = u.storeId || DEFAULT_STORE_ID;
     const allClockRecords = await storage.getClockRecords(year, month, storeId);
     const myName = (u.fullName || "").trim();
     const myNameTh = (u.fullNameTh || "").trim();
@@ -5155,7 +5160,7 @@ ${pageContext}` : ''}`;
     const now = nowIso();
     await storage.createSwapRequest({
       requesterUsername: me.username, requesterDate: myDate, targetUsername: target.username, targetDate: targetDate,
-      status: "pending", createdAt: now, updatedAt: now, storeId: me.storeId || 'BK1040',
+      status: "pending", createdAt: now, updatedAt: now, storeId: me.storeId || DEFAULT_STORE_ID,
     });
 
     await storage.log("swap_request", me.username, `request swap ${me.username}:${myDate} <-> ${target.username}:${targetDate}`);
@@ -5169,7 +5174,7 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
 
-    const storeId = u.storeId || 'BK1040';
+    const storeId = u.storeId || DEFAULT_STORE_ID;
     const isManager = isManagerLike(u.role);
     const requests = await storage.getSwapRequests(isManager ? "pending" : undefined, storeId);
     const filteredRequests = isManager ? requests : requests.filter(r => r.requesterUsername === u.username || r.targetUsername === u.username);
@@ -5183,7 +5188,7 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    const storeId = u.storeId || 'BK1040';
+    const storeId = u.storeId || DEFAULT_STORE_ID;
     const request = await storage.getSwapRequestById(requestId, storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
@@ -5214,7 +5219,7 @@ ${pageContext}` : ''}`;
     const u = await storage.getUser(session.username);
     if (!u || !(isManagerLike(u.role))) return res.json({ ok: false, message: "No permission" });
 
-    const storeId = u.storeId || 'BK1040';
+    const storeId = u.storeId || DEFAULT_STORE_ID;
     const request = await storage.getSwapRequestById(requestId, storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "Request invalid" });
 
@@ -6435,7 +6440,7 @@ ${pageContext}` : ''}`;
   // ==========================================
   // 🔨 Developer Tools
   // ==========================================
-  const DEV_CODE = "bk1040";
+  const DEV_CODE = process.env.DEV_ACCESS_CODE || null;
 
   const verifyDevAccess = async (token: string, devCode?: string): Promise<{ ok: boolean; user?: any; message?: string; statusCode?: number }> => {
     const session = await storage.getSession(token);
@@ -6445,7 +6450,8 @@ ${pageContext}` : ''}`;
     if (process.env.NODE_ENV === "production" && u.role !== "admin") {
       return { ok: false, message: "Access denied - Admin only in production", statusCode: 403 };
     }
-    if (u.role === "admin" || devCode === DEV_CODE) return { ok: true, user: u };
+    if (u.role === "admin") return { ok: true, user: u };
+    if (DEV_CODE && devCode === DEV_CODE) return { ok: true, user: u };
     return { ok: false, message: "Access denied - Admin or Dev Code required", statusCode: 403 };
   };
 
@@ -7277,7 +7283,7 @@ ${pageContext}` : ''}`;
   }));
 
   // Calculate Labor Logic Helper
-  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }, storeId: string = 'BK1040') {
+  async function calculateLaborLogic(date: string, inputs: { actualHours?: number; otHours?: number }, storeId: string = DEFAULT_STORE_ID) {
     // 1. Get Settings
     const cfg = await storage.getLaborSettings(storeId) || { rosterHours: "88", dutyDailyHours: "40", ptWageRate: "45", fixedCostDaily: "0", closeShiftDailyCost: "0" };
 
@@ -7347,100 +7353,6 @@ ${pageContext}` : ''}`;
   }));
 
   // ==========================================
-  // 📂 DBF Import (Aloha POS Integration)
-  // ==========================================
-  
-  // Parse DBF file and return data
-  app.post("/api/import/parse-dbf", upload.single("file"), safe(async (req, res) => {
-    const { token } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-
-    if (!req.file) {
-      return res.json({ ok: false, message: "No file uploaded" });
-    }
-
-    try {
-      const DBFFile = await import("dbffile");
-      
-      // Write buffer to temp file (dbffile needs file path)
-      const tempPath = path.join(process.cwd(), "uploads", `temp_${Date.now()}.dbf`);
-      fs.writeFileSync(tempPath, req.file.buffer);
-      
-      const dbf = await DBFFile.DBFFile.open(tempPath);
-      const records = await dbf.readRecords();
-      
-      // Clean up temp file
-      fs.unlinkSync(tempPath);
-      
-      res.json({ 
-        ok: true, 
-        fields: dbf.fields.map(f => ({ name: f.name, type: f.type, size: f.size })),
-        recordCount: dbf.recordCount,
-        records: records.slice(0, 100) // Return first 100 records for preview
-      });
-    } catch (e: any) {
-      console.error("DBF parse error:", e);
-      res.json({ ok: false, message: e.message || "Failed to parse DBF file" });
-    }
-  }));
-
-  // Import employees from DBF
-  app.post("/api/import/employees-from-dbf", safe(async (req, res) => {
-    const { token, employees } = req.body;
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-
-    if (!Array.isArray(employees) || employees.length === 0) {
-      return res.json({ ok: false, message: "No employees to import" });
-    }
-
-    try {
-      let imported = 0;
-      let skipped = 0;
-      const errors: string[] = [];
-
-      for (const emp of employees) {
-        try {
-          // Check if employee exists
-          const existing = await db.select().from(users).where(eq(users.username, emp.username.toLowerCase())).limit(1);
-          
-          if (existing.length > 0) {
-            skipped++;
-            continue;
-          }
-
-          // Create new employee
-          await db.insert(users).values({
-            username: emp.username.toLowerCase(),
-            passhash: await hashPassword(emp.password || "1234"),
-            fullName: emp.fullName || emp.username,
-            nickName: emp.nickName || null,
-            role: "staff",
-            phone: emp.phone || null,
-            email: emp.email || null,
-            active: 1,
-            createdAt: nowIso()
-          });
-          imported++;
-        } catch (e: any) {
-          errors.push(`${emp.username}: ${e.message}`);
-        }
-      }
-
-      res.json({ 
-        ok: true, 
-        imported, 
-        skipped, 
-        errors: errors.length > 0 ? errors : undefined,
-        message: `Imported ${imported} employees, skipped ${skipped} existing`
-      });
-    } catch (e: any) {
-      res.json({ ok: false, message: e.message });
-    }
-  }));
-
-  // ==========================================
   // 🕐 Attendance / Clock In Out
   // ==========================================
 
@@ -7452,8 +7364,8 @@ ${pageContext}` : ''}`;
     const year  = parseInt(String(req.query.year  || new Date().getFullYear()));
     const month = parseInt(String(req.query.month || new Date().getMonth() + 1));
     const storeId = access.user.role === "admin" || access.user.role === "area"
-      ? String(req.query.storeId || access.user.storeId || "BK1040")
-      : (access.user.storeId || "BK1040");
+      ? String(req.query.storeId || access.user.storeId || DEFAULT_STORE_ID)
+      : (access.user.storeId || DEFAULT_STORE_ID);
     const records = await storage.getClockRecords(year, month, storeId);
     return res.json({ ok: true, records });
   }));
@@ -7463,7 +7375,7 @@ ${pageContext}` : ''}`;
     const token = String(req.query.token || req.headers["x-token"] || "");
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
-    const storeId = access.user.storeId || "BK1040";
+    const storeId = access.user.storeId || DEFAULT_STORE_ID;
     const employees = await storage.getClockEmployees(storeId);
     return res.json({ ok: true, employees });
   }));
@@ -7473,7 +7385,7 @@ ${pageContext}` : ''}`;
     const { token, ...data } = req.body;
     const access = await verifyManagerAccess(token);
     if (!access.ok) return res.json(access);
-    const storeId = data.storeId || access.user.storeId || "BK1040";
+    const storeId = data.storeId || access.user.storeId || DEFAULT_STORE_ID;
     const record = await storage.upsertClockRecord({ ...data, storeId, importSource: "manual" });
     return res.json({ ok: true, record });
   }));
@@ -7505,7 +7417,7 @@ ${pageContext}` : ''}`;
 
     const year = parseInt(String(req.query.year || new Date().getFullYear()));
     const month = parseInt(String(req.query.month || new Date().getMonth() + 1));
-    const storeId = String(req.query.storeId || access.user.storeId || "BK1040");
+    const storeId = String(req.query.storeId || access.user.storeId || DEFAULT_STORE_ID);
 
     const records = await storage.getClockRecords(year, month, storeId);
     const storeCfg = await storage.getStoreSettings();
@@ -7575,7 +7487,7 @@ ${pageContext}` : ''}`;
       ws.mergeCells(3, sc + 1, 3, sc + 2);
 
       // Row 4: column headers
-      const hdrs = ["วัน","วันที่","เวลาเข้างาน (ตาม roster ที่มีลายเซ็น AC)","เวลาสแกนนิ้วเข้างาน (จาก Aloha)","เวลาสแกนนิ้วเลิกงาน (จาก Aloha)","หมายเหตุ"];
+      const hdrs = ["วัน","วันที่","เวลาเข้างาน (ตาม roster ที่มีลายเซ็น AC)","เวลาสแกนนิ้วเข้างาน","เวลาสแกนนิ้วเลิกงาน","หมายเหตุ"];
       hdrs.forEach((h, i) => {
         const cell = ws.getCell(4, sc + i);
         cell.value = h; cell.fill = fillHdr;
@@ -7683,7 +7595,7 @@ ${pageContext}` : ''}`;
     if (!access.ok) return res.json(access);
     if (!req.file) return res.json({ ok: false, message: "ไม่พบไฟล์" });
 
-    const storeId = access.user.storeId || "BK1040";
+    const storeId = access.user.storeId || DEFAULT_STORE_ID;
     const confirmImport = req.body.confirm === "true" || req.body.confirm === true;
 
     try {
@@ -7769,8 +7681,8 @@ ${pageContext}` : ''}`;
           for (const emp of employees) {
             const sc = emp.startCol;
             const rosterCell  = dataRow.getCell(sc + 2); // col3 = roster time
-            const clockInCell  = dataRow.getCell(sc + 3); // col4 = Aloha clock-in
-            const clockOutCell = dataRow.getCell(sc + 4); // col5 = Aloha clock-out
+            const clockInCell  = dataRow.getCell(sc + 3); // col4 = clock-in
+            const clockOutCell = dataRow.getCell(sc + 4); // col5 = clock-out
             const notesCell    = dataRow.getCell(sc + 5); // col6 = notes
 
             const rosterTime  = timeVal(rosterCell) || cellVal(rosterCell);
@@ -7866,7 +7778,7 @@ ${pageContext}` : ''}`;
 
     const year    = parseInt(String(req.query.year  || new Date().getFullYear()));
     const month   = parseInt(String(req.query.month || new Date().getMonth() + 1));
-    const storeId = String(req.query.storeId || access.user.storeId || "BK1040");
+    const storeId = String(req.query.storeId || access.user.storeId || DEFAULT_STORE_ID);
 
     const records   = await storage.getClockRecords(year, month, storeId);
     const storeCfg  = await storage.getStoreSettings();
@@ -8002,7 +7914,7 @@ ${pageContext}` : ''}`;
     if (!access.ok) return res.json(access);
     if (!req.file) return res.json({ ok: false, message: "ไม่พบไฟล์" });
 
-    const storeId       = access.user.storeId || "BK1040";
+    const storeId       = access.user.storeId || DEFAULT_STORE_ID;
     const confirmImport = req.body.confirm === "true" || req.body.confirm === true;
 
     try {
@@ -8143,7 +8055,7 @@ ${pageContext}` : ''}`;
   }));
 
   // ─────────────────────────────────────────────────────────
-  // Aloha Sales CSV Import
+  // CSV Helpers
   // ─────────────────────────────────────────────────────────
 
   // Helper: parse raw CSV text → headers + rows
@@ -8171,120 +8083,6 @@ ${pageContext}` : ''}`;
     return { headers, rows };
   }
 
-  // Helper: fuzzy-detect a column by checking against known patterns
-  function detectCol(headers: string[], patterns: string[]): string {
-    return headers.find(h => {
-      const norm = h.toLowerCase().replace(/[^a-z0-9%]/g, "");
-      return patterns.some(p => norm.includes(p.toLowerCase().replace(/[^a-z0-9%]/g, "")));
-    }) || "";
-  }
-
-  // Helper: parse Aloha date string → YYYY-MM-DD
-  function parseAlohaDate(d: string): string {
-    const mdy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,"0")}-${mdy[2].padStart(2,"0")}`;
-    const dmy = d.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,"0")}-${dmy[1].padStart(2,"0")}`;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-    return d;
-  }
-
-  // POST /api/sales/parse-aloha-csv — parse & auto-detect columns, return preview
-  app.post("/api/sales/parse-aloha-csv", upload.single("file"), safe(async (req, res) => {
-    const token = String(req.body?.token || "");
-    const access = await verifyManagerAccess(token);
-    if (!access.ok) return res.json(access);
-    if (!req.file) return res.json({ ok: false, message: "ไม่พบไฟล์" });
-
-    try {
-      const text = req.file.buffer.toString("utf-8");
-      const { headers, rows } = parseCSVText(text);
-
-      // Auto-detect column mapping
-      const detected = {
-        dateCol:    detectCol(headers, ["date","dob","businessdate","businessday","day","วันที่"]),
-        salesCol:   detectCol(headers, ["netsales","netsls","actualsales","netsale","totalnetsales","netsal","sales","ยอดขาย","netsale"]),
-        txCountCol: detectCol(headers, ["checks","chkcnt","checkcount","transactions","transcount","covers","guests","จำนวน","txcount"]),
-        colPctCol:  detectCol(headers, ["labor%","col%","col","laborpct","laborpercent","costoflabor","laborcost%","laborcostratio"]),
-        refundCol:  detectCol(headers, ["comps","voids","refund","comp","void","refundamount","compamount"]),
-        grossCol:   detectCol(headers, ["grosssales","gross","grosstotal"]),
-      };
-
-      // Build preview rows (first 20)
-      const preview = rows.slice(0, 20).map(row => ({
-        raw: row,
-        mapped: {
-          reportDate:       detected.dateCol    ? parseAlohaDate(row[detected.dateCol] || "")    : "",
-          actualSales:      detected.salesCol   ? (row[detected.salesCol] || "").replace(/[,$]/g, "")  : "",
-          transactionCount: detected.txCountCol ? (row[detected.txCountCol] || "").replace(/,/g, "") : "",
-          colPercent:       detected.colPctCol  ? (row[detected.colPctCol] || "").replace(/%/g, "")  : "",
-          refundAmount:     detected.refundCol  ? (row[detected.refundCol] || "").replace(/[,$]/g, "") : "",
-        }
-      }));
-
-      return res.json({ ok: true, headers, rowCount: rows.length, detected, preview });
-    } catch (e: any) {
-      return res.json({ ok: false, message: e.message || "Parse failed" });
-    }
-  }));
-
-  // POST /api/sales/import-aloha-csv — upsert dailySalesReports from mapped rows
-  app.post("/api/sales/import-aloha-csv", safe(async (req, res) => {
-    const { token, mappedRows, storeIdOverride } = req.body;
-    const access = await verifyManagerAccess(token, storeIdOverride);
-    if (!access.ok) return res.json(access);
-
-    const storeId = (access.user.role === "admin" || access.user.role === "area") && storeIdOverride
-      ? String(storeIdOverride)
-      : (access.user.storeId || "BK1040");
-
-    if (!Array.isArray(mappedRows) || mappedRows.length === 0)
-      return res.json({ ok: false, message: "ไม่มีข้อมูลที่จะ import" });
-
-    let imported = 0; let updated = 0; let skipped = 0;
-    const errors: string[] = [];
-
-    for (const row of mappedRows) {
-      try {
-        const { reportDate, actualSales, transactionCount, colPercent, refundAmount } = row;
-        if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
-          skipped++;
-          errors.push(`ข้ามแถว: วันที่ไม่ถูกต้อง "${reportDate}"`);
-          continue;
-        }
-        if (!actualSales && !transactionCount) { skipped++; continue; }
-
-        const existing = await storage.getDailySalesReportByDate(reportDate, storeId);
-        const payload: any = {
-          reportDate, storeId,
-          actualSales:      String(parseFloat(actualSales || "0") || 0),
-          transactionCount: String(parseInt(transactionCount || "0") || 0),
-          colPercent:       colPercent ? String(parseFloat(colPercent) || 0) : undefined,
-          refundAmount:     refundAmount ? String(parseFloat(refundAmount.replace(/[,$]/g, "")) || 0) : undefined,
-          dailyTarget:      existing?.dailyTarget || "0",
-          complaintCount:   existing?.complaintCount || "0",
-          updatedAt:        new Date().toISOString(),
-          updatedBy:        access.user.username,
-          importSource:     "aloha_csv",
-        };
-        await storage.upsertDailySalesReportByDate(payload, storeId, false);
-        if (existing) updated++; else imported++;
-      } catch (e: any) {
-        errors.push(e.message);
-        skipped++;
-      }
-    }
-
-    await storage.log("import_aloha_csv", access.user.username,
-      `imported:${imported} updated:${updated} skipped:${skipped} store:${storeId}`);
-
-    return res.json({
-      ok: true,
-      imported, updated, skipped,
-      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
-      message: `นำเข้าสำเร็จ ${imported} รายการใหม่, อัพเดต ${updated} รายการ, ข้าม ${skipped} รายการ`
-    });
-  }));
 
   // ==========================================
   // 💬 Socket.IO Chat System (Persistent)
@@ -9310,7 +9108,7 @@ ${pageContext}` : ''}`;
       "Day","Month",
       "Last Year Sales\n(Daily)","Last Year Sales\nMTD",
       "Target Sales\n(Incentive) Daily","Target Sales\nMTD",
-      "Forecast Sales\nFrom NBO",
+      "Forecast Sales",
       "Actual Sales\n(Daily)","Actual Sales\nMTD",
       "Variance From\nTarget","Variance\nMTD",
       "Sales Delivery\n(Daily)","Sales Delivery\nMTD",
@@ -10099,7 +9897,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const isAdminLike = u.role === "admin" || u.role === "area";
     // Admin/area can pass an explicit storeId query param to filter by a specific store
     const requestedStore = req.query.storeId as string | undefined;
-    const userStoreId = u.storeId || "BK1040";
+    const userStoreId = u.storeId || DEFAULT_STORE_ID;
     // allStores = admin with no storeId override sees every store
     const allStores = isAdminLike && !requestedStore;
     const storeId = (isAdminLike && requestedStore) ? requestedStore : userStoreId;
@@ -10141,7 +9939,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     // Derive storeId from session; only admin/area may override via body
     const isAdminLike = u.role === "admin" || u.role === "area";
-    const storeId = (isAdminLike && bodyStoreId) ? String(bodyStoreId) : (u.storeId || "BK1040");
+    const storeId = (isAdminLike && bodyStoreId) ? String(bodyStoreId) : (u.storeId || DEFAULT_STORE_ID);
 
     const now = new Date().toISOString();
     const announcement = await storage.createAnnouncement({
@@ -10198,7 +9996,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     // Non-admin managers may only edit announcements from their own store
     const isAdminLike = u.role === "admin" || u.role === "area";
-    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+    if (!isAdminLike && existing.storeId !== (u.storeId || DEFAULT_STORE_ID)) {
       return res.status(403).json({ ok: false, message: "No permission to edit this announcement" });
     }
 
@@ -10241,7 +10039,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     // Non-admin managers may only delete announcements from their own store
     const isAdminLike = u.role === "admin" || u.role === "area";
-    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+    if (!isAdminLike && existing.storeId !== (u.storeId || DEFAULT_STORE_ID)) {
       return res.status(403).json({ ok: false, message: "No permission to delete this announcement" });
     }
 
@@ -10277,7 +10075,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     // Enforce store visibility: non-admin/area users can only acknowledge their own store's announcements
     const isAdminLike = u.role === "admin" || u.role === "area";
-    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+    if (!isAdminLike && existing.storeId !== (u.storeId || DEFAULT_STORE_ID)) {
       return res.status(403).json({ ok: false, message: "No permission to acknowledge this announcement" });
     }
 
@@ -10307,7 +10105,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
 
     // Enforce store scope: non-admin/area managers can only view their own store's acknowledgments
     const isAdminLike = u.role === "admin" || u.role === "area";
-    if (!isAdminLike && existing.storeId !== (u.storeId || "BK1040")) {
+    if (!isAdminLike && existing.storeId !== (u.storeId || DEFAULT_STORE_ID)) {
       return res.status(403).json({ ok: false, message: "No permission to view acknowledgments for this announcement" });
     }
 
@@ -10347,7 +10145,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     }
 
     const EXCEL_DEFAULT_PASSWORD = process.env.EXCEL_DEFAULT_PASSWORD || "Change@123";
-    const EXCEL_PASSWORD_SALT    = process.env.EXCEL_PASSWORD_SALT    || "bk1040-salt-v1";
+    const EXCEL_PASSWORD_SALT    = process.env.EXCEL_PASSWORD_SALT    || "bkgs-salt-v1";
     const sha256Hex = (s: string) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
     const EXCEL_DEFAULT_HASH = sha256Hex(EXCEL_PASSWORD_SALT + EXCEL_DEFAULT_PASSWORD);
 
@@ -10454,7 +10252,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const ctx = await requireSession(token);
     if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
     if (!date) return res.status(400).json({ ok: false, message: "date required" });
-    const sId = storeId || ctx.user.storeId || "BK1040";
+    const sId = storeId || ctx.user.storeId || DEFAULT_STORE_ID;
     try {
       const { generateDailySalesDraft } = await import("../services/chann-draft-service");
       const draft = await generateDailySalesDraft(date, sId);
@@ -10472,7 +10270,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const token = (req.query.token as string) || "";
     const ctx = await requireSession(token);
     if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
-    const sId = (req.query.storeId as string) || ctx.user.storeId || "BK1040";
+    const sId = (req.query.storeId as string) || ctx.user.storeId || DEFAULT_STORE_ID;
     const cacheKey = `anomalies:${sId}`;
     const cached = anomalyCache.get(cacheKey);
     if (cached && Date.now() < cached.expiry) {
@@ -10513,7 +10311,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
       return res.status(403).json({ ok: false, message: "Admin only" });
     }
     if (!date) return res.status(400).json({ ok: false, message: "date required" });
-    const sId = storeId || ctx.user.storeId || "BK1040";
+    const sId = storeId || ctx.user.storeId || DEFAULT_STORE_ID;
     try {
       const { detectAnomalies, persistAnomalies } = await import("../services/chann-anomaly-service");
       const detected = await detectAnomalies(date, sId);
@@ -10588,7 +10386,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const token = String(req.query.token || "");
     const ctx = await requireSession(token);
     if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
-    const storeId = ctx.user.storeId || "BK1040";
+    const storeId = ctx.user.storeId || DEFAULT_STORE_ID;
     const bangkokNow = new Date(Date.now() + 7 * 3600 * 1000);
     const today = bangkokNow.toISOString().slice(0, 10);
     const startDate = new Date(bangkokNow);
@@ -10685,7 +10483,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const token = String(req.query.token || "");
     const ctx = await requireSession(token);
     if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
-    const storeId = ctx.user.storeId || "BK1040";
+    const storeId = ctx.user.storeId || DEFAULT_STORE_ID;
     const all = await storage.getSwapRequests("pending", storeId);
     const incoming = all.filter(r => r.targetUsername === ctx.user.username);
     return res.json({ ok: true, incoming });
@@ -10698,7 +10496,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
     if (!u) return res.json({ ok: false, message: "User not found" });
-    const storeId = u.storeId || "BK1040";
+    const storeId = u.storeId || DEFAULT_STORE_ID;
     const request = await storage.getSwapRequestById(Number(requestId), storeId);
     if (!request || request.status !== "pending") return res.json({ ok: false, message: "คำขอไม่พบหรือดำเนินการแล้ว" });
     if (request.targetUsername !== u.username) return res.json({ ok: false, message: "คุณไม่ใช่ผู้รับ swap นี้" });
@@ -10725,7 +10523,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     const token = String(req.query.token || "");
     const ctx = await requireSession(token);
     if (!ctx) return res.status(401).json({ ok: false, message: "Invalid session" });
-    const storeId = ctx.user.storeId || "BK1040";
+    const storeId = ctx.user.storeId || DEFAULT_STORE_ID;
     const bangkokNow = new Date(Date.now() + 7 * 3600 * 1000);
     const year = bangkokNow.getUTCFullYear();
     const month = bangkokNow.getUTCMonth() + 1;
@@ -10763,7 +10561,7 @@ Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
     if (ctx.user.role !== "admin") return res.status(403).json({ ok: false, message: "Admin only" });
     try {
       const { backfillReportSummaries } = await import("../services/chann-memory-service");
-      const added = await backfillReportSummaries(daysBack ?? 90, storeId || "BK1040");
+      const added = await backfillReportSummaries(daysBack ?? 90, storeId || DEFAULT_STORE_ID);
       res.json({ ok: true, added });
     } catch (e: any) {
       console.error("backfill error:", e);

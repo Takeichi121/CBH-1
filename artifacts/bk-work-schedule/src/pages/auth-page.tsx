@@ -36,7 +36,7 @@ export default function AuthPage() {
   const { toast } = useToast();
   
   const handleVerifyCode = () => {
-    if (verifyCode === "bk1040") {
+    if (verifyCode === (import.meta.env.VITE_VIEWER_CODE || "viewer")) {
       setIsCodeVerified(true);
     } else {
       toast({

@@ -1,6 +1,4 @@
 import cron from "node-cron";
-import { getAlohaSalesRaw } from "./aloha-service";
-import { getNBOSalesAuto } from "./nbo-service";
 import { pushToBoss } from "../socket";
 import { streamLLM } from "../replit_integrations/chat/services/llm-router";
 import { storage } from "../storage";
@@ -32,20 +30,12 @@ export function initProactiveChann() {
       }
       console.log("🌞 [Chann] ตื่นมาเตรียมรายงานให้คุณผู้จัดการแล้วครับ...");
 
-      const [alohaData, nboData] = await Promise.all([
-        getAlohaSalesRaw(),
-        getNBOSalesAuto(),
-      ]);
-
-      if (!alohaData && !nboData) {
-        console.warn("[Chann] ดึงข้อมูลไม่ได้ทั้ง Aloha และ NBO");
-        return;
-      }
-
       const yesterday = new Date(Date.now() + 7 * 60 * 60 * 1000);
       yesterday.setUTCDate(yesterday.getUTCDate() - 1);
       const yDate = yesterday.toISOString().slice(0, 10);
-      const storeId = "BK1040";
+      const storeId = process.env.DEFAULT_STORE_ID || "";
+
+      const dailyReport = await storage.getDailySalesReportByDate(yDate, storeId).catch(() => null);
 
       let anomalies: DetectedAnomaly[] = [];
       try {
@@ -54,7 +44,6 @@ export function initProactiveChann() {
           await persistAnomalies(yDate, storeId, anomalies);
           console.log(`[Chann] 🚨 พบ anomaly ${anomalies.length} รายการสำหรับ ${yDate}`);
 
-          // B3: ส่ง LINE ทันทีเมื่อพบ critical anomaly
           const criticalAnomalies = anomalies.filter((a) => a.severity === "critical");
           if (criticalAnomalies.length > 0) {
             try {
@@ -85,13 +74,15 @@ export function initProactiveChann() {
           anomalies.map((a) => `- [${a.severity.toUpperCase()}] ${a.reason} (คาด ${a.expected} จริง ${a.actual})`).join("\n")
         : `\n\n✅ รายงานวันที่ ${yDate} อยู่ในเกณฑ์ปกติ ไม่พบความผิดปกติ`;
 
-      const prompt = `
-คุณผู้จัดการครับ นี่คือสรุปยอดล่าสุด:
-- ยอดจาก Aloha (DBF): ${alohaData ? alohaData.totalFromDbf.toLocaleString("th-TH") : "ดึงข้อมูลไม่ได้"} บาท
-- ยอดจาก NBO (SQL): ${nboData ? nboData.TotalSales.toLocaleString("th-TH") : "ดึงข้อมูลไม่ได้"} บาท
-- จำนวนลูกค้า (NBO): ${nboData ? nboData.GuestCount.toLocaleString("th-TH") : "-"} คน${anomalyText}
+      const salesSummary = dailyReport
+        ? `ยอดขายจริง: ${Number(dailyReport.actualSales || 0).toLocaleString("th-TH")} บาท | TC: ${dailyReport.transactionCount || 0} คน`
+        : "ยังไม่มีข้อมูลรายงานประจำวัน";
 
-ช่วยวิเคราะห์ความสอดคล้องของตัวเลขทั้งสองระบบ ให้ความเห็นเรื่องความผิดปกติ (ถ้ามี) และเสนอแผนเชิงรุก 3 ข้อให้คุณผู้จัดการด้วยครับ`.trim();
+      const prompt = `
+คุณผู้จัดการครับ นี่คือสรุปยอดล่าสุดสำหรับ ${yDate}:
+- ${salesSummary}${anomalyText}
+
+ช่วยวิเคราะห์สถานการณ์ ให้ความเห็นเรื่องความผิดปกติ (ถ้ามี) และเสนอแผนเชิงรุก 3 ข้อให้คุณผู้จัดการด้วยครับ`.trim();
 
       let report = "";
       try {
@@ -119,7 +110,7 @@ export function initProactiveChann() {
           kind: "report_summary",
           storeId,
           sourceDate: yDate,
-          content: `รายงานเช้า ${yDate}: Aloha=${alohaData?.totalFromDbf ?? "-"} NBO=${nboData?.TotalSales ?? "-"} TC=${nboData?.GuestCount ?? "-"}\nสรุปจาก Chann: ${report.slice(0, 1500)}`,
+          content: `รายงานเช้า ${yDate}: ${salesSummary}\nสรุปจาก Chann: ${report.slice(0, 1500)}`,
           metadata: { anomalyCount: anomalies.length, severity: anomalies.find((a) => a.severity === "critical") ? "critical" : (anomalies.length > 0 ? "warn" : "ok") },
         });
       } catch (e) {
@@ -173,7 +164,6 @@ export function initProactiveChann() {
     { timezone: "Asia/Bangkok" }
   );
 
-  // C2: Borrow Overdue Notification — ทุกวัน 09:00 ตรวจ borrow ที่เลยกำหนดคืน
   cron.schedule(
     "0 9 * * *",
     async () => {
@@ -208,7 +198,6 @@ export function initProactiveChann() {
         await sendLineMessage(channelToken, targetId, [{ type: "text", text }]);
         console.log(`[Chann] ✅ ส่งแจ้งเตือน borrow overdue ${overdueRows.length} รายการ`);
 
-        // Push to boss dashboard
         pushToBoss("chann-alert", {
           title: `📦 Borrow Overdue: ${overdueRows.length} รายการ`,
           message: `มี borrow ที่เลยกำหนดคืน ${overdueRows.length} รายการ กรุณาตรวจสอบครับ`,
@@ -220,7 +209,6 @@ export function initProactiveChann() {
     { timezone: "Asia/Bangkok" }
   );
 
-  // H3: Manager Daily Digest — ทุกวัน 08:05 สรุป pending items
   cron.schedule(
     "5 8 * * *",
     async () => {

@@ -1242,7 +1242,7 @@ export default function SalesSettingsPage() {
                         <th className="p-1 border border-slate-300 min-w-[65px] bg-orange-50 dark:bg-orange-950">LY Sales MTD</th>
                         <th className="p-1 border border-slate-300 min-w-[65px] bg-yellow-50 dark:bg-yellow-950">Target (Incentive)</th>
                         <th className="p-1 border border-slate-300 min-w-[65px] bg-yellow-50 dark:bg-yellow-950">Target MTD</th>
-                        <th className="p-1 border border-slate-300 min-w-[65px] bg-orange-50 dark:bg-orange-950">Forecast NBO</th>
+                        <th className="p-1 border border-slate-300 min-w-[65px] bg-orange-50 dark:bg-orange-950">Forecast</th>
                         <th className="p-1 border border-slate-300 min-w-[65px] bg-green-50 dark:bg-green-950">Actual Daily</th>
                         <th className="p-1 border border-slate-300 min-w-[65px] bg-green-50 dark:bg-green-950">Actual MTD</th>
                         <th className="p-1 border border-slate-300 min-w-[65px]">Variance Target</th>

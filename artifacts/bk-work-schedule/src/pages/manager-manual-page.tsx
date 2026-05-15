@@ -451,22 +451,7 @@ export default function ManagerManualPage() {
         </MockScreen>
       </SectionCard>
 
-      {/* ===== 8. Import DBF ===== */}
-      <SectionCard icon={FileSpreadsheet} title="8. Import DBF (Aloha POS)" color="amber">
-        <p className="text-sm text-muted-foreground">นำเข้าข้อมูลยอดขายจาก Aloha POS โดย Export ไฟล์ DBF แล้วอัปโหลดเข้าระบบ</p>
-
-        <StepFlow steps={[
-          { icon: FileSpreadsheet, label: "Export DBF", sub: "จาก Aloha POS" },
-          { icon: Upload,           label: "อัปโหลด",   sub: "Sales → Import" },
-          { icon: CheckCircle,      label: "ตรวจสอบ",   sub: "Preview data" },
-          { icon: CheckCircle,      label: "Confirm",   sub: "บันทึกเข้า DB" },
-        ]} />
-
-        <WarnBox>ไฟล์ DBF ต้องมาจาก Aloha POS เท่านั้น ไม่สามารถใช้ไฟล์รูปแบบอื่นได้</WarnBox>
-        <TipBox>หลัง Import สำเร็จ ข้อมูลจะแสดงใน Daily Sales Report โดยอัตโนมัติ</TipBox>
-      </SectionCard>
-
-      {/* ===== 9. Area Manager ===== */}
+      {/* ===== 8. Area Manager ===== */}
       <SectionCard icon={Shield} title="9. Area Manager — ระบบปลดล็อก" color="red">
         <p className="text-sm text-muted-foreground">Area Manager อ่านข้อมูลได้ทั้งหมด แต่ต้องปลดล็อกก่อนแก้ไข เพื่อความปลอดภัยของข้อมูล</p>
 

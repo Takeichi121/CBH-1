@@ -87,7 +87,6 @@ export const featureKeys = [
   "requests",
   "sales",
   "sales_settings",
-  "sales_import",
   "borrow",
   "chat",
   "admin",
@@ -99,7 +98,7 @@ export type FeatureKey = typeof featureKeys[number];
 export const featureGroups: { group: { en: string; th: string }; keys: FeatureKey[] }[] = [
   { group: { en: "General", th: "ทั่วไป" }, keys: ["dashboard", "handbook", "settings"] },
   { group: { en: "Work", th: "งาน" }, keys: ["work", "roster", "requests"] },
-  { group: { en: "Sales", th: "ยอดขาย" }, keys: ["sales", "sales_settings", "sales_import"] },
+  { group: { en: "Sales", th: "ยอดขาย" }, keys: ["sales", "sales_settings"] },
   { group: { en: "Other", th: "อื่นๆ" }, keys: ["borrow", "chat", "admin", "chann"] },
 ];
 
@@ -112,7 +111,6 @@ export const featureLabels: Record<FeatureKey, { en: string; th: string }> = {
   requests: { en: "Manager Requests", th: "Manager Requests" },
   sales: { en: "Sales Report", th: "Sales Report (Dashboard/Daily/Weekly/Reports/Manual)" },
   sales_settings: { en: "Sales Settings Tab", th: "Sales Settings tab" },
-  sales_import: { en: "Import DBF Tab", th: "Import DBF tab" },
   borrow: { en: "Borrow Tracker", th: "Borrow Tracker" },
   chat: { en: "Staff Chat", th: "Staff Chat" },
   admin: { en: "Manage Team", th: "Manage Team" },

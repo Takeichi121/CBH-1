@@ -99,7 +99,7 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   // existing route handlers that read req.body.token automatically get cookie-first auth.
   // Cookie token always takes priority over any body-supplied token.
   app.use((req: Request, _res: Response, next: NextFunction) => {
-    const cookieToken = (req as any).cookies?.bk_session as string | undefined;
+    const cookieToken = req.cookies["bk_session"] as string | undefined;
     if (cookieToken) {
       if (!req.body) req.body = {};
       req.body.token = cookieToken;

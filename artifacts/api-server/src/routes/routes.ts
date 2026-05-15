@@ -3930,7 +3930,7 @@ ${pageContext}` : ''}`;
     // Accept token from httpOnly cookie first, then body, then Authorization header
     const authHeader = req.headers.authorization;
     const token: string | undefined =
-      (req as any).cookies?.bk_session ||
+      req.cookies["bk_session"] ||
       req.body?.token ||
       (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
     if (!token) return res.status(401).json({ ok: false });
@@ -3958,7 +3958,7 @@ ${pageContext}` : ''}`;
 
   // Auth: Logout
   app.post(api.auth.logout.path, safe(async (req, res) => {
-    const cookieToken: string | undefined = (req as any).cookies?.bk_session;
+    const cookieToken: string | undefined = req.cookies["bk_session"];
     const bodyToken: string | undefined = req.body?.token;
     if (cookieToken) await storage.deleteSession(cookieToken);
     if (bodyToken && bodyToken !== cookieToken) await storage.deleteSession(bodyToken);

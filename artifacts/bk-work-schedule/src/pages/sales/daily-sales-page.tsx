@@ -1656,7 +1656,11 @@ export default function DailySalesPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        toast({ title: "ส่งรายงานไป LINE แล้ว ✅", description: `รายงานวันที่ ${reportDate}` });
+        if (data.noData) {
+          toast({ title: "ส่งแจ้งเตือนไป LINE แล้ว ⚠️", description: "ยังไม่มีข้อมูลยอดขาย — ส่งข้อความแจ้งเตือนใน LINE แทน" });
+        } else {
+          toast({ title: "ส่งรายงานไป LINE แล้ว ✅", description: `รายงานวันที่ ${reportDate}` });
+        }
       } else {
         toast({ title: "ส่งไม่สำเร็จ", description: data.message || "เกิดข้อผิดพลาด", variant: "destructive" });
       }

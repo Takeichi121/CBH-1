@@ -948,7 +948,11 @@ export default function SalesSettingsPage() {
       const data = await res.json();
       if (data.ok) {
         setLineReportStatus("ok");
-        toast({ title: "ส่ง Report สำเร็จ ✅", description: "ตรวจสอบได้ใน LINE Group" });
+        if (data.noData) {
+          toast({ title: "ส่งแจ้งเตือนไป LINE แล้ว ⚠️", description: "ยังไม่มีข้อมูลยอดขายสำหรับวันนี้ — ส่งข้อความแจ้งเตือนใน LINE แทน" });
+        } else {
+          toast({ title: "ส่ง Report สำเร็จ ✅", description: "ตรวจสอบได้ใน LINE Group" });
+        }
       } else {
         setLineReportStatus("error");
         toast({ title: "ไม่สามารถส่ง Report ได้", description: data.message, variant: "destructive" });

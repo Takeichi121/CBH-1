@@ -9469,9 +9469,22 @@ ${pageContext}` : ''}`;
     const month = parseInt(monthStr);
     const reports = await storage.getDailySalesReportsForMonth(year, month);
     const report = reports.find(r => r.reportDate === targetDate);
-    if (!report) return res.json({ ok: false, message: `ไม่พบข้อมูลของวันที่ ${targetDate}` });
     const storeCfg = await storage.getStoreSettings();
     const storeName = storeCfg?.storeName || "Grand Diamond";
+    if (!report) {
+      // No data for this date — send a "no data" reminder to LINE instead of erroring
+      const parts = targetDate.split("-");
+      const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+      try {
+        await sendLineMessage(channelToken, targetId, [{
+          type: "text",
+          text: `💎 Daily Sales Report 💎\n${storeName}\n📅 ${dateStr}\n\n⚠️ ยังไม่มีข้อมูลยอดขายสำหรับวันนี้\nกรุณากรอกข้อมูลยอดขายในระบบก่อนส่งรายงาน`,
+        }]);
+        return res.json({ ok: true, noData: true });
+      } catch (err: any) {
+        return res.json({ ok: false, message: err.message });
+      }
+    }
     try {
       const flex = buildDailyReportText(report, storeName);
       await sendLineMessage(channelToken, targetId, [flex]);

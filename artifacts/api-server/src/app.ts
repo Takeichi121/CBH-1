@@ -20,6 +20,14 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   );
   app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
+  app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("X-XSS-Protection", "0");
+    next();
+  });
+
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,

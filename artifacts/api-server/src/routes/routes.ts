@@ -271,9 +271,33 @@ const chatFileStorage = multer.diskStorage({
     cb(null, `file-${uniqueSuffix}${ext}`);
   }
 });
+const ALLOWED_CHAT_FILE_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/csv",
+  "text/plain",
+  "application/csv",
+  "application/json",
+  "application/xml",
+  "text/xml",
+]);
+
 const chatFileUpload = multer({
   storage: chatFileStorage,
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 } // 2GB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (_req, file, cb) => {
+    if (
+      ALLOWED_CHAT_FILE_MIME_TYPES.has(file.mimetype) ||
+      file.mimetype.startsWith("text/") ||
+      file.mimetype.startsWith("image/")
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error(`ประเภทไฟล์ '${file.mimetype}' ไม่รองรับ`));
+    }
+  },
 });
 
 async function extractTextFromFile(filePath: string, mimeType: string, fileSize: number): Promise<string | null> {
@@ -3661,8 +3685,19 @@ ${pageContext}` : ''}`;
     res.json({ ok: true, multiStoreEnabled: cfg.multi_store_enabled === "true" });
   }));
 
-  // Setup
+  // Setup — requires admin session when any user already exists (bootstrap protection)
   app.post(api.system.setup.path, safe(async (req, res) => {
+    const existingUsers = await storage.getUsers();
+    if (existingUsers.length > 0) {
+      const { token } = req.body;
+      if (!token) return res.status(401).json({ ok: false, error: "Admin session required" });
+      const sess = await storage.getSession(token);
+      if (!sess) return res.status(401).json({ ok: false, error: "Invalid session" });
+      const setupUser = await storage.getUser(sess.username);
+      if (!setupUser || setupUser.role !== "admin") {
+        return res.status(403).json({ ok: false, error: "Admin only" });
+      }
+    }
     const cfg = await storage.getConfig();
     for (const k of Object.keys(DEFAULT_CAPACITY)) {
       if (!("cap_" + k in cfg)) await storage.setConfig("cap_" + k, String(DEFAULT_CAPACITY[k as keyof typeof DEFAULT_CAPACITY]));
@@ -4636,8 +4671,22 @@ ${pageContext}` : ''}`;
     res.json({ ok: true });
   }));
 
+  const updateUserProfileSchema = z.object({
+    token: z.string().min(1),
+    username: z.string().min(1).max(50),
+    nickName: z.string().max(100).optional(),
+    phone: z.string().max(20).optional(),
+    email: z.union([z.string().email().max(255), z.literal("")]).optional(),
+    position: z.string().max(100).optional(),
+    birthday: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")]).optional(),
+  });
+
   app.post("/api/admin/updateUserProfile", safe(async (req, res) => {
-    const { token, username, nickName, phone, email, position, birthday } = req.body;
+    const parsed = updateUserProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, message: "ข้อมูลไม่ถูกต้อง", errors: parsed.error.issues.map(i => i.message) });
+    }
+    const { token, username, nickName, phone, email, position, birthday } = parsed.data;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);

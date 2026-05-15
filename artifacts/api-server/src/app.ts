@@ -1,5 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import { createServer } from "http";
 import { registerRoutes } from "./routes/routes";
 import { initProactiveChann } from "./services/proactive-agent";
@@ -9,6 +11,33 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   const app: Express = express();
   app.set("trust proxy", 1);
   const httpServer = createServer(app);
+
+  // CORS policy — derive allowed origins from env vars, fall back to REPLIT_DOMAINS
+  const rawAllowedOrigins = process.env["ALLOWED_ORIGINS"] ?? "";
+  const rawReplitDomains = process.env["REPLIT_DOMAINS"] ?? "";
+  const allowedOrigins: string[] = rawAllowedOrigins.length > 0
+    ? rawAllowedOrigins.split(",").map((o) => o.trim()).filter(Boolean)
+    : rawReplitDomains.split(",").map((d) => `https://${d.trim()}`).filter(Boolean);
+
+  app.use(
+    cors({
+      origin:
+        allowedOrigins.length > 0
+          ? (origin, callback) => {
+              // Allow requests with no origin (same-origin, server-to-server, mobile PWA)
+              if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+              } else {
+                callback(new Error(`CORS: origin '${origin}' not allowed`));
+              }
+            }
+          : true, // Dev fallback: allow all origins when no domain env vars are configured
+      credentials: true,
+    }),
+  );
+
+  // Parse cookies — required for httpOnly session cookie support
+  app.use(cookieParser());
 
   app.use(
     express.json({
@@ -47,6 +76,21 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   app.use("/api/chann", aiLimiter);
   app.use("/api/generate-image", aiLimiter);
 
+  // Registration + password-reset endpoints — max 5 requests / 10 min per IP
+  const registrationLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { ok: false, message: "Too many attempts. Please try again in 10 minutes." },
+  });
+  app.use("/api/registerStaff", registrationLimiter);
+  app.use("/api/registerManager", registrationLimiter);
+  app.use("/api/registerArea", registrationLimiter);
+  app.use("/api/forgotPassword", registrationLimiter);
+  app.use("/api/verifyOtp", registrationLimiter);
+  app.use("/api/resetPassword", registrationLimiter);
+
   app.get("/api/healthz", (_req, res) => {
     res.json({ status: "ok" });
   });
@@ -61,6 +105,33 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   } catch (seedErr) {
     logger.warn({ err: seedErr }, "Dropdown seed skipped");
   }
+
+  // Startup validation: warn loudly if verify codes are weak, missing, or default
+  const INSECURE_CODES = new Set([
+    "1234", "admin", "password", "bk1040", "bkarea",
+    "manager", "staff", "123456", "000000", "111111",
+  ]);
+  const mgCode = process.env["MANAGER_VERIFY_CODE"] ?? "";
+  const arCode = process.env["AREA_VERIFY_CODE"] ?? "";
+  if (!mgCode || mgCode.length < 6 || INSECURE_CODES.has(mgCode.toLowerCase())) {
+    logger.warn(
+      "INSECURE: MANAGER_VERIFY_CODE is not set, too short (<6 chars), or uses a default value. " +
+      "Set a strong secret via environment variable before production.",
+    );
+  }
+  if (!arCode || arCode.length < 6 || INSECURE_CODES.has(arCode.toLowerCase())) {
+    logger.warn(
+      "INSECURE: AREA_VERIFY_CODE is not set, too short (<6 chars), or uses a default value. " +
+      "Set a strong secret via environment variable before production.",
+    );
+  }
+
+  // Startup assertion: log AI write-tool access-control counts for audit visibility.
+  // If tools are added or removed in the /api/chann route, update these counts here.
+  logger.info(
+    { adminOnlyWriteToolCount: 23, managerWriteToolCount: 17 },
+    "AI write-tool access controls loaded — update counts if tools are added or removed",
+  );
 
   initProactiveChann();
 

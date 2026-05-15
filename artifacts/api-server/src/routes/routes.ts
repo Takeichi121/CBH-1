@@ -210,6 +210,60 @@ const MANAGER_VERIFY_CODE = (process.env.MANAGER_VERIFY_CODE || "bk1040").toLowe
 const AREA_VERIFY_CODE = (process.env.AREA_VERIFY_CODE || "bkarea").toLowerCase();
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 60 * 60 * 6);
 
+// ── AI write-tool access-control sets (static, evaluated once at module load) ──
+// managerWriteToolNames: tools that manager OR admin can invoke via Chann AI
+const MANAGER_WRITE_TOOL_NAMES = new Set([
+  "saveDailySales",         // Record daily sales figures (actual, TC, hours, waste, etc.)
+  "saveDailyTarget",        // Set a daily sales target for a date
+  "saveShift",              // Create or update a single shift assignment
+  "deleteShift",            // Remove a shift assignment
+  "bulkSaveDailyTargets",   // Set multiple daily targets in one call
+  "saveDailyLabor",         // Record daily labor cost/hour data
+  "bulkSaveShifts",         // Create/update multiple shift assignments at once
+  "approveManagerRequest",  // Approve a staff-submitted manager request
+  "rejectManagerRequest",   // Reject a staff-submitted manager request
+  "rememberNote",           // Save a Chann memory note
+  "deleteNote",             // Delete a saved Chann memory note
+  "sendLineNotification",   // Send a LINE message to staff channel
+  "sendStaffChatMessage",   // Post a message in the staff chat
+  "createAnnouncement",     // Publish a store-wide announcement
+  "deleteAnnouncement",     // Remove an announcement
+  "approveSwapRequest",     // Approve a shift-swap request
+  "rejectSwapRequest",      // Reject a shift-swap request
+]);
+
+// adminOnlyWriteToolNames: tools that ONLY admin can invoke via Chann AI
+const ADMIN_ONLY_WRITE_TOOL_NAMES = new Set([
+  // User management
+  "saveLaborSettings",       // Update labor cost targets and thresholds
+  "updateUserStatus",        // Activate or deactivate a user account
+  "updateUserRole",          // Promote/demote a user's role (e.g. staff → manager)
+  "createUser",              // Create a new user account directly
+  "updateUserProfile",       // Edit any user's profile fields
+  "resetUserPassword",       // Force-reset another user's password
+  // Borrow catalog management
+  "addBorrowTransaction",    // Record a new borrow/loan transaction
+  "addBorrowBranch",         // Add a branch to the borrow catalog
+  "addBorrowItem",           // Add an item to the borrow catalog
+  "deleteBorrowTransaction", // Delete a borrow transaction record
+  "toggleBorrowTransaction", // Mark a borrow transaction as returned or pending
+  "deleteBorrowBranch",      // Remove a branch from the borrow catalog
+  "deleteBorrowItem",        // Remove an item from the borrow catalog
+  // Sales data management
+  "deleteDailySalesReport",  // Permanently delete a daily sales report
+  "setWasteTarget",          // Configure waste/loss percentage targets
+  // Store configuration
+  "updateStoreSettings",     // Update store-level configuration (name, mode, etc.)
+  // Developer / code tools — highest-privilege, admin only
+  "executeSqlQuery",         // Run a raw SQL query against the database
+  "readSourceFile",          // Read application source files from disk
+  "proposeCodeEdit",         // Create a pending code-change proposal
+  "applyCodeEdit",           // Apply a code-change proposal to disk
+  "createSourceFile",        // Create a new source file on disk
+  "executeShellCommand",     // Run a command via the exec-shell allowlist
+  "getCodeProposals",        // List pending code-change proposals
+]);
+
 const safeParseAllowedFeatures = (raw: string | null | undefined): string[] | null => {
   if (!raw) return null;
   try {
@@ -2073,8 +2127,8 @@ ${pageContext}` : ''}`;
         }
       ];
 
-      const managerWriteToolNames = new Set(["saveDailySales", "saveDailyTarget", "saveShift", "deleteShift", "bulkSaveDailyTargets", "saveDailyLabor", "bulkSaveShifts", "approveManagerRequest", "rejectManagerRequest", "rememberNote", "deleteNote", "sendLineNotification", "sendStaffChatMessage", "createAnnouncement", "deleteAnnouncement", "approveSwapRequest", "rejectSwapRequest"]);
-      const adminOnlyWriteToolNames = new Set(["saveLaborSettings", "updateUserStatus", "updateUserRole", "createUser", "updateUserProfile", "resetUserPassword", "addBorrowTransaction", "addBorrowBranch", "addBorrowItem", "deleteBorrowTransaction", "toggleBorrowTransaction", "deleteBorrowBranch", "deleteBorrowItem", "deleteDailySalesReport", "setWasteTarget", "updateStoreSettings", "executeSqlQuery", "readSourceFile", "proposeCodeEdit", "applyCodeEdit", "createSourceFile", "executeShellCommand", "getCodeProposals"]);
+      const managerWriteToolNames = MANAGER_WRITE_TOOL_NAMES;
+      const adminOnlyWriteToolNames = ADMIN_ONLY_WRITE_TOOL_NAMES;
       const allWriteToolNames = new Set([...managerWriteToolNames, ...adminOnlyWriteToolNames]);
 
       const channManagerWriteTools = channWriteTools.filter(t => managerWriteToolNames.has(t.function.name));
@@ -3662,6 +3716,45 @@ ${pageContext}` : ''}`;
         return res.status(400).json({ ok: false, error: "Command blocked: contains dangerous pattern" });
       }
 
+      // Path restriction for file-reading commands: block access to system paths and secrets
+      const PATH_RESTRICTED_BINS = new Set(["cat", "grep", "find"]);
+      if (PATH_RESTRICTED_BINS.has(cmdBase)) {
+        const BLOCKED_ABS_PREFIXES = [
+          "/etc", "/root", "/home", "/var", "/proc", "/sys",
+          "/tmp", "/run", "/boot", "/dev", "/usr", "/bin",
+          "/sbin", "/lib", "/lib64", "/opt", "/mnt", "/media", "/srv",
+        ];
+        const BLOCKED_FILENAME_PATTERNS = [
+          ".env", ".passwd", ".pem", ".key", ".pfx",
+          "shadow", "id_rsa", "id_ecdsa", "credentials",
+        ];
+        // Skip flag arguments (e.g. -r, -l, --include) when checking paths
+        const nonFlagArgs = cmdArgs.filter((a: string) => !a.startsWith("-") && a.length > 0);
+        for (const arg of nonFlagArgs) {
+          if (arg.includes("..")) {
+            await storage.log("chann_exec_shell_denied", execUser.username, `reason=path_traversal arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);
+            return res.status(400).json({ ok: false, error: "Path traversal (..) is not allowed in file-reading commands" });
+          }
+          if (BLOCKED_FILENAME_PATTERNS.some((p) => arg.includes(p))) {
+            await storage.log("chann_exec_shell_denied", execUser.username, `reason=blocked_filename arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);
+            return res.status(400).json({ ok: false, error: `Access to '${arg}' is not allowed` });
+          }
+          if (arg.startsWith("/")) {
+            const isBlockedRoot = BLOCKED_ABS_PREFIXES.some((p) => arg === p || arg.startsWith(p + "/"));
+            const cwd = process.cwd();
+            const isAllowedCwd =
+              arg === cwd ||
+              arg.startsWith(cwd + "/artifacts/") ||
+              arg.startsWith(cwd + "/lib/") ||
+              arg.startsWith(cwd + "/scripts/");
+            if (isBlockedRoot || !isAllowedCwd) {
+              await storage.log("chann_exec_shell_denied", execUser.username, `reason=blocked_absolute_path arg=${arg.slice(0, 100)} cmd=${cmd.slice(0, 200)}`);
+              return res.status(400).json({ ok: false, error: `Absolute path '${arg}' is not allowed. Use relative paths within artifacts/, lib/, or scripts/` });
+            }
+          }
+        }
+      }
+
       try {
         const { execFileSync } = await import("child_process");
         const result = execFileSync(cmdBase, cmdArgs, {
@@ -3796,12 +3889,25 @@ ${pageContext}` : ''}`;
     const profileComplete = !!(u.nickName && u.phone && u.email);
     const mustChangePassword = u.mustChangePassword === 1;
     const allowedFeatures = safeParseAllowedFeatures(u.allowedFeatures);
+    // Set httpOnly session cookie (XSS-resistant); body token kept for backward compatibility
+    res.cookie("bk_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: SESSION_TTL_SECONDS * 1000,
+      path: "/",
+    });
     res.json({ ok: true, token, user: { username: u.username, role: u.role, fullName: u.fullName, fullNameTh: u.fullNameTh, nickName: u.nickName, phone: u.phone, email: u.email, profilePicture: u.profilePicture, profileComplete, mustChangePassword, allowedFeatures } });
   }));
 
   // Auth: Validate
   app.post(api.auth.validate.path, safe(async (req, res) => {
-    const { token } = req.body;
+    // Accept token from httpOnly cookie first, then body, then Authorization header
+    const authHeader = req.headers.authorization;
+    const token: string | undefined =
+      (req as any).cookies?.bk_session ||
+      req.body?.token ||
+      (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
     if (!token) return res.status(401).json({ ok: false });
     const session = await storage.getSession(token);
     if (!session) return res.status(401).json({ ok: false });
@@ -3827,8 +3933,11 @@ ${pageContext}` : ''}`;
 
   // Auth: Logout
   app.post(api.auth.logout.path, safe(async (req, res) => {
-    const { token } = req.body;
-    if (token) await storage.deleteSession(token);
+    const cookieToken: string | undefined = (req as any).cookies?.bk_session;
+    const bodyToken: string | undefined = req.body?.token;
+    if (cookieToken) await storage.deleteSession(cookieToken);
+    if (bodyToken && bodyToken !== cookieToken) await storage.deleteSession(bodyToken);
+    res.clearCookie("bk_session", { path: "/" });
     res.json({ ok: true });
   }));
 

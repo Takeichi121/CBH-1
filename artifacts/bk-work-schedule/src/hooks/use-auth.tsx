@@ -44,6 +44,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const TOKEN_KEY = "bk_token";
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 function authHeaders(token?: string | null) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -126,6 +127,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useLoginMutation(setUser, setToken, setLocation, toast, queryClient);
   const logoutMutation = useLogoutMutation(setUser, setToken, setLocation, toast, queryClient, clearSession);
+
+  // Idle session timeout — auto-logout after 30 minutes of inactivity
+  useEffect(() => {
+    if (!user) return; // Only run when logged in
+
+    let idleTimer: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        toast({
+          variant: "destructive",
+          title: "หมดเวลาใช้งาน",
+          description: "คุณไม่ได้ใช้งานนานเกิน 30 นาที กรุณา login ใหม่",
+        });
+        logoutMutation.mutate();
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const events = ["mousemove", "keydown", "touchstart", "click"] as const;
+    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer(); // Start the initial countdown
+
+    return () => {
+      clearTimeout(idleTimer);
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const registerStaffMutation = useRegisterStaffMutation(toast, queryClient);
   const registerManagerMutation = useRegisterManagerMutation(toast, queryClient);

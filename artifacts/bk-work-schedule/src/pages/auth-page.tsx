@@ -6,10 +6,8 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {Loader2, Globe, Sun, Moon, ChevronLeft, HelpCircle} from "lucide-react";
+import {Loader2, Globe, Sun, Moon, ChevronLeft} from "lucide-react";
 import { Link } from "wouter";
 import {useTheme} from "next-themes";
 import { useForm } from "react-hook-form";
@@ -17,16 +15,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { managerPositions, type ManagerPosition } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 
 export default function AuthPage() {
   const { user, isLoading, loginMutation } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("login");
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [developerRole, setDeveloperRole] = useState<"staff" | "manager" | null>(null);
   const [verifyCode, setVerifyCode] = useState("");
@@ -223,20 +218,7 @@ export default function AuthPage() {
               </div>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-muted/30 p-1 rounded-xl">
-                <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("login")}</TabsTrigger>
-                <TabsTrigger value="register" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">{t("register")}</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login" className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <LoginForm />
-              </TabsContent>
-              
-              <TabsContent value="register" className="animate-in fade-in slide-in-from-left-4 duration-300">
-                <RegisterForm onSuccess={() => setActiveTab("login")} />
-              </TabsContent>
-            </Tabs>
+            <LoginForm />
 
             <div className="md:hidden text-center pt-4 space-y-1 select-none">
               <p className="text-[10px] text-muted-foreground">
@@ -359,125 +341,3 @@ function LoginForm() {
   );
 }
 
-function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
-  const { registerStaffMutation, registerManagerMutation } = useAuth();
-  const { t, language } = useI18n();
-  const { toast } = useToast();
-  const [role, setRole] = useState<"staff" | "manager" | "area">("staff");
-
-  const registerAreaMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/registerArea", data);
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      if (data.ok) {
-        toast({ title: language === "th" ? "สมัครสำเร็จ" : "Registered", description: data.username });
-        onSuccess?.();
-      } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-      }
-    },
-    onError: () => toast({ title: "Network error", variant: "destructive" }),
-  });
-
-  const form = useForm({
-    defaultValues: {
-      username: "",
-      fullName: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      verifyCode: "",
-    },
-  });
-
-  function onSubmit(data: any) {
-    if (role === "staff") {
-      registerStaffMutation.mutate(data, { onSuccess: () => onSuccess?.() });
-    } else if (role === "area") {
-      registerAreaMutation.mutate(data);
-    } else {
-      registerManagerMutation.mutate(data, { onSuccess: () => onSuccess?.() });
-    }
-  }
-
-  const isPending = registerStaffMutation.isPending || registerManagerMutation.isPending || registerAreaMutation.isPending;
-
-  return (
-    <Card className="glass-card border-none shadow-2xl">
-      <CardHeader>
-        <CardTitle className="select-none">{t("createAccount")}</CardTitle>
-        <CardDescription className="select-none">{t("joinTeam")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-2 mb-4">
-          <Button type="button" variant={role === "staff" ? "default" : "outline"} onClick={() => setRole("staff")} className="flex-1">{t("staff")}</Button>
-          <Button type="button" variant={role === "manager" ? "default" : "outline"} onClick={() => setRole("manager")} className="flex-1">{t("manager")}</Button>
-          <Button type="button" variant={role === "area" ? "default" : "outline"} onClick={() => setRole("area")} className="flex-1">{language === "th" ? "Area" : "Area"}</Button>
-        </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
-            <FormField control={form.control} name="username" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="select-none">{language === "th" ? "Username (กำหนดเอง)" : "Username"}</FormLabel>
-                <FormControl><Input placeholder={language === "th" ? "ตัวอักษร ตัวเลข _ เท่านั้น" : "Letters, numbers, _ only"} {...field} className="h-10" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="fullName" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="select-none">{language === "th" ? "ชื่อ - สกุล" : "Full Name"}</FormLabel>
-                <FormControl><Input {...field} className="h-10" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="email" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="select-none">E-Mail</FormLabel>
-                <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="phone" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="select-none">{language === "th" ? "เบอร์โทร" : "Phone"}</FormLabel>
-                <FormControl><Input {...field} className="h-10" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="password" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="select-none">{language === "th" ? "รหัสผ่าน" : "Password"}</FormLabel>
-                <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="select-none">{language === "th" ? "ยืนยันรหัสผ่าน" : "Confirm Password"}</FormLabel>
-                <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {(role === "manager" || role === "area") && (
-              <FormField control={form.control} name="verifyCode" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="select-none">{language === "th" ? "โค้ดยืนยัน" : "Verification Code"}</FormLabel>
-                  <FormControl><Input type="password" placeholder={t("askAdmin")} {...field} className="h-10 border-primary/30" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
-            <Button type="submit" className="w-full mt-3 h-11 shadow-lg shadow-primary/20" disabled={isPending}>
-              {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {t("registerButton")} {role === "manager" ? t("manager") : role === "area" ? "Area Manager" : t("staff")}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  );
-}

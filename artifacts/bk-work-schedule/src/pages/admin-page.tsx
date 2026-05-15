@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -660,6 +662,10 @@ export default function AdminPage() {
               {language === "th" ? `สาขา (${storesList.length})` : `Stores (${storesList.length})`}
             </TabsTrigger>
           )}
+          <TabsTrigger value="register" data-testid="tab-admin-register">
+            <UserPlus className="w-4 h-4 mr-2" />
+            {language === "th" ? "สมัครสมาชิก" : "Register"}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -1364,7 +1370,138 @@ export default function AdminPage() {
             </Card>
         </TabsContent>
         )}
+
+        <TabsContent value="register">
+          <RegisterForm language={language} />
+        </TabsContent>
+
       </Tabs>
     </div>
+  );
+}
+
+function RegisterForm({ language }: { language: string }) {
+  const { registerStaffMutation, registerManagerMutation } = useAuth();
+  const { t } = useI18n();
+  const { toast } = useToast();
+  const [role, setRole] = useState<"staff" | "manager" | "area">("staff");
+
+  const registerAreaMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/registerArea", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.ok) {
+        toast({ title: language === "th" ? "สมัครสำเร็จ" : "Registered successfully", description: data.username });
+        form.reset();
+      } else {
+        toast({ title: "Error", description: data.message, variant: "destructive" });
+      }
+    },
+    onError: () => toast({ title: "Network error", variant: "destructive" }),
+  });
+
+  const form = useForm({
+    defaultValues: {
+      username: "",
+      fullName: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      verifyCode: "",
+    },
+  });
+
+  function onSubmit(data: any) {
+    const handleSuccess = () => form.reset();
+    if (role === "staff") {
+      registerStaffMutation.mutate(data, { onSuccess: handleSuccess });
+    } else if (role === "area") {
+      registerAreaMutation.mutate(data);
+    } else {
+      registerManagerMutation.mutate(data, { onSuccess: handleSuccess });
+    }
+  }
+
+  const isPending = registerStaffMutation.isPending || registerManagerMutation.isPending || registerAreaMutation.isPending;
+
+  return (
+    <Card className="glass-card border-none shadow-xl max-w-lg">
+      <CardHeader>
+        <CardTitle className="select-none">{language === "th" ? "สมัครสมาชิกใหม่" : "Register New Account"}</CardTitle>
+        <CardDescription className="select-none">{language === "th" ? "เพิ่มสมาชิกเข้าทีม" : "Add a member to the team"}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 mb-4">
+          <Button type="button" variant={role === "staff" ? "default" : "outline"} onClick={() => setRole("staff")} className="flex-1">{language === "th" ? "พนักงาน" : "Staff"}</Button>
+          <Button type="button" variant={role === "manager" ? "default" : "outline"} onClick={() => setRole("manager")} className="flex-1">{language === "th" ? "ผู้จัดการ" : "Manager"}</Button>
+          <Button type="button" variant={role === "area" ? "default" : "outline"} onClick={() => setRole("area")} className="flex-1">Area</Button>
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+            <FormField control={form.control} name="username" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "Username (กำหนดเอง)" : "Username"}</FormLabel>
+                <FormControl><Input placeholder={language === "th" ? "ตัวอักษร ตัวเลข _ เท่านั้น" : "Letters, numbers, _ only"} {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="fullName" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "ชื่อ - สกุล" : "Full Name"}</FormLabel>
+                <FormControl><Input {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">E-Mail</FormLabel>
+                <FormControl><Input type="email" {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="phone" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "เบอร์โทร" : "Phone"}</FormLabel>
+                <FormControl><Input {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "รหัสผ่าน" : "Password"}</FormLabel>
+                <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="select-none">{language === "th" ? "ยืนยันรหัสผ่าน" : "Confirm Password"}</FormLabel>
+                <FormControl><Input type="password" {...field} className="h-10" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {(role === "manager" || role === "area") && (
+              <FormField control={form.control} name="verifyCode" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="select-none">{language === "th" ? "โค้ดยืนยัน" : "Verification Code"}</FormLabel>
+                  <FormControl><Input type="password" placeholder={language === "th" ? "ขอจาก Admin" : "Ask Admin"} {...field} className="h-10 border-primary/30" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+            <Button type="submit" className="w-full mt-3 h-11 shadow-lg shadow-primary/20" disabled={isPending}>
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {language === "th"
+                ? `สมัคร${role === "manager" ? "ผู้จัดการ" : role === "area" ? " Area Manager" : "พนักงาน"}`
+                : `Register ${role === "manager" ? "Manager" : role === "area" ? "Area Manager" : "Staff"}`}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

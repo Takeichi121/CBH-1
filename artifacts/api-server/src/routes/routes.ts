@@ -8776,9 +8776,14 @@ ${pageContext}` : ''}`;
     const month = Number(req.query.month) || new Date().getMonth() + 1;
     const year  = Number(req.query.year)  || new Date().getFullYear();
 
+    // Resolve the active store — falls back to first store if none flagged active
+    const allStores = await storage.getStores();
+    const activeStore = allStores.find(s => s.isActive) || allStores[0];
+    const storeId = req.query.storeId as string | undefined || activeStore?.id || "";
+
     const [reports, targets, laborCfg] = await Promise.all([
-      storage.getDailySalesReportsForMonth(year, month),
-      storage.getDailyTargetsForMonth(year, month),
+      storage.getDailySalesReportsForMonth(year, month, storeId),
+      storage.getDailyTargetsForMonth(year, month, storeId),
       storage.getLaborSettings(),
     ]);
 

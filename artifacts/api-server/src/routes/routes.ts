@@ -276,26 +276,16 @@ const ALLOWED_CHAT_FILE_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/csv",
-  "text/plain",
-  "application/csv",
-  "application/json",
-  "application/xml",
-  "text/xml",
 ]);
 
 const chatFileUpload = multer({
   storage: chatFileStorage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (_req, file, cb) => {
-    if (
-      ALLOWED_CHAT_FILE_MIME_TYPES.has(file.mimetype) ||
-      file.mimetype.startsWith("text/") ||
-      file.mimetype.startsWith("image/")
-    ) {
+    if (ALLOWED_CHAT_FILE_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`ประเภทไฟล์ '${file.mimetype}' ไม่รองรับ`));
+      cb(new Error(`ประเภทไฟล์ '${file.mimetype}' ไม่รองรับ — รองรับเฉพาะ PDF, Excel (.xls/.xlsx), Word (.docx) เท่านั้น`));
     }
   },
 });
@@ -3616,18 +3606,24 @@ ${pageContext}` : ''}`;
     try {
       const { token, command } = req.body;
       if (!token || !command) {
+        await storage.log("chann_exec_shell_denied", "anonymous", "reason=missing_token_or_command");
         return res.status(400).json({ ok: false, error: "Token and command required" });
       }
       const session = await storage.getSession(token);
-      if (!session) return res.status(401).json({ ok: false, error: "Invalid session" });
+      if (!session) {
+        await storage.log("chann_exec_shell_denied", "anonymous", "reason=invalid_session");
+        return res.status(401).json({ ok: false, error: "Invalid session" });
+      }
       const execUser = await storage.getUser(session.username);
       if (!execUser || execUser.role !== "admin") {
+        await storage.log("chann_exec_shell_denied", session.username, "reason=not_admin");
         return res.status(403).json({ ok: false, error: "Admin only" });
       }
 
       const cmd = command.trim();
       const shellMetachars = /[;&|`$(){}!#]/;
       if (shellMetachars.test(cmd)) {
+        await storage.log("chann_exec_shell_denied", execUser.username, `reason=metachar_blocked cmd=${cmd.slice(0, 200)}`);
         return res.status(400).json({ ok: false, error: "Command blocked: shell metacharacters are not allowed" });
       }
       const cmdParts = cmd.split(/\s+/);
@@ -3635,10 +3631,12 @@ ${pageContext}` : ''}`;
       const cmdArgs = cmdParts.slice(1);
       const allowedBins = ["npm", "npx", "node", "tsc", "ls", "cat", "grep", "find"];
       if (!allowedBins.includes(cmdBase)) {
+        await storage.log("chann_exec_shell_denied", execUser.username, `reason=disallowed_binary binary=${cmdBase}`);
         return res.status(400).json({ ok: false, error: `Command '${cmdBase}' not allowed. Allowed: ${allowedBins.join(", ")}` });
       }
       const dangerousPatterns = [/rm\s+-rf/i, /rm\s+-r/i, /\bsudo\b/i, /\bshutdown\b/i, /\breboot\b/i, /\bchmod\b/i, /\bmkfs\b/i, /\bdd\b/i];
       if (dangerousPatterns.some(p => p.test(cmd))) {
+        await storage.log("chann_exec_shell_denied", execUser.username, `reason=dangerous_pattern cmd=${cmd.slice(0, 200)}`);
         return res.status(400).json({ ok: false, error: "Command blocked: contains dangerous pattern" });
       }
 
@@ -4599,8 +4597,25 @@ ${pageContext}` : ''}`;
     return false;
   };
 
+  const createProfileSchema = z.object({
+    token: z.string().min(1),
+    fullName: z.string().min(1).max(100),
+    fullNameTh: z.string().max(100).optional(),
+    password: z.string().min(4).max(100),
+    role: z.enum(["staff", "manager", "area", "admin"]).optional(),
+    position: z.string().max(100).optional(),
+    nickName: z.string().max(50).optional(),
+    phone: z.string().max(20).optional(),
+    email: z.union([z.string().email().max(255), z.literal("")]).optional(),
+    mustChangePassword: z.boolean().optional(),
+  });
+
   app.post("/api/admin/createProfile", safe(async (req, res) => {
-    const { token, fullName, fullNameTh, password, role, position, nickName, phone, email, mustChangePassword } = req.body;
+    const parsed = createProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, message: "ข้อมูลไม่ถูกต้อง", errors: parsed.error.issues.map(i => i.message) });
+    }
+    const { token, fullName, fullNameTh, password, role, position, nickName, phone, email, mustChangePassword } = parsed.data;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);
@@ -4641,8 +4656,12 @@ ${pageContext}` : ''}`;
     res.json({ ok: true });
   }));
 
+  const getUsersSchema = z.object({ token: z.string().min(1) });
+
   app.post("/api/admin/getUsers", safe(async (req, res) => {
-    const { token } = req.body;
+    const parsed = getUsersSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Token required" });
+    const { token } = parsed.data;
     const session = await storage.getSession(token);
     if (!session) return res.json({ ok: false, message: "Session expired" });
     const u = await storage.getUser(session.username);

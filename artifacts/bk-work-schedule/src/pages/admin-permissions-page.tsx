@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Key, Save, Loader2, User, RefreshCw } from "lucide-react";
 import { featureGroups, featureLabels, featureKeys, type FeatureKey } from "@shared/schema";
+import { displayName as getDisplayName } from "@/lib/privacy";
 
 type UserDTO = {
   username: string;
@@ -181,7 +182,7 @@ export default function AdminPermissionsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-medium truncate">{u.fullName || u.username}</span>
+                        <span className="text-sm font-medium truncate">{getDisplayName(u)}</span>
                         {u.allowedFeatures && (
                           <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 shrink-0">
                             custom
@@ -220,7 +221,7 @@ export default function AdminPermissionsPage() {
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">{selectedUser.fullName || selectedUser.username}</p>
+                    <p className="font-semibold text-sm">{getDisplayName(selectedUser)}</p>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">@{selectedUser.username}</span>
                       <Badge className={`text-[10px] px-1.5 py-0 ${roleColor(selectedUser.role)}`}>{selectedUser.role}</Badge>

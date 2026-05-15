@@ -31,6 +31,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { NotificationBell } from "@/components/notification-bell";
 import { useI18n } from "@/hooks/use-i18n";
+import { displayName as getDisplayName } from "@/lib/privacy";
 
 interface NavItem {
   href: string;
@@ -285,8 +286,8 @@ export function Layout({ children }: { children: ReactNode }) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm leading-tight truncate">{user.fullName || user.username}</p>
-                <p className="text-xs text-primary-foreground/70 truncate mt-0.5">{displayEmail}</p>
+                <p className="font-bold text-sm leading-tight truncate">{getDisplayName(user)}</p>
+                <p className="text-xs text-primary-foreground/70 truncate mt-0.5">@{user.username}</p>
               </div>
               {!isViewer && (
                 <Link href="/settings">
@@ -435,8 +436,8 @@ export function Layout({ children }: { children: ReactNode }) {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm leading-tight truncate">{user.fullName || user.username}</p>
-                        <p className="text-xs text-primary-foreground/70 truncate mt-0.5">{displayEmail}</p>
+                        <p className="font-bold text-sm leading-tight truncate">{getDisplayName(user)}</p>
+                        <p className="text-xs text-primary-foreground/70 truncate mt-0.5">@{user.username}</p>
                       </div>
                       {!isViewer && (
                         <Link href="/settings">
@@ -592,8 +593,8 @@ export function Layout({ children }: { children: ReactNode }) {
               {!sidebarCollapsed && (
                 <>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-semibold text-foreground truncate leading-tight">{user.fullName || user.username}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{displayEmail}</p>
+                    <p className="text-[12px] font-semibold text-foreground truncate leading-tight">{getDisplayName(user)}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">@{user.username}</p>
                   </div>
                   <Button
                     variant="ghost"

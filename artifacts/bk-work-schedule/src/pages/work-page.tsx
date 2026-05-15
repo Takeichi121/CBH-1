@@ -84,6 +84,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { displayName as getDisplayName } from "@/lib/privacy";
 
 // Schema for booking form
 const bookSchema = z.object({
@@ -686,7 +687,7 @@ export default function WorkPage() {
                           >
                             <TableCell className="font-medium text-[9px] py-0.5 px-1">
                               <span className="font-medium text-muted-foreground truncate max-w-[65px] block">
-                                {u.nickName || u.fullName || u.username}
+                                {getDisplayName(u)}
                               </span>
                             </TableCell>
                             {currentPair.map((day: string) => {
@@ -944,7 +945,7 @@ export default function WorkPage() {
                         <TableCell className="font-medium text-xs py-1">
                           <div className="flex flex-col">
                             <span className="font-medium text-muted-foreground">
-                              {u.nickName || u.fullName || u.username}
+                              {getDisplayName(u)}
                             </span>
                             {isManager && (
                               <Button
@@ -1338,7 +1339,7 @@ function HiddenStaffDialogInWork({
               >
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold">
-                    {u.nickName || u.fullName || u.username}
+                    {getDisplayName(u)}
                   </span>
                   <span className="text-[10px] text-muted-foreground uppercase">
                     {u.username}
@@ -1993,7 +1994,7 @@ function ShiftCellWithActions({
           <div className="space-y-4 pt-4">
             <div className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">
-                {shift.nickName || shift.fullName}
+                {getDisplayName(shift)}
               </span>{" "}
               - {format(parseISO(shift.date), "EEEE d MMM yyyy")}
             </div>
@@ -2422,7 +2423,7 @@ function ManagerCreateCustomScheduleDialog({
               <SelectContent>
                 {staffUsers.map((u: any) => (
                   <SelectItem key={u.username} value={u.username}>
-                    {u.nickName || u.fullName}
+                    {getDisplayName(u)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -2907,7 +2908,7 @@ function ManagerTeamRosterView() {
                       className="hover:bg-muted/30"
                     >
                       <TableCell className="sticky left-0 bg-card z-10 font-medium">
-                        <span>{manager.nickName || manager.fullName}</span>
+                        <span>{getDisplayName(manager)}</span>
                       </TableCell>
                       {days.map((day: string) => {
                         const shift = staffShifts[day];
@@ -3244,7 +3245,7 @@ function ManagerEmployeeRosterView() {
                           className="hover:bg-muted/30"
                         >
                           <TableCell className="sticky left-0 bg-card z-10 font-medium">
-                            <span>{staff.nickName || staff.fullName}</span>
+                            <span>{getDisplayName(staff)}</span>
                           </TableCell>
                           {days.map((day: string) => {
                             const shift = staffShifts[day];
@@ -3275,7 +3276,7 @@ function ManagerEmployeeRosterView() {
                                   <DroppableEmptyCell
                                     username={staff.username}
                                     day={day}
-                                    staffName={staff.nickName || staff.fullName}
+                                    staffName={getDisplayName(staff)}
                                     groups={settings?.groups}
                                     onDrop={handleDropShift}
                                     isDragging={!!draggedShift}
@@ -3297,7 +3298,7 @@ function ManagerEmployeeRosterView() {
                   >
                     <TableCell className="sticky left-0 bg-card z-10 font-medium">
                       <div className="flex flex-col">
-                        <span>{shift.nickName || shift.fullName}</span>
+                        <span>{getDisplayName(shift)}</span>
                         <span className="text-xs text-muted-foreground">
                           {shift.date}
                         </span>
@@ -3424,7 +3425,7 @@ function ManagerBookShiftDialog({
               <SelectContent>
                 {staffUsers.map((u: any) => (
                   <SelectItem key={u.username} value={u.username}>
-                    {u.nickName || u.fullName}
+                    {getDisplayName(u)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -3813,7 +3814,7 @@ function ManagerMonthlyView() {
                 >
                   <div className={`w-3 h-3 rounded-full ${color}`} />
                   <span className="text-muted-foreground">
-                    {m.nickName || m.fullName || m.username}
+                    {getDisplayName(m)}
                   </span>
                 </div>
               );
@@ -3957,7 +3958,7 @@ function ManagerMonthlyView() {
                               key={m.username}
                               className={`w-2 h-2 rounded-full ${color} opacity-30 cursor-pointer hover:opacity-60 transition-opacity`}
                               onClick={() => handleCellClick(dateStr, m)}
-                              title={`${m.nickName || m.fullName}: OFF - Click to add`}
+                              title={`${getDisplayName(m)}: OFF - Click to add`}
                               data-testid={`add-shift-${dateStr}-${m.username}`}
                             />
                           );
@@ -4040,7 +4041,7 @@ function ManagerMonthlyView() {
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${color}`} />
                     <span className="font-medium text-sm">
-                      {m.nickName || m.fullName || m.username}
+                      {getDisplayName(m)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       ({m.position || m.role})
@@ -4146,9 +4147,7 @@ function ManagerShiftEditDialog({
         <div className="space-y-4 pt-4">
           <div className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">
-              {selectedCell.manager?.nickName ||
-                selectedCell.manager?.fullName ||
-                selectedCell.manager?.username}
+              {selectedCell.manager ? getDisplayName(selectedCell.manager) : ""}
             </span>
             {" - "}
             {format(parseISO(selectedCell.date), "EEEE d MMM yyyy")}

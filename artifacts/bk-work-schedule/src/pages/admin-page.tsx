@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
 import { Link } from "wouter";
+import { displayName as getDisplayName, maskPhone } from "@/lib/privacy";
 
 const positionHierarchy: Record<string, number> = {
   "admin": 0,
@@ -738,12 +739,6 @@ export default function AdminPage() {
               {language === "th" ? `สาขา (${storesList.length})` : `Stores (${storesList.length})`}
             </TabsTrigger>
           )}
-          {isAdmin && (
-            <TabsTrigger value="birthdays" data-testid="tab-admin-birthdays">
-              <Cake className="w-4 h-4 mr-2" />
-              {language === "th" ? "วันเกิด" : "Birthdays"}
-            </TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="users">
@@ -771,8 +766,7 @@ export default function AdminPage() {
                   <TableCell className="font-medium">@{u.username}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span>{language === "th" && u.fullNameTh ? u.fullNameTh : (u.fullName || "-")}</span>
-                      {u.nickName && <span className="text-xs text-muted-foreground">({u.nickName})</span>}
+                      <span>{getDisplayName(u)}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -992,7 +986,7 @@ export default function AdminPage() {
                 )}
                 <div>
                   <h3 className="font-semibold text-lg">
-                    {language === "th" && viewingUser.fullNameTh ? viewingUser.fullNameTh : viewingUser.fullName || viewingUser.username}
+                    {getDisplayName(viewingUser)}
                   </h3>
                   <p className="text-muted-foreground">@{viewingUser.username}</p>
                 </div>
@@ -1104,15 +1098,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">{labels.phone}</p>
-                      <p className="font-medium">{viewingUser.phone || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{labels.email}</p>
-                      <p className="font-medium break-all">{viewingUser.email || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground flex items-center gap-1"><Cake className="w-3 h-3 text-pink-500" />วันเกิด</p>
-                      <p className="font-medium">{viewingUser.birthday ? formatBirthday(viewingUser.birthday) : "-"}</p>
+                      <p className="font-medium">{maskPhone(viewingUser.phone)}</p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-muted-foreground">{labels.createdAt}</p>
@@ -1236,7 +1222,7 @@ export default function AdminPage() {
 
         </TabsContent>
 
-        {isAdmin && (
+        {false && (
         <TabsContent value="birthdays">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">

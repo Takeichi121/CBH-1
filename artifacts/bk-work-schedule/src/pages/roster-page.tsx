@@ -20,6 +20,7 @@ import { Phone, Mail, Briefcase as PositionIcon, User, Clock } from "lucide-reac
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
+import { displayName as getDisplayName, maskPhone } from "@/lib/privacy";
 
 // Shift order for filtering based on typical shift times
 const SHIFT_ORDER: Record<string, number> = {
@@ -237,7 +238,7 @@ export default function RosterPage() {
                     mobileUsers.map((u: any) => (
                       <TableRow key={u.username} className="hover:bg-muted/10 transition-colors">
                         <TableCell className="font-medium text-[10px] py-0.5">
-                          <span className="font-medium text-muted-foreground truncate max-w-[80px] block">{u.nickName || u.fullName || u.username}</span>
+                          <span className="font-medium text-muted-foreground truncate max-w-[80px] block">{getDisplayName(u)}</span>
                         </TableCell>
                         {mobileDays.map((day: string) => {
                           const shift = u.shifts[day];
@@ -313,7 +314,7 @@ export default function RosterPage() {
                       <UserProfileDialog username={u.username}>
                         <div className="flex flex-col cursor-pointer hover:text-primary transition-colors">
                           <span className="font-semibold underline decoration-dotted underline-offset-4">
-                            {u.nickName ? `${u.nickName} (${u.username})` : u.fullName || u.username}
+                            {getDisplayName(u)} ({u.username})
                           </span>
                           <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
                         </div>
@@ -563,7 +564,7 @@ function HiddenStaffDialog({ users, onUpdateStatus }: { users: any[]; onUpdateSt
             {users.map((u) => (
               <div key={u.username} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold">{u.nickName || u.fullName || u.username}</span>
+                  <span className="text-sm font-semibold">{getDisplayName(u)}</span>
                   <span className="text-[10px] text-muted-foreground uppercase">{u.username}</span>
                 </div>
                 <Button 
@@ -621,9 +622,8 @@ function UserProfileDialog({ children, username }: { children: React.ReactNode; 
           <div className="space-y-6 py-4">
             <div className="space-y-1">
               <h4 className="text-lg font-bold text-foreground">
-                {profile.nickName ? `${profile.nickName} (${username})` : username}
+                {getDisplayName(profile)} ({username})
               </h4>
-              <p className="text-sm text-muted-foreground">{profile.fullName}</p>
             </div>
 
             <div className="grid gap-4">
@@ -643,17 +643,7 @@ function UserProfileDialog({ children, username }: { children: React.ReactNode; 
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="text-sm font-medium">{profile.phone || "-"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-medium break-all">{profile.email || "-"}</p>
+                  <p className="text-sm font-medium">{maskPhone(profile.phone)}</p>
                 </div>
               </div>
             </div>

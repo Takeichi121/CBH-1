@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft, Users, Cake, CheckCircle2, AlertCircle, Search } from "lucide-react";
+import { Shield, Eye, EyeOff, Edit, Plus, UserPlus, Trash2, UserMinus, Loader2, Key, Store, ToggleLeft, ToggleRight, LogIn, ArrowRightLeft, Users, Cake, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { managerPositions, managerPositionLabels, type ManagerPosition, staffPositions, staffPositionLabels, type StaffPosition } from "@shared/schema";
@@ -29,47 +29,6 @@ const positionHierarchy: Record<string, number> = {
   "service_staff": 7,
 };
 
-const TH_MONTHS: Record<string, string> = {
-  "01": "มกราคม", "02": "กุมภาพันธ์", "03": "มีนาคม", "04": "เมษายน",
-  "05": "พฤษภาคม", "06": "มิถุนายน", "07": "กรกฎาคม", "08": "สิงหาคม",
-  "09": "กันยายน", "10": "ตุลาคม", "11": "พฤศจิกายน", "12": "ธันวาคม",
-};
-const formatBirthday = (bd: string) => {
-  if (!bd) return "-";
-  const [mm, dd] = bd.split("-");
-  return `${parseInt(dd)} ${TH_MONTHS[mm] || mm}`;
-};
-
-const PDF_BIRTHDAYS = [
-  { birthday: "02-08", nameTh: "ไพศิษฐ์ โกไสยสุข", nameEn: "Paisit Kosaisuk" },
-  { birthday: "02-25", nameTh: "เทพฐากูร แซ่ซ้ง", nameEn: "Thepthakun Saesong" },
-  { birthday: "02-26", nameTh: "ยศนันทน์ ติยะสุขสวัสดิ์", nameEn: "Yossanan Tiyasuksawad" },
-  { birthday: "03-09", nameTh: "สมโชค ศุภกิจบุญชู", nameEn: "Somchock Supakijboonchoo" },
-  { birthday: "03-10", nameTh: "ภูษณิศา คงหอม", nameEn: "Phusanisa Khonghom" },
-  { birthday: "03-19", nameTh: "พรนิภา โนนศิลา", nameEn: "Pornnipa Nonsila" },
-  { birthday: "03-20", nameTh: "อาทิตย์ สติใหม่", nameEn: "Arthit Satimai" },
-  { birthday: "03-27", nameTh: "ชานนท์ ใจมูล", nameEn: "Chanon Jaimool" },
-  { birthday: "03-31", nameTh: "นันทนัช ทองภูสวรรค์", nameEn: "Nuntanut Tongpoosawan" },
-  { birthday: "04-16", nameTh: "อดิศร นาสา", nameEn: "Adisorn Nasa" },
-  { birthday: "05-02", nameTh: "สุทธิดา สุขเจริญ", nameEn: "Suttida Sukcharoen" },
-  { birthday: "05-10", nameTh: "รัชนีกร วงศ์วาท", nameEn: "Ratchaneekorn Wongwat" },
-  { birthday: "05-11", nameTh: "ณัฐริกา แก้วคำ", nameEn: "Nuttarika Kaewkham" },
-  { birthday: "05-19", nameTh: "สราวุธ เก่งกาจ", nameEn: "Sarawut Kengkaj" },
-  { birthday: "05-27", nameTh: "เอธัส นาคนาวา", nameEn: "Athat Naknava" },
-  { birthday: "06-18", nameTh: "วชิรพันธ์ ณ สงขลา", nameEn: "Washiraphan Na Songkhla" },
-  { birthday: "06-28", nameTh: "ฟ้ารุ่ง ยิ่งได้ชม", nameEn: "Farung Yingdaichom" },
-  { birthday: "07-11", nameTh: "กฤตกวี สอนธรรม", nameEn: "Kritkawee Sorntham" },
-  { birthday: "08-04", nameTh: "กนกพงศ์ ฟูทำ", nameEn: "Kanogphong Footam" },
-  { birthday: "08-13", nameTh: "กิติพงศ์ วิทยาลักษณ์", nameEn: "Kitipong Wittayalak" },
-  { birthday: "08-23", nameTh: "กฤษฎา บุตรดาหาร", nameEn: "Kidsada Butdahand" },
-  { birthday: "09-23", nameTh: "บุญญิสา คงบุญ", nameEn: "Boonyisa Khongboon" },
-  { birthday: "09-30", nameTh: "พงศธร โพธิ์เรือง", nameEn: "Phongsathon Phoreung" },
-  { birthday: "10-03", nameTh: "เพ็ญพิชชา ถุงเกตุที", nameEn: "Phenphitcha Thungketthi" },
-  { birthday: "10-30", nameTh: "ณัฐริกา จงภักดี", nameEn: "Nattarika Jongpakdee" },
-  { birthday: "11-01", nameTh: "พิทักษ์ คงสิน", nameEn: "Pitak Kongsin" },
-  { birthday: "12-04", nameTh: "วงศกร บุญตา", nameEn: "Wongsakon Bunta" },
-  { birthday: "12-08", nameTh: "สุนารี ม่วงครวญ", nameEn: "Sunaree Moungkroun" },
-];
 
 export default function AdminPage() {
   const { user, token } = useAuth();
@@ -86,8 +45,7 @@ export default function AdminPage() {
   const [viewingUser, setViewingUser] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ nickName: "", phone: "", email: "", position: "", birthday: "" });
-  const [birthdayMatches, setBirthdayMatches] = useState<Record<number, string>>({});
-  const [isImportingBirthdays, setIsImportingBirthdays] = useState(false);
+
   const [isChangingUsername, setIsChangingUsername] = useState(false);
   const [newUsernameInput, setNewUsernameInput] = useState("");
   const [isSavingUsername, setIsSavingUsername] = useState(false);
@@ -421,43 +379,6 @@ export default function AdminPage() {
       }
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
-    }
-  };
-
-  useEffect(() => {
-    if (!data?.users) return;
-    const dbUsers: any[] = data.users;
-    const matches: Record<number, string> = {};
-    PDF_BIRTHDAYS.forEach((entry, i) => {
-      const thFirstName = entry.nameTh.split(" ")[0];
-      const matched = dbUsers.find((u: any) =>
-        (u.fullNameTh && u.fullNameTh.includes(thFirstName)) ||
-        (u.fullName && entry.nameEn.split(" ").some((w: string) => u.fullName?.includes(w)))
-      );
-      if (matched) matches[i] = matched.username;
-    });
-    setBirthdayMatches(matches);
-  }, [data?.users]);
-
-  const handleImportBirthdays = async () => {
-    setIsImportingBirthdays(true);
-    const token = localStorage.getItem("bk_token") || "";
-    const entries = PDF_BIRTHDAYS
-      .map((e, i) => ({ username: birthdayMatches[i], birthday: e.birthday }))
-      .filter(e => e.username);
-    try {
-      const res = await apiRequest("POST", "/api/admin/bulkImportBirthdays", { token, entries });
-      const result = await res.json();
-      if (result.ok) {
-        toast({ title: `นำเข้าวันเกิดสำเร็จ ${result.count} รายการ` });
-        refetch();
-      } else {
-        toast({ title: result.message || "Error", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", variant: "destructive" });
-    } finally {
-      setIsImportingBirthdays(false);
     }
   };
 

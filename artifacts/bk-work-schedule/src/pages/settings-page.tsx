@@ -20,6 +20,7 @@ import { APP_VERSION, CHANGELOG } from "@shared/version";
 import { requestNotificationPermission } from "@/lib/notifications";
 import { RestartTourButton } from "@/components/onboarding-tour";
 import { Bell, HelpCircle } from "lucide-react";
+import { displayName as getDisplayName } from "@/lib/privacy";
 
 export default function SettingsPage() {
   const { user, setUserProfilePicture } = useAuth();
@@ -298,6 +299,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-2">{t("clickToChangePhoto") || "Click to change photo"}</p>
             </div>
+            <p className="text-center font-semibold text-base mb-4">{user ? getDisplayName(user) : ""}</p>
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">

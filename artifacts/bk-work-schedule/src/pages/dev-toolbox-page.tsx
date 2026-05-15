@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { displayName as getDisplayName } from "@/lib/privacy";
 import { 
   Database, Users, FileText, Trash2, Settings, Terminal, 
   RefreshCw, Loader2, Lock, Key, UserCog, Table, Play,
@@ -808,7 +809,7 @@ user002,pass456,Jane Smith,Jane,staff,0823456789,jane@example.com"
                     <SelectContent>
                       {userList.map(u => (
                         <SelectItem key={u.username} value={u.username}>
-                          {u.username} ({u.nickName || u.fullName || "-"})
+                          {u.username} ({getDisplayName(u)})
                         </SelectItem>
                       ))}
                     </SelectContent>

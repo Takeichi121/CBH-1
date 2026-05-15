@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { displayName as getDisplayName } from "@/lib/privacy";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { Copy, Save, ChevronLeft, ChevronRight, FileText, Loader2, Check, ChevronsUpDown, X, RefreshCw, History, Send, FileSpreadsheet, Bot } from "lucide-react";
@@ -389,7 +390,7 @@ export default function WeeklySalesPage() {
         report: {
           weekStartDate: weekStartStr,
           weekEndDate: weekEndStr,
-          reportBy: user.nickName || user.fullName || user.username,
+          reportBy: getDisplayName(user),
           ...form,
         },
       });

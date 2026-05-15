@@ -2,10 +2,10 @@ export function maskPhone(phone: string | null | undefined): string {
   if (!phone) return "-";
   const digits = phone.replace(/\D/g, "");
   if (digits.length === 0) return "-";
-  if (digits.length <= 2) return "X".repeat(digits.length);
-  const last2 = digits.slice(-2);
-  const prefixLen = digits.length - 2;
-  const masked = "X".repeat(prefixLen) + last2;
+  if (digits.length <= 3) return "X".repeat(digits.length);
+  const last3 = digits.slice(-3);
+  const prefixLen = digits.length - 3;
+  const masked = "X".repeat(prefixLen) + last3;
   if (masked.length >= 10) {
     return `${masked.slice(0, 3)}-${masked.slice(3, 6)}-${masked.slice(6, 10)}`;
   }

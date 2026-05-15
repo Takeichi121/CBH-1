@@ -15,27 +15,23 @@ export async function createApp(): Promise<{ app: Express; httpServer: ReturnTyp
   // CORS policy — derive allowed origins from env vars, fall back to REPLIT_DOMAINS
   const rawAllowedOrigins = process.env["ALLOWED_ORIGINS"] ?? "";
   const rawReplitDomains = process.env["REPLIT_DOMAINS"] ?? "";
-  const allowedOrigins: string[] = rawAllowedOrigins.length > 0
+  const configuredOrigins: string[] = rawAllowedOrigins.length > 0
     ? rawAllowedOrigins.split(",").map((o) => o.trim()).filter(Boolean)
     : rawReplitDomains.split(",").map((d) => d.trim()).filter(Boolean).map((d) => `https://${d}`);
+  // Always allow localhost origins — Replit's dev proxy routes through localhost:80
+  const localhostOrigins = ["http://localhost", "https://localhost", "http://localhost:80", "https://localhost:443"];
+  const allowedOrigins = [...new Set([...configuredOrigins, ...localhostOrigins])];
 
   app.use(
     cors({
-      origin:
-        allowedOrigins.length > 0
-          ? (origin, callback) => {
-              // Allow requests with no origin (same-origin, server-to-server, mobile PWA)
-              if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-              } else {
-                callback(new Error(`CORS: origin '${origin}' not allowed`));
-              }
-            }
-          : (origin, callback) => {
-              // No origins configured — allow same-origin (no Origin header) but block cross-origin
-              if (!origin) callback(null, true);
-              else callback(null, false);
-            },
+      origin: (origin, callback) => {
+        // Allow requests with no origin (same-origin, server-to-server, mobile PWA)
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS: origin '${origin}' not allowed`));
+        }
+      },
       credentials: true,
     }),
   );

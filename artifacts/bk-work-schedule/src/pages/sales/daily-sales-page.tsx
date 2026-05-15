@@ -825,8 +825,9 @@ export default function DailySalesPage() {
     const restored = restoreData();
     if (!restored) return;
 
-    // If draft has a date that doesn't match yesterday, discard it to prevent cross-date data bleed
-    if ((restored as any).reportDate && (restored as any).reportDate !== yesterdayBangkok()) {
+    // If draft has a date that doesn't match yesterday or today, discard it to prevent cross-date data bleed
+    const draftDate = (restored as any).reportDate;
+    if (draftDate && draftDate !== yesterdayBangkok() && draftDate !== todayBangkok()) {
       clearData();
       return;
     }
@@ -1310,6 +1311,45 @@ export default function DailySalesPage() {
         } else {
           setReportSavedInDb(false);
           setIsEditMode(true);
+          // No DB record — try to restore localStorage draft for this date so data isn't lost on refresh
+          const draft = restoreData();
+          if (draft && (draft as any).reportDate === reportDate) {
+            (Object.keys(draft) as Array<keyof FormData>).forEach((key) => {
+              if ((draft as any)[key] !== undefined) {
+                form.setValue(key, (draft as any)[key]);
+              }
+            });
+            // Re-hydrate manager roster dropdowns from draft text
+            if ((draft as any).managerRosterText) {
+              const lines = ((draft as any).managerRosterText as string).split("\n");
+              lines.forEach((line: string) => {
+                const match = line.match(/^(\w+):\s*(.+)$/);
+                if (match) {
+                  const [, name, shift] = match;
+                  const managerKey = `manager${name}` as keyof FormData;
+                  if (["managerPhongsathon","managerNuttarika","managerSuppawit","managerBoonyisa","managerChanon","managerWashiraphan"].includes(managerKey)) {
+                    form.setValue(managerKey, shift.trim());
+                  }
+                }
+              });
+            }
+            // Re-hydrate staff roster entries from draft text
+            if ((draft as any).staffRosterText) {
+              const lines = ((draft as any).staffRosterText as string).split("\n").filter((l: string) => l.trim());
+              const grouped: Record<string, { shiftGroup: string; staffNames: string[]; customStart?: string; customEnd?: string }> = {};
+              lines.forEach((line: string) => {
+                const parts = line.split("|").map((p: string) => p.trim());
+                const key = parts[0] || "";
+                if (!grouped[key]) grouped[key] = { ...parseShiftKey(key), staffNames: [] };
+                if (parts[1]) {
+                  const names = parts[1].split(",").map((n: string) => n.trim()).filter(Boolean);
+                  grouped[key].staffNames.push(...names);
+                }
+              });
+              const entries = Object.values(grouped);
+              if (entries.length > 0) setStaffRosterEntries(entries);
+            }
+          }
         }
 
         // Load daily target + conditionally reset rosterCommit via shared helper

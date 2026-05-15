@@ -449,6 +449,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const session = await storage.getSession(token);
     if (!session) return res.status(401).json({ ok: false, message: "Invalid session" });
 
+    if (Math.floor(Date.now() / 1000) > session.expiresAt) {
+      await storage.deleteSession(token);
+      return res.status(401).json({ ok: false, message: "Session expired" });
+    }
+
     const { folder, filename } = req.params;
     if (folder.includes("..") || filename.includes("..") || folder.includes("/") || filename.includes("/")) {
       return res.status(400).json({ ok: false, message: "Invalid path" });

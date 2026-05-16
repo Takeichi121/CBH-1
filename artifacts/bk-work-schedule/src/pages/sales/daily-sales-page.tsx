@@ -578,15 +578,12 @@ export default function DailySalesPage() {
     });
   }, [saveDescMutation]);
 
-  // Unlock today's report after 22:00 Bangkok time
-  const bangkokHour = parseInt(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok", hour: "numeric", hour12: false }));
-  const isAfter10PM = bangkokHour >= 22;
-  const maxAllowedDate = isAfter10PM ? todayBangkok() : yesterdayBangkok();
+  const maxAllowedDate = todayBangkok();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      reportDate: yesterdayBangkok(),
+      reportDate: todayBangkok(),
       reportBy: user?.nickName || user?.username || "",
       workShift: "full",
       dailyTarget: "0",
@@ -684,9 +681,7 @@ export default function DailySalesPage() {
 
   const saveToServer = useCallback(async (values: FormData) => {
     if (!values.reportDate || !values.reportBy) return;
-    // Compute at call-time to avoid stale closure (e.g., page opened before 22:00)
-    const _hour = parseInt(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok", hour: "numeric", hour12: false }));
-    const _maxDate = _hour >= 22 ? todayBangkok() : yesterdayBangkok();
+    const _maxDate = todayBangkok();
     if (values.reportDate > _maxDate) return;
 
     const wasteDailyTotalNum = parseFloat(
@@ -2626,11 +2621,9 @@ ${v.staffRosterText || ""}
     const bangkokDate = new Date(bangkokStr);
     const hour = bangkokDate.getHours();
     if (hour >= 20) return null;
-    const yesterday = new Date(bangkokDate);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dd = String(yesterday.getDate()).padStart(2, "0");
-    const mm = String(yesterday.getMonth() + 1).padStart(2, "0");
-    const yyyy = yesterday.getFullYear();
+    const dd = String(bangkokDate.getDate()).padStart(2, "0");
+    const mm = String(bangkokDate.getMonth() + 1).padStart(2, "0");
+    const yyyy = bangkokDate.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   })();
 
@@ -2643,7 +2636,7 @@ ${v.staffRosterText || ""}
             <span className="text-lg">🔒</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">ยังไม่สามารถกรอกข้อมูลวันที่ {reportDate} ได้</p>
-              <p className="text-xs opacity-75 mt-0.5">กรุณารอจนถึงหลัง {reportDate === todayBangkok() ? "22:00 น." : `00:01 ของวันที่ ${reportDate && (() => { const d = new Date(reportDate + "T00:00:00"); d.setDate(d.getDate() + 1); return d.toLocaleDateString("th-TH", { day: "numeric", month: "long" }); })()}`}</p>
+              <p className="text-xs opacity-75 mt-0.5">ไม่สามารถบันทึกข้อมูลในอนาคตได้</p>
             </div>
           </div>
         )}

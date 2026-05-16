@@ -583,7 +583,7 @@ export default function DailySalesPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      reportDate: yesterdayBangkok(),
+      reportDate: todayBangkok(),
       reportBy: user?.nickName || user?.username || "",
       workShift: "full",
       dailyTarget: "0",
@@ -1430,6 +1430,7 @@ export default function DailySalesPage() {
 
   const handleSaveReport = async () => {
     try {
+      const savedReportDate = form.getValues("reportDate");
       const values = form.getValues();
       const token = localStorage.getItem("bk_token");
 
@@ -1511,6 +1512,8 @@ export default function DailySalesPage() {
         markAsSaved();
         setReportSavedInDb(true);
         setIsEditMode(false);
+        // Restore the date in case form defaultValues caused a reset
+        if (savedReportDate) form.setValue("reportDate", savedReportDate);
         queryClient.invalidateQueries({ queryKey: ["/api/shift-count-for-date"] });
       } else {
         toast({

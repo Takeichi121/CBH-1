@@ -583,7 +583,7 @@ export default function DailySalesPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      reportDate: todayBangkok(),
+      reportDate: yesterdayBangkok(),
       reportBy: user?.nickName || user?.username || "",
       workShift: "full",
       dailyTarget: "0",

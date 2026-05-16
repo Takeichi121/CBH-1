@@ -2181,7 +2181,6 @@ ${v.staffRosterText || ""}
 
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
-  const [pasteDate, setPasteDate] = useState(todayBangkok());
 
   const parseLineReport = (text: string) => {
     const stripped = text.replace(/[\u{1F300}-\u{1FAD6}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{200D}\u{FE0F}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "");
@@ -2515,9 +2514,7 @@ ${v.staffRosterText || ""}
 
     const parsed = parseLineReport(pasteText);
 
-    if (pasteDate) {
-      parsed.reportDate = pasteDate;
-    }
+    parsed.reportDate = form.getValues("reportDate" as keyof FormData) as string || todayBangkok();
 
     let staffRosterParsed = false;
     if (parsed._staffRosterEntries) {
@@ -2748,10 +2745,6 @@ ${v.staffRosterText || ""}
                           className="gap-1"
                           data-testid="button-paste-line-report"
                           disabled={reportSavedInDb && !isEditMode}
-                          onClick={() => {
-                            const reportDate = form.getValues("reportDate" as keyof FormData) as string;
-                            setPasteDate(reportDate || todayBangkok());
-                          }}
                         >
                           <ClipboardPaste className="w-4 h-4" />
                           {language === "th" ? "วางข้อมูล LINE" : "Paste LINE Report"}
@@ -2765,16 +2758,16 @@ ${v.staffRosterText || ""}
                         </DialogHeader>
                         <div className="space-y-4">
                           <div>
-                            <label className="text-sm font-medium mb-1 block">
-                              {language === "th" ? "เลือกวันที่" : "Select Date"}
-                            </label>
-                            <Input
-                              type="date"
-                              value={pasteDate}
-                              onChange={(e) => setPasteDate(e.target.value)}
-                              className="text-sm"
-                              data-testid="input-paste-date"
-                            />
+                            <p className="text-sm text-muted-foreground">
+                              {language === "th" ? "นำเข้าวันที่: " : "Import date: "}
+                              <span className="font-medium text-foreground">
+                                {(() => {
+                                  const d = form.getValues("reportDate" as keyof FormData) as string || todayBangkok();
+                                  const [y, m, day] = d.split("-");
+                                  return `${day}/${m}/${y}`;
+                                })()}
+                              </span>
+                            </p>
                           </div>
                           <div>
                             <label className="text-sm font-medium mb-1 block">
@@ -2785,11 +2778,6 @@ ${v.staffRosterText || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
                                 setPasteText(val);
-                                const dateMatch = val.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-                                if (dateMatch) {
-                                  const [, d, m, y] = dateMatch;
-                                  setPasteDate(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
-                                }
                               }}
                               placeholder={language === "th"
                                 ? "วางข้อความรายงาน LINE ที่นี่...\nเช่น:\n💵Daily Sales=150,000/110,000\n👨‍👩‍👧‍👦Daily TC =450"

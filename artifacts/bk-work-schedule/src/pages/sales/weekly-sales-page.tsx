@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { useSettings } from "@/hooks/use-settings";
@@ -220,6 +220,7 @@ export default function WeeklySalesPage() {
   const [borrowItemNames, setBorrowItemNames] = useState<string[]>([]);
   const [sendingLine, setSendingLine] = useState(false);
   const [sendingChann, setSendingChann] = useState(false);
+  const sendLineRef = useRef(false);
   const [prevForm, setPrevForm] = useState<WeeklyFormData | null>(null);
 
   const { start: weekStart, end: weekEnd } = getWeekRange(currentDate);
@@ -440,8 +441,30 @@ export default function WeeklySalesPage() {
   };
 
   const handleSendLine = async () => {
+    if (sendLineRef.current) return;
+    const saleVal = Number((form.sale || "0").replace(/,/g, ""));
+    if (!saleVal) {
+      toast({ variant: "destructive", title: "ส่งไม่สำเร็จ", description: "ยังไม่มีข้อมูลยอดขายสำหรับสัปดาห์นี้ กรุณากรอกยอดขายก่อนส่งรายงาน" });
+      return;
+    }
+    sendLineRef.current = true;
     setSendingLine(true);
     try {
+      if (!hasData && user) {
+        const saveRes = await apiRequest("POST", "/api/sales/upsertWeeklyReport", {
+          token,
+          report: { weekStartDate: weekStartStr, weekEndDate: weekEndStr, reportBy: getDisplayName(user), ...form },
+        });
+        const saveData = await saveRes.json();
+        if (!saveData.ok) {
+          toast({ variant: "destructive", title: saveData.message || "บันทึกไม่สำเร็จ กรุณาลองใหม่" });
+          setSendingLine(false);
+          sendLineRef.current = false;
+          return;
+        }
+        setHasData(true);
+        setIsAutoPopulated(false);
+      }
       const res = await apiRequest("POST", "/api/line/send-weekly-report", {
         token,
         weekStartDate: weekStartStr,
@@ -456,6 +479,7 @@ export default function WeeklySalesPage() {
       toast({ variant: "destructive", title: "ไม่สามารถส่ง LINE ได้" });
     }
     setSendingLine(false);
+    sendLineRef.current = false;
   };
 
   const handleChannAnalyze = async () => {
@@ -928,7 +952,7 @@ export default function WeeklySalesPage() {
                     <Button
                       variant="outline"
                       onClick={handleSendLine}
-                      disabled={sendingLine || !hasData}
+                      disabled={sendingLine || !form.sale}
                       className="gap-2 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
                       data-testid="button-send-line-weekly"
                     >

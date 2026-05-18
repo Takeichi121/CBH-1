@@ -584,7 +584,7 @@ export default function DailySalesPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      reportDate: todayBangkok(),
+      reportDate: yesterdayBangkok(),
       reportBy: user?.nickName || user?.username || "",
       workShift: "full",
       dailyTarget: "0",
@@ -2634,9 +2634,12 @@ ${v.staffRosterText || ""}
     const bangkokDate = new Date(bangkokStr);
     const hour = bangkokDate.getHours();
     if (hour >= 20) return null;
-    const dd = String(bangkokDate.getDate()).padStart(2, "0");
-    const mm = String(bangkokDate.getMonth() + 1).padStart(2, "0");
-    const yyyy = bangkokDate.getFullYear();
+    // รายงานที่ต้องส่งคือของเมื่อวาน
+    const yesterday = new Date(bangkokDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dd = String(yesterday.getDate()).padStart(2, "0");
+    const mm = String(yesterday.getMonth() + 1).padStart(2, "0");
+    const yyyy = yesterday.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   })();
 

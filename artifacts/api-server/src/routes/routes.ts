@@ -4829,7 +4829,23 @@ ${pageContext}` : ''}`;
     if (!u || u.role === "staff") return res.json({ ok: false, message: "No permission" });
 
     const allUsers = await storage.getUsers();
-    res.json({ ok: true, users: allUsers.map(user => ({ ...user, passhash: undefined, allowedFeatures: safeParseAllowedFeatures(user.allowedFeatures) })), creatorRank: getUserRank(u), canManageAll: canManageUsers(u) });
+    const isAdmin = u.role === "admin";
+    res.json({
+      ok: true,
+      users: allUsers.map(user => {
+        const base = { ...user, passhash: undefined, allowedFeatures: safeParseAllowedFeatures(user.allowedFeatures) };
+        if (!isAdmin) {
+          base.phone = undefined;
+          base.email = undefined;
+          base.birthday = undefined;
+          base.fullNameTh = undefined;
+          base.nickName = undefined;
+        }
+        return base;
+      }),
+      creatorRank: getUserRank(u),
+      canManageAll: canManageUsers(u),
+    });
   }));
 
   app.post("/api/admin/save-permissions", safe(async (req, res) => {

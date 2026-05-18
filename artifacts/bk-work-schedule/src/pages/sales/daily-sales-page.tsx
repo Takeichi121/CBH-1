@@ -428,6 +428,7 @@ export default function DailySalesPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showAutoSave, setShowAutoSave] = useState(false);
   const [isSendingLineReport, setIsSendingLineReport] = useState(false);
+  const isSendingLineReportRef = useRef(false);
   const [isSendingEmailReport, setIsSendingEmailReport] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("kitti_ph@minor.com");
@@ -1674,11 +1675,22 @@ export default function DailySalesPage() {
   };
 
   const handleSendLineReport = async () => {
+    if (isSendingLineReportRef.current) return;
     const reportDate = form.getValues("reportDate");
     if (!reportDate) {
       toast({ title: "กรุณาเลือกวันที่ก่อน", variant: "destructive" });
       return;
     }
+    const actualSalesVal = parseFloat(form.getValues("actualSales")?.replace(/,/g, "") || "0");
+    if (actualSalesVal === 0) {
+      toast({
+        title: "⚠️ ยังไม่ได้กรอกยอดขาย",
+        description: "กรุณากรอกยอดขายก่อนส่งรายงาน LINE",
+        variant: "destructive",
+      });
+      return;
+    }
+    isSendingLineReportRef.current = true;
     setIsSendingLineReport(true);
     const token = localStorage.getItem("bk_token");
     try {
@@ -1695,7 +1707,7 @@ export default function DailySalesPage() {
       const data = await res.json();
       if (data.ok) {
         if (data.noData) {
-          toast({ title: "ส่งแจ้งเตือนไป LINE แล้ว ⚠️", description: "ยังไม่มีข้อมูลยอดขาย — ส่งข้อความแจ้งเตือนใน LINE แทน" });
+          toast({ title: "⚠️ ยังไม่มีข้อมูลยอดขาย", description: "ส่งข้อความแจ้งเตือนใน LINE แทนรายงานจริง", variant: "destructive" });
         } else {
           toast({ title: "ส่งรายงานไป LINE แล้ว ✅", description: `รายงานวันที่ ${reportDate}` });
         }
@@ -1705,6 +1717,7 @@ export default function DailySalesPage() {
     } catch {
       toast({ title: "เกิดข้อผิดพลาด", description: "ไม่สามารถเชื่อมต่อได้", variant: "destructive" });
     } finally {
+      isSendingLineReportRef.current = false;
       setIsSendingLineReport(false);
     }
   };

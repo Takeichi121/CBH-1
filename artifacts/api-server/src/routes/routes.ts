@@ -9476,19 +9476,10 @@ ${pageContext}` : ''}`;
     const report = reports.find(r => r.reportDate === targetDate);
     const storeCfg = await storage.getStoreSettings();
     const storeName = storeCfg?.storeName || "Grand Diamond";
-    if (!report) {
-      // No data for this date — send a "no data" reminder to LINE instead of erroring
-      const parts = targetDate.split("-");
-      const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
-      try {
-        await sendLineMessage(channelToken, targetId, [{
-          type: "text",
-          text: `💎 Daily Sales Report 💎\n${storeName}\n📅 ${dateStr}\n\n⚠️ ยังไม่มีข้อมูลยอดขายสำหรับวันนี้\nกรุณากรอกข้อมูลยอดขายในระบบก่อนส่งรายงาน`,
-        }]);
-        return res.json({ ok: true, noData: true });
-      } catch (err: any) {
-        return res.json({ ok: false, message: err.message });
-      }
+    const hasRealSales = report && Number(report.actualSales || 0) > 0;
+    if (!hasRealSales) {
+      // No report or actualSales=0 — return error so frontend blocks re-send
+      return res.json({ ok: false, message: "ยังไม่มีข้อมูลยอดขายสำหรับวันนี้ กรุณากรอกยอดขายในระบบก่อนส่งรายงาน" });
     }
     try {
       const flex = buildDailyReportText(report, storeName);

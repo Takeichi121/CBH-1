@@ -71,6 +71,129 @@
   --ring: 160 84% 39%;          /* Emerald */
 }
 
+/* ─── BASE THEMES ──────────────────────────────────────────────── */
+/* Ocean — deep navy */
+html.theme-ocean.dark, .dark.theme-ocean {
+  --background: 220 40% 8%;
+  --card: 220 35% 12%;
+  --popover: 220 35% 12%;
+  --secondary: 220 25% 16%;
+  --muted: 220 22% 14%;
+  --border: 220 22% 18%;
+  --input: 220 22% 18%;
+}
+html.theme-ocean:not(.dark), .theme-ocean:not(.dark) {
+  --background: 210 50% 97%;
+  --card: 210 40% 100%;
+  --border: 210 30% 87%;
+  --input: 210 30% 87%;
+}
+
+/* Forest — dark green */
+html.theme-forest.dark, .dark.theme-forest {
+  --background: 150 30% 7%;
+  --card: 150 25% 11%;
+  --popover: 150 25% 11%;
+  --secondary: 150 18% 15%;
+  --muted: 150 15% 13%;
+  --border: 150 18% 18%;
+  --input: 150 18% 18%;
+}
+html.theme-forest:not(.dark), .theme-forest:not(.dark) {
+  --background: 150 30% 97%;
+  --card: 150 20% 100%;
+  --border: 150 20% 87%;
+  --input: 150 20% 87%;
+}
+
+/* Sunset — warm dark */
+html.theme-sunset.dark, .dark.theme-sunset {
+  --background: 20 30% 8%;
+  --card: 20 25% 12%;
+  --popover: 20 25% 12%;
+  --secondary: 20 18% 16%;
+  --muted: 20 15% 14%;
+  --border: 20 18% 20%;
+  --input: 20 18% 20%;
+}
+html.theme-sunset:not(.dark), .theme-sunset:not(.dark) {
+  --background: 30 50% 97%;
+  --card: 30 30% 100%;
+  --border: 30 25% 87%;
+  --input: 30 25% 87%;
+}
+
+/* ─── ACCENT COLORS ────────────────────────────────────────────── */
+/* Emerald (explicit — same as default) */
+.accent-emerald {
+  --primary: 160 84% 39%;
+  --ring: 160 84% 39%;
+  --accent: 160 60% 92%;
+  --accent-foreground: 160 84% 25%;
+}
+.dark.accent-emerald {
+  --primary: 160 84% 39%;
+  --ring: 160 84% 39%;
+  --accent: 160 50% 15%;
+  --accent-foreground: 160 84% 75%;
+}
+
+/* Sky */
+.accent-sky {
+  --primary: 199 89% 48%;
+  --ring: 199 89% 48%;
+  --accent: 199 80% 92%;
+  --accent-foreground: 199 89% 25%;
+}
+.dark.accent-sky {
+  --primary: 199 89% 48%;
+  --ring: 199 89% 48%;
+  --accent: 199 70% 14%;
+  --accent-foreground: 199 89% 75%;
+}
+
+/* Violet */
+.accent-violet {
+  --primary: 262 83% 58%;
+  --ring: 262 83% 58%;
+  --accent: 262 70% 93%;
+  --accent-foreground: 262 83% 30%;
+}
+.dark.accent-violet {
+  --primary: 262 83% 58%;
+  --ring: 262 83% 58%;
+  --accent: 262 60% 15%;
+  --accent-foreground: 262 83% 80%;
+}
+
+/* Amber */
+.accent-amber {
+  --primary: 38 92% 50%;
+  --ring: 38 92% 50%;
+  --accent: 38 90% 92%;
+  --accent-foreground: 38 92% 25%;
+}
+.dark.accent-amber {
+  --primary: 38 92% 50%;
+  --ring: 38 92% 50%;
+  --accent: 38 70% 14%;
+  --accent-foreground: 38 92% 75%;
+}
+
+/* Rose */
+.accent-rose {
+  --primary: 347 77% 50%;
+  --ring: 347 77% 50%;
+  --accent: 347 70% 93%;
+  --accent-foreground: 347 77% 25%;
+}
+.dark.accent-rose {
+  --primary: 347 77% 50%;
+  --ring: 347 77% 50%;
+  --accent: 347 60% 14%;
+  --accent-foreground: 347 77% 75%;
+}
+
 @layer base {
   body {
     @apply bg-background text-foreground antialiased font-sans transition-colors duration-300;

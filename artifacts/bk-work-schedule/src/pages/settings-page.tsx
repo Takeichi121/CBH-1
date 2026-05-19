@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera, Wrench, Clock, AlertTriangle, Store } from "lucide-react";
+import { Loader2, Save, User, Globe, Moon, Sun, Lock, Settings, Unlock, Info, Camera, Wrench, Clock, AlertTriangle, Store, Palette } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState, useRef } from "react";
 import { useI18n } from "@/hooks/use-i18n";
 import { useTheme } from "next-themes";
+import { useAppTheme, BASE_THEMES, ACCENT_COLORS } from "@/hooks/use-app-theme";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const { user, setUserProfilePicture } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const { theme, setTheme } = useTheme();
+  const { baseTheme, accentColor, setBaseTheme, setAccentColor } = useAppTheme();
   const { toast } = useToast();
   const { data: settingsData, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings, isPending: settingsUpdating } = useUpdateSettings();
@@ -418,6 +420,92 @@ export default function SettingsPage() {
                   <Moon className="w-4 h-4 mr-2" />
                   {t("dark")}
                 </Button>
+              </div>
+            </div>
+
+            {/* ── Base Theme ── */}
+            <div className="space-y-3">
+              <div className="space-y-0.5">
+                <Label className="text-base flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  {language === "th" ? "ธีมพื้นหลัง" : "Background Theme"}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {language === "th" ? "เลือกโทนสีพื้นหลังของ app" : "Choose the overall color tone"}
+                </p>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {BASE_THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setBaseTheme(t.id)}
+                    className={`relative rounded-xl overflow-hidden border-2 transition-all duration-200 focus:outline-none ${
+                      baseTheme === t.id
+                        ? "border-primary ring-2 ring-primary/40 scale-[1.04]"
+                        : "border-border hover:border-primary/50 hover:scale-[1.02]"
+                    }`}
+                    title={t.labelTh}
+                  >
+                    <div className="h-14 w-full" style={{ background: t.bg }}>
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-6 mx-1.5 mb-1.5 rounded-lg"
+                        style={{ background: t.card }}
+                      />
+                    </div>
+                    <div className="py-1 text-center text-[11px] font-medium bg-muted/60 text-foreground">
+                      {t.labelTh}
+                    </div>
+                    {baseTheme === t.id && (
+                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Accent Color ── */}
+            <div className="space-y-3">
+              <div className="space-y-0.5">
+                <Label className="text-base">
+                  {language === "th" ? "สี Accent" : "Accent Color"}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {language === "th" ? "สีหลักของปุ่มและองค์ประกอบ" : "Main color for buttons and highlights"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                {ACCENT_COLORS.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => setAccentColor(a.id)}
+                    className={`relative flex flex-col items-center gap-1 group focus:outline-none`}
+                    title={a.labelTh}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-full border-2 transition-all duration-200 ${
+                        accentColor === a.id
+                          ? "border-foreground scale-110 shadow-lg"
+                          : "border-transparent group-hover:scale-105 group-hover:border-foreground/40"
+                      }`}
+                      style={{ background: a.hex }}
+                    >
+                      {accentColor === a.id && (
+                        <div className="w-full h-full rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-medium transition-colors ${accentColor === a.id ? "text-foreground" : "text-muted-foreground"}`}>
+                      {a.labelTh}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 

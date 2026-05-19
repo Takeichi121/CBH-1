@@ -319,21 +319,24 @@ function Router() {
 
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AppThemeProvider } from "@/hooks/use-app-theme";
 
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-        <QueryClientProvider client={queryClient}>
-          <I18nProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AuthProvider>
-                <Router />
-                <PWAInstallPrompt />
-              </AuthProvider>
-            </WouterRouter>
-          </I18nProvider>
-        </QueryClientProvider>
+        <AppThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <I18nProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <AuthProvider>
+                  <Router />
+                  <PWAInstallPrompt />
+                </AuthProvider>
+              </WouterRouter>
+            </I18nProvider>
+          </QueryClientProvider>
+        </AppThemeProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

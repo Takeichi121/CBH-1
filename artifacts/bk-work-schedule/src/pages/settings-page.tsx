@@ -423,11 +423,23 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* ── Theme & Color Section Heading ── */}
+            <div className="flex items-center gap-3 pt-1">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Palette className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-base font-semibold">{language === "th" ? "ธีมและสี" : "Theme & Colors"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {language === "th" ? "ปรับโทนสีและ accent ของแอปให้เป็นแบบของคุณ" : "Personalise the app's colour palette"}
+                </p>
+              </div>
+            </div>
+
             {/* ── Base Theme ── */}
             <div className="space-y-3">
               <div className="space-y-0.5">
-                <Label className="text-base flex items-center gap-2">
-                  <Palette className="w-4 h-4" />
+                <Label className="text-base">
                   {language === "th" ? "ธีมพื้นหลัง" : "Background Theme"}
                 </Label>
                 <p className="text-sm text-muted-foreground">

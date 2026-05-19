@@ -35,13 +35,26 @@ function applyClasses(baseTheme: BaseTheme, accentColor: AccentColor) {
   html.classList.add(`accent-${accentColor}`);
 }
 
+const VALID_BASE_THEMES = new Set<BaseTheme>(["default", "ocean", "forest", "sunset"]);
+const VALID_ACCENT_COLORS = new Set<AccentColor>(["emerald", "sky", "violet", "amber", "rose"]);
+
+function loadBaseTheme(): BaseTheme {
+  const stored = localStorage.getItem("bk_base_theme");
+  return stored && VALID_BASE_THEMES.has(stored as BaseTheme)
+    ? (stored as BaseTheme)
+    : "default";
+}
+
+function loadAccentColor(): AccentColor {
+  const stored = localStorage.getItem("bk_accent_color");
+  return stored && VALID_ACCENT_COLORS.has(stored as AccentColor)
+    ? (stored as AccentColor)
+    : "emerald";
+}
+
 export function AppThemeProvider({ children }: { children: ReactNode }) {
-  const [baseTheme, setBaseThemeState] = useState<BaseTheme>(
-    () => (localStorage.getItem("bk_base_theme") as BaseTheme) || "default"
-  );
-  const [accentColor, setAccentColorState] = useState<AccentColor>(
-    () => (localStorage.getItem("bk_accent_color") as AccentColor) || "emerald"
-  );
+  const [baseTheme, setBaseThemeState] = useState<BaseTheme>(loadBaseTheme);
+  const [accentColor, setAccentColorState] = useState<AccentColor>(loadAccentColor);
 
   useLayoutEffect(() => {
     applyClasses(baseTheme, accentColor);

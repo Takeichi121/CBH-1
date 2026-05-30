@@ -739,8 +739,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
       });
 
       const userAddress = user.nickName ? `คุณ${user.nickName}` : "คุณผู้จัดการ";
@@ -9633,8 +9633,8 @@ ${pageContext}` : ''}`;
       try {
         const OpenAI = (await import("openai")).default;
         const openai = new OpenAI({
-          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
         });
         const completion = await openai.chat.completions.create({
           model: "gpt-4.1",

@@ -738,10 +738,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
-      });
+      const _oaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      const _oaiBase = process.env.OPENAI_API_KEY ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+      const openai = new OpenAI({ apiKey: _oaiKey, baseURL: _oaiBase });
 
       const userAddress = user.nickName ? `คุณ${user.nickName}` : "คุณผู้จัดการ";
 
@@ -9632,10 +9631,9 @@ ${pageContext}` : ''}`;
     (async () => {
       try {
         const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({
-          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
-          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
-        });
+        const _oaiKey2 = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+        const _oaiBase2 = process.env.OPENAI_API_KEY ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+        const openai = new OpenAI({ apiKey: _oaiKey2, baseURL: _oaiBase2 });
         const completion = await openai.chat.completions.create({
           model: "gpt-4.1",
           messages: [

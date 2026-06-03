@@ -14,7 +14,7 @@ function getOpenAI(): OpenAI {
   }
   return new OpenAI({
     apiKey,
-    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
+    baseURL: process.env.OPENAI_API_KEY ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   });
 }
 

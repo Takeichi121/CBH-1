@@ -3387,7 +3387,12 @@ ${pageContext}` : ''}`;
           const result = await callOpenAITools(rounds);
           loopToolCalls = result.toolCalls;
           loopTextContent = result.textContent;
-        } catch (oaiToolErr) {
+        } catch (oaiToolErr: any) {
+          const isQuota = oaiToolErr?.status === 429 || String(oaiToolErr?.message).includes("quota") || String(oaiToolErr?.message).includes("insufficient");
+          if (isQuota) {
+            console.warn("[Chann] OpenAI quota exceeded — skipping tool-call loop, will use Gemini for final answer");
+            break;
+          }
           console.warn("[Chann] OpenAI (Replit AI) tool-calling failed:", oaiToolErr);
           loopToolCalls = [];
           loopTextContent = "";
@@ -3474,6 +3479,27 @@ ${pageContext}` : ''}`;
               }
               return;
             }
+            if (_prov === "gemini") {
+              const { GoogleGenerativeAI } = await import("@google/generative-ai");
+              const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+              const geminiModel = gemini.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: systemPrompt });
+              const geminiMsgs = directMsgs.map((m: any) => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: Array.isArray(m.content)
+                  ? m.content.map((c: any) => c.type === "text" ? { text: c.text } : { text: "" })
+                  : [{ text: String(m.content) }],
+              })).filter((m: any) => m.parts.some((p: any) => p.text));
+              const lastUserIdx = [...geminiMsgs].map((m: any) => m.role).lastIndexOf("user");
+              const history = lastUserIdx > 0 ? geminiMsgs.slice(0, lastUserIdx) : [];
+              const lastMsg = geminiMsgs[lastUserIdx] ?? { role: "user", parts: [{ text: "สวัสดี" }] };
+              const chat = geminiModel.startChat({ history });
+              const result = await chat.sendMessageStream(lastMsg.parts);
+              for await (const chunk of result.stream) {
+                const t = chunk.text();
+                if (t) handleDelta(t);
+              }
+              return;
+            }
             const s = await openai.chat.completions.create({
               model: "gpt-4.1",
               messages: [{ role: "system", content: systemPrompt }, ...directMsgs],
@@ -3486,7 +3512,11 @@ ${pageContext}` : ''}`;
             }
           };
 
-          const providerFallback = [selectedModel === "claude" ? "claude" : "openai"];
+          const providerFallback = selectedModel === "claude"
+            ? ["claude"]
+            : process.env.GEMINI_API_KEY
+              ? ["openai", "gemini"]
+              : ["openai"];
 
           let streamed = false;
           for (const prov of providerFallback) {
@@ -3576,6 +3606,27 @@ ${pageContext}` : ''}`;
           }
           return;
         }
+        if (_prov === "gemini") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+          const geminiModel = gemini.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: systemPrompt });
+          const geminiMsgs = fallbackMsgs.map((m: any) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: Array.isArray(m.content)
+              ? m.content.map((c: any) => c.type === "text" ? { text: c.text } : { text: "" })
+              : [{ text: String(m.content) }],
+          })).filter((m: any) => m.parts.some((p: any) => p.text));
+          const lastUserIdx = [...geminiMsgs].map((m: any) => m.role).lastIndexOf("user");
+          const history = lastUserIdx > 0 ? geminiMsgs.slice(0, lastUserIdx) : [];
+          const lastMsg = geminiMsgs[lastUserIdx] ?? { role: "user", parts: [{ text: "สวัสดี" }] };
+          const chat = geminiModel.startChat({ history });
+          const result = await chat.sendMessageStream(lastMsg.parts);
+          for await (const chunk of result.stream) {
+            const t = chunk.text();
+            if (t) handleFbDelta(t);
+          }
+          return;
+        }
         const s = await openai.chat.completions.create({
           model: "gpt-4.1",
           messages: [{ role: "system", content: systemPrompt }, ...fallbackMsgs],
@@ -3588,7 +3639,11 @@ ${pageContext}` : ''}`;
         }
       };
 
-      const fbOrder = [selectedModel === "claude" ? "claude" : "openai"];
+      const fbOrder = selectedModel === "claude"
+        ? ["claude"]
+        : process.env.GEMINI_API_KEY
+          ? ["openai", "gemini"]
+          : ["openai"];
 
       let fbStreamed = false;
       for (const prov of fbOrder) {
@@ -9630,29 +9685,33 @@ ${pageContext}` : ''}`;
 
     (async () => {
       try {
-        const OpenAI = (await import("openai")).default;
-        const _oaiKey2 = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-        const _oaiBase2 = process.env.OPENAI_API_KEY ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-        const openai = new OpenAI({ apiKey: _oaiKey2, baseURL: _oaiBase2 });
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4.1",
-          messages: [
-            {
-              role: "system",
-              content: `You are Replit Agent — an autonomous AI software engineer. 
+        const agentSysPrompt = `You are Replit Agent — an autonomous AI software engineer. 
 When an admin sends you a request, reply briefly acknowledging it and give a short, relevant technical comment or next step.
 Match the language the user wrote in (Thai or English). 
-Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`,
-            },
-            {
-              role: "user",
-              content: `[${parsed.data.type}] ${parsed.data.description}`,
-            },
-          ],
-          max_tokens: 150,
-        });
-        const aiResponse = completion.choices[0]?.message?.content ?? "ได้รับ request แล้วครับ จะตรวจสอบและดำเนินการเร็วๆ นี้";
-        await storage.updateAgentRequestResponse(request.id, aiResponse);
+Be concise: 1-3 sentences max. No bullet points. Sound helpful and capable.`;
+        const agentUserMsg = `[${parsed.data.type}] ${parsed.data.description}`;
+        let aiResponse = "";
+        try {
+          const OpenAI = (await import("openai")).default;
+          const _oaiKey2 = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+          const _oaiBase2 = process.env.OPENAI_API_KEY ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+          const openai2 = new OpenAI({ apiKey: _oaiKey2, baseURL: _oaiBase2 });
+          const completion = await openai2.chat.completions.create({
+            model: "gpt-4.1",
+            messages: [{ role: "system", content: agentSysPrompt }, { role: "user", content: agentUserMsg }],
+            max_tokens: 150,
+          });
+          aiResponse = completion.choices[0]?.message?.content ?? "";
+        } catch {
+          if (process.env.GEMINI_API_KEY) {
+            const { GoogleGenerativeAI } = await import("@google/generative-ai");
+            const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const gModel = gemini.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: agentSysPrompt });
+            const gResult = await gModel.generateContent(agentUserMsg);
+            aiResponse = gResult.response.text() ?? "";
+          }
+        }
+        await storage.updateAgentRequestResponse(request.id, aiResponse || "ได้รับ request แล้วครับ จะตรวจสอบและดำเนินการเร็วๆ นี้");
       } catch {
         await storage.updateAgentRequestResponse(request.id, "ได้รับ request แล้วครับ จะตรวจสอบและดำเนินการให้เร็วที่สุด").catch(() => {});
       }

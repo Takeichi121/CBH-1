@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, BellOff, Download, ChevronDown } from "lucide-react";
+import { Send, X, Loader2, Bot, User, Trash2, FileText, ImagePlus, CheckCircle2, Zap, Calendar, BarChart3, Users, ClipboardList, Database, Sparkles, Paperclip, UploadCloud, Copy, Check, Bell, BellOff, Download, ChevronDown, Terminal, ChevronRight, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ExcelJS from "exceljs";
 import { useAuth } from "@/hooks/use-auth";
@@ -126,6 +126,14 @@ interface ToolProgressStep {
   writeActions: string[];
 }
 
+interface AgentStepItem {
+  loop: number;
+  thought: string;
+  tool: string;
+  result: string;
+  isError: boolean;
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -134,10 +142,104 @@ interface ChatMessage {
   toolActions?: string[];
   thinking?: string;
   agentPlan?: string;
+  agentSteps?: AgentStepItem[];
   suggestedReplies?: string[];
   progressSteps?: ToolProgressStep[];
 }
 
+
+/* ── Agent Timeline Component ──────────────────────────────── */
+const TOOL_STYLES: Record<string, { color: string; bg: string; label: string }> = {
+  read:        { color: "text-sky-300",     bg: "bg-sky-500/15 border-sky-500/25",     label: "read" },
+  write:       { color: "text-amber-300",   bg: "bg-amber-500/15 border-amber-500/25", label: "write" },
+  edit:        { color: "text-orange-300",  bg: "bg-orange-500/15 border-orange-500/25", label: "edit" },
+  bash:        { color: "text-slate-300",   bg: "bg-slate-600/30 border-slate-500/25", label: "bash" },
+  grep:        { color: "text-teal-300",    bg: "bg-teal-500/15 border-teal-500/25",   label: "grep" },
+  glob:        { color: "text-indigo-300",  bg: "bg-indigo-500/15 border-indigo-500/25", label: "glob" },
+  executeSql:  { color: "text-emerald-300", bg: "bg-emerald-500/15 border-emerald-500/25", label: "SQL" },
+  refresh_logs:{ color: "text-violet-300",  bg: "bg-violet-500/15 border-violet-500/25", label: "logs" },
+  report:      { color: "text-green-300",   bg: "bg-green-500/15 border-green-500/25", label: "report" },
+};
+
+function AgentTimeline({ steps, isLive }: { steps: AgentStepItem[]; isLive?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const SHOW_LIMIT = 3;
+  const visible = expanded ? steps : steps.slice(-SHOW_LIMIT);
+  const hidden = Math.max(0, steps.length - SHOW_LIMIT);
+  const doneStep = steps.find(s => s.tool === "report");
+
+  const toggleStep = (i: number) => {
+    setExpandedSteps(prev => {
+      const n = new Set(prev);
+      if (n.has(i)) n.delete(i); else n.add(i);
+      return n;
+    });
+  };
+
+  return (
+    <div className="mt-2 pt-2 border-t border-white/5 space-y-1" data-testid="agent-timeline">
+      {/* Header */}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Terminal className="w-3 h-3 text-cyan-400" />
+        <span className="text-[10px] font-semibold text-cyan-300 uppercase tracking-wider">Dev Agent</span>
+        <span className="text-[10px] text-slate-500 font-mono">{steps.length} loop{steps.length !== 1 ? "s" : ""}</span>
+        {isLive && <span className="flex items-center gap-1 text-[10px] text-amber-400 animate-pulse"><span className="w-1.5 h-1.5 bg-amber-400 rounded-full inline-block" />กำลังทำงาน...</span>}
+        {doneStep && <span className="text-[10px] text-green-400">✓ เสร็จแล้ว</span>}
+      </div>
+
+      {/* Collapsed indicator */}
+      {!expanded && hidden > 0 && (
+        <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-500 hover:text-slate-300 flex items-center gap-1 pl-1 mb-0.5 transition-colors">
+          <ChevronRight className="w-3 h-3" />
+          ดู {hidden} loop ก่อนหน้า...
+        </button>
+      )}
+
+      {/* Steps */}
+      {visible.map((step, i) => {
+        const globalIdx = expanded ? i : i + (steps.length - visible.length);
+        const style = TOOL_STYLES[step.tool] ?? { color: "text-slate-300", bg: "bg-slate-600/20 border-slate-500/20", label: step.tool };
+        const isExpanded = expandedSteps.has(globalIdx);
+        return (
+          <div key={globalIdx} className={cn("rounded-lg border overflow-hidden transition-all", step.isError ? "bg-red-500/5 border-red-500/20" : "bg-slate-900/40 border-white/5")}>
+            <button onClick={() => toggleStep(globalIdx)} className="w-full flex items-start gap-2 px-2 py-1.5 text-left hover:bg-white/[0.03] transition-colors">
+              {/* Loop number */}
+              <span className="text-[9px] font-mono text-slate-600 shrink-0 mt-0.5 w-4">{step.loop}</span>
+              {/* Tool badge */}
+              <span className={cn("shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold border", style.color, style.bg)}>
+                {style.label}
+              </span>
+              {/* Thought */}
+              <span className="text-[10px] text-slate-400 italic leading-tight flex-1 line-clamp-1 min-w-0">
+                {step.thought}
+              </span>
+              {/* Error/expand icon */}
+              {step.isError
+                ? <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                : <ChevronRight className={cn("w-3 h-3 text-slate-600 shrink-0 mt-0.5 transition-transform", isExpanded && "rotate-90")} />
+              }
+            </button>
+            {/* Expanded result */}
+            {isExpanded && (
+              <div className={cn("px-2 pb-2 pt-0.5 mx-1 mb-1 rounded text-[10px] font-mono leading-relaxed whitespace-pre-wrap break-all", step.isError ? "text-red-300/80 bg-red-500/5" : "text-slate-400 bg-slate-900/60")}>
+                {step.result.slice(0, 500)}{step.result.length > 500 && "..."}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Collapse back */}
+      {expanded && hidden > 0 && (
+        <button onClick={() => setExpanded(false)} className="text-[10px] text-slate-500 hover:text-slate-300 flex items-center gap-1 pl-1 transition-colors">
+          <ChevronRight className="w-3 h-3 rotate-90" />
+          ย่อกลับ
+        </button>
+      )}
+    </div>
+  );
+}
 
 interface MessageBubbleProps {
   msg: ChatMessage;
@@ -267,6 +369,9 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
                   );
                 })}
               </div>
+            )}
+            {msg.agentSteps && msg.agentSteps.length > 0 && (
+              <AgentTimeline steps={msg.agentSteps} isLive={!msg.content && isLastMsg && isLoading} />
             )}
           </div>
           {msg.role === "assistant" && displayContent && displayContent !== "ส่งรูปภาพ" && (
@@ -470,6 +575,16 @@ export function FloatingChannChat() {
               setMessages(prev => {
                 const n = [...prev];
                 if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], agentPlan: parsed.agentPlan };
+                return n;
+              });
+            }
+            if (parsed.agentStep) {
+              setMessages(prev => {
+                const n = [...prev];
+                const last = n[n.length - 1];
+                if (last?.role === "assistant") {
+                  n[n.length - 1] = { ...last, agentSteps: [...(last.agentSteps || []), parsed.agentStep], thinking: undefined };
+                }
                 return n;
               });
             }

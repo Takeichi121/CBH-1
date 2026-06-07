@@ -133,6 +133,7 @@ interface ChatMessage {
   imageUrl?: string;
   toolActions?: string[];
   thinking?: string;
+  agentPlan?: string;
   suggestedReplies?: string[];
   progressSteps?: ToolProgressStep[];
 }
@@ -210,6 +211,17 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
                 onClick={() => window.open(msg.imageUrl, "_blank")}
                 data-testid={`img-chann-${index}`}
               />
+            )}
+            {msg.agentPlan && !msg.content && (
+              <div className="space-y-1.5 animate-in fade-in duration-300" data-testid={`agent-plan-${index}`}>
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-300 uppercase tracking-wider">
+                  <Zap className="w-3 h-3" />
+                  แผนการทำงาน
+                </div>
+                <div className="text-xs text-slate-300/80 whitespace-pre-wrap leading-relaxed pl-1 border-l-2 border-violet-500/30">
+                  {msg.agentPlan}
+                </div>
+              </div>
             )}
             {msg.thinking && !msg.content && (
               <div className="space-y-2" data-testid={`thinking-chann-${index}`}>
@@ -451,6 +463,13 @@ export function FloatingChannChat() {
               setMessages(prev => {
                 const n = [...prev];
                 if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], thinking: parsed.thinking };
+                return n;
+              });
+            }
+            if (parsed.agentPlan) {
+              setMessages(prev => {
+                const n = [...prev];
+                if (n[n.length - 1]?.role === "assistant") n[n.length - 1] = { ...n[n.length - 1], agentPlan: parsed.agentPlan };
                 return n;
               });
             }

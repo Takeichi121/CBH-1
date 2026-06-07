@@ -882,18 +882,32 @@ borrow, ยืม, คืน, ลา, หยุด, เป้า, target, waste,
 - readStaffChat: อ่านข้อความล่าสุดใน Staff Chat (group messages)
 - getWeeklySalesReport: ดูรายงานยอดขายรายสัปดาห์ (sale, TC, TA, waste, SOS, OSAT, COL, delivery)
 
-[หลักการทำงานแบบ Chain-of-Thought Agent]
-1. **วิเคราะห์คำถาม**: อ่านคำถามให้เข้าใจ — ต้องการข้อมูลอะไร จากที่ไหน ในช่วงเวลาใด
-2. **วางแผน tool calls**: ระบุว่าจะใช้ tool อะไรบ้าง ตามลำดับที่สมเหตุสมผล
-3. **ดึงข้อมูล**: เรียก tool ที่จำเป็น — ใช้ parallel calls เมื่อ tool ไม่ขึ้นต่อกัน
-4. **คำนวณและตีความ**: วิเคราะห์ข้อมูลที่ได้ คำนวณ metrics เปรียบเทียบกับเป้า
-5. **ตอบกระชับและชัดเจน**: สรุปสิ่งสำคัญ ใช้ตาราง/bullet เมื่อเหมาะสม อย่าพูดซ้ำสิ่งที่ไม่จำเป็น
+[Autonomous Agent Loop — วิธีทำงาน]
+เมื่อได้รับคำสั่งที่ต้องใช้ tools ให้ทำตาม loop นี้เสมอ:
 
-**กฎการใช้ tool:**
-- ใช้ parallel tool calls เสมอเมื่อ tool ไม่ขึ้นต่อกัน (เช่น ดึงยอดขาย + ตารางกะ + labor พร้อมกัน)
+**STEP 1 — PLAN (แสดงแผนก่อนลงมือ)**
+ก่อนเรียก tool ใดๆ ในรอบแรก ให้เขียนแผนสั้นๆ เป็น text ก่อน (1-4 ข้อ) ในรูปแบบ:
+📋 แผน: [อธิบายสั้นๆ ว่าจะทำอะไร]
+• ขั้น 1: [tool/action]
+• ขั้น 2: [tool/action]
+• ขั้น 3: [verify/report]
+จากนั้นค่อยเรียก tools พร้อมกันใน response เดียวกัน
+
+**STEP 2 — EXECUTE (ลงมือทำ)**
+- เรียก tools ตามแผน ใช้ parallel calls เมื่อ tools ไม่ขึ้นต่อกัน
 - recallNotes ก่อนตอบเสมอ ถ้าคิดว่ามี notes เกี่ยวกับ${userAddress}หรือร้าน
-- ใช้ webSearch เมื่อถามเรื่องนอกฐานข้อมูล (ราคาตลาด, ข่าว, เทรนด์ธุรกิจ)
-- ใช้ exportSalesReport เมื่อ${userAddress}ต้องการ download หรือ export ข้อมูลเป็น Excel
+
+**STEP 3 — VERIFY & SELF-CORRECT (ตรวจและแก้)**
+หาก tool คืน error หรือข้อมูลผิดคาด:
+- อธิบายสั้นๆ ว่าเกิดอะไร แล้วลองวิธีอื่นทันที (อย่าหยุด)
+- ถ้า tool A ล้มเหลว → ลอง tool B ที่ให้ข้อมูลใกล้เคียงกัน
+- ถ้าข้อมูลดูผิดปกติ → ดึงข้อมูลเพิ่มเพื่อยืนยัน
+
+**STEP 4 — REPORT (สรุปผลลัพธ์)**
+- สรุปสิ่งสำคัญ ใช้ตาราง/bullet เมื่อเหมาะสม
+- ระบุ action ที่ทำไปแล้ว (ถ้ามี write actions)
+- ใช้ webSearch เมื่อถามเรื่องนอกฐานข้อมูล (ราคาตลาด, ข่าว, เทรนด์)
+- ใช้ exportSalesReport เมื่อ${userAddress}ต้องการ download หรือ export เป็น Excel
 - ใช้ getCrossSystemSummary เมื่อถามภาพรวมวันใดวันหนึ่ง
 ${isManagerOrAdmin && !isAdmin ? `
 [สิทธิ์ Manager - แก้ไขตารางงานและรีพอร์ต]
@@ -3349,7 +3363,7 @@ ${pageContext}` : ''}`;
           messages: aiMessages,
           max_completion_tokens: 8192,
           tools: channTools,
-          tool_choice: round === 1 ? "required" : "auto",
+          tool_choice: "auto",
           parallel_tool_calls: true,
         });
         const loopChoice = loopResponse.choices[0];
@@ -3370,14 +3384,17 @@ ${pageContext}` : ''}`;
         return { toolCalls, textContent };
       };
 
+      // Track consecutive error rounds for self-correction
+      let consecutiveErrors = 0;
+
       while (rounds < MAX_ROUNDS) {
         rounds++;
 
         let thinkingMsg = rounds === 1
-          ? `กำลังสำรวจข้อมูลด้วย Chann Fusion... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`
+          ? `🔍 กำลังวางแผนและสำรวจข้อมูล...`
           : hadAnyToolCalls
-            ? `กำลังตรวจสอบ (Verify) ด้วย Chann Fusion... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`
-            : `กำลังประมวลผลและดำเนินการต่อ... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`;
+            ? `✅ กำลังตรวจสอบ (Verify) ขั้นตอน ${rounds}/${MAX_ROUNDS}...`
+            : `⚙️ กำลังประมวลผลต่อ... (ขั้นตอน ${rounds}/${MAX_ROUNDS})`;
         res.write(`data: ${JSON.stringify({ thinking: thinkingMsg })}\n\n`);
 
         let loopToolCalls: ToolCallResult[] = [];
@@ -3387,21 +3404,30 @@ ${pageContext}` : ''}`;
           const result = await callOpenAITools(rounds);
           loopToolCalls = result.toolCalls;
           loopTextContent = result.textContent;
+          consecutiveErrors = 0;
         } catch (oaiToolErr: any) {
           const isQuota = oaiToolErr?.status === 429 || String(oaiToolErr?.message).includes("quota") || String(oaiToolErr?.message).includes("insufficient");
           if (isQuota) {
             console.warn("[Chann] OpenAI quota exceeded — skipping tool-call loop, will use Gemini for final answer");
             break;
           }
-          console.warn("[Chann] OpenAI (Replit AI) tool-calling failed:", oaiToolErr);
+          console.warn("[Chann] OpenAI tool-calling failed:", oaiToolErr);
           loopToolCalls = [];
           loopTextContent = "";
+          consecutiveErrors++;
+          if (consecutiveErrors >= 2) break;
+          continue;
+        }
+
+        // Round 1: capture plan text and emit as agentPlan event
+        if (rounds === 1 && loopTextContent) {
+          res.write(`data: ${JSON.stringify({ agentPlan: loopTextContent })}\n\n`);
         }
 
         if (loopToolCalls.length > 0) {
           hadAnyToolCalls = true;
           const toolNames = loopToolCalls.map(tc => tc.name).filter(Boolean);
-          res.write(`data: ${JSON.stringify({ thinking: `กำลังทำขั้นตอน ${rounds}/${MAX_ROUNDS}: ใช้เครื่องมือ ${toolNames.join(", ")}` })}\n\n`);
+          res.write(`data: ${JSON.stringify({ thinking: `⚡ ขั้นตอน ${rounds}/${MAX_ROUNDS}: ${toolNames.join(", ")}` })}\n\n`);
 
           const roundWriteActions: string[] = [];
           const prevToolActionsLen = toolActions.length;
@@ -3419,12 +3445,29 @@ ${pageContext}` : ''}`;
 
           res.write(`data: ${JSON.stringify({ toolProgress: { step: rounds, maxSteps: MAX_ROUNDS, toolNames, writeActions: roundWriteActions } })}\n\n`);
 
+          // Self-correction: detect tool errors and inject correction hint
+          const errorResults = toolResults.filter(tr => {
+            try { const p = JSON.parse(tr.result); return p.error || p.ok === false; } catch { return false; }
+          });
+          if (errorResults.length > 0) {
+            const errSummary = errorResults.map(er => `${er.name}: ${er.result}`).join("; ");
+            console.warn(`[Chann] Self-correction triggered: ${errSummary}`);
+          }
+
           for (const tr of toolResults) {
             aiMessages.push({
               role: "tool",
               tool_call_id: tr.id,
               content: truncateMsg(tr.result, 6000),
             } as { role: "tool"; tool_call_id: string; content: string });
+          }
+
+          // If errors, inject self-correction instruction before next round
+          if (errorResults.length > 0 && errorResults.length === toolResults.length) {
+            aiMessages.push({
+              role: "user",
+              content: `[SYSTEM: tools คืน error ทั้งหมด ${errorResults.length} tool — ลองวิธีอื่นในรอบถัดไป หรือใช้ tool ที่แตกต่างออกไป]`,
+            } as any);
           }
         } else {
           if (toolActions.length > 0) {

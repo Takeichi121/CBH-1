@@ -26,6 +26,7 @@ interface ChatMessage {
   imageUrl?: string;
   toolActions?: string[];
   thinking?: string;
+  agentPlan?: string;
   suggestedReplies?: string[];
   progressSteps?: ToolProgressStep[];
 }
@@ -95,6 +96,17 @@ const MessageBubble = memo(function MessageBubble({ msg, index, isLastMsg, isLoa
         )}>
           {msg.imageUrl && msg.imageUrl !== "(image attached)" && (
             <img src={msg.imageUrl} alt="sent" className="max-w-full max-h-52 rounded-lg mb-2 cursor-pointer" onClick={() => window.open(msg.imageUrl, "_blank")} />
+          )}
+          {msg.agentPlan && !msg.content && (
+            <div className="space-y-1.5 animate-in fade-in duration-300">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-300 uppercase tracking-wider">
+                <Zap className="w-3 h-3" />
+                แผนการทำงาน
+              </div>
+              <div className="text-xs text-slate-300/80 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-violet-500/30">
+                {msg.agentPlan}
+              </div>
+            </div>
           )}
           {msg.thinking && !msg.content && (
             <div className="flex items-center gap-2 text-xs text-violet-300/80 italic">
@@ -216,6 +228,7 @@ export default function ChannPlatformPage() {
           try {
             const p = JSON.parse(dataStr);
             if (p.thinking) setMessages(prev => { const n=[...prev]; if (n[n.length-1]?.role==="assistant") n[n.length-1]={...n[n.length-1],thinking:p.thinking}; return n; });
+            if (p.agentPlan) setMessages(prev => { const n=[...prev]; if (n[n.length-1]?.role==="assistant") n[n.length-1]={...n[n.length-1],agentPlan:p.agentPlan}; return n; });
             if (p.toolProgress) setMessages(prev => { const n=[...prev]; const last=n[n.length-1]; if (last?.role==="assistant") n[n.length-1]={...last,progressSteps:[...(last.progressSteps||[]),p.toolProgress]}; return n; });
             if (p.toolActions?.length) setMessages(prev => { const n=[...prev]; n.splice(n.length-1,0,{role:"assistant",content:"",timestamp:new Date().toISOString(),toolActions:p.toolActions}); return n; });
             if (p.content) { if (!started) { setIsLoading(false); setIsStreaming(true); started=true; } pendingContentRef.current+=p.content; scheduleFlush(); }

@@ -4,6 +4,8 @@ import { Server as SocketIOServer } from "socket.io";
 import { setSocketIO, getSocketIO } from "../socket";
 // ── LINE Messaging API ──────────────────────────────
 import { sendLineMessage } from "../services/line-service";
+// ── Autonomous Dev Agent (ReAct) ─────────────────────
+import { runDevAgent } from "../services/autonomous-agent";
 
 function lineRow(label: string, value: string, valueColor = "#333333") {
   return {
@@ -265,6 +267,7 @@ export const ADMIN_ONLY_WRITE_TOOL_NAMES = new Set([
   "createSourceFile",        // Create a new source file on disk
   "executeShellCommand",     // Run a command via the exec-shell allowlist
   "getCodeProposals",        // List pending code-change proposals
+  "runDevAgent",             // Spawn a ReAct autonomous dev agent for multi-step tasks
 ]);
 
 const safeParseAllowedFeatures = (raw: string | null | undefined): string[] | null => {
@@ -986,6 +989,7 @@ ${userAddress}เป็น Admin ดังนั้นคุณมีสิท�
 
 **เครื่องมือรัน Terminal (Admin only):**
 - executeShellCommand: รันคำสั่ง terminal ในโปรเจค (npm, npx, node, tsc, ls, cat, grep, find) — timeout 60 วินาที
+- runDevAgent: ปล่อย Autonomous ReAct Dev Agent ให้ทำงานหลายขั้นตอนอัตโนมัติ (อ่าน/เขียน/แก้ไขไฟล์, รัน bash, query DB, self-correct) — ใช้สำหรับงานซับซ้อนที่ต้องการ loop หลายรอบ เช่น "ค้นหาไฟล์ทั้งหมดที่ใช้ XYZ แล้วแก้ให้ครบ"
 
 [กฎการแก้ไขโค้ด — Replit Agent Mode]
 - เมื่อ${userAddress}สั่งให้แก้โค้ดโดยตรง ให้ใช้ **applyCodeEdit** แก้ไขไฟล์ทันที (ไม่ต้อง propose/รออนุมัติ)
@@ -1977,6 +1981,20 @@ ${pageContext}` : ''}`;
         {
           type: "function" as const,
           function: {
+            name: "runDevAgent",
+            description: "Spawn an autonomous ReAct developer agent to handle a complex multi-step task (read/write/edit files, run bash, query DB). The agent plans, executes, self-corrects, and reports back. Use for tasks that require multiple tool calls in sequence. Admin only.",
+            parameters: {
+              type: "object",
+              properties: {
+                task: { type: "string", description: "The task description for the dev agent (in Thai or English). Be specific about what to do and what the expected result looks like." }
+              },
+              required: ["task"]
+            }
+          }
+        },
+        {
+          type: "function" as const,
+          function: {
             name: "getCodeProposals",
             description: "Get list of code change proposals and their status (pending/approved/rejected).",
             parameters: {
@@ -2921,6 +2939,34 @@ ${pageContext}` : ''}`;
               return JSON.stringify(execData);
             } catch (shellErr: any) {
               return JSON.stringify({ ok: false, error: `Shell call error: ${shellErr.message}` });
+            }
+          }
+
+          case "runDevAgent": {
+            const agentTask = String(args.task || "");
+            if (!agentTask) return JSON.stringify({ ok: false, error: "Missing required field: task" });
+            try {
+              toolActions.push(`🤖 Dev Agent: ${agentTask.slice(0, 60)}...`);
+              const agentResult = await runDevAgent(agentTask, (step) => {
+                res.write(`data: ${JSON.stringify({
+                  agentStep: {
+                    loop: step.loop,
+                    thought: step.thought,
+                    tool: step.tool,
+                    result: step.result.slice(0, 200),
+                    isError: step.isError,
+                  }
+                })}\n\n`);
+              });
+              return JSON.stringify({
+                ok: agentResult.ok,
+                report: agentResult.report,
+                loops: agentResult.loops,
+                stepsCompleted: agentResult.steps.filter(s => !s.isError).length,
+                stepsFailed: agentResult.steps.filter(s => s.isError).length,
+              });
+            } catch (agentErr: any) {
+              return JSON.stringify({ ok: false, error: `Dev agent error: ${agentErr.message}` });
             }
           }
 

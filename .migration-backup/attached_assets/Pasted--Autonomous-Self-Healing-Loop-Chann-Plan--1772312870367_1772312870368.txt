@@ -76,5 +76,3 @@ export async function runChannTask(taskDescription: string) {
 อันตรายจากการใช้ exec(): Chann อาจสร้างคำสั่งอันตราย เช่น rm -rf / ได้หากเกิดอาการหลอน (Hallucination)
 
 ข้อแนะนำ: ควรจำกัดสิทธิ์ User ของ Node.js ไม่ให้เป็น root เพื่อป้องกันการลบไฟล์ระบบโดยไม่ตั้งใจ
-
-การตั้งค่า: ตรวจสอบว่า .env ตั้งค่า ALOHA_DBF_PATH และรหัส SQL bk1040 ถูกต้องก่อนเริ่มรัน
